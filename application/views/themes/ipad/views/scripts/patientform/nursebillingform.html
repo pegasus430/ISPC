@@ -1,0 +1,797 @@
+<!-- Maria:: Migration ISPC to CISPC 08.08.2020 -->
+<?php
+	$this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/page-css/nurse_billing_form_style.css'); 
+
+	//IE Freaking hack
+	$url = APP_BASE . "patientform/nursebillingform?".$_SERVER['QUERY_STRING'];
+	//TODO-3260 Carmen 08.07.2020 
+	/*if(str_replace("&list=".$_REQUEST['list']."", "", $url)){
+		$finalJsUrl = str_replace("&list=".$_REQUEST['list']."", "", $url);
+	} else {
+		$finalJsUrl = $url;
+	}*/
+	if (str_replace("&list=" . $_REQUEST['list'] . "", "", str_replace("&user=" . $_REQUEST['user'] . "", "", $url)))
+	{
+		$finalJsUrl = str_replace("&list=" . $_REQUEST['list'] . "", "", str_replace("&user=" . $_REQUEST['user'] . "", "", $url));
+	}
+	else
+	{
+		$finalJsUrl = $url;
+	}
+//--
+?>
+<script type="text/javascript" >
+
+$(document).ready(function(){ 
+	  $('input').keypress(function(event){
+	        if (event.which == 13 ) {
+	            event.preventDefault();
+	            return false;   
+	        }
+	    });
+		$('#export_pdf').val('0');
+		$('.loading_div').hide();
+			
+		$('#pdf_submit').live('click',function(e){ 
+			e.preventDefault();
+			setTimeout(function () {$('input[type=submit]').attr('disabled', true);}, 150);
+			setTimeout(function () {$('input[type=submit]').attr('disabled', false);}, 9000);
+			$('#export_pdf').val('1');
+			$('#billing_form').submit();
+			
+			 var self = this;
+		});
+
+	/* =============== Validate time fields for visits ================*/	
+	$('.time_input').mask("99:99"); //add hours and minute mask
+	$("[id^=timeinput]").blur(function() {
+		var value = $(this).val();
+		var input_lenght = value.length;
+		var current_input = value.split(':');
+		var id_val = $(this).attr('id');
+		var id_string = id_val.split('_');
+		var error = 0;
+		var invalid_period = 0;
+
+		var start_time = $('#timeinput_start_'+id_string[2]+'_'+id_string[3]).val();			
+		var start_time_str = start_time.split(':');		
+		var end_time = $('#timeinput_end_'+id_string[2]+'_'+id_string[3]).val();			
+		var end_time_str = end_time.split(':');		
+
+		
+		if(input_lenght == 5)
+		{
+			if (Number(current_input[0]) > 23   && Number(current_input[1]) > 59)
+			{
+					error = 1; //invalid time format
+			}
+			else if(Number(current_input[0]) <= 23   && Number(current_input[1]) > 59)
+			{
+				error = 2;//Invalid minute format
+			}
+			else if(Number(current_input[0]) > 23   && Number(current_input[1]) <= 59)
+			{
+				error = 3;//Invalid hour format
+			}
+			
+			if( error>0){
+				 $(this).addClass("error_format");
+				 
+			} else{
+				 $(this).removeClass("error_format");
+			}			
+	
+			if(id_string[1] == "start" && error == 0 && invalid_period == 0 && end_time !=""){
+				 if( Number(current_input[0]) > Number(end_time_str[0]) || (Number(current_input[0]) == Number(end_time_str[0]) &&  Number(current_input[1]) > Number(end_time_str[1]) )  )
+					{
+						invalid_period = 1;//Start date must be smaller than the end date
+						$('#timeinput_start_'+id_string[2]+'_'+id_string[3] ).addClass("error_overlapping");
+						$('#timeinput_end_'+id_string[2]+'_'+id_string[3] ).addClass("error_overlapping");
+						$('#timeinput_start_'+id_string[2]+'_'+id_string[3] ).addClass("invalid_period");
+						$('#timeinput_end_'+id_string[2]+'_'+id_string[3] ).addClass("invalid_period");
+					}
+			}
+			
+			if(id_string[1] == "end" && error == 0 && invalid_period == 0  && start_time !=""){
+				 if( (Number(current_input[0]) <  Number(start_time_str[0])) ||  (Number(current_input[0]) == Number(start_time_str[0]) &&  Number(current_input[1]) < Number(start_time_str[1]) )  )
+					{
+						invalid_period = 1;//End date must be bigger than the start date
+						$('#timeinput_start_'+id_string[2]+'_'+id_string[3] ).addClass("error_overlapping");
+						$('#timeinput_end_'+id_string[2]+'_'+id_string[3] ).addClass("error_overlapping");
+						$('#timeinput_start_'+id_string[2]+'_'+id_string[3] ).addClass("invalid_period");
+						$('#timeinput_end_'+id_string[2]+'_'+id_string[3] ).addClass("invalid_period");
+						
+					}
+			}
+		} 
+		
+		if(id_string[1] == "end" && input_lenght < 5 && start_time != '' && error == 0 ){
+			
+			invalid_period = 1;//End date is required
+			$('#timeinput_start_'+id_string[2]+'_'+id_string[3] ).addClass("error_overlapping");
+			$('#timeinput_end_'+id_string[2]+'_'+id_string[3] ).addClass("error_overlapping");
+			$('#timeinput_start_'+id_string[2]+'_'+id_string[3] ).addClass("invalid_period");
+			$('#timeinput_end_'+id_string[2]+'_'+id_string[3] ).addClass("invalid_period");
+		}
+		
+		if(id_string[1] == "start" && input_lenght < 5 && end_time != '' && error == 0 ){
+			
+			invalid_period = 1;//Start date is required
+			$('#timeinput_start_'+id_string[2]+'_'+id_string[3] ).addClass("error_overlapping");
+			$('#timeinput_end_'+id_string[2]+'_'+id_string[3] ).addClass("error_overlapping");
+			$('#timeinput_start_'+id_string[2]+'_'+id_string[3] ).addClass("invalid_period");
+			$('#timeinput_end_'+id_string[2]+'_'+id_string[3] ).addClass("invalid_period");
+		}
+		
+		if( invalid_period ==  0){
+			$('#timeinput_start_'+id_string[2]+'_'+id_string[3] ).removeClass("error_overlapping");
+			$('#timeinput_end_'+id_string[2]+'_'+id_string[3] ).removeClass("error_overlapping");
+			$('#timeinput_start_'+id_string[2]+'_'+id_string[3] ).removeClass("invalid_period");
+			$('#timeinput_end_'+id_string[2]+'_'+id_string[3] ).removeClass("invalid_period");
+	}
+ });
+	
+ 
+	$('#save_form_btn').live('click',function(e){
+		
+		e.preventDefault();
+		
+		var submit_form = checkinputs();
+		
+		if(submit_form == 1){
+		$(this).attr('disabled', true);
+		setTimeout(function () {$('input[type=submit]').attr('disabled', true);}, 150);
+		setTimeout(function () {$('input[type=submit]').attr('disabled', false);}, 9000);
+		var error = 0;
+		var ajax_done = 0;
+
+		if(error == '0'){
+			$.ajax({
+				type: 'POST',
+				url: 'ajax/overlappingvisits',
+				data: {
+					form_data: $('#billing_form').serialize()
+				},
+
+				success:function(data){
+					var visitdata = jQuery.parseJSON(data);
+				
+					if(visitdata.new_intersected == "1" || visitdata.intersected == "1" )
+					{
+				
+						if(visitdata.new_intersected == "1")
+						{
+							var new_overlapping = visitdata.inserted_overlapping; // overlapping for form visits
+							 $.each(new_overlapping, function(key,day_nr) {
+								 $('.'+day_nr).find('input').addClass("error_overlapping");
+							 });
+						}
+						
+						if(visitdata.intersected == "1" )
+						{
+							 var existing_overlapping = visitdata.visits; // overlapping with existing visits
+							 $.each(existing_overlapping, function(key,visit_id) {
+								 $('.'+visit_id).find('input').addClass("error_overlapping");
+							 });
+	
+							 var return_visits = visitdata.return_visits; // overlapping with existing visits
+								if(return_visits){
+									var visit_row='';
+									 $.each(return_visits, function(key,visit_details) {
+										 visit_row += '<tr><td>'+visit_details+'</td></tr>';			
+									 });
+		 
+									$('.duplicate_visits').append(visit_row);
+								}
+						}
+						 
+						 $('.save_form_btn').attr('disabled',false);
+						 $(".ui-button:first").attr("disabled", false)                                               
+						 .removeClass("ui-state-disabled").next("button").attr("disabled", false)                                               
+						 .removeClass("ui-state-disabled");
+						setTimeout(function () {$('input[type=submit]').attr('disabled', false);}, 10);
+						$('#multiple_duplicate_visits').dialog('open');
+						return false; // used with modal
+					} 
+					else 
+					{
+						$('.save_form_btn').attr('disabled',true);
+						 $(".ui-button:first").attr("disabled", true)                                               
+						 .addClass("ui-state-disabled").next("button").attr("disabled", true)                                               
+						 .addClass("ui-state-disabled");
+					 	
+						 $('#export_pdf').val('0');
+ 					 	 $('#save_form').val('1');
+						 $('#billing_form').submit();
+	  					 $('#loading_block').dialog('open');
+					 
+					}
+				},
+				error:function(){
+					ajax_done = 1;
+				}
+			});
+		}
+		}
+	});
+	
+	/*------------------------------DUPLICATE VISITS -------------------------------*/
+	$('#multiple_duplicate_visits').dialog({
+		autoOpen: false,
+		title: '<?php echo $this->translate('overlapping_event_modal_title'); ?>',
+		modal: true,
+		width:400,
+		height:300,
+		
+		open: function(event, ui) {
+			$(".ui-dialog-titlebar-close").hide();
+		},
+		
+		buttons: {
+			"<?php echo $this->translate('noconfirm'); ?>": function() {
+				$('.loading_div').hide();
+				$( this ).dialog( "close" );
+				$(".duplicate_visits tr").remove();
+				 $('#save_form_btn').attr('disabled', false);
+			},
+			"<?php echo $this->translate('yesconfirm'); ?>": function() {
+				
+				$("input").removeClass("error_overlapping") // remove all overlapping classes
+				
+				$('#export_pdf').val('0');
+				$('#save_form').val('1');
+
+				$('#billing_form').submit();
+				$('#loading_block').dialog('open');
+					 
+					 
+				 $(".ui-button:first").attr("disabled", true)                                               
+				 .addClass("ui-state-disabled").next("button").attr("disabled", true)                                               
+				 .addClass("ui-state-disabled");
+				$( this ).dialog( "close" );
+			}
+		} 
+	})
+ 
+	/*------------------------------DELETE VISIT -------------------------------*/
+	var delete_id = '';
+	$('#delete_confirmation').dialog({
+		autoOpen: false,
+		title: '<?php echo $this->translate('delete_visit_title'); ?>',
+		modal: true,
+		buttons: {
+			"<?php echo $this->translate('yesconfirm'); ?>": function() {
+				// hide deleted visit
+				$('#dv_'+delete_id+'_start').replaceWith('<td class="inactive_day"><div class="loading_div" id="loading_div_'+delete_id+'">&nbsp;</div></td>');
+				$('#dv_'+delete_id+'_end').replaceWith('<td class="inactive_day">&nbsp;</td>');
+				$('#dv_'+delete_id+'_duration').replaceWith('<td class="inactive_day">&nbsp;</td>');
+				
+				$('#loading_div_'+delete_id).show();
+				
+				$('#delete_confirmation').dialog('close');
+				$.ajax({
+					type: 'POST',
+					url: 'patientform/nursebillingform?id=<?php echo $_REQUEST['id']; ?>',
+					data: {
+						mode: 'del',
+						delid: 'd'+delete_id
+					},
+					success:function(data){
+						$('#loading_div_'+delete_id).hide();
+					},
+					error:function(){
+						ajax_done = 1;
+					}
+				});
+			},
+			"<?php echo $this->translate('noconfirm'); ?>": function() {
+				$(this).dialog('close');
+			}
+		}
+	});
+
+	$('.delete_visit').live('click', function(){
+		delete_id = $(this).attr('rel');
+		$('#delete_confirmation').dialog('open');
+	});
+
+	$( "#loading_block" ).dialog({
+		autoOpen: false,
+		resizable: false,
+		draggable: false,
+		height: 160,
+		width: 350,
+		modal: true,
+		title: "Loading",
+		closeOnEscape: false,
+		open: function(event, ui) {
+			$(".ui-dialog-titlebar-close").hide();
+		}
+	});
+});
+
+function checkinputs(){
+	var invalid_inputs=0;
+	var invalid_period=0;
+		
+		$('.error_format').each(function(){
+			invalid_inputs++;
+		});
+		$('.invalid_period').each(function(){
+			invalid_period++;
+		});
+ 
+		if( invalid_inputs > 0 || invalid_period>0){
+			// alert - ivalid inputs
+			alert("<?php echo $this->translate('Please check form - there are some wrong entries')?>");
+			 return data = 0;
+		} else{
+			 return data = 1;
+		}			
+		
+}
+ 
+
+function changeMonth(data){
+	var url = "<?php echo $finalJsUrl; ?>&list="+data;
+	$(location).attr('href',url);
+}
+//TODO-3260 Carmen 08.07.2020
+function changeUser(data){
+	var url = "<?php echo $finalJsUrl; ?>&list="+$('#month').val()+"&user="+data;
+	$(location).attr('href',url);
+}
+//--
+</script>
+
+<?php echo $this->patientinfo ?>
+<?php echo $this->tabmenus ?>
+<div style="display: none"> <img id="calImg" src="<?php echo RES_FILE_PATH;  ?>/images/calendar.png" alt="Popup" class="trigger"> </div>
+<form action="" name="billing_form" method="post" id="billing_form">
+<div class="billing_container">
+    <div class="btitle">
+    	<h3>Abrechnung spezialisierter ambulanter Versorgung</h3>
+    </div>
+    
+    
+    <div class="patient_info">
+    	<div class="pat_details">
+    	 Angaben	zum Versicherten: 
+    	 <b><?php echo $this->patient_name; ?></b> 
+    	 geb: <b><?php echo $this->patient_birthd; ?>,</b> 
+    	 Vers.nr.: <b><?php echo $this->patient_health_insurance_nr; ?></b> 
+    	</div>
+    	<div class="period_selection">
+    		<label>Monat:</label>
+    			    <?php
+					    if(empty($_REQUEST['list'])){
+							$sel_value = date("Ym");
+					    } else {
+							$sel_value = $_REQUEST['list'];
+					    }
+					    
+						$montharay = $this->montharray;
+					    
+					    if(count($montharay)>0){
+						echo '<select name="month" id="month" onChange="changeMonth(this.value);">';
+
+						foreach($this->montharray as $km=>$vm){
+						
+						  if($sel_value == $km){
+						    $selected = 'selected="selected"';
+						  } else {
+						    $selected = '';
+						  }
+						    echo '<option value="'.$km.'" '.$selected.' >'.$vm.'</option>';
+						}
+						echo "</select>";
+					} else {
+						echo end($montharay);
+					}
+			    ?>
+    	</div>
+    </div>
+    <!-- TODO-3260 carmen 08.07.2020 -->
+    <div>
+		<label><?php echo $this->translate('Select user: ');?></label>
+		
+		<select id="invoiced_user" name="invoiced_user" onChange="changeUser(this.value);">
+			<?php if($this->assigned_users): ?>
+				<?php foreach($this->assigned_users as $k_usr_id => $v_usr): ?>
+			<option value="<?php echo $k_usr_id; ?>" <?php if($this->requested_user == $k_usr_id): ?>selected="selected"<?php endif; ?>><?php echo $v_usr; ?></option>
+				<?php endforeach; ?>
+			<?php else: ?>
+					<option><?php echo $this->translate('no_users_invoices'); ?></option>
+			<?php endif; ?>
+		</select>
+	</div>
+	<!-- //-- -->
+    <div class="billing_table">
+
+     <?php $visit_details = $this->visits_array; // All visits details ?> 
+     <?php $visit_p = $this->nurse_visit_day_p; // Visit details - according to p - shortcuts?> 
+     <?php $visit_p_price = $this->visit_price; // Visit PRICE - according to p - shortcuts - client specific?> 
+     <?php $current_date = array();  $current_date[date("Y-m-d")] = " current_day ";?> 
+
+
+    <table style="padding: 0px;" class="master_billing_table">
+    <tr>
+    	<td class="tdasth"></td>
+    	<td class="tdasth"></td>
+   		<td rowspan="15"  class="slave_billing_container" style="vertical-align: top;">
+   		<div class="td_scroll">
+   		<table class="slave_billing_table">
+			   	<tr>
+			        <?php foreach($this->month_days as $day_nr => $day_value):?>
+						<th class="<?php echo $current_date[$day_value];?> <?php if(!in_array($day_value, $this->total_active_days)):?> inactive_day<?php endif;?>" >
+							<span class="th_day"><?php echo $day_nr; ?></span>
+							<span class="th_day_options">
+							<?php if ( strtotime($day_value) <= strtotime(date('Y-m-d')) ): ?>
+								<?php if ( !in_array($day_value, $this->inactive_array_visits) && in_array($day_value, $this->total_active_days) ) :?>
+									&nbsp;
+								<?php endif;?>
+							<?php endif;?>
+							</span>
+						</th>
+				    <?php endforeach; ?>
+			    </tr>
+
+			<?php  $per_day = 1; ?>
+   			 <?php foreach($this->nr_visits as $visit_number): ?>
+				<tr>
+					<?php foreach($this->complete_month_days as $day_nr => $day_value):?>
+						<?php if (in_array($day_value, $this->total_active_days)):?>
+							<td class="<?php echo $current_date[$day_value]?> <?php echo $day_value; ?>  <?php echo $day_nr.$visit_number; ?>  <?php echo $visit_details[$day_value][$visit_number]['visit_id']; ?>">
+								<input type="text" name="visit[<?php echo $day_value; ?>][<?php echo $visit_number; ?>][start_time]" value="<?php echo $visit_details[$day_value][$visit_number]['visit_start'] ;?>" class="small_input time_input" id="timeinput_start_<?php echo $day_nr.$visit_number;?>_<?php echo $day_value; ?>" tabindex="<?php echo $day_nr.$visit_number;?>" />
+								<input type="hidden" name="visit[<?php echo $day_value; ?>][<?php echo $visit_number; ?>][old_start_time]" value="<?php echo $visit_details[$day_value][$visit_number]['visit_start']; ?>" />
+								<input type="hidden" name="visit[<?php echo $day_value; ?>][<?php echo $visit_number; ?>][id]" value="<?php echo $visit_details[$day_value][$visit_number]['visit_id']; ?>"  />
+								<input type="hidden" name="visit[<?php echo $day_value; ?>][<?php echo $visit_number; ?>][nr]" value="<?php echo $day_nr.$visit_number ?>"  />
+								<input type="hidden" name="visit[<?php echo $day_value; ?>][<?php echo $visit_number; ?>][create_user]" value="<?php echo $visit_details[$day_value][$visit_number]['create_user']; ?>"  />
+								<?php if($visit_details[$day_value][$visit_number]['visit_day']):?>
+									<input type="hidden" name="visit[<?php echo $day_value; ?>][<?php echo $visit_number; ?>][start_date]" value="<?php echo date('Y-m-d', strtotime($visit_details[$day_value][$visit_number]['visit_day'])); ?>"  />
+								<?php else:?>
+									<input type="hidden" name="visit[<?php echo $day_value; ?>][<?php echo $visit_number; ?>][start_date]" value="<?php echo date('Y-m-d', strtotime($day_value)); ?>"  />
+								<?php endif;?>
+
+								<input type="hidden" name="visit[<?php echo $day_value; ?>][<?php echo $visit_number; ?>][visit_added_from]" value="<?php echo $visit_details[$day_value][$visit_number]['visit_added_from']; ?>"  />
+								<input type="hidden" name="visit[<?php echo $day_value; ?>][<?php echo $visit_number; ?>][active]" value="1"  />
+							</td>
+						<?php else:?>
+							<td class=" <?php echo $current_date[$day_value]?> <?php if(!in_array($day_value, $this->total_active_days)):?> inactive_day<?php endif;?>"  id="dv_<?php echo $visit_details[$day_value][$visit_number]['visit_id']; ?>_start" >
+								<a href="javascript:void(0);" class="delete_visit <?php echo $visit_details[$day_value][$visit_number]['visit_added_from'] ;?> d<?php echo $visit_details[$day_value][$visit_number]['visit_status'] ;?>" rel="<?php echo $visit_details[$day_value][$visit_number]['visit_id']; ?>" title="<?php echo $this->translate('Delete visit')?>"><?php echo $visit_details[$day_value][$visit_number]['visit_start'] ;?></a>
+								<input type="hidden" name="visit[<?php echo $day_value; ?>][<?php echo $visit_number; ?>][start_time]" value="<?php echo $visit_details[$day_value][$visit_number]['visit_start'] ;?>"  />
+								<input type="hidden" name="visit[<?php echo $day_value; ?>][<?php echo $visit_number; ?>][active]" value="0"  />
+							</td>
+						<?php endif;?>
+					<?php endforeach; ?>
+				</tr>
+				<tr>
+					<?php foreach($this->complete_month_days as $day_nr => $day_value):?>
+					<?php if (in_array($day_value, $this->total_active_days)):?>
+						<td class="<?php echo $current_date[$day_value]?>  <?php echo $day_value; ?>  <?php echo $day_nr.$visit_number; ?> <?php echo $visit_details[$day_value][$visit_number]['visit_id']; ?>" >
+							<input type="text" name="visit[<?php echo $day_value; ?>][<?php echo $visit_number; ?>][end_time]" value="<?php echo $visit_details[$day_value][$visit_number]['visit_end'] ;?>"  class="small_input time_input"   id="timeinput_end_<?php echo $day_nr.$visit_number;?>_<?php echo $day_value; ?>"  tabindex="<?php echo $day_nr.$visit_number;?>"  />
+							<input type="hidden" name="visit[<?php echo $day_value; ?>][<?php echo $visit_number; ?>][old_end_time]" value="<?php echo $visit_details[$day_value][$visit_number]['visit_end'] ;?>" />
+						</td>
+					<?php else: ?>
+						<td class="<?php echo $current_date[$day_value]?><?php if(!in_array($day_value, $this->total_active_days)):?> inactive_day<?php endif;?>"  id="dv_<?php echo $visit_details[$day_value][$visit_number]['visit_id']; ?>_end" >
+							<?php echo $visit_details[$day_value][$visit_number]['visit_end'] ;?>
+							<input type="hidden" name="visit[<?php echo $day_value; ?>][<?php echo $visit_number; ?>][end_time]" value="<?php echo $visit_details[$day_value][$visit_number]['visit_end'] ;?>" />
+						</td>
+					<?php endif;?>						
+					<?php endforeach; ?>
+				</tr>
+
+				<tr class="billing_count_duration">
+					<?php foreach($this->complete_month_days as $day_nr => $day_value):?>
+						
+					<?php if (in_array($day_value, $this->total_active_days)):?>
+						<td class="<?php echo $current_date[$day_value]?><?php if(!in_array($day_value, $this->total_active_days)):?> inactive_day<?php endif;?>">
+						<input type="hidden" name="visit[<?php echo $day_value; ?>][<?php echo $visit_number; ?>][visit_duration]" value="<?php echo $visit_details[$day_value][$visit_number]['visit_duration'] ;?>" />
+							<?php echo $visit_details[$day_value][$visit_number]['visit_duration'] ;?>
+						</td>
+					<?php else: ?>
+						<td class="<?php echo $current_date[$day_value]?><?php if(!in_array($day_value, $this->total_active_days)):?> inactive_day<?php endif;?>"  id="dv_<?php echo $visit_details[$day_value][$visit_number]['visit_id']; ?>_duration" >
+						<input type="hidden" name="visit[<?php echo $day_value; ?>][<?php echo $visit_number; ?>][visit_duration]" value="<?php echo $visit_details[$day_value][$visit_number]['visit_duration'] ;?>" />
+							<?php echo $visit_details[$day_value][$visit_number]['visit_duration'] ;?>
+						</td>
+					<?php endif;?>						
+						
+						
+					<?php endforeach; ?>
+				</tr>
+			<?php  $per_day++; ?>
+			<?php endforeach; ?> 
+
+			<?php foreach($this->nr_visits as $visit_number): ?>
+    		<?php $p_shortcut = $visit_number+1; ?>
+		      	<tr>
+					<?php  $total_p['P'.$p_shortcut] = 0;?> 
+		
+					<?php foreach($this->complete_month_days as $day_nr => $day_value):?>
+					<?php if($visit_p[$day_value]['day_price_shortcut_P'.$p_shortcut]):?>
+						<td class="<?php echo $current_date[$day_value]?> <?php if(!in_array($day_value, $this->total_active_days)):?> inactive_day<?php endif;?>" > <?php echo $visit_p[$day_value]['day_price_shortcut_P'.$p_shortcut] ;?></td>
+					<?php else:?>
+					<td class="<?php echo $current_date[$day_value]?> <?php if(!in_array($day_value, $this->total_active_days)):?> inactive_day<?php endif;?>">0</td>
+					<?php endif;?>
+					<?php $total_p['P'.$p_shortcut] += $visit_p[$day_value]['day_price_shortcut_P'.$p_shortcut];?>
+ 
+ 
+					<?php  if( $this->price_details[$day_value]['P'.$p_shortcut]['shortcut'] ):?>
+									<?php
+										$totals['shortcuts']['P'.$p_shortcut] += $this->price_details[$day_value]['P'.$p_shortcut]['shortcut'];
+									?>
+									<?php
+										$t_lists['P'.$p_shortcut] [ $this->price_details[$day_value]['P'.$p_shortcut]['list'] ]['qty'] += $this->price_details[$day_value]['P'.$p_shortcut]['shortcut'];
+										$t_lists['P'.$p_shortcut] [ $this->price_details[$day_value]['P'.$p_shortcut]['list'] ]['price'] += $this->price_details[$day_value]['P'.$p_shortcut]['price'];
+										$t_lists['P'.$p_shortcut] [ $this->price_details[$day_value]['P'.$p_shortcut]['list'] ]['list_price'] = $this->price_details[$day_value]['P'.$p_shortcut]['price'];
+									?>
+ 
+					<?php endif;?>
+					
+					
+					
+					<?php endforeach; ?>
+				</tr>
+		<?php endforeach;?>
+   			</table>
+   			</div>
+		</td>
+   		<td class="tdasth">Anzahl insg.</td> 
+    </tr>
+	
+	<?php foreach($this->nr_visits as $visit_number): ?>
+	<tr>
+		<td>Einsatz <?php echo $visit_number+1;?></td>
+		<td>Beginn</td>
+		<td>&nbsp;</td>
+	</tr>
+	<tr>
+		<td></td>
+		<td>Ende</td>
+		<td></td>
+	</tr>
+	<tr class="billing_count_duration">
+		<td></td>
+		<td>Zeit</td>
+		<td></td>
+	</tr>
+
+	<?php endforeach; ?>
+	
+	<?php foreach($this->nr_visits as $visit_number): ?>
+	<?php $nr = $visit_number+1; ?>
+	<?php $shortcut = 'P'.$nr; ?>
+	<tr>
+		<td></td>
+		<td>
+			<?php echo $shortcut; ?>
+		</td>
+		<td>
+			<?php echo  $total_p[$shortcut]  ;?>
+		</td>
+	</tr>
+	<?php endforeach;?>
+
+	<tr class="no_borders">
+		<td></td>
+		<td></td>
+		<td></td>
+	</tr>
+</table>
+ 
+<br/>
+<table class="sh_billing_table">
+<tr>
+	<th>Pauschale</th>
+	<th>Anzahl</th>
+	<th>x Vergütung</th>
+	<th>Rechnungssumme</th>
+</tr>
+<?php foreach ($this->used_shortcuts as $shortcut):?>
+	<?php if (!$t_lists[$shortcut]) :?>
+		<?php
+		$t_lists[$shortcut][0]['qty'] = 0;
+		$t_lists[$shortcut][0]['price'] = 0;
+		$t_lists[$shortcut][0]['list_price'] = 0;
+		?>
+	<?php endif;?>
+	<?php foreach ($t_lists[$shortcut] as $shkey => $shortcut_details):?>
+ 
+		<tr>
+			<td><?php echo $shortcut ?></td>
+			<td><?php echo $shortcut_details['qty'] ?></td>
+			<td><?php echo $shortcut_details['list_price'] ?></td>
+			<td><?php echo $total_per_month = round(($shortcut_details['qty'] * $shortcut_details['list_price']),2) ?> <span>&euro;</span></td>
+		</tr>
+	<?php $total_costs_per_month += $total_per_month;?>	
+	<?php endforeach?>
+
+<?php endforeach; ?>
+<tr>
+	<td colspan="3" align="right">Ingesamt = </td>
+	<td ><?php echo $total_costs_per_month; ?> <span>&euro;</span></td>
+</tr>
+
+</table>
+<?php $nurse_data = $this->nurse_details;?>
+<?php $nurse_data1 = $this->nurse_details1;?>
+<?php if($this->module_nie_anlage6): ?>
+<table class="billing_client_details" cellpadding="3" cellspacing="5">
+	<tr>
+		<td></td>
+		<td>Wir bestätigen die angegebenen Leistungen entsprechend den<br />
+			gesetzlichen und vertraglichen Regelungen erbracht zu haben:
+		</td>
+		<td>&nbsp;</td>
+	</tr>
+	<tr>
+		<td></td>
+		<td style="border-bottom:1px solid #000; vertical-align: bottom;" > Name des SAPV Leistungserbringers</td>
+		<td>&nbsp;</td>
+	</tr>
+	<tr>
+		<td></td>
+		<td  style="  vertical-align: middle;" > <b><?php echo $this->lbg_client_name;?></b> </td>
+		<td></td>
+	</tr>
+
+
+	<tr>
+		<td></td>
+			<td style="border-bottom:1px solid #000; vertical-align: bottom;" >Anschrift</td>
+		<td></td>
+	</tr>
+	<tr>
+		<td></td>
+		<td  style="  vertical-align: middle;" > <b><?php echo $this->lbg_address; ?></b> </td>
+		<td></td>
+	</tr>
+
+	<tr>
+		<td></td>
+		<td style="border-bottom:1px solid #000; vertical-align: bottom;" >IK-­‐Nummer</td>
+		<td></td>
+	</tr>
+	<tr>
+		<td></td>
+		<td  style="  vertical-align: middle;" > <b><?php echo $this->lbg_ik_nummer;  ?></b></td>
+		<td></td>
+	</tr>
+
+
+	<tr>
+		<td></td>
+		<td class="bigfont" style="border-bottom:1px solid #000; vertical-align: bottom;" >Datum und Unterschrift</td>
+		<td></td>
+	</tr>
+	<tr>
+		<td></td>
+		<td  style="  vertical-align: middle;" > <b><?php echo date('d.m.Y');  ?></b></td>
+		<td></td>
+	</tr>
+	<tr>
+		<td>&nbsp;</td>
+	</tr>
+</table>
+
+<br/>
+
+<br/>
+
+	<table width="60%">
+		<tr>
+			<td  colspan="2" height="10">Folgende Kooperationspartner haben ganz oder Teilweise die	Leistungen erbracht</td>
+			<td ></td>
+		</tr>
+		<tr>
+			<td  colspan="3" > &nbsp;</td>
+		</tr>
+		
+		
+		<tr>
+			<td  colspan="2" style="border-bottom: 1px solid #000;"><b><?php echo $nurse_data1['nursing_service'];?></b></td>
+			<td ></td>
+		</tr>
+	</table>
+
+<?php else :?>
+<table class="billing_client_details" cellpadding="3" cellspacing="5">
+	<tr>
+		<td></td>
+		<td>Wir bestätigen die angegebenen Leistungen entsprechend den<br />
+			gesetzlichen und vertraglichen Regelungen erbracht zu haben:
+		</td>
+		<td>&nbsp;</td>
+	</tr>
+	<tr>
+		<td></td>
+		<td style="border-bottom:1px solid #000; vertical-align: bottom;" > Name des SAPV Leistungserbringers</td>
+		<td>&nbsp;</td>
+	</tr>
+	<tr>
+		<td></td>
+		<td  style="  vertical-align: middle;" > <b><?php echo $nurse_data['nursing_service'];?></b> </td>
+		<td></td>
+	</tr>
+
+
+	<tr>
+		<td></td>
+			<td style="border-bottom:1px solid #000; vertical-align: bottom;" >Anschrift</td>
+		<td></td>
+	</tr>
+	<tr>
+		<td></td>
+		<td  style="  vertical-align: middle;" > <b><?php echo $nurse_data['nursing_service_address'];?></b> </td>
+		<td></td>
+	</tr>
+
+	<tr>
+		<td></td>
+		<td style="border-bottom:1px solid #000; vertical-align: bottom;" >IK-­‐Nummer</td>
+		<td></td>
+	</tr>
+	<tr>
+		<td></td>
+		<td  style="  vertical-align: middle;" > <b><?php echo $nurse_data['nursing_service_iknumber'];?></b></td>
+		<td></td>
+	</tr>
+
+
+	<tr>
+		<td></td>
+		<td class="bigfont" style="border-bottom:1px solid #000; vertical-align: bottom;" >Datum und Unterschrift</td>
+		<td></td>
+	</tr>
+	<tr>
+		<td>&nbsp;</td>
+	</tr>
+</table>
+<br/>
+
+<br/>
+
+	<table width="60%">
+		<tr>
+			<td  colspan="2" height="10">Folgende Kooperationspartner haben ganz oder Teilweise die	Leistungen erbracht</td>
+			<td ></td>
+		</tr>
+		<tr>
+			<td  colspan="3" > &nbsp;</td>
+		</tr>
+		
+		
+		<tr>
+			<td  colspan="2" style="border-bottom: 1px solid #000;"><b><?php echo $nurse_data['nursing_service'];?></b></td>
+			<td ></td>
+		</tr>
+	</table>
+
+
+<?php endif; ?>
+		</div>
+    
+    
+    <input type="hidden" value="0" id="save_form" name="save_form" />
+    <input type="hidden" value="0" id="export_pdf" name="export_pdf" />
+</div>
+    <input type="submit" name="save_form_btn"  id="save_form_btn"  value="<?php echo $this->translate('save')?>" class="btnsubmit_usersessions"/>
+    <input type="submit" name="pdf_submit"  id="pdf_submit"  value="<?php echo $this->translate('generatepdf')?>" class="btnsubmit_usersessions"/>
+    
+</form>    
+  
+ <div id="multiple_duplicate_visits">
+	<p><?php echo $this->translate('there are one or more overlapping visits!');  ?></p>
+	<table class="duplicate_visits datatable" style="width:370px!important">
+ 
+	</table>
+	
+	
+</div>   
+    <div id="delete_confirmation">
+	<?php echo $this->translate('delete_visit_confirm');  ?>
+</div>
+    <div id="loading_block">
+	<?php echo $this->translate('loading please wait....');  ?>
+	<div class="loading_block_img" >&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</div>
+</div>

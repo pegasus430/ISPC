@@ -1,0 +1,454 @@
+<?php
+//ISPC-2507
+//User details
+$users_details = $this->users_details;
+//Client lists 
+$client_medication_extra = $this->client_medication_extra;
+//Patient details 
+$patient_details = $this->patient_details;
+
+
+
+//request details
+$request_data = $this->request_data;
+// processed data
+$request_processed_data = $this->processed_data;
+
+$medication_blocks = $this->medication_blocks;
+
+$page_lang = $this->translate('pharma_request');
+?>
+<style>
+ 
+ 
+ .datatable{ 
+ 	width: 100%!important; 
+ } 
+ .outer{ 
+ 	width: 100%!important; 
+ } 
+
+ #Wrapper { 
+     width: 98%!important; 
+     min-width: 1010px !important; 
+ } 
+
+ #MainContent { 
+     /*TODO-2762 Ancuta 19.12.2019*/  
+     width: calc(80% - 250px)!important;/*      width: 75%!important; */
+}
+</style>
+
+
+
+<br/>
+<a href="<?php echo $this->url(array('controller'=>'pharmarequests' , 'action' => 'list' )); ?>"><?php echo  $page_lang['go to Requests list']; ?></a>
+
+
+<!-- Request data -->
+<fieldset>
+	<legend><?php echo $page_lang['request information']?></legend>
+	<table class="datatable">
+		<tr>
+			<th style="width: 20%"><b><?php echo $page_lang['user']?></b></th>
+			<td ><?php  echo $users_details[$request_data['user']] ?></td>
+		</tr>
+		<tr>
+			<th><b><?php echo $page_lang['patient']?></b></th>
+			<td><?php  echo $patient_details['patient_name']; ?>
+			
+			<br/>
+				<a href="<?php echo APP_BASE . 'patientmedication/edit?id='.Pms_Uuid::encrypt($patient_details['id']);?>" target="_blank">  <?php echo $page_lang['go to medication page >>']?>
+				</a>
+ 
+			</td>
+			
+		</tr>
+		<tr>
+			<th><b><?php echo $page_lang['date of request']?></b></th>
+			<td><?php  echo date('d.m.Y H:i',strtotime($request_data['create_date']));?></td>
+		</tr>
+	</table>
+</fieldset>
+<fieldset style="font-size: 14px; line-height:24px; background: yellow">
+<i><?php echo $page_lang['request_page_info']?></i>
+</fieldset>
+<form name="save_changes" method="post">
+<!-- Patient medication info -->
+<?php foreach($medication_blocks as $medication_type=>$drugplans):?>
+
+<div >
+
+<table class="datatable" >
+	<tr>
+		<th colspan="4"><h1 style="line-height: 30px;color:#000;"><?php echo $this->translate($medication_type." medication title")?> </h1></th>
+	</tr>
+
+	<?php $d=1; foreach ($drugplans as $patient_drugplan_id => $requests):?>
+	<tr>
+		<th style="width: 2%; border-top:2px solid #000;"><b><?php echo '#'.$d;?></b></th>
+		<th style="width: 48%; border-top:2px solid #000;"><b><?php echo $page_lang['medication_as_it_was']?></b></th>
+		<th style="width: 2%; border-top:2px solid #000;"></th>
+		<th style="width: 48%; border-top:2px solid #000;"><b><?php echo $page_lang['medication_with_changes']?></b></th>
+	</tr>
+	<tr>
+		<td></td>
+		<td class="original_med" style="padding:0;">
+		<table style="width: 100%; margin:0px;">
+<!-- 			NAME -->
+			<tr>
+				<th style="width: 30%"><?php echo $page_lang['medication_name']?></th>
+				<td style="width: 70%"><?php echo $requests['original']['medication']?></td>
+			</tr>
+<!-- 			DRUG -->
+			<tr>
+				<th><?php echo $page_lang['medication_drug']?></th>
+				<td><?php echo $requests['original']['PharmaPatientDrugplanExtra']['drug']?></td>
+			</tr>
+<!-- 			DOSAGE -->
+			<tr>
+				<th><?php echo $page_lang['medication_dosage']?></th>
+				<td style="padding:0px!important;">
+				<?php if(is_array($requests['original']['PharmaPatientDrugplanDosage']) && !empty($requests['original']['PharmaPatientDrugplanDosage'])):?>
+					<table style="width: 100%; margin:0px;">
+					<?php foreach($requests['original']['PharmaPatientDrugplanDosage'] as $k=>$dsg):?>
+						<tr>
+							<td style="width:30%"><?php echo date("H:i",strtotime($dsg['dosage_time_interval']));?></td>
+							<td style="width:70%"><?php echo $dsg['dosage']?></td>
+						</tr>						
+					<?php endforeach;?>
+					
+					</table>
+				<?php else:?>
+				<?php echo $requests['original']['dosage']?>
+				<?php endif;?>
+				</td>
+			</tr>
+			
+			<?php if(in_array($medication_type,array('isbedarfs','iscrisis'))):?>
+<!-- 			DOSAGE INTERVAL -->
+			<tr>
+				<th><?php echo $page_lang['medication_dosage_interval']?></th>
+				<td><?php echo $requests['original']['dosage_interval']?></td>
+			</tr>		
+			<?php endif;?>
+			
+<!-- 			INDIKATION -->
+			<tr>
+				<th><?php echo $page_lang['medication_indication']?></th>
+				<td style="background: #<?php echo $client_medication_extra['indication'][$requests['original']['PharmaPatientDrugplanExtra']['indication']]['color']?>">
+				<?php echo $client_medication_extra['indication'][$requests['original']['PharmaPatientDrugplanExtra']['indication']]['name']?>
+				</td>
+			</tr>		
+			
+<!-- 			COMMENT -->
+			<tr>
+				<th><?php echo $page_lang['medication_comments']?></th>
+				<td><?php echo $requests['original']['comments']?></td>
+			</tr>
+					
+<!-- 			CONCENTRATION -->
+			<tr>
+				<th><?php echo $page_lang['medication_concentration']?></th>
+				<td><?php echo $requests['original']['PharmaPatientDrugplanExtra']['concentration']?></td>
+			</tr>		
+			
+<!-- 			UNIT -->
+			<tr>
+				<th><?php echo $page_lang['medication_unit']?></th>
+				<td><?php echo $client_medication_extra['unit'][$requests['original']['PharmaPatientDrugplanExtra']['unit']]; ?></td>
+			</tr>		
+<!-- 			DOSAGE FORM -->
+			<tr>
+				<th><?php echo $page_lang['medication_dosage_form']?></th>
+				<td><?php echo $client_medication_extra['dosage_form'][$requests['original']['PharmaPatientDrugplanExtra']['dosage_form']]; ?></td>
+			</tr>		
+<!-- 			type -->
+			<tr>
+				<th><?php echo $page_lang['medication_type']?></th>
+				<td><?php echo $client_medication_extra['type'][$requests['original']['PharmaPatientDrugplanExtra']['type']]; ?></td>
+			</tr>		
+			<?php if(in_array($medication_type,array('isbedarfs','iscrisis'))):?>			
+<!-- 			ESCALATION -->
+			<tr>
+				<th><?php echo $page_lang['medication_escalation']?></th>
+				<td><?php echo  $client_medication_extra['escalation'][$requests['original']['PharmaPatientDrugplanExtra']['escalation']]; ?></td>
+			</tr>		
+			<?php endif;?>
+			
+			<?php if(in_array($medication_type,array('scheduled'))):?>
+			<tr>
+				<th><?php echo $page_lang['medication_interval_days']?></th>
+				<td>
+					<?php echo $requests['original']['days_interval'];?>
+				</td>
+			</tr>
+			<tr>
+				<th><?php echo $page_lang['medication_administration_date']?></th>
+				<td><?php if($requests['original']['administration_date']!="0000-00-00 00:00:00"):?>
+					<?php echo date("d.m.Y",strtotime($requests['original']['administration_date']))?>
+					<?php endif;?>
+				</td>
+			</tr>
+			<?php endif;?>
+			
+			
+			<?php if(in_array($medication_type,array('actual','isivmed'))):?>
+			<tr>
+				<th><?php echo $page_lang['medication_is_interval']?></th>
+				<td>
+					<?php if($requests['original']['has_interval'] == '1' ):?>
+					<?php echo "Ja";?>
+					<?php else:?>
+					<?php echo "Nein";?>
+					<?php endif;?>
+				</td>
+			</tr>
+			<tr>
+				<th><?php echo $page_lang['medication_interval_days']?></th>
+				<td>
+					<?php if($requests['original']['has_interval'] == '1'):?>
+					<?php echo $requests['original']['days_interval'];?>
+					<?php endif;?>
+				</td>
+			</tr>
+			<tr>
+				<th><?php echo $page_lang['medication_administration_date']?></th>
+				<td><?php if($requests['original']['has_interval'] == '1' && $requests['original']['administration_date']!="0000-00-00 00:00:00"):?>
+					<?php echo date("d.m.Y",strtotime($requests['original']['administration_date']))?>
+					<?php endif;?>
+				</td>
+			</tr>
+			<?php endif;?>
+			
+			
+			<?php if(in_array($medication_type,array('isintubated'))):?>
+<!-- 			Kcal -->
+			<tr>
+				<th><?php echo $page_lang['medication_kcal']?></th>
+				<td><?php echo $requests['original']['PharmaPatientDrugplanExtra']['kcal']?></td>
+			</tr>		
+<!-- 			Volumen -->
+			<tr>
+				<th><?php echo $page_lang['medication_volume']?></th>
+				<td><?php echo $requests['original']['PharmaPatientDrugplanExtra']['volume']?></td>
+			</tr>		
+<!-- 			Kammerbeutel Info -->
+			<tr>
+				<th><?php echo $page_lang['medication_packaging']?></th>
+				<td><?php echo $client_medication_extra['packaging'][ $requests['original']['PharmaPatientDrugplanExtra']['packaging'] ]; ?></td>
+			</tr>		
+			<?php endif;?>
+			
+		</table>
+		</td>
+		
+		<td class="arrow_request" style="vertical-align: middle; color: green;font-weight:900; font-size:18px">&raquo;&nbsp;</td>
+		
+		<td class="requested_med" style="padding:0;">
+				<table style="width: 100%; margin:0px;">
+<!-- 			NAME -->
+			<tr>
+				<th style="width: 30%"><?php echo $page_lang['medication_name']?></th>
+				<td style="width: 70%"><?php echo $requests['requested']['medication']?></td>
+			</tr>
+<!-- 			DRUG -->
+			<tr>
+				<th><?php echo $page_lang['medication_drug']?></th>
+				<td><?php echo $requests['requested']['PharmaPatientDrugplanExtra']['drug']?></td>
+			</tr>
+<!-- 			DOSAGE -->
+			<tr>
+				<th><?php echo $page_lang['medication_dosage']?></th>
+				<td style="padding:0px!important;">
+				<?php if(is_array($requests['requested']['PharmaPatientDrugplanDosage']) && !empty($requests['requested']['PharmaPatientDrugplanDosage'])):?>
+					<table style="width: 100%; margin:0px;">
+					<?php foreach($requests['requested']['PharmaPatientDrugplanDosage'] as $k=>$dsg):?>
+						<tr>
+							<td style="width:30%"><?php echo date("H:i",strtotime($dsg['dosage_time_interval']));?></td>
+							<td style="width:70%"><?php echo $dsg['dosage']?></td>
+						</tr>						
+					<?php endforeach;?>
+					
+					</table>
+				<?php else:?>
+				<?php echo $requests['requested']['dosage']?>
+				<?php endif;?>
+				</td>
+			</tr>
+			
+			<?php if(in_array($medication_type,array('isbedarfs','iscrisis'))):?>
+<!-- 			DOSAGE INTERVAL -->
+			<tr>
+				<th><?php echo $page_lang['medication_dosage_interval']?></th>
+				<td><?php echo $requests['requested']['dosage_interval']?></td>
+			</tr>		
+			<?php endif;?>
+			
+<!-- 			INDIKATION -->
+			<tr>
+				<th><?php echo $page_lang['medication_indication']?></th>
+				<td style="background: #<?php echo $client_medication_extra['indication'][$requests['requested']['PharmaPatientDrugplanExtra']['indication']]['color']?>">
+				<?php echo $client_medication_extra['indication'][$requests['requested']['PharmaPatientDrugplanExtra']['indication']]['name']?>
+				</td>
+			</tr>		
+			
+<!-- 			COMMENT -->
+			<tr>
+				<th><?php echo $page_lang['medication_comments']?></th>
+				<td><?php echo $requests['requested']['comments']?></td>
+			</tr>
+					
+<!-- 			CONCENTRATION -->
+			<tr>
+				<th><?php echo $page_lang['medication_concentration']?></th>
+				<td><?php echo $requests['requested']['PharmaPatientDrugplanExtra']['concentration']?></td>
+			</tr>		
+			
+<!-- 			UNIT -->
+			<tr>
+				<th><?php echo $page_lang['medication_unit']?></th>
+				<td><?php echo $client_medication_extra['unit'][$requests['requested']['PharmaPatientDrugplanExtra']['unit']]; ?></td>
+			</tr>		
+<!-- 			DOSAGE FORM -->
+			<tr>
+				<th><?php echo $page_lang['medication_dosage_form']?></th>
+				<td><?php echo $client_medication_extra['dosage_form'][$requests['requested']['PharmaPatientDrugplanExtra']['dosage_form']]; ?></td>
+			</tr>		
+<!-- 			type -->
+			<tr>
+				<th><?php echo $page_lang['medication_type']?></th>
+				<td><?php echo $client_medication_extra['type'][$requests['requested']['PharmaPatientDrugplanExtra']['type']]; ?></td>
+			</tr>		
+			<?php if(in_array($medication_type,array('isbedarfs','iscrisis'))):?>			
+<!-- 			ESCALATION -->
+			<tr>
+				<th><?php echo $page_lang['medication_escalation']?></th>
+				<td><?php echo $client_medication_extra['escalation'][$requests['requested']['PharmaPatientDrugplanExtra']['escalation']]; ?></td>
+			</tr>		
+			<?php endif;?>
+			
+			<?php if(in_array($medication_type,array('scheduled'))):?>
+			<tr>
+				<th><?php echo $page_lang['medication_interval_days']?></th>
+				<td>
+					<?php echo $requests['requested']['days_interval'];?>
+				</td>
+			</tr>
+			<tr>
+				<th><?php echo $page_lang['medication_administration_date']?></th>
+				<td><?php if($requests['requested']['administration_date']!="0000-00-00 00:00:00"):?>
+					<?php echo date("d.m.Y",strtotime($requests['requested']['administration_date']))?>
+					<?php endif;?>
+				</td>
+			</tr>
+			<?php endif;?>
+			
+			
+			<?php if(in_array($medication_type,array('actual','isivmed'))):?>
+			<tr>
+				<th><?php echo $page_lang['medication_is_interval']?></th>
+				<td>
+					<?php if($requests['requested']['has_interval'] == '1' ):?>
+					<?php echo "Ja";?>
+					<?php else:?>
+					<?php echo "Nein";?>
+					<?php endif;?>
+				</td>
+			</tr>
+			<tr>
+				<th><?php echo $page_lang['medication_interval_days']?></th>
+				<td>
+					<?php if($requests['requested']['has_interval'] == '1'):?>
+					<?php echo $requests['requested']['days_interval'];?>
+					<?php endif;?>
+				</td>
+			</tr>
+			<tr>
+				<th><?php echo $page_lang['medication_administration_date']?></th>
+				<td><?php if($requests['requested']['has_interval'] == '1' && $requests['requested']['administration_date']!="0000-00-00 00:00:00"):?>
+					<?php echo date("d.m.Y",strtotime($requests['requested']['administration_date']))?>
+					<?php endif;?>
+				</td>
+			</tr>
+			<?php endif;?>
+			
+			
+			<?php if(in_array($medication_type,array('isintubated'))):?>
+<!-- 			Kcal -->
+			<tr>
+				<th><?php echo $page_lang['medication_kcal']?></th>
+				<td><?php echo $requests['requested']['PharmaPatientDrugplanExtra']['kcal']?></td>
+			</tr>		
+<!-- 			Volumen -->
+			<tr>
+				<th><?php echo $page_lang['medication_volume']?></th>
+				<td><?php echo $requests['requested']['PharmaPatientDrugplanExtra']['volume']?></td>
+			</tr>		
+<!-- 			Kammerbeutel Info -->
+			<tr>
+				<th><?php echo $page_lang['medication_packaging']?></th>
+				<td><?php echo $client_medication_extra['packaging'][$requests['requested']['PharmaPatientDrugplanExtra']['packaging']]; ?></td>
+			</tr>		
+			<?php endif;?>
+			
+		</table>
+		</td>
+	</tr>
+	<tr>
+		<td style="width:2%;    border-bottom:2px solid #000;" ></td>
+		<td style="padding:0px;   border-bottom:2px solid #000;">
+			<table style="width:100%; margin:0px;">
+			<tr>
+				<th style="width: 30%"><b><?php echo $page_lang['request_reason']?></b></th>
+				<td><?php echo $requests['requested']['request_reason']?></td>
+			</tr>
+			<tr>
+				<th style="width: 30%"><b><?php echo $page_lang['request_comment']?></b></th>
+				<td><?php echo $requests['requested']['request_comment']?></td>
+			</tr>
+			</table>
+		</td>
+		<td style="    border-bottom:2px solid #000;">
+		
+		</td>
+		<td style="padding:0px;   border-bottom:2px solid #000;">
+				<table style="width:100%; margin:0px;">
+				<tr>
+					<td>
+						<input type="radio" name="request_data[<?php echo $patient_drugplan_id;?>][status]" value="fully_agree" <?php if($request_processed_data[$patient_drugplan_id]['status'] =='fully_agree'):?> checked="checked" <?php endif;?> >
+						<label><b><?php echo   $page_lang['agree_with_change']?></b></label>
+					</td>
+				</tr>
+				<tr>
+					<td><input type="radio" name="request_data[<?php echo $patient_drugplan_id;?>][status]" value="partially_agree" <?php if($request_processed_data[$patient_drugplan_id]['status'] =='partially_agree'):?> checked="checked" <?php endif;?> >
+					<label><b><?php echo   $page_lang['agree_with_change']?></b></label></td>
+				</tr>
+				<tr>
+					<td><input type="radio" name="request_data[<?php echo $patient_drugplan_id;?>][status]" value="dont_agree" <?php if($request_processed_data[$patient_drugplan_id]['status'] =='dont_agree'):?> checked="checked" <?php endif;?> >
+					<label><b><?php echo   $page_lang['dont agree_with_change']?></b></label>
+					
+                    <!-- extra info -->
+					<input type="hidden" name="request_data[<?php echo $patient_drugplan_id;?>][request_id]" value="<?php echo $request_data['id']  ?>">
+					<input type="hidden" name="request_data[<?php echo $patient_drugplan_id;?>][original_line_id]" value="<?php echo $requests['original']['id']  ?>">
+					<input type="hidden" name="request_data[<?php echo $patient_drugplan_id;?>][requested_line_id]" value="<?php echo $requests['requested']['id']  ?>">
+					</td>
+				</tr>
+			</table>
+		</td>
+		
+	</tr>
+	
+	<tr>
+		<th colspan="4" style="background: #fff!important; border:0px; ">&nbsp;</th>
+	</tr>
+	
+	<?php $d++; endforeach;?>
+
+</table>
+	
+</div>	
+<?php endforeach;?>
+
+<input type="submit" value="<?php echo $this->translate('save');?>">
+</form>

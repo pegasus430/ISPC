@@ -1,0 +1,821 @@
+<?php
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/jquery.blockUI.js');
+?>
+<link rel='stylesheet' type='text/css'	href='<?php echo RES_FILE_PATH;  ?>/css/day_planning.css' />
+<?php 
+$day_planning = $this->day_planning ;
+//print_r($day_planning); exit;
+?>
+<?php
+ 	foreach($day_planning['active_patients'] as $pat_id => $pat_values)	
+    {
+      if(!empty($pat_values['actual_location_all']) && $pat_values['actual_location_all']['location_type'] == "1")
+       {						   
+	     $ids_hospital[] = $pat_values['id']; 
+       } 
+    }		                            	 
+?>
+<script type="text/javascript">
+	var submited = false;
+	var changes = false;
+	
+	 
+	
+	function create_patient2user_connection(cnt, user_chk, pat_id, ushifts)
+	{
+		var userid = user_chk.val();
+		var u_user_title = $('td#u_user_title_' + userid).html();
+		var u_last_name = $('td#u_last_name_' + userid).html();
+		var u_first_name = $('td#u_first_name_' + userid).html();
+		var nr = '';
+		
+	    /*
+		 $('td.index').each(function (i) {
+	            $(this).html(i + 1);
+	     });
+		
+		*/
+		
+		var rowCount = $('#sort2 tr.patient_plan_' + userid).length;
+		//alert(rowCount);
+		if(rowCount)
+		{
+		nr= rowCount+1;
+		}else{
+			nr = 1;
+		}
+		//var x=  $('td.index').val();
+		//alert(rowCount);
+	
+		//nr=1;
+		
+		if(pat_id > '0')
+		{
+			var pat_visit_duration = $('#p_vd_'+pat_id).html();
+			var user_visit_last = check_user_visits(userid);
+
+			if(user_visit_last === false) {
+				var start_time_ts = ushifts[userid]['time'];
+		
+			} else {
+				//change the time source here to be last end time from user plan
+				var last_end_time = $('#'+user_visit_last).children('td').find('input.end_visit').val();
+				var tmp_date = new Date();
+				//tmp_date.setHours(last_end_time.split(':')[0]);
+				//tmp_date.setMinutes(last_end_time.split(':')[1]);
+
+				//var last_end_time_ts = parseInt(tmp_date.getTime()/1000); //this should be php ts not js ts
+				//var start_time_ts = last_end_time_ts;
+		
+			}
+            
+			//time = calculate_times(start_time_ts, pat_visit_duration);
+
+			var cnt_patient = ($('.patient_plan_'+userid).length +1);
+	
+			//patient existing visits in plan
+			var cnt_patient_limit = $('.patient_'+pat_id).length;
+		
+			var p_last_name = $('span#p_last_name_' + pat_id).html();
+			var p_first_name = $('span#p_first_name_' + pat_id).html();
+			var hospital = $('span#hospital_' + pat_id).html();
+			
+			  var hospital = $('span#hospital_' + pat_id).html();
+				if(hospital)
+					{
+					is_hospital= hospital;
+					}
+				else{
+					is_hospital="";
+				    }
+				
+			//alert(hospital);
+			//patient remaining visits
+			var remaining_visits = $('#p_vrpd_' + pat_id).html();
+
+			//check if plan is allready created (php or previous drag and drop)
+			var plan_exists = true;
+			if($('div#day_plan_user_' + userid).length == '0')
+			{
+				var plan_exists = false;
+			}
+
+			//patient plans per current user counter
+			if(cnt_patient % 2 == 0) {
+				var class_style = 'v_alternate';
+			} else {
+				var class_style = '';
+			}
+			
+			var allow_visit = false;
+			if(remaining_visits > '0' ) {
+			var allow_visit = true;
+			}
+			
+			
+			//var time_start = time['start'];
+			//var time_end = time['end'];
+			
+			
+//			console.log('patient_plan : ' + cnt_patient);
+//			console.log('patient_plans_number : ' + cnt_patient_limit);
+//			console.log('create_element ' + cnt);
+//			console.log('userid: ' + userid);
+		}
+		
+		if(plan_exists === false || pat_id == '0') {
+		    var plan_layout = '';
+//		    console.log('create_plan');
+
+		    //construct and append plan to board
+		    plan_layout = '<div class="day_plan_user" id="day_plan_user_' + userid + '">';
+		    plan_layout += '<input type="hidden" name="day_planning[users]['+userid+']" id="user_plan_'+userid+'" class="add_user_to_dayplan" value="'+userid+'">';
+		    plan_layout += '<div class="day_plan_user_title">';
+		    plan_layout += '<h3 class="user_title">' + u_user_title + u_last_name + ' ' + u_first_name + '</h3>';
+		    plan_layout += '</div>';
+		    plan_layout += '<table class="day_plan_visit grid" id="sort2"><tbody>';
+			
+			if(pat_id >'0') {
+				plan_layout += '<tr id="no_visits_'+userid+'" style="display:none;">';
+			} else {
+				plan_layout += '<tr id="no_visits_'+userid+'">';
+			}
+			
+			plan_layout += '<td colspan="2"><?php echo $this->translate('no visits planned for today')?></td>';
+			plan_layout += '</tr>';
+			
+			if(pat_id >'0') {
+				
+				plan_layout += '<tr class="' + class_style + ' patient_plan_' + userid + ' patient_' + pat_id + ' sort" id="visit_'+cnt+'">';
+				plan_layout += '<td class="index user_'+userid+'"   width="9%" id="'+cnt+'">';
+				plan_layout += nr;
+				plan_layout += '</td>';
+				plan_layout += '<input type="hidden" name="visit_order_number[visit_'+cnt+']" id="visit_patient_visit_'+cnt+'"  value="'+nr+'" />';
+				//plan_layout += '<td class="day_visit">';
+				//plan_layout += '<input type="text" readonly="readonly" name="visit_start[visit_'+cnt+']"  id="visit_start_'+cnt+'"  value="'+time_start+'"  class="start_visit time_input"/>';
+				//plan_layout += '<input type="text" readonly="readonly" name="visit_end[visit_'+cnt+']"   id="visit_end_'+cnt+'"  value="'+time_end+'"  class="end_visit time_input"/>';
+				//plan_layout += '</td>';
+				
+				plan_layout += '<td class="day_visit_patient" >';
+				plan_layout += p_last_name + ' ' + p_first_name + ' ' + is_hospital;
+				plan_layout += '<a href="javascript:void(0)" class="remove_visit_from_user" rel="visit_'+cnt+'" ><b></b></a>';
+				//plan_layout += '<a href="javascript:void(0)" class="edit_visit_from_user" rel="'+cnt+'" ><b></b></a>';
+				plan_layout += '<input type="hidden" name="visit_userid[visit_'+cnt+']" id="visit_userid_visit_'+cnt+'"  value="'+userid+'" />';
+				plan_layout += '<input type="hidden" name="visit_patient[visit_'+cnt+']" id="visit_patient_visit_'+cnt+'"  value="'+pat_id+'" />'
+				plan_layout += '</td>';
+				
+				plan_layout += '</tr>';
+			}
+		    plan_layout += '</tbody></table>';
+		    plan_layout += '</div>';
+		    if(allow_visit) {
+				//append user2patient box with default visit to plan
+				$('td.board').append(plan_layout);
+
+				//check the dropped sibling checkbox (user_checkbox)
+				user_chk.attr('checked', true);
+
+				//decrement remaining visits
+				remaining_visits--;
+
+				//update patient remaining visits
+				update_pat_remaining_visits(pat_id, remaining_visits);
+				changes = true;
+		    } else if(pat_id == '0') {
+				//append user2patient box with default visit to plan
+				$('td.board').append(plan_layout);
+
+				//check the dropped sibling checkbox (user_checkbox)
+				user_chk.attr('checked', true);
+				changes = true;
+			}
+		} else {
+		    var patient_plan = '';
+//		    console.log('append_data_to_plan');
+
+		    //check if no_visits_row is shown
+		    if($('#no_visits_' + userid).length > '0')
+		    {
+				$('#no_visits_' + userid).hide();
+		    }
+
+		  
+		    //construct and append element to plan (plan allready exists)
+		    patient_plan += '<tr class="' + class_style + ' patient_plan_' + userid + ' patient_' + pat_id + '" id="visit_'+cnt+'">';
+		    patient_plan += '<td class="index user_'+userid+'"   width="9%" id="'+cnt+'">';
+		    patient_plan += nr;
+		    patient_plan += '</td>';
+		    patient_plan += '<input type="hidden" name="visit_order_number[visit_'+cnt+']" id="visit_patient_visit_'+cnt+'"  value="'+nr+'" />';
+		    patient_plan += '<td class="day_visit_patient" >';
+		    patient_plan +=  p_last_name + ' ' + p_first_name;
+		    patient_plan += is_hospital;
+		    patient_plan += '<a href="javascript:void(0)" class="remove_visit_from_user" rel="visit_'+cnt+'" ><b></b></a>';
+		  
+		   // patient_plan += '<a href="javascript:void(0)" class="edit_visit_from_user" rel="'+cnt+'" ><b></b></a>';
+		    patient_plan += '<input type="hidden" name="visit_userid[visit_'+cnt+']" id="visit_userid_visit_'+cnt+'"  value="'+userid+'" />';
+		    patient_plan += '<input type="hidden" name="visit_patient[visit_'+cnt+']" id="visit_patient_visit_'+cnt+'"  value="'+pat_id+'" />';
+		    patient_plan += '</td>';
+		    patient_plan += '</tr>';
+		    if(allow_visit) {
+				//append user2patient cell
+				$('#day_plan_user_' + userid + ' table.day_plan_visit').append(patient_plan);
+
+			//=========  sortable =========================
+				
+				var fixHelper = function(e, ui) {
+				    ui.children().each(function() {
+				        $(this).width($(this).width());
+				    });
+				    return ui;
+				};
+                
+				updateIndex = function(e, ui) {
+			        $('td.index', ui.item.parent()).each(function (i) {
+			            $(this).html(i + 1);
+			            
+			        $('#visit_patient_visit_'+$(this).attr('id')).val(i+1);
+			        });
+			    };
+
+				
+				$("#sort2 tbody").sortable({
+				    helper: fixHelper,
+				    stop: updateIndex
+				}).disableSelection();
+				
+			//============================================================
+				
+				//check the dropped sibling checkbox (user_checkbox)
+				user_chk.attr('checked', true);
+
+				//decrement patient remaining visits
+				remaining_visits--;
+
+				//update patient remaining visits
+				update_pat_remaining_visits(pat_id, remaining_visits);
+				changes = true;
+		    }
+		}
+	}
+
+	function update_pat_remaining_visits(patientid, visits_nr)
+	{
+		if(visits_nr == '0')
+		{
+			$('#patient_row_'+patientid).addClass('tr_disabled');
+		}
+		else
+		{
+			$('#patient_row_'+patientid).removeClass('tr_disabled');	
+		}
+
+		$('#p_vrpd_'+patientid).html(visits_nr);
+		changes = true;
+	}
+	
+	function remove_user_plan(userid)
+	{
+		//check if userplan has any visits then remove plan or restore them
+		var plan_visits_nr = $('.patient_plan_'+userid).length;
+		var has_visits = false;
+		
+		if($('.patient_plan_'+userid).length > '0') {
+			var has_visits = true;
+		}
+		
+		if(has_visits) {
+			var incr = '0';
+			//restore visits
+			$('.patient_plan_'+userid).each(function() {
+				//get patient id
+				var visit_patient_id = $(this).find('td input[type="hidden"]:eq(1)').val();//second input found in td
+				
+				
+				//restore visit qty in users table and remove visit element
+				//get remaining patient visits
+				var remaining_pat_visits = $('#p_vrpd_'+visit_patient_id).html();
+
+				//increment remaining visits
+				remaining_pat_visits++
+
+				//update patient table with curent remaining visit
+				update_pat_remaining_visits(visit_patient_id, remaining_pat_visits);
+				
+				$('tr.patient_plan_'+userid+'.patient_'+visit_patient_id).remove();
+				incr++;
+			});
+			
+			if(incr == plan_visits_nr)
+			{
+				//destroy plan if removed visits are equal with existing visits
+				$('#day_plan_user_'+ userid).remove();
+			}
+		} else {
+			//destroy plan
+			$('#day_plan_user_'+ userid).remove();
+		}
+		changes = true;
+	}
+	
+	function calculate_times(start_date_ts, pat_visit_duration)
+	{
+		var time = [];
+		var separator = ':';
+		var duration_sec = (pat_visit_duration*60);
+		var start_date = new Date(start_date_ts*1000);
+		var end_date = new Date((start_date_ts+duration_sec)*1000);
+		
+//		console.log("TS:"+ (start_date_ts*1000) + " - TS 2:"+start_date.getTime());
+		
+		var start_h = start_date.getHours();
+		var start_m = start_date.getMinutes();
+
+		var end_h = end_date.getHours();
+		var end_m = end_date.getMinutes();
+
+		if(end_h < '10') { end_h = '0' + end_h; }
+		if(start_h < '10') { start_h = '0' + start_h; }
+		if(end_m < '10') { end_m = '0' + end_m; }
+		if(start_m < '10') { start_m = '0' + start_m; }
+
+		time['start'] = start_h + separator + start_m;
+		time['end'] = end_h + separator + end_m;
+		
+		return time;
+	}
+	
+	function check_user_visits(userid)
+	{
+		if($('.patient_plan_'+userid).length > '0') {
+			var last_visit = $('div#day_plan_user_'+userid).find('tr.patient_plan_'+userid+':last').attr('id');
+			
+			//return last visit id
+			return last_visit;
+		} else {
+			return false;
+		}
+	}
+
+//	function get_patient_visit_settings(pid)
+//	{
+//		xhr = $.ajax({
+//			url : 'ajax/patientvisitsplanninglimits?id='+pid,
+//			success : function(response) {
+//				var response_obj = jQuery.parseJSON(response);
+//				console.log(response_obj);
+//				return response_obj;
+//			}
+//		});
+//	}
+	
+	//weird "leave page" function
+	var dontLeave = function(e) {
+		if (changes === true && submited === false) {
+			return "<?php echo $this->translate('no_save_leave_alert'); ?>";
+		}
+	}
+
+	window.onbeforeunload = dontLeave;
+	
+	$(document).ready(function() {
+		var users_shifts = jQuery.parseJSON('<?php echo $this->users_json_shifts; ?>');
+		var cnt_plan_user = $('div.day_plan_user').length;
+
+		
+		
+		//allow submit without "leave page" alert
+		$('#save_planning').on('click', function() {
+			submited = true;
+			changes = false;
+		});
+		
+		$('table tbody tr td.patients_lists table tr').draggable({
+			cursor: 'move',
+			handle: 'tr',
+			helper: 'clone'
+		});
+		
+		$('table tbody tr td.users_list table tr').droppable({
+			hoverClass: 'ui-state-hover',
+			drop: function (event, ui) {
+				var patient_id = ui.draggable.children('td').find('a').attr('rel');
+				var user_chk = $(this).children('td').find('input');
+				cnt_plan_user++;
+				create_patient2user_connection(cnt_plan_user, user_chk, patient_id, users_shifts);
+			}
+		});
+
+//		$('.day_plan_user').droppable({
+//			hoverClass: 'ui-state-hover',
+//			drop: function (){
+//				console.log('append');
+//			}
+//		});
+
+
+		$('.add_user_to_dayplan').on('click', function() {
+			if($(this).is(':checked')) {
+				cnt_plan_user++;
+				//create plain patient plan
+				create_patient2user_connection(cnt_plan_user, $(this), '0', users_shifts);
+			} else {
+				//remove user plan if checkbox is deselected and restore visits number
+				remove_user_plan($(this).val());
+			}
+		});
+			
+			
+
+		$('.loading').hide()
+
+		$(window).load(function() {
+			 $('.page_loading').show().hide()
+		});
+
+
+		$( "#current_date_input" ).datepicker({
+			dateFormat: 'dd.mm.yy',
+			buttonImageOnly: true,
+			changeMonth: true,
+			changeYear: true,
+			onSelect:function( selectedDate ) {
+				$('.page_loading').show();
+
+				window.location.href = "<?php echo APP_BASE; ?>roster/dayplanningnew2?sel=1&date="+selectedDate;
+			}
+		});
+
+
+		$('#go_to_previous').live('click',function(){
+			$('.page_loading').show();
+		});
+
+		$('#go_to_next').live('click',function(){
+			$('.page_loading').show();
+		});
+
+
+
+		$('.time_input').mask("99:99"); //add hours and minute mask
+
+		/* ########################## Print to pdf  ########################################  */
+		$('#pdf_print').live('click',function(){
+			$('#pdf_print_action').val('1');
+			$('#pdf_print_form').submit();
+		});
+		
+		$('#save_planning').on('click', function() {
+			$('#save_plan').submit();
+		});
+
+		/* ########################## REMOVE VISIT FROM USER ########################################  */
+
+		$('.remove_visit_from_user').live('click',function(){
+			//var userid = user_chk.val();
+			//alert(userid);
+			
+			var visit_id = $(this).attr('rel');
+			var user_id = $('#visit_userid_'+visit_id).val();
+
+			//get patient id before visit is deleted
+			var visit_patient_id =  $('#visit_patient_'+visit_id).val();
+
+			//remove visit from user plan
+			$('#'+visit_id).remove();
+			$('#patient_row_'+visit_patient_id).removeClass('tr_disabled');
+
+			var remaining_user_visits = $('.patient_plan_'+user_id).length;
+
+			//get remaining patient visits
+			var remaining_pat_visits = $('#p_vrpd_'+visit_patient_id).html();
+
+			//increment remaining visits
+			remaining_pat_visits++
+
+			//update patient table with curent remaining visit
+			update_pat_remaining_visits(visit_patient_id, remaining_pat_visits);
+
+			//check if there are any other user visits in this plan
+			if(remaining_user_visits == "0")
+			{
+				//show no visits row
+				$('#no_visits_' + user_id).show();
+			}
+			
+		   $('td.user_' + user_id).each(function (i) {
+		         var x =  $(this).html(i + 1);
+		      	$('#visit_patient_visit_'+$(this).attr('id')).val(i+1);
+		        });
+		 
+		 });
+		
+
+		/* ########################## EDIT VISIT FROM USER ########################################  */
+
+		$('.edit_visit_from_user').live('click',function(){
+			var visit_id = $(this).attr('rel');
+
+			var user_id = $('#visit_userid_'+visit_id).val();
+
+			var visit_start = $('#visit_start_'+visit_id).val();
+			var visit_end = $('#visit_end_'+visit_id).val();
+
+
+
+			$('#edit_visit_id').val(visit_id);
+			$('#edit_visit_user_id').val(user_id);
+			$('#edit_visit_start_date').val(visit_start);
+			$('#edit_visit_end_date').val(visit_end);
+
+			$('#edit_visit').dialog('open');
+		 });
+
+
+
+		$('#edit_visit').dialog({
+		    autoOpen: false,
+		    modal: true,
+		    width: 350,
+		   	height: 280,
+		   	title:  "<?php echo $this->translate('Edit planned visit'); ?>",
+		   	open: function(){
+		   		$('#save_visit').val('0');
+		   	},
+		    buttons:{
+				"<?php echo $this->translate('save'); ?>": function(){
+					var visit_id = $('#edit_visit_id').val();
+
+					$('#visit_start_'+visit_id).val($('#edit_visit_start_date').val());
+					$('#visit_end_'+visit_id).val($('#edit_visit_end_date').val());
+					changes = true;
+					$('#edit_visit').dialog('close');
+				},
+				"<?php echo $this->translate('cancel'); ?>": function(){
+					$('#edit_visit').dialog('close');
+				}
+		    },
+		    close:function () {
+				$('#edit_visit_action').val('');
+				$('#edit_visit_id').val('');
+				$('#edit_visit_user_id').val('');
+				$('#edit_visit_start_date').val('');
+				$('#edit_visit_end_date').val('');
+		    },
+		});
+		
+		
+		var fixHelper3 = function(e, ui) {
+		    ui.children().each(function() {
+		        $(this).width($(this).width());
+		    });
+		    return ui;
+		};
+        
+		updateIndex3 = function(e, ui) {
+	        $('td.index', ui.item.parent()).each(function (i) {
+	            $(this).html(i + 1);
+	        
+	        	$('#visit_patient_visit_'+$(this).attr('id')).val(i+1);
+	           
+	            
+	        });
+	    };
+
+		
+		$("#sort3 tbody").sortable({
+		    helper: fixHelper3,
+		    stop: updateIndex3
+		}).disableSelection();
+		
+	
+		
+	});
+	 
+</script>
+<style type="text/css">
+.ui-accordion .ui-accordion-header a {
+	display: block;
+	font-size: .9em;
+	padding: .3em .3em .3em 2em;
+}
+</style>
+<div style="display: none;">
+	<img id="calImg" src="<?php echo RES_FILE_PATH;  ?>/images/calendar.png"
+		alt="Popup" class="trigger">
+</div>
+	<input type="hidden" name="plan_date" value="<?php echo date('Y-m-d 00:00:00', strtotime($day_planning['plan_date'])) ;?>"  id="plan_date"  />
+	<form action="" name="pdf_print_form" method="post" id="pdf_print_form" >
+		<input type="hidden" name="pdf_print_action" id="pdf_print_action" value="0"/>
+		<input type="button" name="pdf_print" id="pdf_print" value="<?php echo $this->translate('planning_pdf'); ?>"/>
+	</form>
+	
+	<input type="button" name="save_planning" id="save_planning" value="<?php echo $this->translate('save') ?>" style="float:right;"/>
+	
+	<form action="" name="date_form" method="post" id="date_form" >
+		<input type="hidden" name="date_action" id="date_action" value="0"/>
+		<div class="previous_date" >
+			<input type="hidden" name="previous_date" id="previous_date" value="<?php  echo $day_planning['previous_date'];?>" />
+			<a href="<?php echo APP_BASE; ?>roster/dayplanningnew2?date=<?php echo strtotime($day_planning['previous_date'])?>"  id="go_to_previous">	</a>
+		</div>
+		
+		<div class="current_date">
+			<input type="text" name="date" value="<?php  echo $day_planning['current_date'];?>" id="current_date_input" />
+		</div>
+
+
+		<div class="next_date">
+			<input type="hidden" name="next_date"  id="next_date"  value="<?php  echo $day_planning['next_date'];?>" />
+			<a href="<?php echo APP_BASE; ?>roster/dayplanningnew2?date=<?php echo strtotime($day_planning['next_date'])?>" id="go_to_next" >	</a>
+		</div>
+
+		<div class="page_loading">&nbsp;</div>
+	</form>
+<div class="day_planning_wrapper">
+	<table id="planning_days_bar" class="datatable">
+		<tr>
+			<td class="bar_row">
+				<div class="pagination clearfix">
+					<?php foreach($this->current_month_days as $k_day => $v_day): ?>
+						<a href="<?php echo APP_BASE; ?>roster/dayplanningnew2?date=<?php echo strtotime($v_day);?>" class="<?php if(strtotime($v_day) == strtotime($day_planning['current_date'])): ?>active<?php endif; ?>" ><?php echo date('d', strtotime($v_day)); ?></a>
+					<?php endforeach; ?>
+				</div>
+			</td>
+		</tr>
+	</table>
+<div class="page">
+
+	<table width="100%">
+		<tr>
+			<td colspan="3">
+				<img src="<?php echo RES_FILE_PATH; ?>/images/manual_duty.jpg" />
+			</td>
+		</tr>
+		<tr>
+			<th class="header_title"><?php echo $this->translate('day_planning_board')?>: <b><?php  echo $day_planning['current_date'];?></b></th>
+			<th class="header_title"><?php echo $this->translate('day_planning_users')?></th>
+			<th class="header_title"><?php echo $this->translate('day_planning_patients')?></th>
+		</tr>
+		<tr>
+			<td class="day_planning_board">
+				<form name="save_plan" id="save_plan" method="POST">
+				<input type="hidden" name="save_users_to_plan" id="save_users_to_plan" value="1" />
+				<table class="grid" id="sort2">
+					<tr>
+						<th><?php echo $this->translate('dayplanning')?> </th>
+					</tr>
+					<tr>
+						<td class="board">
+						<?php// print_r($day_planning); exit; ?>
+						<?php foreach($day_planning['users'] as $user_id=>$user_values):?>
+							<?php if(!empty($user_values['active_today'])) :?>
+							<div class="day_plan_user" id="day_plan_user_<?php echo $user_id; ?>">
+							<input type="hidden" name="day_planning[users][<?php echo $user_id; ?>]" id="user_plan_<?php echo $user_id; ?>" class="add_user_to_dayplan" value="<?php echo $user_id; ?>">
+								<div class="day_plan_user_title">
+									<h3 class="user_title"><?php echo $user_values['user_title']?> <?php echo $user_values['last_name']?>, <?php echo $user_values['first_name']?></h3>
+								</div>
+								<table class="day_plan_visit" id="sort3">
+									<?php if (!empty($user_values['planned_visits'])):?>
+										<?php $i=1; foreach($user_values['planned_visits']  as $ku =>$vistits_values ):?>
+										<?php if ($i % 2 == 0): $class_style ='v_alternate'; else: $class_style=''; endif;?>
+										<tr class="<?php echo $class_style; ?> patient_plan_<?php echo $vistits_values['userid']; ?> patient_<?php echo $day_planning['active_patients'][$vistits_values['ipid']]['id']; ?>" id="<?php echo $vistits_values['id']?>">
+										<td class="index user_<?php echo $vistits_values['userid']; ?>"   width="9%" id="<?php echo $vistits_values['id']?>">
+										 <?php echo $vistits_values['order_number']; ?></td>
+										<input type="hidden" name="visit_order_number[<?php echo $vistits_values['id']?>]" class="test" data-user="<?php echo $vistits_values['id']?>"  id="visit_patient_visit_<?php echo $vistits_values['id']?>"  value="<?php echo $vistits_values['order_number']; ?>" />
+										<!-- 	<td class="day_visit">
+												<input type="text" readonly="readonly" name="visit_start[<?php echo $vistits_values['id']; ?>]"  id="visit_start_<?php echo $vistits_values['id']?>"  value="<?php echo date('H:i',strtotime($vistits_values['start_date'])); ?>"  class="start_visit time_input"/>
+												<input type="text" readonly="readonly" name="visit_end[<?php echo $vistits_values['id']; ?>]"   id="visit_end_<?php echo $vistits_values['id']?>"  value="<?php echo date('H:i',strtotime($vistits_values['end_date'])); ?>"  class="end_visit time_input"/>
+											</td>  -->
+				                                
+											<td class="day_visit_patient">
+											   
+												 <?php echo $day_planning['active_patients'][$vistits_values['ipid']]['patient_name']; ?> 
+												 <?php  if(in_array($day_planning['active_patients'][$vistits_values['ipid']]['id'], $ids_hospital)):  ?>
+				                                     <img  style="width:15px; height:15px;" title="im Krankenhaus" src="<?php echo RES_FILE_PATH;?>/images/hospital_status.png" ?>
+				                                   <?php  endif; ?> 
+												<a href="javascript:void(0)" class="remove_visit_from_user" rel="<?php echo $vistits_values['id']?>" ><b></b></a>
+												<input type="hidden" name="visit_userid[<?php echo $vistits_values['id']; ?>]" id="visit_userid_<?php echo $vistits_values['id']?>"  value="<?php echo $vistits_values['userid']; ?>" />
+												<input type="hidden" name="visit_patient[<?php echo $vistits_values['id']; ?>]" id="visit_patient_<?php echo $vistits_values['id']?>"  value="<?php echo $day_planning['active_patients'][$vistits_values['ipid']]['id']; ?>" />
+											</td>
+										</tr>
+									<?php $i++; endforeach;?>
+									<?php endif;?>
+									<tr id="no_visits_<?php echo $user_id; ?>" style="<?php if(!empty($user_values['planned_visits'])): ?> display:none;<?php endif; ?>" >
+										<td colspan="2"><?php echo $this->translate('no visits planned for today')?></td>
+									</tr>
+								</table>
+							</div>
+							<?php endif; ?>
+						<?php endforeach;?>
+						
+						</td>
+					</tr>
+					<tr>
+						<td>
+							<!--<input type="submit" name="save_plan_new" id="save_plan_new" value="<?php echo $this->translate('save'); ?>" />-->
+						</td>
+					</tr>
+				</table>
+				</form>
+			</td>
+			
+			
+			<td class="users_list" >
+				<table>
+					<tr>
+						<th></th>
+						<th>
+							<?php echo $this->translate('title') ?>
+						</th>
+						<th>
+							<?php echo $this->translate('lastname')?>
+						</th>
+						<th>
+							<?php echo $this->translate('firstname')?>
+						</th>
+					</tr>
+
+					<?php foreach($day_planning['users'] as $user_id=>$user_values):?>
+					<tr>
+						<td>
+							<input name="day_planning[users][<?php echo $user_id?>]" id="user_plan_<?php echo $user_id?>"  class="add_user_to_dayplan" type="checkbox"  value="<?php echo $user_id?>"   <?	if(!empty($user_values['active_today'])): ?> checked="checked"<?php endif;?>/>
+							<?php if(!empty($user_values['roster'])): ?><?php echo $this->translate('Duty roster initials')?><?php endif;?>
+						</td>
+						<td id="u_user_title_<?php echo $user_id?>">
+							<?php echo $user_values['user_title']?>
+						</td>
+						<td id="u_last_name_<?php echo $user_id?>">
+							<?php echo $user_values['last_name']?>
+						</td>
+						<td id="u_first_name_<?php echo $user_id?>">
+							<?php echo $user_values['first_name']?>
+						</td>
+					</tr>
+					<?php endforeach; ?>
+				</table>
+			</td>
+			<td class="patients_lists">
+				<table>
+					<tr>
+						<th></th>
+						<th><?php echo $this->translate('lastname') ?></th>
+						<th><?php echo $this->translate('firstname') ?></th>
+						<th><?php echo $this->translate('visits_per_day_column') ?></th>
+						<th colspan="2"><?php echo $this->translate('visit_duration_column') ?></th>
+					</tr>
+					
+					<?php $o = 1; foreach($day_planning['active_patients'] as $pat_id => $pat_values): ?>
+					<tr class="<?php if($pat_values['visits_remaining_per_day'] == 0): ?> tr_disabled <?php endif; ?>" id="patient_row_<?php echo $pat_values['id']; ?>">
+						<td>
+							<a href="javascript:void(0)" class="add_to_dayplan" rel="<?php echo $pat_values['id']; ?>" id="add_to_plan_<?php echo Pms_Uuid::encrypt($pat_values['id']); ?>"></a>
+						</td>
+						
+						<td>
+							<span id="p_last_name_<?php echo $pat_values['id']; ?>"><?php echo $pat_values['last_name']; ?></span>
+						</td>
+
+						<td>
+							<span id="p_first_name_<?php echo $pat_values['id']; ?>"><?php echo $pat_values['first_name'] ?></span>
+						</td>
+						<td>
+							<span id="p_vrpd_<?php echo $pat_values['id']; ?>"><?php echo $pat_values['visits_remaining_per_day'] ?></span>
+						</td>
+						<td>
+							<span id="p_vd_<?php echo $pat_values['id']; ?>"><?php echo $pat_values['visit_duration'] ?></span>
+							<input type="hidden" name="visits_duration" id="visit_duration_<?php echo $pat_values['id']; ?>" value="<?php echo $pat_values['visit_duration'] ?>" />
+						</td>
+			            <td>
+				        	<?php if(!empty($pat_values['actual_location_all']) && $pat_values['actual_location_all']['location_type'] == "1"):?>
+				            <span id="hospital_<?php echo $pat_values['id']; ?>">	
+				           
+				            <img  style="width:15px; height:15px;" title="im Krankenhaus" src="<?php echo RES_FILE_PATH;?>/images/hospital_status.png" >
+				           </span>
+				        	<?php endif; ?>
+					    </td>
+					</tr>
+					<?php $o++;	endforeach; ?>
+				</table>
+			</td>
+
+			
+		</tr>
+	</table>
+</div>
+</div>
+
+	<div class="edit_visit" id="edit_visit">
+		<input type="hidden" name="edit_visit_action" value="0" id="edit_visit_action" />
+		<input type="hidden" name="edit_visit_id" value="0" id="edit_visit_id" />
+		<div>
+			<lable>
+				<?php echo $this->translate('visit start') ?>:
+			</lable>
+			<?php echo $day_planning['current_date']; ?> <input type="text" name="edit_visit_start_date" id="edit_visit_start_date" value="" class="time_input" />
+		</div>
+
+		<div>
+			<lable>
+				<?php echo $this->translate('visit end') ?>:
+			</lable>
+			<?php echo $day_planning['current_date']; ?> <input type="text" name="edit_visit_end_date" id="edit_visit_end_date" value="" class="time_input" />
+		</div>
+	</div>

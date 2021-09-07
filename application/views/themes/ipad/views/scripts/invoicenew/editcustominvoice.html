@@ -1,0 +1,615 @@
+<?php
+
+	$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/tinymce3/jscripts/tiny_mce/tiny_mce.js');
+	$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/invoice_sapv.js');
+	$this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/page-css/invoice/new_bayern_invoice_style.css');
+
+	$invoice_data = $this->invoice_data;
+?>
+<style>
+	input {
+		width:100px;
+	}
+/*	input#client_ik, input#sapv_approved_number {
+		width:100px;
+	}*/
+</style>
+<script>
+	var select_patient = '<?php echo $this->show_pat_modal; ?>';
+	var res_file_path = '<?php echo RES_FILE_PATH; ?>';
+	var min_number = '0'; //to avoid NaN
+	var invoice_items = '<?php echo json_encode($this->invoice_items); ?>';
+	
+	function german_format(number) {
+		var postComma, preComma, stringReverse, _ref;
+		stringReverse = function(str) {
+			return str.split('').reverse().join('');
+		};
+		
+		_ref = number.toFixed(2).split('.'), preComma = _ref[0], postComma = _ref[1];
+		
+		//handle - sign
+		var modified_preComma = String(Number(preComma)*(-1)).length;
+
+		var minus_sign = '';
+		if(preComma.length > modified_preComma) {
+			minus_sign = '-';
+			preComma = String(Number(preComma)*(-1));
+		} else {
+			minus_sign = '';
+		}
+		
+		preComma = stringReverse(stringReverse(preComma).match(/.{1,3}/g).join('.'));
+		
+		return minus_sign + preComma + "," + postComma;
+	}
+	
+	$(document).ready(function(){
+		var items = jQuery.parseJSON(invoice_items);
+		
+		if(items)
+		{
+			$.each(items, function(item, index) {
+				//restore items after a failed submit validation
+				createnewitem(items[item]);
+			});
+		}
+		else
+		{
+			//add new empty item row
+			createnewitem();
+		}
+		
+		$('#patientsearch_invoice').liveSearch({
+			url: 'ajax/patientsearchinvoice?q=',
+			id: 'livesearch_invoice_patient',
+			aditionalWidth: '137',
+			noResultsDelay: '900',
+			customStart: 'true',
+			DOMelement: '#selectPatient table td:last',
+			typeDelay: '900'
+		});
+		
+		$('#select_patient').click(function(e){
+			e.preventDefault();
+			$('#selectPatient').dialog('open');
+		})
+		
+		$('#selectPatient').dialog({
+			autoOpen: false,
+			modal: true,
+			width:550,
+			height:120,
+			resizable:false,
+			closeText:'',
+			title: '<?php echo $this->translate('pleaseselectpatient'); ?>'
+		});
+		
+		if(select_patient == "1")
+		{
+			$('#selectPatient').dialog('open');
+		}
+	});
+	
+	$(function() {
+		update_total();
+		$('.add_date_picker').datepicker({
+			dateFormat: 'dd.mm.yy',
+			showOn: "both",
+			buttonImage: $('#calImg').attr('src'),
+			buttonImageOnly: true,
+			changeMonth: true,
+			changeYear: true,
+			nextText: '',
+			prevText: ''
+		});
+		
+		$('#storno').click(function(event){					
+			$('#storno_dialog').dialog('open');
+		});
+		
+//		//remove system normal items
+//		$('.remove_item_normal').live('click', function(){
+//			var removed_elem_id = $(this).parent().parent().attr('id');
+//
+//			$(this).parent().parent().hide('slow').remove();
+//
+//			if($('.'+removed_elem_id))
+//			{
+//				$('.'+removed_elem_id + '_data').hide('slow').remove();
+//			}
+//
+//			if($('#excluded_normal_items').val().length == '0') {
+//				$('#excluded_normal_items').val($(this).attr('id'));
+//			} else {
+//				$('#excluded_normal_items').val($('#excluded_normal_items').val()+', '+$(this).attr('id'));
+//			}
+//		
+//			update_total();
+//		});
+		//remove system custom items
+		$('.remove_item_custom').live('click', function(){
+			var removed_elem_id = $(this).parent().parent().attr('id');
+
+			$(this).parent().parent().hide('slow').remove();
+
+			if($('.'+removed_elem_id))
+			{
+				$('.'+removed_elem_id + '_data').hide('slow').remove();
+			}
+
+//			if($('#excluded_custom_items').val().length == '0') {
+//				$('#excluded_custom_items').val($(this).attr('id'));
+//			} else {
+//				$('#excluded_custom_items').val($('#excluded_custom_items').val()+', '+$(this).attr('id'));
+//			}
+		
+			update_total();
+		});
+
+		$('.qty').live('keyup change ', function(){
+			$(this).val($(this).val().replace(/[^0-9\.]/g,''));
+			if($.isNumeric($(this).val()))
+			{
+				var row_id = $(this).attr('id').substr(('qty_').length);
+
+				if($('#price_'+row_id).val().length != '0' && $('#price_'+row_id).val() != '' && $(this).val().length != '0'){
+					$('#total_' + row_id).val(parseFloat(parseFloat($(this).val())*parseFloat($('#price_'+row_id).val())).toFixed(2));
+				} else if($(this).val().length == '0' || $('#price_'+row_id).val().length) {
+					$('#total_' + row_id).val('0,00');
+				}
+				update_total();
+			}
+		});
+
+		$('.price').live('keyup change ', function() {			
+			$(this).val($(this).val().replace(/[^0-9\.-]/g,''));
+			if($.isNumeric($(this).val()))
+			{					
+				var row_id = $(this).attr('id').substr(('price_').length);
+
+				if ($('#qty_' + row_id).val().length != '0' && $('#qty_' + row_id).val() != '' && $(this).val().length != '0') {
+					$('#total_' + row_id).val(parseFloat(parseFloat($(this).val())*parseFloat($('#qty_'+row_id).val())).toFixed(2));
+				} else if($(this).val().length == '0' || $('#qty_'+row_id).val().length) {
+					$('#total_' + row_id).val('0,00');
+				}
+
+				update_total();
+			}
+			
+		});
+
+		$('#storno_dialog').dialog({
+			autoOpen:false,
+			modal:true,
+			draggable: false,
+			resizable: false,
+			buttons: {
+				"<?php echo $this->translate('yesconfirm'); ?>": function() {
+					set_storno('<?php echo $_REQUEST['invoiceid']; ?>');
+					$( this ).dialog( "close" );
+				},
+				"<?php echo $this->translate('noconfirm'); ?>": function() {
+					$( this ).dialog("close");
+				}
+			},
+			open: function(){
+				$( "#storno_dialog" ).dialog( "option", "title", "<?php echo $this->translate('storno_invoice_no'); ?> "+$('input[name="invoice[prefix]"]').val()+$('input[name="invoice[invoice_number]"]').val());
+			}			
+		});
+		
+		$('#confirmDelete').dialog({
+			autoOpen:false,
+			resize:false,
+			draggable:false,
+			width:300,
+			height:200,
+			title: '<?php echo $this->translate('confirmdeletetitle'); ?>',
+			buttons: {
+			<?php echo $this->translate('delete'); ?>: function() {
+
+					$('#edit_bayern_invoice').submit();
+			},
+			<?php echo $this->translate('cancelModalRechnung'); ?>: function(){
+						$('input[name=deletemore]').val("");
+						$( this ).dialog( "close" );
+			}
+		}});
+	
+		$('.delete').live('click',function(event){
+			event.preventDefault();
+			$('#deletemore').val("1");
+			$('#confirmDelete').dialog('open');
+		});
+	});
+	
+	function createnewitem(item_data)
+	{		
+		var itemcount = $('#counter').val();
+		
+		if(item_data)
+		{
+			var trInnerHtml = $('<tr id="row_'+itemcount+'">\n\
+				<td style="text-align: left;">\n\
+					<input type="hidden" id="row" name="row[]" value="'+itemcount+'" />\n\
+					<input type="text" name="shortcut[]" value="'+item_data['shortcut']+'" id="shortcut_'+itemcount+'" class="shortcut" autocomplete="off"/>\n\
+				</td>\n\
+				<td style="text-align: left;">\n\
+					<input type="text" name="name[]" value="'+item_data['name']+'" id="name_'+itemcount+'" class="description" autocomplete="off"/>\n\
+				</td>\n\
+				<td align="right">\n\
+					<input type="text" name="qty[]" value="'+item_data['qty']+'" id="qty_'+itemcount+'" class="qty" autocomplete="off"/>\n\
+				</td>\n\
+				<td align="right"></td>\n\
+				<td align="right">\n\
+					<input type="text" name="price[]" value="'+item_data['price']+'" id="price_'+itemcount+'" class="price" autocomplete="off"/>\n\
+					<input type="hidden" id="custom_'+itemcount+'" name="custom[]" value="1" readonly="readonly" />\n\
+				</td>\n\
+				<td align="right">\n\
+					<input type="text" name="total[]" value="'+item_data['total']+'" id="total_'+itemcount+'" class="total" />\n\
+				</td>\n\
+				<td>\n\
+					<a href="javascript:void(0)" class="remove_item_custom" id="del_'+itemcount+'"><img src="<?php echo RES_FILE_PATH; ?>/images/action_delete.png" border="0"></a>\n\
+				</td></tr>');
+		}
+		else
+		{
+			var trInnerHtml = $('<tr id="row_'+itemcount+'">\n\
+				<td style="text-align: left;">\n\
+					<input type="hidden" id="row" name="row[]" value="'+itemcount+'" />\n\
+					<input type="text" name="shortcut[]" value="" id="shortcut_'+itemcount+'" class="shortcut" autocomplete="off"/>\n\
+				</td>\n\
+				<td style="text-align: left;">\n\
+					<input type="text" name="name[]" value="" id="name_'+itemcount+'" class="description" autocomplete="off"/>\n\
+				</td>\n\
+				<td align="right">\n\
+					<input type="text" name="qty[]" value="" id="qty_'+itemcount+'" class="qty" autocomplete="off"/>\n\
+				</td>\n\
+				<td align="right"></td>\n\
+				<td align="right">\n\
+					<input type="text" name="price[]" value="" id="price_'+itemcount+'" class="price" autocomplete="off"/>\n\
+					<input type="hidden" id="custom_'+itemcount+'" name="custom[]" value="1" readonly="readonly" />\n\
+				</td>\n\
+				<td align="right">\n\
+					<input type="text" name="total[]" value="0.00" id="total_'+itemcount+'" class="total" />\n\
+				</td>\n\
+				<td>\n\
+					<a href="javascript:void(0)" class="remove_item_custom" id="del_'+itemcount+'"><img src="<?php echo RES_FILE_PATH; ?>/images/action_delete.png" border="0"></a>\n\
+				</td></tr>');
+		}
+
+
+		if($('#pseudo_row').length) {			
+			$('#pseudo_row').before(trInnerHtml);
+		} else {			
+			$('#new_med_row_action').before(trInnerHtml);
+		}
+		itemcount++;
+		$('#counter').val(itemcount);
+	}
+	
+	function update_total()
+	{
+		var custom_total = 0;
+		$('.total').each(function(){
+			$(this).val(parseFloat($(this).val()).toFixed(2))
+			custom_total += parseFloat($(this).val());
+		});
+
+		var grand_total = parseFloat(parseFloat(custom_total)+parseFloat(min_number)).toFixed(2)*(-1);
+		
+		$('#invoice_total').val(grand_total);
+		$('#grand_total_cell').html(german_format(parseFloat(grand_total)));
+	}
+	
+	function set_storno(invoice_id) {
+		var url = '<?php echo APP_BASE; ?>invoicenew/bayerninvoices';
+		window.location = url + '?' + 'mode=setstorno&inv_id='+invoice_id;
+	}
+	
+	function selectInvoicePatient(i) {
+		//document.location.href = appbase+'invoicenew/createcustominvoice?pid='+i;
+		//ISPC-2747 Lore 09.12.2020
+		document.location.href = appbase+'invoicenew/createcustominvoice?pid='+i+'&redirect2new=<?php echo $this->redirect2new; ?>';
+	}
+
+	function supports_input_placeholder() {
+	   var i = document.createElement('input'); return 'placeholder' in i;
+	}
+
+	if ( !supports_input_placeholder() ) {
+		var fields = document.getElementsByTagName('INPUT'); 
+		for ( var i=0; i < fields.length; i++) {
+			if ( fields[i].hasAttribute('placeholder')) {
+				fields[i].defaultValue = fields[i].getAttribute('placeholder');
+				fields[i].onfocus = function() {
+					if(this.value == this.defaultValue) this.value = ''; 
+				}
+				fields[i].onblur = function() {
+					if(this.value == '') this.value = this.defaultValue;
+				}
+			} 
+		}
+	}
+</script>
+<div style="display: none;"><img id="calImg" src="<?php echo RES_FILE_PATH;  ?>/images/calendar.png" alt="Popup" class="trigger"></div>
+<input type="hidden" value="999999999" id="counter" />
+<form name="edit_bayern_invoice"  id="edit_bayern_invoice" method="POST" action="">
+	<table class="table" id="health_insurance_invoice_table" cellspacing="2" cellpadding="2" width="100%">
+		<tr class="rowa">
+			<td class="col1 cell"></td>
+			<td class="col2 cell"></td>
+			<td class="col3 cell"></td>
+		</tr>
+		<tr class="rowb">
+			<td class="col1 cell" style="width: 635px;height: 50px;">
+				<textarea name="address" id="invoice_address" cols="37" rows="7" class="textareawhitehalf"><?php echo $invoice_data['address']; ?></textarea>
+			</td>
+			<td class="col2 cell"></td>
+			<td class="col3 cell"></td>
+		</tr>
+
+		<tr class="rowa">
+			<td class="col2 cell" style="text-align: left;" colspan="2"></td>
+			<td class="col1 cell"></td>
+		</tr>
+
+		<tr class="rowb">
+			<td class="col1 cell" colspan="3">
+				&nbsp;
+			</td>
+		</tr>
+
+
+		<tr class="rowa">
+			<td colspan="3" class="col2 select_patient_row">
+				<?php echo $this->translate('patient'); ?>: <?php echo strtoupper($invoice_data['epid']); ?>
+			</td>
+		</tr>
+		<tr class="rowb">
+			<td class="col2 cell" style="text-align: left; font-size:16px;" colspan="2"><b>Rechnung Nr.:</b> 
+				<input type="text" name="prefix" value="<?php echo $invoice_data['prefix']; ?>" id="prefix" placeholder="Prefix:"/>
+				<input type="text" name="invoice_number" value="<?php echo $invoice_data['invoice_number']; ?>" id="invoice_number" placeholder="Invoice Number:" />
+			</td>
+			<td class="col1 cell" style="text-align: right; width: 380px;">
+				<?php if($invoice_data['completed_date'] != '0000-00-00 00:00:00' && date('Y', strtotime($invoice_data['completed_date_sort'])) != "1970"): ?> 
+					<?php echo strftime('%A, %d. %B %Y', strtotime($invoice_data['completed_date_sort']));  ?>
+				<?php endif; ?>
+				<br />
+				<?php if($invoice_data['status'] > '1'):  ?>
+					<?php echo $this->translate('complete_date'); ?>
+					<input type="text" id="completed_date" value="<?php if($invoice_data['completed_date'] == '0000-00-00 00:00:00'): echo date('d.m.Y', strtotime($invoice_data['create_date'])); else: echo date('d.m.Y', strtotime($invoice_data['completed_date'])); endif;  ?>" name="completed_date" class="add_date_picker" />
+				<?php else:  ?>
+					<input type="hidden" value="<?php echo date('d.m.Y', time()); ?>" name="completed_date" />
+				<?php endif;  ?>
+			</td>
+		</tr>
+		<tr>
+			<td colspan="4">
+				<?php if($this->error_prefix): ?>
+					<div class="err"><?php echo $this->error_prefix; ?></div>
+				<?php endif; ?>
+				
+				<?php if($this->error_invoice_number): ?>
+					<div class="err"><?php echo $this->error_invoice_number; ?></div>
+				<?php endif; ?>
+				<?php if($this->error_start_active): ?>
+					<div class="err"><?php echo $this->error_start_active; ?></div>
+				<?php endif; ?>
+				<?php if($this->error_end_active): ?>
+					<div class="err"><?php echo $this->error_end_active; ?></div>
+				<?php endif; ?>
+			</td>
+		</tr>
+		<tr class="rowb">
+			<td class="col1 cell" colspan="3"  style="border: 1px solid #000; padding:5px;">
+			<table>
+				<tr>												<!-- ISPC-2747 pct.b Lore 27.11.2020 -->
+					<td style="width:155px;"><input type="checkbox" name="show_box_active" id="show_box_active" class="showOnInvoice"><span>Abrechnungszeitraum</span></td>
+						<td style="width:180px;">von: <input type="text" name="start_active" id="start_active" class="add_date_picker" value="<?php if($invoice_data['start_active'] != "0000-00-00 00:00:00" && date('Y-m-d', strtotime($invoice_data['start_active'])) != '1970-01-01' && strtotime($invoice_data['start_active']) > '0' ): echo date('d.m.Y', strtotime($invoice_data['start_active'])); endif;?>" /></td>
+						<td style="width:175px;">bis:  <input type="text" name="end_active" id="end_active" class="add_date_picker" value="<?php if($invoice_data['end_active'] != "0000-00-00 00:00:00" && date('Y-m-d', strtotime($invoice_data['end_active'])) != '1970-01-01' && strtotime($invoice_data['end_active']) > '0' ): echo date('d.m.Y', strtotime($invoice_data['end_active'])); endif;?>" /></td>
+					<td style="width:125px;">nach § 37.2 SGB V</td>
+					<td>IK: <input type="text" name="client_ik" id="client_ik" value="<?php echo $invoice_data['client_ik']; ?>" /></td>
+				</tr>
+
+				</tr>
+			</table>
+			</td>
+		</tr>
+		<tr class="rowb">
+			<td class="col1 cell" colspan="3"> &nbsp; </td>
+		</tr>
+
+		<tr class="rowb">
+			<td class="col1 cell" colspan="3" style="border: 1px solid #000; padding:5px;">
+				<table>
+					<tr>												 <!-- ISPC-2747 pct.b Lore 27.11.2020 -->
+						<td style="width:180px;"><input type="checkbox" name="show_box_patient" id="show_box_patient" class="showOnInvoice"><span><b>Leistungsempfänger:</b></span></td>
+						<td style="width:350px;" colspan="2"><input type="text" name="last_name" id="last_namee" value="<?php echo $invoice_data['last_name']?>" /> <input type="text" name="first_name" id="first_namee" value="<?php echo $invoice_data['first_name']?>" /> </td>
+						
+						<td style="width:125px;">Geburtsdatum:</td>
+						<td><input type="text" name="birthd" value="<?php echo $invoice_data['birthd']?>" id="birthdd" class="add_date_picker" /></td>
+					</tr>
+					<tr>
+						<td rowspan="2"></td>
+						<td colspan="2" rowspan="2">
+							<textarea name="street1" id="street11x" rows="4" cols="50" style="text-align: left;" autocomplete="off"/><?php echo trim($invoice_data['street1']);?></textarea>
+						</td>
+						<td colspan="2" style="vertical-align: top;">
+							<table>
+								<tr>
+									<td style="width:125px;vertical-align: top;"><?php echo $this->translate('pflegestufe2pflegegrade')?>:</td>
+									<td style="vertical-align: top;"><input type="text" name="patient_pflegestufe" value="<?php echo $invoice_data['patient_pflegestufe']; ?>" id="patient_pflegestufe" /></td>
+								</tr>
+								<tr>
+									<td style="width:125px;">Vers-Nr.:</td>
+									<td><input type="text" name="insurance_no" value="<?php echo $invoice_data['insurance_no'];  ?>" id="insurance_noo" /></td>
+								</tr>
+							</table>
+						</td>
+					</tr>
+				</table>
+			</td>
+		</tr>
+		<?php if(($this->ppun_module == "1" && $this->privatepatient == "1") || ($this->debtor_number_module == "1" && $this->privatepatient == "0") || $this->paycenter_module == "1"): ?>
+		<tr class="rowb">
+			<td class="col1 cell" colspan="3" style="border: 1px solid #000; padding:5px;">
+				<table cellpadding="4" cellspacing="4" style="width:100%;">
+					<tr>
+						<?php if(($this->ppun_module == "1" && strlen($invoice_data['ppun'])>'0') || ($this->debtor_number_module == "1" && strlen($invoice_data['debtor_number'])>'0')): ?>
+						<td style="width:165px;">
+							<?php echo $this->translate('debitor_inv_label'); ?>
+						</td>
+						<td style="width:120px;">
+							<?php if($this->ppun_module == "1" && strlen($invoice_data['ppun'])>'0'): ?>
+								<input type="text" name="ppun" value="<?php echo $invoice_data['ppun'];?>" id="ppun" />
+							<?php endif; ?>
+
+							<?php if($this->debtor_number_module == "1" && strlen($invoice_data['debtor_number'])>'0'): ?>
+								<input type="text" name="debtor_number" value="<?php echo $invoice_data['debtor_number']; ?>" id="debtor_numberx" />
+							<?php endif; ?>
+						</td>
+						<?php endif; ?>
+						
+						<td>&nbsp;</td>
+						
+						<?php if($this->paycenter_module == "1" && strlen($invoice_data['paycenter'])>'0'): ?>
+						<td style="width:120px;">
+								<?php echo $this->translate('paycenter_label'); ?>
+						</td>
+						<td style="width:120px;">
+								<input type="text" name="paycenter" value="<?php echo $invoice_data['paycenter']; ?>" id="paycenter" />
+						</td>
+						<?php endif; ?>
+					</tr>
+				</table>
+			</td>
+		</tr>
+		<?php endif; ?>
+		<tr class="rowb">
+			<td class="col1 cell" colspan="3"> &nbsp; </td>
+		</tr>
+		<tr class="rowb">
+			<td class="col1 cell" colspan="3"  style="border: 1px solid #000; padding:5px;">
+
+				<table width="100%">
+					<tr>												 <!-- ISPC-2747 pct.b Lore 27.11.2020 -->
+						<td style="width:140px;"><input type="checkbox"  name="show_box_sapv" id="show_box_sapv" class="showOnInvoice"><span>Beleg-Nr.:</span></td>
+						<td style="width:350px;" colspan="2">von: <input type="text" name="start_sapv" id="start_sapv" class="add_date_picker" value="<?php if($invoice_data['start_sapv'] != "0000-00-00 00:00:00" && date('Y-m-d', strtotime($invoice_data['start_sapv'])) != '1970-01-01'): echo date('d.m.Y', strtotime($invoice_data['start_sapv'])); endif;?>" /></td>
+						<td style="width:250px;">bis: <input type="text" name="end_sapv" id="end_sapv" class="add_date_picker" value="<?php if($invoice_data['end_sapv'] != "0000-00-00 00:00:00" && date('Y-m-d', strtotime($invoice_data['end_sapv'])) != '1970-01-01'): echo date('d.m.Y', strtotime($invoice_data['end_sapv'])); endif;?>" /></td>
+						<td ></td>
+						<td ></td>
+					</tr>
+					<tr>
+						<td style="width:140px;"></td>
+						<td style="width:350px;" colspan="2" >Genehmigungsdatum: <input type="text" name="sapv_approve_date" id="sapv_approve_date" class="add_date_picker" value="<?php if($invoice_data['sapv_approve_date'] != '0000-00-00 00:00:00' && date('Y-m-d', strtotime($invoice_data['sapv_approve_date'])) != '1970-01-01'): echo date('d.m.Y', strtotime($invoice_data['sapv_approve_date'])); endif; ?>" /></td>
+						<td>Genehmigungs-Nr.: <input type="text" name="sapv_approve_nr" id="sapv_approved_number" value="<?php echo $invoice_data['sapv_approve_nr']; ?>" /></td>
+						<td></td>
+					</tr>
+				</table>
+			</td>
+		</tr>
+		<tr class="rowb">
+			<td class="col1 cell" colspan="3">
+				&nbsp;
+			</td>
+		</tr>
+		<tr class="rowb">
+			<td class="col1 cell" colspan="3">
+				<table class="sapv_invoice_items">
+					<tr class="tr_invoice_th">
+						<th style="text-align: left!important;">Abkürzung</th>
+						<th width="45%" style="text-align: left!important;">Leistung</th>
+						<th>Anzahl</th>
+						<th> Abr. Anz.</th>
+						<th> Einzelpreis  &euro;</th>
+						<th colspan="2"> Gesamtpreis &euro;</th>
+					</tr>
+					<tr id="pseudo_row"></tr>					
+					<tr class="tr_invoice_tr_total">
+						<td colspan="3"> </td>
+						<td colspan="2"><b>Rechnungsbetrag:</b></td>
+						
+						<td colspan="2"><b><span id="grand_total_cell"><?php echo number_format($invoice_data['invoice_total'], '2', ',', '.');  ?></span></b></td>
+					</tr>					
+				</table>
+				<input type="hidden" name="invoice_total" value="<?php echo Pms_CommonData::str2num($invoice_data['invoice_total']);  ?>" id="invoice_total" />
+			</td>
+		</tr>
+
+		<tr id="new_med_row_action">
+			<td colspan="6">
+				<div class="add_new_medi">
+					<a href="javascript:createnewitem()">
+						<img src="<?php echo RES_FILE_PATH; ?>/images/edit_add.png" width="20" height="20" />
+						<?php echo $this->translate('add_new_item'); ?>
+					</a>
+				</div>
+			</td>
+		</tr>
+		
+		<tr class="rowb">
+			<td class="col1 cell" colspan="3">
+				&nbsp;
+			</td>
+		</tr>
+		<tr class="rowb">
+			<td class="col1 cell" colspan="3">
+				Die abgerechneten Leistungen sind gemäß § 4 Nr. 16 UStG umsatzsteuerbefreit.
+				<br />
+				<textarea name="footer" id="sapv_footer" cols="" rows="10" style="width: 100%;"  ><?php echo $invoice_data['footer']; ?></textarea>
+			</td>
+		</tr>
+		<tr class="rowa">
+			<td class="col1 cell" colspan="3">&nbsp;</td>
+		</tr>
+
+	</table>
+
+	<div class="buttonsBar">
+		<input type="hidden" name="deletemore" value="" id="deletemore"/>
+		<?php if($invoice_data['status'] >= '2'):  ?>
+			<!--Save when completed-->
+			<input type="submit" value="<?php echo $this->translate('save'); ?>" name="completed" class="bigbutton ui-state-default ui-corner-all submit" />
+		<?php endif;  ?>
+		
+		<?php if($invoice_data['status'] == '1'):  ?>
+			<!--Complete when in draft-->
+			<input type="submit" value="<?php echo $this->translate('Fertigstellen'); ?>" name="completed" class="bigbutton ui-state-default ui-corner-all submit" />
+		<?php endif;  ?>
+		
+		<?php if($invoice_data['status'] == '1' || $invoice_data['status'] == '2'  ): ?>
+			<input type="submit" value="<?php echo $this->translate('Löschen'); ?>" name="deleted" class="bigbutton ui-state-default ui-corner-all submit delete" />		
+		<?php endif; ?>
+			
+		<input type="submit" value="<?php echo $this->translate('Pdf'); ?>" name="pdf" class="bigbutton ui-state-default ui-corner-all submit" />
+	
+		<?php if($invoice_data['status'] > '1' && $this->has_storno == '0'): ?>
+		<input type="button"  id="storno"  value="<?php echo $this->translate('storno_button'); ?>" name="storno" class="bigbutton ui-state-default ui-corner-all submit" />
+		<?php endif; ?>
+	</div>
+	<input type="hidden" id="epid" name="epid" value="<?php echo $invoice_data['epid']; ?>" /> 
+</form>
+<div id="storno_dialog">
+	<p>
+		<?php echo $this->translate('storno_dialog_text');  ?>
+	</p>
+</div>
+<div id="confirmDelete"><?php echo $this->translate('confirm_invoice_delete'); ?></div>
+
+<div id="selectPatient">
+	<div class="err"><? echo $this->errors;?></div>
+	<table border="0" cellspacing="2" cellpadding="2" width="100%">
+		<tbody>
+			<tr>
+				<td style="width:135px;"><label><?php echo $this->translate('searchpatient'); ?>: </label></td>
+				<td colspan="2">
+					<input type="text" name="patientsearch_invoice" id="patientsearch_invoice" value="" style="width: 100%;"/>
+				</td>
+			</tr>
+			<tr>
+				<td colspan="3"></td>
+			</tr>
+		</tbody>
+	</table>
+</div>

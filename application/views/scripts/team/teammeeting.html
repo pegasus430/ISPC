@@ -1,0 +1,951 @@
+<?php
+	$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/page-css/teammeeting.css?' . date('Ymd'));
+	$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/tagit/jquery.tagit.css?' . date('Ymd'));
+
+	$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/qtip/jquery.qtip.min.css?' . date('Ymd'));
+	$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/data_tables/dataTables.jqueryui.css?' . date('Ymd'));
+
+	$this->headScript()->appendFile(RES_FILE_PATH . '/javascript/qtip/jquery.qtip.min.js?' . date('Ymd'));
+
+	$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/jquery.blockUI.js?'.date('Ymd'));
+	$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/data_tables/jquery.dataTables.js?'.date('Ymd'));
+	$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/data_tables/dataTables.jqueryui.js?'.date('Ymd'));
+
+	$this->headScript()->appendFile(RES_FILE_PATH . '/javascript/portamento.js?' . date('Ymd'));
+
+if(empty($_REQUEST['meetingid'])){
+	if($this->meetingid != 0 ){
+		$mid = $this->meetingid;
+	}else{
+		$mid = null;
+	}
+} else{
+	$mid = $_REQUEST['meetingid'];
+}
+
+
+	$url = APP_BASE . "team/teammeeting?" . $_SERVER['QUERY_STRING'];
+
+	if(str_replace("?meetingid=" . $mid . "", "", $url))
+	{
+		$finalJsUrl = str_replace("?meetingid=" . $mid . "", "", $url);
+//echo 'final hier ' .$finalJsUrl;
+	}
+	else
+	{
+		$finalJsUrl = $url;
+	}
+//echo $finalJsUrl;
+
+	$attrs['onChange'] = 'changeMeeting(this.value);';
+	$attrs['class'] = 'select_meeting_class';
+
+?>
+<script>
+	var res_file_path = '<?php echo RES_FILE_PATH; ?>';
+	var users_data = jQuery.parseJSON('<?php echo json_encode($this->js_all_users); ?>');
+
+    var showXTcolumn = <?=(int)$this->showXTcolumn?>;	
+	var showTODOcolumn = '<?=$this->client_teammeeting_settings['todo']?>';
+    var showactioncolumn = '<?=$this->client_teammeeting_settings['action']?>';
+    var showuserscolumn = '<?=$this->client_teammeeting_settings['users']?>';
+    
+    var show_treatment_process = '<?=$this->client_teammeeting_settings['treatment_process']?>';		//ISPC-2896 Lore 21.04.2021
+    var show_problems = '<?=$this->client_teammeeting_settings['show_problems']?>';		//ISPC-2896 Lore 23.04.2021
+    var showTargetsColumn = '<?=$this->client_teammeeting_settings['targets']?>';		//ISPC-2896 Lore 23.04.2021
+
+	// required for don't leave page
+	var submited = false;
+	var changes = false;
+ 
+	var meetingid = "<?php echo $mid; ?>";
+// 	var meetingid_del = "<?php echo (empty($_REQUEST['meetingid']) ? '' : $_REQUEST['meetingid'])  ?>";
+	var meetingid_del = "<?php echo (empty($mid) ? '' : $mid)  ?>";
+	var new_meeting = "<?php echo $_REQUEST['new_meeting']; ?>";
+	
+	var field_value = '';
+	var patient_status ='all';
+	
+	var t = '<?php echo $this->t; ?>';
+	
+	function changeMeeting(data){
+		var pre_url = "<?php echo $finalJsUrl; ?>";
+
+		//turl = pre_url.replace("?", "");
+		if(pre_url.match('case=')){
+			turl = pre_url.replace("&new=1", "");
+			var url = turl +"&meetingid="+data;
+		}else{
+
+			turl = pre_url.replace("&new=1", "");
+			turl = turl.replace("?", "");
+		var url = turl +"?meetingid="+data;
+		}
+
+		$(location).attr('href',url);
+	}
+	
+	//weird "leave page" function
+	var dontLeave = function(e) {
+		if (changes === true && submited === false) {
+			return "<?php echo $this->translate('no_save_leave_alert'); ?>";
+		}
+	}
+
+	window.onbeforeunload = dontLeave;
+
+	
+	$(document).ready(function(){
+		
+		$('#container').portamento({
+			wrapper: $('#example_wrapper'),
+			gap: 0,
+		});
+ 		
+		//allow submit without "leave page" alert
+		$('.meeting_btn').live('click', function() {
+			submited = true;
+			changes = false;
+ 
+		});
+		
+		 $('input,textarea,select').live('change',function(){
+// 			console.log($(this).val());
+			if($(this).attr('id') != "select_meeting"){ // Do not consider change if the team meetinh is changed TODO-1506
+				submited = false;
+				changes = true;
+			}
+		}) ;
+		
+		
+		$('.pdfbtn').click(function(event) {
+ 			event.preventDefault();
+			$('#ajax_save').val('0');
+			var pdf_option = $(this).data('pdf_option')
+			$('#pdf_option').val(pdf_option);
+			
+			$('#teammeeting').submit();
+		});
+		
+		$('.error_new').hide();
+		$('#save_form_data').click(function(event) {
+			event.preventDefault();
+			
+			$('#save_form').val('0');
+			$(document).userSession().checksession('abort', function(result) {
+				if(result === false) {
+					event.stopImmediatePropagation(); //stop going forward
+				} else {
+					if(validate_date() && validate_time())
+					{
+						// add loading class
+						//hide time error when starting to validate
+						$('.error_new').hide();
+						$('#pdf_option').val('');
+						$('#save_form').val('1');
+						$('#ajax_save').val('1');
+						save_team_meeting();//$('#teammeeting').submit();
+						
+					}
+					else
+					{
+						event.stopImmediatePropagation(); //stop going forward
+					}
+				}
+			});
+		});
+		
+		$('*').keypress(function(event){
+			if(event.keyCode == 13 && event.target.nodeName!='TEXTAREA')
+			{
+			  event.preventDefault();
+			  return false;
+			}
+		});
+		
+		
+		$(".users_livesearch").tagit({
+			autocomplete: {
+				source: users_data,
+				delay: 0
+			},
+			placeholderText: "Benutzer",
+			allowDuplicates: true,
+			allowSpaces: true,
+			hiddenInput: true,
+			showAutocompleteOnFocus: true,
+			beforeTagAdded: function(event, ui){
+//				console.log(ui.tag);
+				if(!ui.tag.children('input[type="hidden"]').val()) {
+					return false;
+				}
+			}
+		});		
+		
+		$('.delete_row').live('click', function() {
+			//get row id
+			var rowid = $(this).attr('rel');
+			
+			//get patient_id and user_id from row_id
+			var row_elements = rowid.split('_');
+			
+			//remove row
+			$('tr#'+rowid).remove();
+			
+			//hide row if removed element was last one
+			var existing_rows = $('tr.row_'+row_elements[1]+'_'+row_elements[2]).length;
+
+			if(existing_rows == 0)
+			{
+				$('#selected_users_'+row_elements[1]+'_'+row_elements[2]).hide();
+			}
+		});		
+				
+		//datepicker and timepickers
+		$('#meeting_date').datepicker({
+			dateFormat: 'dd.mm.yy',
+			showOn: "both",
+			buttonImage: $('#calImg').attr('src'),
+			buttonImageOnly: true,
+			changeMonth: true,
+			changeYear: true,
+			nextText: '',
+			prevText: ''
+		}).mask("99.99.9999");
+		
+		$('#meeting_time_start, #meeting_time_end').timepicker({
+			minutes: {
+				interval: 5
+			},
+			showPeriodLabels: false,
+			rows: 4,
+			hourText: 'Stunde',
+			minuteText: 'Minute'
+		}).mask("99:99");
+		
+		
+
+
+		$('#patients2location').live('change', function(){
+			var location_id = $('#patients2location').val();
+			ajaxCallserver({
+				url : appbase+ 'team/fetchteampatients?meetingid=<?php echo $mid; ?>&new_meeting=<?php echo (int)isset($_POST['new_meeting']);?>&clm=ln&ord=ASC&pgno=0&location_id='+location_id+' ',
+				callLoading : pl_loading
+			});
+		});
+		
+		$(document).on('click', '.traffic_light', function() {
+			$(this).parent().find('div.other_lights').toggle();
+			$(this).toggle();
+		});
+		
+		$(document).on('click', '.new_traffic_light', function() {
+			var initial_status = $(this).parent().parent().find('input.current_traffic_status').val();
+			
+			var selected_status = $(this).find('img').attr('rel');
+			if (initial_status != selected_status) {
+				save_status(selected_status, $(this).parent().data('pid'), $(this));
+			}
+			else
+			{
+				$(this).parent().toggle();
+				$(this).parent().parent().find('div.traffic_light').toggle();
+			}			
+		});
+		
+		$(document).mouseup(function (e){
+
+			var container = $(".new_traffic_light");
+			
+			if (container.is(":visible") && !container.is(e.target) && container.has(e.target).length === 0){
+
+				container.parent().hide();
+				container.parent().parent().find('div.traffic_light').show();
+			}
+		}); 
+});
+
+	
+	function save_team_meeting(){
+		$(' body').addClass('body-overlay');
+		var formdata = $("#teammeeting").serialize();
+		  $.ajax({
+			    url: appbase+ 'team/teammeeting',
+			    type: 'POST',
+			    data: formdata,
+			    success: function(result) {
+			    	var result_data = jQuery.parseJSON(result);
+			    	
+			    	if(result_data.meeting_id ){
+			    		$('#mid').val(result_data.meeting_id);
+			    	}
+			    	
+			    	// add loading class
+			    	$(' body').removeClass('body-overlay');
+			    	$('#save_form').val('0');
+			    	$('#ajax_save').val('0');
+			    },
+			    error: function(){
+			      alert("Unable to update family");
+			      $(' body').removeClass('body-overlay');
+			    }
+			  });
+	}
+	
+	/*function load_extra_patients(field_value,patient_status)
+	{
+		if (!patient_status) {
+			var patient_status = "all";
+		}
+
+		if(field_value.lenght >2 || patient_status.length>0)
+		{
+
+			var table = '';
+
+			if ($('#extra_patients-dialog').is(':visible')) {
+				$('#extra_patients-dialog').block({
+									css : {
+										border : 'none',
+										padding : '5px',
+										backgroundColor : '#000',
+										'-webkit-border-radius' : '5px',
+										'-moz-border-radius' : '5px',
+										opacity : .5,
+										color : '#fff',
+										height : 'auto'
+									},
+									message : '<h1 style="padding:5px;">Verarbeitung</h1><img src="<?php echo RES_FILE_PATH.'/images/ajax-loader-bar.gif'; ?>">'
+								});
+			}
+
+			$.ajax({
+				type : 'POST',
+				url : 'ajax/patientsearchteammeeting',
+				data : {
+					meeting_id : "<?php echo $_REQUEST['meetingid'] ?>",
+					field_value : field_value,
+					status : patient_status
+				},
+				success : function(data) {
+					$('#patients_resulted').html(data);
+
+					$('#extra_patients-dialog').unblock();
+
+				},
+				error : function() {
+					var ajax_done = 1;
+				}
+			});
+		}
+	}*/
+
+	
+
+	function select_user(userid, patientid)
+	{
+		//		patientid = [patient_id]_[patient_row]
+		var pat_elements = patientid.split('_');
+
+		var first_name = $('#usr_fn_' + userid).val();
+		var last_name = $('#usr_ln_' + userid).val();
+		var html_row = '';
+
+		if (first_name.length > '0' && last_name.length > '0') {
+
+			//construct user row to be appended to selected users table
+			html_row += '<tr class="assigned_user_row row_'+patientid+'" id="row_'+patientid+'_'+userid+'">';
+			html_row += '<td class="last_name_row">';
+			html_row += '<input type="hidden" name="meeting[assigned_users]['+pat_elements[0]+']['+pat_elements[1]+'][]" value="'+userid+'" id="assigned_user_'+patientid+'" />';
+			html_row += '' + last_name + '';
+			html_row += '</td>';
+			html_row += '<td class="first_name_row">';
+			html_row += '' + first_name + '';
+			html_row += '</td>';
+			html_row += '<td class="actions_row">';
+			html_row += '<img src="'+res_file_path+'/images/action_delete.png" rel="row_'+patientid+'_'+userid+'" class="delete_row" />';
+			html_row += '</td>';
+			html_row += '</tr>';
+
+			//append html row to users table
+			$('#selected_users_' + patientid).append(html_row);
+
+			//show selected users table if table is hidden
+			if (!$('#selected_users_' + patientid).is('visible')) {
+				$('#selected_users_' + patientid).show();
+			}
+
+			//clear livesearch when user was selected and appended
+			$('#select_user_txt_' + patientid).val('');
+		}
+	}
+
+	function check_group(that)
+    {
+		var group = $(that).attr('alt');
+
+		if ($(that).is(':checked')) {
+			$('.group-' + group).attr('checked', true);
+		} else {
+			$('.group-' + group).attr('checked', false);
+			$('#checkall').attr('checked', false);
+		}
+	}
+
+	function checkedall(allid)
+    {
+		checkbox = document.getElementsByName('attending_users[]');
+
+		if(allid.checked==true)
+		{
+			for(i=0; i<checkbox.length;i++)
+			{
+				checkbox[i].checked = true;
+				$('.group-chks').attr('checked', true);
+			}
+		} else {
+			for(i=0; i<checkbox.length;i++)
+			{
+				checkbox[i].checked = false;
+				$('.group-chks').attr('checked', false);
+			}
+		}
+	}
+	
+	function validate_date()
+	{
+		var date_regex = new RegExp(/\b\d{1,2}[\.]\d{1,2}[\.]\d{4}\b/);
+		var date = $('#meeting_date').val();
+		var block = false;
+		
+		if(!date)
+		{
+			//show error
+			$('.meeting_fill_date').show();
+			block = true;
+		}
+		
+		if(!date_regex.test(date) && block === false)
+		{
+			//show error
+			$('.meeting_invalid_date').show();
+			block = true;
+		}
+		
+		if(block)
+		{
+			return false;
+		}
+		else
+		{
+			return true;
+		}
+	}
+	
+	function validate_time()
+	{
+		var block = false;
+		
+		var start_time = Date.parse('01/01/2011 '+$('#meeting_time_start').val() + ':00');
+		var end_time = Date.parse('01/01/2011 '+$('#meeting_time_end').val() + ':00');
+		
+		if(!start_time)
+		{
+			$('.meeting_fill_start_time').show();
+			block = true;
+		}
+		
+		if(!end_time)
+		{
+			$('.meeting_fill_end_time').show();
+			block = true
+		}
+		
+		if(start_time > end_time)
+		{
+			//show error
+			$('.meeting_start_higher_than_end').show();
+			block = true;
+		}
+		else
+		{
+			//hide error
+			$('.meeting_start_higher_than_end').hide();
+		}
+		
+		if(block)
+		{
+			return false;
+		}
+		else
+		{
+			return true;
+		}
+	}
+	
+	function save_status(new_status, pid, replacement)
+	{
+		if (new_status) {
+			var stat = new Array();
+
+			stat[1] = "normal, keine Krise";
+			stat[2] = "Achtung, instabil";
+			stat[3] = "Krise";
+			jConfirm('Sind Sie sicher, dass Sie den Status des Patienten auf "' + stat[new_status] + '" ändern wollen?', '', function(r) {
+				if (new_status && r)
+				{
+					ajaxCallserver({
+						url : appbase + 'patient/changetraffic',
+						method : 'POST',
+						data : {
+							status_id : new_status,
+							pid: pid
+						}
+					});
+					
+					replacement.parent().parent().find('input.current_traffic_status').val(new_status);
+					replacement.parent().parent().find('div.traffic_light img').replaceWith(replacement.html());
+					replacement.parent().parent().find('div.traffic_light').show();
+					replacement.parent().hide();
+				}
+			});
+		}
+	}
+</script>
+
+<script type="text/javascript">
+	var pl_loading = function () {
+	    var dlist = '<div class="loadingdiv" align="center"><img src="images/pageloading.gif"><br />	Loading... please wait</div>';
+	    document.getElementById('content').innerHTML = dlist;
+	}
+	
+	function loadpage(ord, clm)
+	{
+		console.log('loadpage');
+		ajaxCallserver({url: appbase+'team/fetchteampatients?meetingid=<?php echo $mid; ?>&new_meeting=<?php echo (int)isset($_REQUEST['new_meeting']);?>&clm=' + clm + '&ord=' + ord + '&pgno=0&case=<?php echo $REQUEST['case'] ?>', callLoading: pl_loading});
+		$('.pm_table').html("");
+	}
+	
+	var callBack = function (params)
+	{
+//		var start = new Date().getTime();
+	    $('#content').html(params.teampatients).find('.users_livesearch').tagit({
+			autocomplete: {
+				source: users_data,
+				delay: 0
+			},
+			placeholderText: "Benutzer",
+			allowDuplicates: true,
+			allowSpaces: true,
+			hiddenInput: true,
+			showAutocompleteOnFocus: true,
+			beforeTagAdded: function(event, ui){
+				if(!ui.tag.children('input[type="hidden"]').val()) {
+					return false;
+				}
+			}
+		});
+		$('.has_tip').qtip({
+			style: {
+				name: 'cream',
+				tip: true,
+			    classes: 'teammeeting-qtip' //TODO-4137 Ancuta 19.05.2021
+			},
+			position: {
+				my: 'center right',  // Position my top left...
+				at: 'center left' // at the bottom right of...
+			},
+			show: {
+				event: 'click mouseenter'
+			},
+			hide: {
+				event: 'click mouseout'
+			}
+		});
+		
+//		var elements_nr = $('.users_livesearch').length;
+//		var end = new Date().getTime();
+//		var time = end - start;
+//		alert('Execution time: ' + time +' ('+elements_nr+')');
+
+		changes = false;
+	}
+	
+	$('.overallsort').live('click',function(){
+		loadpage($(this).attr('rel'), $(this).attr('title'));
+	});
+</script>
+
+<script type = "text/javascript" src = "<?php echo RES_FILE_PATH; ?>/javascript/tagit/tagit.js?<?php echo date('Ymd'); ?>" ></script>
+<style type="text/css">
+/* TODO-4137 Ancuta 19.05.2021 */
+.teammeeting-qtip{
+	width: 230px;
+}
+/* /-- */
+span.submit-floating {
+	width: 800px;
+	background-color: #BDE5F8;
+	border: 1px solid #000;
+    z-index:999;
+    position: fixed;
+    top:94%;
+    padding: 5px 10px;
+    cursor: pointer;
+    border: none;
+    font-weight: bold;
+}
+/*IM-162, elena, 07.12.2020 */
+li.tpl_entry{
+	border:1px solid #aed0ea;
+	background-color:#deedf7;
+	padding:4px;
+	margin-bottom:4px;
+	border-radius:3px;
+}
+li.tpl_entry:hover{
+	border:1px solid #c0cba8;
+	background-color:#ccefaa;
+
+}
+ul.tagit{
+	width:110px !important;
+}
+
+</style>
+<div id="showform_calendarImg" style="display: none;">
+	<img id="calImg" src="<?php echo RES_FILE_PATH; ?>/images/calendar.png" alt="Popup" class="trigger">
+</div>
+<h1><?php echo $this->translate('teammeeting_header'); ?> <?php echo ucfirst($_REQUEST['case']) ?></h1>
+<input type="hidden" id="patient_case" value="<?php echo $this->case; ?>" />
+<div style="width: 100%">
+	<div style="float: left;">
+		<?php $case = strtolower($_REQUEST['case']) ; ?>
+
+		<form name="new_meeting" id="new_meeting" method="POST" action="<?php echo APP_BASE; ?>team/teammeeting?case=<?php echo $case; ?>">
+			<input type="submit" name="new_meeting" value="<?php echo $this->translate('new_meeting'); ?>" />
+			<span>&nbsp;<?php echo $this->translate('meeting_or_select_existing'); ?> &nbsp;</span>
+		</form>
+	</div>
+	<div style="float: left;">
+		<?php echo $this->formSelect('select_meeting', $this->meetingid, $attrs, $this->meeting_selector); ?>
+	</div>
+</div>
+<br class="clearer" />
+
+<form name="teammeeting" id="teammeeting" method="POST" action="">
+
+<input type="hidden" name="ajax_save" id="ajax_save" value="0">
+<!-- ISPC-2161 p.15 -->
+	<fieldset>
+		<legend><?php echo $this->translate('teammeeting_header'); ?></legend>
+		<div class="settings_row_ed">
+			<label class="settings_row_ed_master" for="meeting_name"><?php echo $this->translate('meeting_name'); ?> </label>
+			<input type="text" name="meeting_name" id="meeting_name"  class="meeting_input" value="<?php echo $this->meeting_name; ?>" />
+			<div class="error"><? echo $this->error_meeting_name; ?></div>
+		</div>
+		
+		<div class="settings_row_ed">
+			<label class="settings_row_ed_master" for="meeting_date"><?php echo $this->translate('meeting_date'); ?> </label>
+			<div class="settings_prefix_nr">
+				<input type="text" name="date" id="meeting_date" value="<?php echo $this->date; ?>" />
+			</div>
+		</div>
+		
+		<br style="clear: both;"/>
+		<div class="error_new meeting_fill_date">
+			<?php echo $this->translate('meeting_fill_date'); ?>
+		</div>
+		
+		<div class="error_new meeting_invalid_date">
+			<?php echo $this->translate('meeting_invalid_date'); ?>
+		</div>
+		
+		<div class="settings_row_ed">
+			<label class="settings_row_ed_master" for="meeting_time_start"><?php echo $this->translate('meeting_duration'); ?> </label>
+			<div class="settings_prefix_nr">
+				<input type="text" name="from_time" id="meeting_time_start" value="<?php echo $this->from_time; ?>" />
+				<input type="text" name="till_time" id="meeting_time_end" value="<?php echo $this->till_time; ?>" />
+			</div>
+			<br style="clear: both;"/>
+			<input type="hidden" name="case" value="<?php echo $_REQUEST['case'] ?>" />
+			
+			<div class="error_new meeting_fill_start_time">
+				<?php echo $this->translate('meeting_fill_start_time'); ?>
+			</div>
+			
+			<div class="error_new meeting_fill_end_time">
+				<?php echo $this->translate('meeting_fill_end_time'); ?>
+			</div>
+			
+			<div class="error_new meeting_start_higher_than_end">
+				<?php echo $this->translate('meeting_start_higher_than_end'); ?>
+			</div>
+		</div>
+		<br />
+		<div class="settings_row_ed">
+			<label class="settings_row_ed_master" for="meeting_completed"><?php echo $this->translate('meeting_completed'); ?> </label>
+			<div class="settings_prefix_nr">
+				<input type="checkbox" name="completed" id="meeting_completed" value="1" <?php if($this->completed == '1'): ?> checked="checked" <?php endif; ?> />
+			</div>
+		</div>
+	</fieldset>
+
+<? if($this->location_option== "1"):?>
+<div style="float: left;">
+	<? if($this->completed != '1') :?>
+	<label><?php echo $this->translate('patients from location: '); ?></label>
+	<select id="patients2location" name="patients_location">
+	<option value="0"><? echo $this->translate('Show patients from all locations'); ?></option>
+	<? foreach($this->client_locations as $k=> $loc_data):?>
+		<option value="<? echo $loc_data['id'];?>"    <? if($this->patients_location == $loc_data['id']):?> selected = "selected" <? endif;?>    ><? echo $loc_data['location'];?> (<? echo $this->location_patients_count[$loc_data['id']] ?>)</option>
+	<? endforeach; ?>
+	</select>
+	
+	<? else : ?>
+	
+	<label><?php echo $this->translate('patients from location: '); ?></label>
+		<? if($this->patients_location == "0"):?>
+			<? echo $this->translate('Show patients from all locations'); ?>
+		<? else: ?>
+			<? echo $this->location_details[$this->patients_location]['location']; ?>
+			<input type="hidden" name="patients_location" value="<? echo $this->patients_location; ?>"/>
+		<? endif; ?>
+	<? endif;?>
+</div>
+<? endif;?>
+
+
+
+
+<br class="clearer" />
+<!-- ISPC-2161 p.13 -->
+<? if($this->add_extra_patients =="1" && $this->completed != '1'):?>
+	<a href="javascript:void(0)" class="add_extra_patients" >
+		<img src="<?php echo RES_FILE_PATH; ?>/images/action_add.png" />
+		<b><? echo $this->translate('add extra patients');?></b>
+	</a>
+<? endif;?>
+
+	<div id="example_wrapper" style="position:fixed;"></div>
+	
+	<div id="container">
+		<div class="inner_container_floating">
+			<table width="auto" border="0" cellpadding="0" cellspacing="0" class="datatable overalllistatable pm_table" style="border-width:0px;border-collapse:collapse;margin-top: 5px;">
+			
+			</table>
+		</div>
+	</div>
+	
+	<div id="content">
+		<!--Ajax loaded patient list-->
+	</div>
+	<br />
+<? if($this->add_extra_patients =="1" && $this->completed != '1'):?>
+	<a href="javascript:void(0)" class="add_extra_patients" >
+		<img src="<?php echo RES_FILE_PATH; ?>/images/action_add.png" />
+		<b><? echo $this->translate('add extra patients');?></b>
+	</a>
+<? endif;?>
+	
+	<fieldset>
+		<legend><?php echo $this->translate('organizational_field'); ?></legend>
+		<div class="settings_row_ed">
+				<textarea name="organizational" id="organizational" style="width:100%;" rows="7"><?php echo $this->organizational; ?></textarea>
+		</div>
+		<br />
+	</fieldset>
+	<fieldset>
+		<legend><?php echo $this->translate('attending_users'); ?></legend>
+		<?php if($this->attendee_users && $this->available_groups): ?>
+		<div class="sellect-all">
+			<ul  id="listgroups">
+				<li>
+					<label for="checkall">
+						<input name="all_id[]" onclick="checkedall(this)" value="" type="checkbox" id="checkall">&nbsp;<?php echo $this->translate('selectall'); ?>
+					</label>
+				</li>
+				<?php $chk_data = $this->available_groups; ?>
+				<?php foreach($chk_data as $k_u => $v_u): ?>
+				<li>
+					<label for="checkall-<?php echo $k_u; ?>"><input name="all_group_<?php echo $k_u; ?>" alt="<?php echo $k_u; ?>" onclick="check_group(this);" value="" type="checkbox" id="checkall-<?php echo $k_u; ?>" class="group-chks">&nbsp;Gruppe: <?php echo $v_u; ?></label>
+				</li>
+				<?php endforeach;?>
+			</ul>
+        </div>
+		<br class="clearer" />
+		
+		<ul id="listclientuser_name_list">
+			<?php foreach($this->attendee_users as $k_u => $v_u): ?>
+			<li>
+				<label for="client_user_<?php echo $v_u['id']; ?>" id="lbl_username_<?php echo $v_u['id']; ?>">
+					<?php $checked = ''; ?>
+					<?php if(in_array($v_u['id'], $this->attending_users)): ?>
+					<?php $checked = 'checked="checked"'; ?>
+					<?php endif; ?>
+					<input name="attending_users[]" id="client_user_<?php echo $v_u['id']; ?>" type="checkbox" class="group-<?php echo $v_u['groupid']; ?>" value="<?php echo $v_u['id']; ?>" <?php echo $checked; ?>  /><?php echo $v_u['user_title'] ." ". $v_u['last_name']; ?>,&nbsp;<?php echo $v_u['first_name']; ?>
+				</label>
+			</li>
+			<?php endforeach; ?>
+		</ul>
+		<?php else: ?>
+		<div>
+			<?php echo $this->translate('nousers'); ?>
+		</div>
+		<?php endif; ?>
+	</fieldset>
+	
+	<br/>
+	<span class="submit-floating">
+		<input type="hidden" name="mid" id="mid" value="<?php echo $this->meetingid; ?>" />
+		<input type="hidden" name="status" id="status" value="<?php echo $this->status_t; ?>" />
+		<input type="hidden" name="meetingid" id="meetingid" value="<?php echo $this->meetingid; ?>" />
+		<input type="hidden" name="save_form" value="0" id="save_form"/>
+		<input type="button" name="save" value="<?php echo $this->translate('save'); ?>" id="save_form_data"  class="meeting_btn"  />
+		<input type="hidden" name="save_by_modal"  id="save_by_modal" value="0" />
+		
+		<input type="button" name="pdf" value="<?php echo $this->translate('generatepdf'); ?>"  class="meeting_btn pdfbtn" data-pdf_option="pdf" /> 
+		<input type="button" name="pdfview" value="<?php echo $this->translate('generatepdfview'); ?>"  class="meeting_btn pdfbtn"   data-pdf_option="pdfview" />
+		<input type="button" name="pdfviewusers" value="<?php echo $this->translate('generatepdfusersdata'); ?>"  class="meeting_btn pdfbtn" data-pdf_option="pdfviewusers"   />
+		
+		
+		<input type="hidden" name="pdf_option" value=""  id="pdf_option"  />
+		
+		
+	</span>
+	
+	<fieldset>
+		<legend><?php echo $this->translate('files_history'); ?></legend>
+		<!-- <table width="85%" border="0" align="left" cellpadding="0" cellspacing="0" class="datatable" id="listpatientfiles_contenttable">
+			<tr>
+				<th height="20" align="left" valign="top" width="15%"><strong><?php echo $this->translate('date'); ?></strong></th>
+				<th height="20" align="left" valign="top" width="40%"><strong><?php echo $this->translate('title'); ?></strong></th>
+				<th align="left" valign="top" width="15%"><strong><?php echo $this->translate('filetype'); ?></strong></th>
+				<th align="left" valign="top" width="15%"><strong><?php echo $this->translate('uploadby'); ?></strong></th>
+				<th align="left" valign="top" width="15%"><strong><?php echo $this->translate('deletes'); ?></strong></th>
+			</tr>
+			<?php
+				$filetypearray = array("zip" => "zip.png", "msword" => "word.png", "vnd.openxmlformats-officedocument.wordprocessingml.document" => "word.png", "docx" => "word.png", "excel" => "excel.png", "xls" => "excel.png", "XLSX" => "excel.png", "vnd.openxmlformats-officedocument.spreadsheetml.sheet" => "excel.png", "pdf" => "pdf.png", "txt" => "text.png", "text" => "text.png", "plain" => "text.png", "vnd.ms-powerpoint" => "powerpoint.png", "vnd.openxmlformats-officedocument.presentationml.presentation" => "powerpoint.png", "jpeg" => "file-jpg.png", "jpg" => "file-jpg.png", "gif" => "file-gif.png");
+			?>
+			<?php foreach($this->files_history as $keyf => $fileData):
+
+					$filetype = strtoupper($fileData['file_type']);
+					$file_type = $filetypearray[$fileData['file_type']];
+					$allUsers = $this->allusers;
+			?>
+				<?php 
+					
+					$meeting = '';
+					if($_REQUEST['meetingid'])
+					{
+						$meeting = "meetingid=".$_REQUEST['meetingid'].'&';
+					}
+					
+					if($fileData['isdeleted'] == 1):
+						$title = "<strike>" . $fileData['title'] . "</strike>";
+						$delete = " - ";
+						$prefix = " - " . $this->translate('deleted');
+					else:
+						$title = '<a href="'.APP_BASE.'team/meetingfile?doc_id=' . $fileData['id']. '&tab='.$fileData['tabname'].'">' . $fileData['title'] . '</a>';
+						$delete = '<a href="'.APP_BASE.'team/meetingfile?'.$meeting.'delid=' . $fileData['id'] . '"><img src="' . RES_FILE_PATH . '/images/action_delete.png" border="0" /></a>';
+						$prefix = "";
+					endif;
+				?>
+			
+				<?php // if($fileData['isdeleted'] != 1): ?>
+					<tr class="row">
+						<td height="20" align="left" valign="top"><?php echo date("d.m.Y H:i", strtotime($fileData['create_date'])); ?></td>
+						<td height="20" align="left" valign="top"><?php echo $title . $prefix; ?></td>
+						<td align="left" valign="top"><?php echo $filetype; ?></td>
+						<td align="left" valign="top"><?php echo $allUsers[$fileData['create_user']]; ?></td>
+						<td align="left" valign="top"><?php echo $delete; ?></td>
+					</tr>
+				<?php // endif; ?>
+		<?php endforeach; ?>
+		</table> -->
+		<table id="table_file" class="table table-striped table-bordered table-hover table-condensed dataTable no-footer">
+		 	<thead>
+		 		<tr>
+		 			<th><?php echo $this->translate('date');?></th>
+		 			<th><?php echo $this->translate('title');?></th>
+		 			<th><?php echo $this->translate('filetype');?></th>
+		 			<th><?php echo $this->translate('uploadby');?></th>
+		 			<th><?php echo $this->translate('actions'); ?></th>
+		 		</tr>
+		 	</thead>
+ 		</table>
+	
+	<input type="hidden" id="extra_patients" name="extra_patients" value=""/>
+	 
+	</fieldset>
+</form>
+<!-- IM-162, elena, 07.12.2020 -->
+<div id="patient_template_dialog">
+	<h4>Einträge aus vorherigen Besprechungen</h4>
+	<br>
+	<div id="patient_template_dialog_content">
+
+	</div>
+</div>
+
+<div id="extra_patients-dialog" title="<? echo  $this->translate('Add extra Patients');?>">
+
+	<div class="extra_patients_block">
+		<div class="extra_patients_row p_search">
+			<label><? echo  $this->translate('Search Extra Patients');?></label>
+			<input type="text" name="field_value" id="patientsearch_team_meeting" />
+		</div>
+		<?php if (strlen($case) == 0 ) : ?>
+		<div class="extra_patients_row extra_patient_type" style="margin-right: 40px;">
+			<label><? echo  $this->translate('Search by status');?></label>
+		</div>
+		<div class="extra_patients_row extra_patient_type">
+			<input type="radio" name="status" id="extra_patients_standby" value="standby"  class="extra_patients_status"/>
+			<label for="extra_patients_standby">
+				<? echo  $this->translate('Extra Standby Patients');?>
+			</label>
+		</div>
+	
+		<div class="extra_patients_row extra_patient_type">
+			<input type="radio" name="status" id="extra_patients_discharge" value="discharged_alive"  class="extra_patients_status"/>
+			<label for="extra_patients_discharge">
+				<? echo  $this->translate('Extra Discharge Patients');?>
+			</label>
+		</div>
+	
+		<div class="extra_patients_row extra_patient_type">
+			<input type="radio" name="status" id="extra_patients_dead" value="discharged_dead" class="extra_patients_status"/>
+			<label  for="extra_patients_dead" >
+				<? echo  $this->translate('Extra Dead Patients');?>
+			</label>
+		</div>
+		<?php else: ?>
+		<input type="hidden" name="status" id="extra_patients_all" value="all" class="extra_patients_status"/>
+		<?php endif; ?>
+		<br class="clear" />
+	</div>
+
+	<div id="patients_resulted" style="display: none;">
+		<!-- Load list  -->
+		<div id="patient_status_tr"></div>
+		<table id="table_patient" class="table table-striped table-bordered table-hover table-condensed dataTable no-footer">
+		 	<thead>
+		 		<tr>
+		 			<th><input type="checkbox" id="checkall_pat" class="select_patients" title="<?php echo $this->translate('select_all') ?>" /></th>
+		 			<th><b><?php echo $this->translate('epid');  ?></b></th>
+		 			<th><b><?php echo $this->translate('firstname');  ?></b></th>
+		 			<th><b><?php echo $this->translate('lastname');  ?></b></th>
+		 		</tr>
+		 	</thead>
+ 		</table>
+	</div>
+
+
+
+</div>
+
+
+<script type="text/javascript">
+	//ajaxCallserver({url: appbase+'team/fetchteampatients?meetingid=<?php echo $_REQUEST['meetingid']; ?>&new_meeting=<?php echo (int)isset($_POST['new_meeting']);?>&clm=ln&ord=ASC&pgno=0', callLoading: pl_loading}); //ISPC -2161 p.6
+	ajaxCallserver({url: appbase+'team/fetchteampatients?meetingid=<?php echo $mid; ?>&new_meeting=<?php echo (int)isset($_POST['new_meeting']);?>&clm=ln&ord=ASC&pgno=0&case=<?php echo $_REQUEST['case'] ?>', callLoading: pl_loading});
+</script>

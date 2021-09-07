@@ -1,0 +1,344 @@
+<?php
+    //css append
+    $this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/page-css/versorger.css');
+    
+    //js append
+    $this->headScript()->appendFile (RES_FILE_PATH . '/javascript/dateUtil.js');
+    
+    /*
+    //add file uploader
+    $this->headScript()->appendFile(APP_BASE.'javascript/fine-uploader/fine-uploader.min.js');
+    $this->headLink()->appendStylesheet(APP_BASE.'javascript/fine-uploader/fine-uploader.css');
+    //rendered-add the fine-uploader file-uploader template
+    $qqtemplate = $this->render("templates/qq_fileupload_template_small_2017_09.html");
+    //$qqtemplate = Pms_Template::createTemplate(array(), 'templates/qq_fileupload_template_2018_08.html');
+    $this->headScript()->setAllowArbitraryAttributes(true)->appendScript($qqtemplate, 'text/template', array("id" => "qq-template", "noescape" => true));
+    */
+
+    /**
+     * LEAVE next with APP_BASE
+     */
+        $this->headScript()->appendFile( APP_BASE . '/javascript/livesearch/getzipcities.js' );
+        $this->headScript()->appendFile( APP_BASE . '/javascript/livesearch/gethealthinsurance.js' );
+        $this->headScript()->appendFile( APP_BASE . '/javascript/livesearch/getdiagnosisicd.js' );
+        $this->headScript()->appendFile( APP_BASE . '/javascript/livesearch/getfamilydoctor.js' );
+        $this->headScript()->appendFile( APP_BASE . '/javascript/livesearch/getspecialist.js' );
+        $this->headScript()->appendFile( APP_BASE . '/javascript/livesearch/getcareservice.js' );
+        $this->headScript()->appendFile( APP_BASE . '/javascript/livesearch/getsupplies.js' );
+        $this->headScript()->appendFile( APP_BASE . '/javascript/livesearch/getpharmacy.js' );
+        $this->headScript()->appendFile( APP_BASE . '/javascript/livesearch/getsuppliers.js' );
+        $this->headScript()->appendFile( APP_BASE . '/javascript/livesearch/gethomecare.js' );
+        $this->headScript()->appendFile( APP_BASE . '/javascript/livesearch/getphysiotherapists.js' );
+        $this->headScript()->appendFile( APP_BASE . '/javascript/livesearch/getvoluntaryworkers.js' );
+        $this->headScript()->appendFile( APP_BASE . '/javascript/livesearch/getchurches.js' );
+        $this->headScript()->appendFile( APP_BASE . '/javascript/livesearch/gethospiceassociation.js' );
+        $this->headScript()->appendFile( APP_BASE . '/javascript/livesearch/getremedysupplies.js' );
+        $this->headScript()->appendFile( APP_BASE . '/javascript/livesearch/getremedyaid.js' );
+        
+        // 		        $layout->getView()->headScript()->appendFile( APP_BASE . 'javascript/views/patient/patientdetails.js' );
+    
+    
+?>
+
+<?php
+$datas = $this->data;
+$addresses = array();
+$metaCategorys = array();
+
+/*
+ * addNew template for each box
+ */
+foreach ($datas['__meta-categorys'] as $cat => $data) {
+    /* $this->headScript()->setAllowArbitraryAttributes(true)
+    ->appendScript($data['addnewDialogHtml'], 'text/template', array("id" => "{$cat}_addnewDialogHtml", "noescape" => true)); */
+	echo ('<script type="text/template" id="'."{$cat}_addnewDialogHtml".'">'."{$data['addnewDialogHtml']}".'</script>');//27.10.2020 Carmen ISPC-2672 Hotfix
+    unset($data['addnewDialogHtml']);
+    
+    $metaCategorys[$cat] = $data;
+}
+
+/*
+ * update template for each box entry
+ */
+foreach ($datas as $cat => $data) {
+
+    foreach ($data as $key=>$entry) {
+        
+        if (isset($entry['editDialogHtml'])){
+            /* $this->headScript()->setAllowArbitraryAttributes(true)
+            ->appendScript($entry['editDialogHtml'], 'text/template', array("id" => "{$cat}_editDialogHtml_{$key}", "noescape" => true)); */
+        	echo ('<script type="text/template" id="'."{$cat}_editDialogHtml_{$key}".'">'."{$entry['editDialogHtml']}".'</script>');//21.10.2020 Nico ISPC-2672 Hotfix
+        }
+
+        $addresses[$cat][$key] = $entry['address'];
+
+    }    
+}
+?>
+
+
+<script>
+    var memos = <?=json_encode($this->memos);?>;
+    var addresses = <?=json_encode($addresses);?>;
+    var metaCategorys = <?=json_encode($metaCategorys);?>;
+</script>
+
+<!-- datapicker image -->
+<div id="calImgs" style="display: none;">
+    <img id="calImg" src="<?php echo RES_FILE_PATH; ?>/images/calendar.png" alt="Popup" class="trigger">
+</div>
+
+
+<!-- start  div#tab_container_provider -->
+<div id="tab_container_provider" class="tab_container versorger">
+
+
+<?php foreach ($this->boxesPlacement as $colid=>$colcats) :?>
+
+    <!-- start  div#provider_<?=$colid?> -->
+    <div id="provider_<?=$colid;?>" class="versorger-<?php echo $colid;?>">
+        
+    <?php foreach ($colcats as $cc) : ?>
+    <?php $cat = $this->mappings[$cc]; ?>
+
+        
+        <?php 
+            
+            /*
+             * set what boxes are opened and what closed
+             */
+            switch ($this->boxesOpened) {
+                
+                case "ALL_OPENED":
+                
+                    $disp='active';
+                
+                break;
+                    
+                case "ALL_CLOSED":
+                    
+                    $disp='inactive';
+                    
+                break;
+                    
+                case "ONLY_WITH_CONTENT":
+                    
+                    $with_data = array_filter($this->data[$cc], function ($item){
+                        return ! empty($item['editDialogHtml']);
+                    
+                    });
+                    
+                    if(count($with_data)>0) {
+                        $disp="active"; 
+                    } else {
+                        $disp='inactive';
+                    }
+                    
+                break;
+                    
+                default:
+                    if (in_array($cat['extra_form_ID'], $this->boxesOpened)) {
+                        $disp="active";
+                    } else {
+                        $disp='inactive';
+                    }
+                break;
+            }
+            
+            
+        ?>
+            
+            
+            
+        <div id="box-<?php echo $cc;?>" class="catdetails">
+        <div class="versorger-catheader <?php echo $disp;?>">
+            <div class="headtitle"><?php echo $cat['label'];?></div>
+            <div class="headtitle-img">
+                <?php if(isset($this->memos[$cc]) && $this->memos[$cc]['color']=="green"):?>
+                <img src="<? echo RES_FILE_PATH;?>/images/circle_green24.png">
+                <?php endif;?>
+                <?php if(isset($this->memos[$cc]) && $this->memos[$cc]['color']=="red"):?>
+                    <img src="<? echo RES_FILE_PATH;?>/images/circle_red24.png">
+                <?php endif;?>
+            </div>
+        </div>
+        
+        <div class="entries" <?=($disp=='inactive') ? "style='display:none;'" : "";?>>
+            
+            <input type="hidden" class="category" value="<?php echo $cc;?>">
+        <?php //ISPC-2381 Carmen 25.02.2020 ?>
+	            <?php if ($cc=="PatientRemedies"):?> <!-- ISPC-2381 Carmen 18.01.2021 -->
+                <?php if(count($this->data['hilfsmittel_favs'])):?>
+                <script>
+                    $(document).on('change', '.versorger-hilfsmittel-quickedit', function(){
+                        var mymode='add';
+                        if(!$(this).prop('checked')){
+                            mymode='remove';
+                        }
+                        var pdata={
+                            id:'<?php echo $this->encid;?>',
+                            itemname:$(this).val(),
+                            mode:mymode
+                        };
+                        $.post('ajax/quickpatientremediesedit',pdata);
+                    });
+                </script>
+                <?php 
+                //ISPC-2381 Carmen 18.01.2021
+                $set_remedies= array();
+                foreach($this->data['PatientRemedies'] as $kdata => $vdata)
+                {
+                	 
+                	foreach($vdata as $kkey => $vkey)
+                	{
+                		$set_remedies[] = $vkey['remedies'];
+                	}
+                }
+                //$set_remedies=array_column($this->data['PatientRemedies'],'remedies');
+                //--
+                ?>
+                <div class="entry">
+                        <?php foreach ($this->data['hilfsmittel_favs'] as $hilfsid=>$hilfsname):?>
+                            <div class="entryline">
+                                <label><?php echo htmlspecialchars($hilfsname);?></label>
+                                <span class="entrydetail"><input class="versorger-hilfsmittel-quickedit" type="checkbox" value="<?php echo htmlspecialchars($hilfsname);?>" <?php if (in_array($hilfsname, $set_remedies)) echo "checked";?>></span>
+                            </div>
+                        <?php endforeach;?>
+                    </div>
+                <?php endif;?>
+                 <?php foreach ($this->data[$cc] as $entry):
+	                 //ISPC-2381 Carmen 27.01.2021
+	                 foreach($entry as $kdata) {
+                 ?>
+                    <?php if(in_array($kdata['remedies'], $this->data['hilfsmittel_favs'])) continue;?>
+                    <div class="entry">
+                        <div class="entryline">
+                            <label>Hilfsmittel</label>
+                            <span class="entrydetail"><?php echo htmlspecialchars($kdata['remedies']);?></span>
+                        </div>
+                        <?php if($kdata['supplier']!=""):?>
+                        <div class="entryline">
+                            <label>Versorger</label>
+                            <span class="entrydetail"><?php echo htmlspecialchars($kdata['supplier']);?></span>
+                        </div>
+                        <?php endif;?>
+                        <?php if($kdata['suppstatus']!=""):?>
+                        <div class="entryline">
+                            <label>Status</label>
+                            <span class="entrydetail"><?php echo htmlspecialchars($kdata['suppstatus']);?></span>
+                        </div>
+                        <?php endif;?>
+                    </div>
+                <?php  } endforeach;?>
+                <div>
+                    <a href="<?php echo APP_BASE;?>patient/patienttoollistedit?id=<?php echo $this->encid;?>&newform=1"><span <?php echo $style;?> class="ibutton"><img src="<? echo RES_FILE_PATH;?>/images/edit-icon.gif"> <?php echo $cat['label'];?> bearbeiten</span></a>
+                    <span class="ibutton memobutton"><img src="<? echo RES_FILE_PATH;?>/images/edit-icon.gif"> Memo</span>
+                </div>
+                <?php endif;
+                //--
+                ?>
+            <?php foreach ($this->data[$cc] as $key => $entry): ?>
+                
+                
+                <?php if (empty($entry['editDialogHtml'])) continue;?>
+                
+                <div class="entry">
+                    <?php foreach($entry['extract'] as $row):?>
+                        <div class="entryline">
+                            <?php if ( ! empty($row[0])) : ?>
+                            <label><?=$row[0]?></label> 
+                            <?php endif; ?>
+                            
+                            <span class="entrydetail"><?= nl2br($this->escape($row[1]));?></span>
+                        </div>
+                    <?php endforeach;?>
+                    
+                    <input type="hidden" class="hidden-json-data" value='<?=$key;?>'>
+                    <div class="info-button"><img src="<? echo RES_FILE_PATH;?>/images/info_med26.png" title="<?=$this->translate('Details')?>"></div>
+                </div>
+                
+                
+            <?php endforeach;?>
+	
+            <?php
+            
+            $style="";
+            
+            if ( ! $cat['multipleEntries'] && ! empty($this->data[$cc][0]['editDialogHtml'])) {
+                $style='style="display:none;"';
+            }
+            
+            ?>
+            
+            <?php if ($cc != "PatientRemedies"): ?> <!-- ISPC-2381 Carmen 18.01.2021 -->
+                <div>
+                    <span <?php echo $style;?> class="ibutton addbutton"><img src="<? echo RES_FILE_PATH;?>/images/btttt_plus.png"> <?php echo $cat['label'];?> hinzufügen</span>
+                    <span class="ibutton memobutton"><img src="<? echo RES_FILE_PATH;?>/images/edit-icon.gif"> Memo</span>
+                </div>
+            <?php endif; ?>
+        </div>
+        </div>
+    
+    
+    <?php 
+        endforeach;
+        /*
+         * end end foreach ($colcats as $cc) 
+         */
+    ?>
+    </div>
+    <!-- end  div#provider_<?=$colid?> -->
+    
+<?php 
+endforeach;
+/*
+ * end foreach ($this->boxesPlacement as $colid=>$colcats)
+ */
+?>
+
+</div>
+<!-- end div#tab_container_provider-->
+
+
+<div class="clearer"></div>
+<!-- 
+<a href="patientnew/versorger?id=<?=$this->encid?>&__action=versorgerToPrint" target="_blank"><img src="images/print.gif"></a> 
+ -->
+<a href="patientnew/versorger?id=<?=$this->encid?>&__action=versorgerToPDF" target="_blank" class="dontPrint"><img src="<? echo RES_FILE_PATH;?>/images/doc_pdf.png"></a>
+
+<!-- start dialog versorger-entryeditor -->
+<div id="versorger-entryeditor" style="display: none">
+    <form class="wlassessment_form_class livesearchFormEvents">
+        <div class="content"></div>
+        <!-- 
+        <div class="toolbar">
+            <input type="button" class="clipboard-button" value="Adresse kopieren">
+            <input style="padding:1px;" type="button" class="delbutton" value="Eintrag entfernen">
+            <input style="float:right;" type="submit" class="savebutton" value="Übernehmen">
+        </div>
+         -->
+    </form>
+</div>
+<!-- start dialog versorger-clipboardcopy -->
+<div id="versorger-clipboardcopy" style="display: none">
+    <textarea></textarea>
+</div>
+<!-- start dialog versorger-memo -->
+<div id="versorger-memo" style="display: none">
+    <form>
+        <input type="hidden" name="__category" value="">
+        <div style="width:200px;display:inline-block;margin-right:8px;">
+            <textarea name="memo" style="height:80px;width:200px;"></textarea>
+        </div>
+        <div style="width:180px;display:inline-block;">
+            <ul style="list-style-type: none;">
+                <li><input name="color" value="none" type="radio"><?=$this->translate('no light');?></li>
+                <li><input name="color" value="green" type="radio"><?=$this->translate('green light');?> (<img style="width:16px;vertical-align:bottom;" src="<? echo RES_FILE_PATH;?>/images/circle_green24.png">)</li>
+                <li><input name="color" value="red" type="radio"><?=$this->translate('red light');?> (<img style="width:16px;vertical-align:bottom;" src="<? echo RES_FILE_PATH;?>/images/circle_red24.png">)</li>
+            </ul>
+        </div>
+        <div style="margin-top:4px;padding:4px;text-align:center;">
+            <input type="button" class="versorger-memo-button" value="<?=$this->translate('save changes')?>">
+        </div>
+    </form>
+</div>

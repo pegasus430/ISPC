@@ -1,0 +1,197 @@
+<?php
+
+
+$itemclasses = FormBlockPcoc::$itemclasses;
+$statitems = FormBlockPcoc::$items;
+$histvals=[];
+if(isset($this->data['_more']) && count($this->data['_more'])){
+    $histvals=$this->data['_more'];
+    $histvals = array_reverse($histvals);
+}
+$more_items=[];
+foreach ($histvals as $k=>$hv){
+    $more=$hv['ipos_add'];
+    if(strlen($more)){
+        $more=json_decode($more,1);
+        if (is_array($more) && count($more)){
+            $x=0;
+            foreach ($more as $pair){
+                if(count($pair) == 2 && strlen($pair['key'])){
+                    $more_items[$pair['key']]=1;
+                    $histvals[$k]['more'][$pair['key']]=$pair['value'];
+                }
+            }
+        }
+    }
+}
+
+
+?>
+<style>
+    #pcoc_icondetails{
+        border-collapse:collapse;
+        border:1px solid #cccccc;
+    }
+    #pcoc_icondetails td,
+    #pcoc_icondetails th{
+        border:1px solid #cccccc;
+    }
+    #pcoc_icondetails th{
+        width:270px;
+        text-align:right;
+        padding:3px;
+        vertical-align: middle;
+    }
+
+
+    .small_color_code{
+        width:42px;
+        text-align:center;
+    }
+    #pcoc_icondetails td.pcocs-right-col{
+        width:270px;
+        text-align:left;
+        padding:3px;
+        vertical-align: middle;
+    }
+
+    #pcoc_icondetails .pcoc_status_icon_line-above{
+        border-top:2px solid black;
+    }
+</style>
+<table id="pcoc_icondetails">
+    <tr>
+        <th>Datum</th>
+        <?php foreach ($histvals as $histval):?>
+            <td class="small_color_code"><?php echo date('d.m. H:i', strtotime($histval['misc_date'])); ?></td>
+        <?php endforeach;?>
+        <td class="pcocs-right-col">
+        </td>
+    </tr>
+    <tr>
+        <th></th>
+        <?php foreach ($histvals as $histval):?>
+            <td class="small_color_code"><?php if($histval['is_ba']):?> BA <?php endif;?></td>
+        <?php endforeach;?>
+        <td class="pcocs-right-col">
+        </td>
+    </tr>
+    <?php foreach ($statitems as $section_k=>$section):?>
+        <?php $new_section=1;?>
+        <?php if (! in_array($section_k, ['phase','akps','ipos','nps','pcpss','psysoz','barthel'])){continue;}?>
+        <?php foreach ($section as $item_k=>$item):?>
+            <tr class="pcoc_status_icon_<?php echo $section_k;?> <?php if($new_section) :?>pcoc_status_icon_line-above<?php endif;?>" >
+                <?php $new_section=0;?>
+                <th><?php if($section_k == 'psysoz'){echo $item['short'];}else{echo $item['long'];}?></th>
+
+                <?php foreach ($histvals as $histval){
+                    $my_val = $histval[$item_k];
+                    $itemclass = $item['itemclass'];
+                    $itemclasses_items = $itemclasses[$itemclass];
+                    $style_add = "";
+                    if (!isset($itemclasses_items[$my_val]['iconxx'])) {
+                        $fc = "";
+                        if ($itemclasses_items[$my_val]['color'] == "#000000" || $itemclasses_items[$my_val]['color'] == "black") {
+                            $fc = "color:#ffffff;";
+                        }
+                        $style_add = "background-color:" . $itemclasses_items[$my_val]['color'] . ";" . $fc;
+                    }
+                    $pval="";
+                    if($item_k=="akps_akps"){
+                        $pval=$my_val;
+                    }
+                    if($item_k=='phase_phase'){
+                        if($histval['phase_change']){
+                            $pval='!!!';
+                        }
+                    }
+
+
+                    ?>
+                    <?php if($histval[$section_k."_enabled"]):?>
+                        <td  class="small_color_code" style="<?php echo $style_add;?>"><?php echo $pval;?></td>
+                    <?php else:?>
+                        <td  class="small_color_code"></td>
+                    <?php endif;?>
+                    <?php
+                }
+                ?>
+
+
+                <td class="pcocs-right-col">
+                    <?php
+                    if(isset($itemclasses_items[$my_val]['iconxx'])){
+                        echo '<img class="pcoc_shortstatus_icon" src=' . RES_FILE_PATH . "/" . $itemclasses_items[$my_val]['icon'].'>';
+                    }else{
+                        if($histval[$section_k."_enabled"]) {
+                            echo "<span>" . $itemclasses_items[$my_val]['disp'] . "</span>";
+                        }
+                    }
+
+                    ?>
+                </td>
+            </tr>
+        <?php endforeach;?>
+        <?php if($section_k=="ipos"):?>
+            <?php //add user generated customitems ipos;
+            $first_done=false;
+
+            ?>
+            <?php if (count($more_items)):?>
+                <?php foreach ($more_items as $item_k => $foo):?>
+                    <tr class="<?php if(!$first_done){echo "pcoc_status_icon_line-above"; $first_done=true;}?>">
+                        <th><?php echo htmlspecialchars($item_k);?></th>
+
+                        <?php foreach ($histvals as $histval){
+                            $my_val=0;
+                            if(isset($histval['more'][$item_k])){
+                                $my_val = $histval['more'][$item_k];
+                            }
+
+                            $itemclass = 'ipos';
+                            $itemclasses_items = $itemclasses[$itemclass];
+                            $style_add = "";
+                            if (!isset($itemclasses_items[$my_val]['iconxx'])) {
+                                $fc = "";
+                                if ($itemclasses_items[$my_val]['color'] == "#000000" || $itemclasses_items[$my_val]['color'] == "black") {
+                                    $fc = "color:#ffffff;";
+                                }
+                                $style_add = "background-color:" . $itemclasses_items[$my_val]['color'] . ";" . $fc;
+                            }
+                            $pval="";
+                            ?>
+
+
+                            <?php if($histval["ipos_enabled"]):?>
+                                <td  class="small_color_code" style="<?php echo $style_add;?>"><?php echo $pval;?></td>
+                            <?php else:?>
+                                <td  class="small_color_code"></td>
+                            <?php endif;?>
+                            <?php
+                        }
+                        ?>
+                        <td class="pcocs-right-col">
+                            <?php
+                            if(isset($itemclasses_items[$my_val]['iconxx'])){
+                                echo '<img class="pcoc_shortstatus_icon" src=' . RES_FILE_PATH . "/" . $itemclasses_items[$my_val]['icon'].'>';
+                            }else{
+                                if($histval["ipos_enabled"]) {
+                                    echo "<span>" . $itemclasses_items[$my_val]['disp'] . "</span>";
+                                }
+                            }
+                            ?>
+                        </td>
+
+                    </tr>
+                <?php endforeach;?>
+            <?php endif;?>
+
+        <?php endif;?>
+
+    <?php endforeach;?>
+
+
+
+
+
+</table>

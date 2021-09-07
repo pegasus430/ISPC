@@ -1,0 +1,68 @@
+<?php
+//ISPC-2697, elena, 18.11.2020
+?><div>
+<form id="inactive_anordnungen">
+
+    <?php foreach($this->anordnungen as $anordnung): ?>
+    <?php $params = json_decode($anordnung['parameters'], true) ?>
+    <?php
+    //ISPC-2816,Elena,04.02.2021
+    $aAdditionals = [];
+    foreach($params as $key => $value){
+    if(strpos($key, '_alarm_higher')){
+    $key_cleared = str_replace('_alarm_higher', '', $key);
+    $aAdditionals[$key_cleared]['alarm_higher'] = $value;
+    }
+    if(strpos($key, '_alarm_lower')){
+    $key_cleared = str_replace('_alarm_lower', '', $key);
+    $aAdditionals[$key_cleared]['alarm_lower'] = $value;
+    }
+    }
+
+    ?>
+    <?php
+        $timelinedata = json_decode($anordnung['timelinedata'], true);
+        foreach($timelinedata as $timeline){
+        $from = $timeline['from'];
+        $till = $timeline['till'];
+        for($j=$from;$j<$till;$j++){
+            $aColors[$j] = [ 'color'  => $anordnung['color'], 'name' => $anordnung['name'], 'id' => $anordnung['id']];
+        }
+        }
+
+
+    ?>
+
+    <div class="anordnung_item">
+        <div>
+            <div class="anordnung_name"><?php echo $anordnung['name']; ?></div>
+            <div class="anordnung_color" data-id="<?php echo $anordnung['id']; ?>" data-name="<?php echo $anordnung['name']; ?>" style="width:20px;height:20px;cursor:pointer;background-color:#<?php echo  $anordnung['color']; ?>"></div>
+        </div>
+        <div class="anordnung_params">
+            <?php foreach($params as $key => $value): ?>
+            <?php if(!strpos($key, '_alarm_higher') && !strpos($key, '_alarm_lower') ): //ISPC-2816,Elena,04.02.2021 ?>
+            <div class="anordnung-row">
+                <?php
+              $label = $key;
+              $label = strtr($label, array('_alarm_higher' => ' höhere Alarmgrenze', '_alarm_lower' => ' niedrigere Alarmgrenze'));
+                //ISPC-2816,Elena,04.02.2021
+                $add = '';
+                if(isset($aAdditionals[$key])){
+                $add = ' (' . $aAdditionals[$key]['alarm_lower'] . '/' . $aAdditionals[$key]['alarm_higher'] . ')';
+                }
+                ?>
+                <div class="anordnung_label"><?php echo $label; ?></div>
+                <div class="anordnung_val"><?php echo $value; ?><?php echo $add;//ISPC-2816,Elena,04.02.2021 ?></div>
+            </div>
+            <?php endif;//ISPC-2816,Elena,04.02.2021 ?>
+            <?php endforeach; ?>
+        </div>
+        <div class="anordnung_toolbar">
+            <input type="checkbox" value="<?php echo $anordnung['id']; ?>" name="anordnung_inactive[]"> Aktivieren
+
+        </div>
+        <div class="anordnung_desc"><?php echo $anordnung['description'] ; ?></div>
+    </div>
+    <?php endforeach; ?>
+</form>
+</div>

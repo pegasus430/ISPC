@@ -1,0 +1,130 @@
+<?php
+//ISPC-2507
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/data_tables/jquery.dataTables.js?'.date('Ymd'));
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/data_tables/dataTables.jqueryui.js?'.date('Ymd'));
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/data_tables/dataTables.jqueryui.css?' . date('Ymd'));
+?>
+ 
+<script type="text/javascript">
+$(document).ready(function() { /*------ Start $(document).ready --------------------*/
+	
+	// DATATABLE
+	var table = $('#table').DataTable({
+		// ADD language
+		 "language": {
+                "url": "<?php echo RES_FILE_PATH.'/javascript/data_tables/de_language.json?'.date('Ymd')?>"
+         },
+ 
+		sDom: 
+			'<"fg-toolbar ui-toolbar ui-widget-header ui-helper-clearfix ui-corner-tl ui-corner-tr"lfr>'+
+			't'+
+			'<"fg-toolbar ui-toolbar ui-widget-header ui-helper-clearfix ui-corner-bl ui-corner-br"<"#bottom_export">ip>',
+		
+
+			
+		"lengthMenu": [[10, 25, 50], [10, 25, 50]],
+			
+		processing: true,
+
+		info: false,
+		filter: false,
+		paginate: true,
+
+		serverSide: true,
+		"autoWidth": false,
+		"stateSave": false,
+		"scrollX": false,
+		"scrollCollapse": true,
+		"stateLoadCallback": function (settings)
+		{
+			o = false;
+			
+			 $.ajax( {
+				 url: appbase+'user/loadtablepref',
+				method: "POST",
+			    "async": false,
+			    data: { page: "doctorpharmarequest" },
+			    "dataType": "json",
+			    "success": function (json) {
+			        o = json;
+			    }
+			 });
+			 
+			 return o;
+		},
+		columns: [
+		          { data: "patient", className: "","width": "30%"},
+		          { data: "user", className: "","width": "30%"},
+		          { data: "status", className: "","width": "30%"},
+		          { data: "doctors", className: "","width": "30%"},
+		          { data: "create_date", className: "","width": "30%"},
+		          { data: "actions", className: " ","width": "10%" }
+			],
+			
+		columnDefs: [ 
+				       	{ "targets": -1, "searchable": false, "orderable": false },
+				       	{ "targets": 0, "searchable": false, "orderable": false },
+				       	{ "targets": 1, "searchable": false, "orderable": false },
+				       	{ "targets": 2, "searchable": false, "orderable": false },
+				       	{ "targets": 3, "searchable": false, "orderable": false },
+				       	
+				],
+ 		order: [[ 4, "desc" ]],
+		
+ 		ajax: {
+			url:'pharmarequests/getlist',
+			type: 'POST'
+		}
+ 	
+	});
+ 
+	
+	// DELETE
+/* 	$(".delete").live('click', function() {
+		$.confirmdeleteid = $(this).attr('rel');
+			jConfirm('<? echo $this->translate('confirmdeleterecord'); ?>', '<? echo $this->translate('confirmdeletetitle'); ?>', function(r) {
+			if(r)
+			{	
+				location.href = "<? echo APP_BASE ?>medicationnew/deleteunit?id="+ $.confirmdeleteid;
+			}
+		});
+	}); */
+	
+	$("select[name='table_length']").live('change', function() {
+		
+		if($(this).val())
+		{
+			$.ajax({
+				url : 'ajax/saveuserpageresults',
+				type : 'POST',
+				data : {
+					page: "doctorpharmarequest",
+					results: $(this).val()
+				} 
+			});
+			
+			 $('#setlimit').val( $(this).val());
+		}
+		
+	});
+	
+});/*-- END  $(document).ready ----------- --*/
+
+</script>
+<br/>
+ <h1><? echo $this->translate('Pharma - list of medication requested changes') ?></h1>
+ <br/>
+<div style="clear:both;"></div>
+	
+<table id="table" class="table table-striped table-bordered table-hover table-condensed dataTable no-footer  left_menu_datatable">
+ 	<thead>
+ 		<tr>
+ 			<th><?php echo $this->translate('Request_pateint');?></th>
+ 			<th><?php echo $this->translate('Request_user');?></th>
+ 			<th><?php echo $this->translate('Request_status');?></th>
+ 			<th><?php echo $this->translate('received_doctors');?></th>
+ 			<th><?php echo $this->translate('Request_date');?></th>
+ 			<th><?php echo $this->translate('actions'); ?></th>
+ 		</tr>
+ 	</thead>
+ </table>

@@ -1,0 +1,260 @@
+<script type="text/javascript">
+function isNumeric(value) {
+	if (value != null && !value.toString().match(/^[0-9]*$/)) return false;
+	return true;
+}
+$(function() {
+        $('#selectorz').hide();
+        excluded_vals   =   ["5","6","9","10","15","24","27","28","32","33"];
+        no_actual_vals = ["3","5","11","26","30","31","32","33"]; //reports that don't need "active patients"
+        selected_val    =   $('#reporttype').val();
+        $('#reporttype').change(function() {
+            selected_val = $('#reporttype').val();
+            //alert($.inArray(selected_val, excluded_vals));
+            $('#selectorz').find('option:first').attr('selected', 'selected').parent('select');
+            $('#mthdiv').hide("slow");
+            $('#only_now').val('1');
+            if($.inArray(selected_val, excluded_vals) != -1){
+                $('#selectorz').hide("slow");
+            } else {
+            	if($.inArray(selected_val, no_actual_vals) != -1){
+            		$('#only_now').val('0');
+                    $('#selectorz').hide("fast");
+                    $('#mthdiv').show("slow");
+                } else {
+                	$('#selectorz').show("slow");
+                }
+            }
+
+            
+        });
+        
+        $('#selectorz').change(function(){
+           if($('#selectorz').val() !=1){
+        	   $('#only_now').val('0');
+               $('#mthdiv').show("slow");
+           }  else {
+        	   $('#only_now').val('1');
+               $('#mthdiv').hide("slow");
+           }
+        });
+        
+        $('#btnsubmit').click(function(){
+			if(selected_val == 8){
+				return toagevalidation();
+			}
+			 if($.inArray(selected_val, excluded_vals) == -1) {
+				 var year_sel = 0;
+				 $.each($("input[name='year[]']:checked"), function() {
+					 if($(this).val() > 0){
+						 year_sel = 1;
+					 }
+				 });
+				 if(year_sel == 0) {
+					 jAlert("<?php echo $this->translate('pleaseselectyear'); ?>");
+				 	return false;
+				 }
+			 } 
+        });
+        
+});
+	function showage(val)
+	{
+		columnSort(val);
+//		if( val.value!=5 && val.value!=6  && val.value!=9 && val.value!=10 && val.value!=15 && val.value!=24 && val.value!=27 && val.value!=28)
+//		{
+//			document.getElementById('mthdiv').style.display="";
+//		}else{
+//			document.getElementById('mthdiv').style.display="none";
+//		}		
+ 		if(val.value==8)
+		{
+			document.getElementById('agebetween').style.display="";
+			$("#frmreport").submit(function(){
+				return toagevalidation();
+			});
+			
+		}else{
+			document.getElementById('agebetween').style.display="none";
+			$("#frmreport").unbind("submit");
+		}
+		if(val.value==5)
+		{
+			document.getElementById('threeweeks').style.display="";
+			$("#frmreport").submit(function(){
+				return nrdaysvalidation();
+			});
+			
+		}else{
+			document.getElementById('threeweeks').style.display="none";
+			$("#frmreport").unbind("submit");
+		}	
+		
+		if(val.value!=14)
+		{
+			document.getElementById('userdiv').style.display="";
+			
+		}else{
+			document.getElementById('userdiv').style.display="none";
+			
+		}
+		
+		if(val.value!=12 && val.value!=14  && val.value!="")
+		{
+			document.getElementById('sortdiv').style.display="";
+		}else{
+			
+			document.getElementById('sortdiv').style.display="none";
+		}
+		
+		
+	}
+	function weekavalidation(){
+		
+		//if(!isNumeric($('#fromtweeks').val())){jAlert("<?php echo $this->translate('numericvaluesonly'); ?>"); return false;}
+		if(!isNumeric($('#tweeks').val()) || $('#tweeks').val()==""){jAlert("<?php echo $this->translate('numericvaluesonly'); ?>"); return false;}
+				
+		//if(parseInt($('#fromtweeks').val())>parseInt($('#tweeks').val())){jAlert("<?php echo $this->translate('invalidconditions'); ?>"); return false;}
+		
+		
+		return true;
+	}
+	function toagevalidation(){
+		
+		if((!isNumeric($('#toage').val()) || $('#toage').val()=="") || (!isNumeric($('#fromage').val()) || $('#fromage').val()=="") ){
+			jAlert("<?php echo $this->translate('Bitte Alter eingeben'); ?>"); 
+			return false;
+		}
+		return true;
+	}
+	function nrdaysvalidation(){
+		
+		if(!isNumeric($('#tweeks').val()) || $('#tweeks').val()==""){
+			jAlert("<?php echo $this->translate('Bitte einen Wert eingeben'); ?>"); 
+			return false;
+		}
+		return true;
+	}
+
+	function ageavalidation(){
+		
+		if(!isNumeric($('#toage').val()) || $('#toage').val()==""){jAlert("<?php echo $this->translate('FROMAGE & Toage'); ?>"); return false;}
+
+		return true;
+	}	
+		
+</script>
+
+<form action="" method="post" name="frmreport" id="frmreport" target="_blank">
+<input type="hidden" id="only_now" name="only_now" value="0" />
+<fieldset>
+    <legend><?php echo $this->translate('lists')?></legend>
+    <p>
+    <?php echo $this->translate('lists_desc'); ?>
+    </p>
+        <p>
+    <?php echo $this->translate('lists_desc2'); ?>
+    </p>
+	 <div id="PatientsError" class="err">    <?php echo $this->error_message ?></div>
+	 <br /> 
+	 <font color="#FF0000"><?php echo $this->error_clientid ?></font><br />
+<!--	 <label class="headline" for="listname"><b><?php echo $this->translate('list')?> : </b></label><br />
+    <?php echo $this->formSelect('listname',$this->listname,NULL,$this->listarray)?>
+    <div id="PatientsError" class="error"><?php echo $this->error_listname ?></div>-->
+    <input name="listname" type="hidden" value="1" />
+    <br /><br />
+ 
+     <label class="headline" for="listname"><b><?php echo $this->translate('reporttype')?> : </b></label><br />
+     <div>
+         <?php echo $this->formSelect('reporttype',$this->reports,array('onchange'=>'showage(this);','style'=>'width:200px; float:left;'),$this->reporttypearray)?> &nbsp;&nbsp;&nbsp;&nbsp;
+        <select name="selector" id="selectorz" style="float:left;  margin-left:20px;">
+            <option value="1">Nur aktive Patienten</option>
+            <option value="2">alle Pat. aus folgendem Zeitraum</option>
+        </select>
+     </div>
+    <div id="DoctorError" class="error"><?php echo $this->error_reporttype ?></div>
+    <br /><br /> 
+    <div id="mthdiv" style="display:none;">
+    	    <label class="headline"><b><?php echo $this->translate('month')?>: </b></label><br />
+    <div id="month_id" class="TableCheckbox">
+   <?php echo $this->formMultiCheckbox('month', $this->month, null, $this->montharray,"&nbsp;"); ?></div>
+    
+    <div id="PatientsError" class="error"><?php echo $this->error_month ?></div>
+    <br />
+    <br />
+    
+    <label class="headline"><b><?php echo $this->translate('quarter')?>: </b></label><br />
+    <div id="quarter" class="TableCheckbox">
+   <?php echo $this->formMultiCheckbox('quarter', $this->quarter, null, array('1'=>'1','2'=>'2','3'=>'3','4'=>'4'),"&nbsp;"); ?></div>
+   
+   <div id="PatientsError" class="error"><?php echo $this->error_quarter ?></div>
+    <br />
+    <br />
+    
+    <label class="headline"><b><?php echo $this->translate('year')?> :</b></label><br />
+     <div id="year_id" class="Tableradiobox">
+     
+    <?php //echo $this->formRadio('year[]', $this->year, null, $this->yeararray,"&nbsp;"); ?>
+    <?php echo $this->formMultiCheckbox('year[]', $this->year, null, $this->yeararray,"&nbsp;"); ?>
+    
+    </div>
+    
+    <div id="PatientsError" class="error"><?php echo $this->error_year ?></div>
+    <br />
+    <br />
+    </div>
+     <div id="sortdiv" style="display:none;">
+	 <label class="headline" for="listname"><b><?php echo $this->translate('sortcolumn')?> : </b></label><br />
+    <?php echo $this->formSelect('columname',$this->aktullecolumn,NULL,array(""=>" "))?>
+    <div id="DoctorError" class="error"><?php echo $this->error_doctorname ?></div>
+    <br /><br />
+    </div>
+     <div id="userdiv" style="display:block;">
+	 <label class="headline" for="listname"><b><?php echo $this->translate('doctorname')?> : </b></label><br />
+    <?php echo $this->formSelect('doctorname',$this->doctorname,NULL,$this->doctorarray)?>
+    <div id="DoctorError" class="error"><?php echo $this->error_doctorname ?></div>
+    <br /><br />
+    </div>
+     <div id="threeweeks" style="display:none;">
+     <label class="headline"><b><?php echo $this->translate('treatedlongerthan3weeksandstillnotdischarged')?>&nbsp;(<?php echo $this->translate('days');?>) :</b></label><br />
+     <div id="threeweeks" class="Tableradiobox">
+   	<input name="tweeks" id="tweeks" type="text" /></div>
+       
+    <div id="PatientsError" class="error"><?php echo $this->error_tweeks ?></div>
+    <br />
+    <br />
+    </div>
+   <div id="agebetween" style="display:none;">
+     <label class="headline"><b><?php echo $this->translate('agebetween')?> :</b></label><br />
+     <div id="agebetween" class="Tableradiobox">
+    <input name="fromage" id="fromage" type="text" />&nbsp;und&nbsp;
+    <input name="toage" id="toage" type="text" /></div>
+       
+    <div id="PatientsError" class="error"><?php echo $this->error_agebet ?></div>
+    <br />
+    <br />
+    </div>
+    <label class="headline"><b><?php echo $this->translate('edition')?>: </b></label><br />
+     <div id="editionid" class="Tableradiobox">
+    <?php echo $this->formRadio('radio[]', $this->radio, null, $this->radioarray,"&nbsp;"); ?></div>
+ 
+    <div id="PatientsError" class="error"><?php echo $this->error_radio ?></div>
+    <br />
+    <br />
+    <input type="submit"  name="btnsubmit"  class="button" id="btnsubmit" value="<?php echo $this->translate('submit')?>">
+</fieldset>
+</form><?php echo $this->str; ?>
+<script type="text/javascript">
+
+	var column_js = <?php echo $this->columnarray; ?>;
+	function columnSort(val)
+	{
+		var column="";
+		for(i in column_js[val.value])
+		{
+			column += '<option value="'+i+'">'+column_js[val.value][i]+'</option>';
+		}
+		$('#columname').html(column);
+	}
+
+</script>

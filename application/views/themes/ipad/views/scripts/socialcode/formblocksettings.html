@@ -1,0 +1,372 @@
+
+<script type="text/javascript">
+
+
+$(document).ready(function() {
+	/*-------------------------------------------------------------*/
+	/*-------------------------------------------------------------*/
+	/*-------------------------------------------------------------*/	
+	
+	$('#save_changes_button').live('click',function(e){
+		
+		e.preventDefault();
+	
+		$(this).attr('disabled', true);
+		
+
+		var error = 0;
+		var ajax_done = 0;
+
+		if(error == '0'){
+			$.ajax({
+				type: 'POST',
+				url: 'ajax/uniqueshortcuts',
+				data: {
+					form_data: $('#form_settings_edit').serialize()
+				},
+
+				success:function(data){
+					var listdetails = jQuery.parseJSON(data);
+				
+					if(listdetails.duplicates > 0)
+					{
+							var duplicates = listdetails.shortcut_array_duplicates; // duplicates shortcuts
+
+							$.each(duplicates, function(blocks,option_details) {
+								$.each(option_details, function(option_id,option_shortcut) {
+ 								 $('#form_blocks_'+blocks+'_'+option_id).find('input').addClass("error_duplicate");
+								});
+							 });
+						
+							
+						$('#save_changes').val('0');
+						 $('#save_changes_button').attr('disabled',false);
+						 $(".ui-button:first").attr("disabled", false)                                               
+						 .removeClass("ui-state-disabled").next("button").attr("disabled", false)                                               
+						 .removeClass("ui-state-disabled");
+						 
+						$('#multiple_duplicate_visits').dialog('open');
+						return false; // used with modal
+					} 
+					else 
+					{
+						$('#save_changes_button').attr('disabled',true);
+						 $(".ui-button:first").attr("disabled", true)                                               
+						 .addClass("ui-state-disabled").next("button").attr("disabled", true)                                               
+						 .addClass("ui-state-disabled");
+ 
+						 $('#save_changes').val('1');
+						 $('#form_settings_edit').submit();
+					 
+					}
+				},
+				error:function(){
+					ajax_done = 1;
+				}
+			});
+		}
+		
+	});
+	
+	
+	$('#multiple_duplicate_visits').dialog({
+		autoOpen: false,
+		title: '<?php echo $this->translate('duplicated_event_modal_title'); ?>',
+		modal: true,
+		width:400,
+		height:300,
+		
+		open: function(event, ui) {
+			$(".ui-dialog-titlebar-close").hide();
+		},
+		
+		buttons: {
+			"<?php echo $this->translate('ok'); ?>": function() {
+				$( this ).dialog( "close" );
+				 $('#save_changes_button').attr('disabled', false);
+			}
+		} 
+	});
+	
+	
+
+		/*-------------------------------------------------------------*/
+		/*-------------------------------------------------------------*/
+		/*-------------------------------------------------------------*/
+		$('.add_option').live('click',function(){
+			$('#add_option_block').dialog('open');
+			$('#block_options').val($(this).attr('rel'));
+		 });
+		
+		
+		
+		$('#add_option_block').dialog({
+		    autoOpen: false,
+		    modal: true,
+		    width: 350,
+		   	height: 200,
+		   	title:  "<?php echo $this->translate('add new option to block'); ?>",
+		   	open: function(){
+		   		$('#option_name_add').val('');
+		   	},
+		    buttons:{
+			"<?php echo $this->translate('save'); ?>": function(){
+				
+				$('.submitform').attr('disabled',true);
+				 $(".ui-button:first").attr("disabled", true)                                               
+				 .addClass("ui-state-disabled").next("button").attr("disabled", true)                                               
+				 .addClass("ui-state-disabled");
+				 
+				 
+				
+				var error = 0;
+				var ajax_done = 0;
+
+					$.ajax({
+						type: 'POST',
+						url: 'ajax/saveblockitem',
+						data: {
+							block: $('#block_options').val(),
+							option_name: $('#option_name_add').val(),
+							option_shortcut: $('#option_shortcut_add').val(),
+							available: $('#option_available_add').val()
+						},
+						
+						success:function(data){
+							var optiondata = jQuery.parseJSON(data);
+	
+							
+							alert(optiondata.option_shortcut);
+							if(optiondata.available == '1'){
+								var available_yes = 'selected="selected"';
+								var available_no = '';
+							}else{
+								var available_yes = '';
+								var available_no = 'selected="selected"';
+							}
+							
+							var new_option = '<tr id="option_row_'+optiondata.option_id+'"><td>'+optiondata.option_name+'</td><td><select name="form_blocks['+optiondata.block+']['+optiondata.option_id+'][available]"><option value="0" '+available_no+' >Nein</opton><option value="1" '+available_yes+' >Ja</opton></select></td><td><input type="text" name="form_blocks['+optiondata.block+']['+optiondata.option_id+'][shortcut]" value="'+optiondata.option_shortcut+'"><input type="hidden" id="edit_option_name'+optiondata.option_id+'" value="'+optiondata.option_name+'"><input  type="hidden" id="edit_block'+optiondata.option_id+'" value="'+optiondata.block+'" ><input  type="hidden" id="edit_available'+optiondata.option_id+'" value="'+optiondata.available+'" ><!--<a class="edit_option"  rel="'+optiondata.option_id+'"  title="<? echo $this->translate('Edit');?>" href="javascript:void(0)"><img  src="<? echo RES_FILE_PATH;  ?>/images/edit.png"><span> </a>--></td><tr>';
+							 
+							$('#block_'+optiondata.block).append(new_option);
+							$('#add_option_block').dialog('close');
+						},
+						error:function(){
+							ajax_done = 1;
+						}
+					});
+			},
+	
+			"<?php echo $this->translate('cancel'); ?>": function(){
+				$('#option_name').val('');
+				$('#add_option_block').dialog('close');
+			}
+		    },		
+			create:function () {
+		        $(this).closest(".ui-dialog")
+		            .find(".ui-button:first") // the first button
+		            .addClass("submitform");
+		    },
+		   	   close:function () {
+		    	$('.submitform').attr('disabled',false),
+				 $(".ui-button:first").attr("disabled", false)                                               
+				 .removeClass("ui-state-disabled").next("button").attr("disabled", false)                                               
+				 .removeClass("ui-state-disabled");
+		    },
+
+		});
+		
+		/*-------------------------------------------------------------*/
+		/*-------------------------------------------------------------*/
+		/*-------------------------------------------------------------*/
+		
+		
+		$('.edit_option').live('click',function(){
+		
+			
+			$('#edit_option_block').dialog('open');
+
+			var option_id = $(this).attr('rel');
+			
+			var option_name = $('#edit_option_name'+option_id).val();
+			var available = $('#edit_available'+option_id).val();
+			var block = $('#edit_block'+option_id).val();
+			
+			$('#edit_option_id').val(option_id);
+			$('#edit_option_name').val(option_name);
+			$('#edit_available').val(available);
+			$('#edit_block_options').val(block);
+
+		});
+		
+		$('#edit_option_block').dialog({
+		    autoOpen: false,
+		    modal: true,
+		    width: 350,
+		   	height: 200,
+		   	title:  "<?php echo $this->translate('edit'); ?>",
+		   	open: function(){
+				 $(".ui-button:first").attr("disabled", false)                                               
+				 .removeClass("ui-state-disabled").next("button").attr("disabled", false)                                               
+				 .removeClass("ui-state-disabled");
+		   	},
+		    buttons:{
+			"<?php echo $this->translate('save'); ?>": function(){
+				
+				
+				$('.submitform_edit').attr('disabled',true);
+				 $(".ui-button:first").attr("disabled", true)                                               
+				 .addClass("ui-state-disabled").next("button").attr("disabled", true)                                               
+				 .addClass("ui-state-disabled");
+				 
+				var option_id = $(this).attr('rel');
+				var error = 0;
+				var ajax_done = 0;
+
+					$.ajax({
+						type: 'POST',
+						url: 'ajax/saveblockitem',
+						data: {
+							option_id: $('#edit_option_id').val(),
+							option_name: $('#edit_option_name').val(),
+							block: $('#edit_block_options').val(),
+							available: $('#edit_available').val()
+						},
+
+						success:function(data){
+							
+							var optiondata = jQuery.parseJSON(data);
+							
+							if(optiondata.available == '1'){
+								var available = 'Ja';
+							}else{
+								var available = 'Nein';
+							}
+							
+							var edit_option = '<tr id="option_row_'+optiondata.option_id+'"><td>'+optiondata.option_name+'</td><td>'+available+'</td><td><input type="hidden" id="edit_option_name'+optiondata.option_id+'" value="'+optiondata.option_name+'"><input  type="hidden" id="edit_block'+optiondata.option_id+'" value="'+optiondata.block+'" ><input  type="hidden" id="edit_available'+optiondata.option_id+'" value="'+optiondata.available+'" ><a class="edit_option"  rel="'+optiondata.option_id+'"  title="<? echo $this->translate('Edit');?>" href="javascript:void(0)"><img  src="<? echo RES_FILE_PATH;  ?>/images/edit.png"><span> </a></td><tr>';
+							 
+						$('#option_row_'+optiondata.option_id+'').replaceWith(edit_option);
+						$('#edit_option_block').dialog('close');
+						},
+						error:function(){
+							ajax_done = 1;
+						}
+					});
+
+			},
+			"<?php echo $this->translate('cancel'); ?>": function(){
+				$('#edit_option_name').val('');
+				$('#edit_option_id').val('');
+				$('#edit_option_block').dialog('close');
+			}
+		    },		
+			create:function () {
+		        $(this).closest(".ui-dialog")
+		            .find(".ui-button:first") // the first button
+		            .addClass("submitform_edit");
+		    },
+		   	   close:function () {
+		    	$('.submitform_edit').attr('disabled',false),
+				 $(".ui-button:first").attr("disabled", false)                         
+				 .removeClass("ui-state-disabled").next("button").attr("disabled", false)                                               
+				 .removeClass("ui-state-disabled");
+		    }
+		});
+		
+});
+</script>
+
+ <?
+ 	$blocks_settings = $this->blocks_settings;
+ ?>
+
+ <? foreach($blocks_settings as $block => $options):?>
+ <br/>
+ <br/>
+ 	<div id="user_bonus_error" class="err">	<? echo $this->error_message ?>	</div>
+ <form action=""  method="post" name="form_settings_edit"  id="form_settings_edit"   >
+ <table class="datatable" id="block_<? echo $block; ?>">
+	<tr>
+		<th colspan="4">
+			<h1><? echo $this->translate('block_'.$block); ?></h1>
+		</th>
+	</tr>	
+ 	<tr>
+ 		<th><? echo $this->translate('option_name');?></th>
+ 		<th><? echo $this->translate('option_available');?></th>
+ 		<th><? echo $this->translate('option_shortcut');?></th>
+ 	</tr>
+ 	
+		<? $o = 1; foreach($options as $key=>$values): ?>
+		
+		<tr id="option_row_<? echo $values['id'];?>">	
+			
+			<td><? echo  $values['option_name'];?></td>
+			<td>		
+				<select name="form_blocks[<? echo $block; ?>][<? echo $values['id'];?>][available]">
+					<option value="0" <? if( $values['available'] == '0'){ echo 'selected="selected"';}?> >Nein</option>
+					<option value="1" <? if( $values['available'] == '1'){ echo 'selected="selected"';}?>>Ja</option>
+				</select>
+			</td>
+
+			<td id="form_blocks_<? echo $block;?>_<? echo $values['id'];?>">
+				<input type="text" value="<?php echo $values['shortcut'];?>" name="form_blocks[<? echo $block;?>][<? echo $values['id'];?>][shortcut]" class="shortcut_format" />&nbsp;&nbsp;
+			</td>
+			
+		</tr>
+		 <? $o++; endforeach;?>
+ </table>
+ <?  if ($_REQUEST['add'] == 1):?>
+	<a class="add_option" rel="<? echo $block; ?>"  title="" href="javascript:void(0)"><img width="20" height="20" src="<? echo RES_FILE_PATH;  ?>/images/edit_add.png"><span><? echo $this->translate('add new option to block')?></span> </a>
+	<? endif; ?>
+ <? endforeach;?>
+
+<input type="hidden" value="" id="save_changes" name="save_changes"/>
+<input type="submit" value="<?php echo $this->translate('save');?>" id="save_changes_button" name="save_changes_buttons" />
+
+</form>
+
+<div class="add_option_block" id="add_option_block">
+
+	<div>
+		<label><? echo $this->translate('option_name');?></label>
+		<input type="text" id="option_name_add"  name="option_name"  value="" />
+		<input type="hidden" id="block_options"  name="block"  value="" />
+	</div>
+	<div>
+		<label><? echo $this->translate('option_shortcut');?></label>
+		<input type="text" id="option_shortcut_add"  name="option_shortcut"  value="" />
+	</div>
+ 
+	<div>
+ 		<label><? echo $this->translate('option_available');?></label>
+		<select  id="option_available_add"  name="available">
+			<option value="0">Nein</option>
+			<option value="1">Ja</option>
+		</select>	
+	</div>			 
+
+</div>
+ 
+<div class="edit_option_block" id="edit_option_block">
+
+	<div>
+		<input type="hidden"  id="edit_option_name"  value="" />
+		<input type="hidden" id="edit_block_options" value="" />
+		<input type="hidden" id="edit_option_id"   value="" />
+		
+	</div>
+ 
+	<div>
+ 		<label><? echo $this->translate('option_available');?></label>
+		<select name="edit_available" id="edit_available">
+			<option value="0" <? if( $values['available'] == '0'){ echo 'selected="selected"';}?>>Nein</option>
+			<option value="1" <? if( $values['available'] == '1'){ echo 'selected="selected"';}?>>Ja</option>
+		</select>	
+	</div>			 
+
+</div>
+
+  
+ <div id="multiple_duplicate_visits">
+	<p><?php echo $this->translate('there are one or more duplicated shortcuts. Please edit !');  ?></p>
+</div> 

@@ -1,0 +1,258 @@
+<!-- Maria:: Migration ISPC to CISPC 08.08.2020 -->
+<?php
+$this->headLink()->appendStylesheet(RES_FILE_PATH.'/javascript/chosen_v1.6.2/chosen_2016.09.22.css');
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/page-css/messages/style.css');
+?>
+<?php
+//ISPC-2808,Elena,29.01.2021
+if(!isset($this->recipients)){
+$this->recipients = [];
+}
+?>
+<script type="text/javascript">
+
+
+$(document).ready(function() {
+	$( window ).load(function() {
+		recipient_options();
+	});
+
+	
+// open close on expand button	
+$('.close_scc').on('click',function(){
+	$('.users-select-dd').hide();
+	$('.btnExpand').removeClass('shown');
+	$('.btnExpand').addClass('hidden');
+});
+$('.recipients').on('click',function(){
+	
+	if($(this).is(':checked')){
+		
+	} else{
+		var gid = $(this).data('user_group');
+		$('#group-'+gid).attr('checked', false);
+	}
+	recipient_options();
+});
+
+
+$(document).off('click','.btnRemove').on('click','.btnRemove',function(e){
+	var uid = $(this).data('uid'); 
+	var gid = $(this).data('gid'); 
+	$('#selected_u_'+uid).remove();
+	
+	$('#client_user_'+uid).attr('checked', false);
+	$('#group-'+gid).attr('checked', false);
+	
+	 e.stopPropagation();
+	 e.stopImmediatePropagation();
+	 e.preventDefault();
+
+});
+
+
+$(document).off('click','.users-select').on('click','.users-select',function(e){
+	$('.users-select-dd').toggle();
+	
+	 if($('.users-select-dd').is(":visible")){
+		$('.btnExpand').removeClass('hidden');
+		$('.btnExpand').addClass('shown');
+		  
+	 } else{
+		$('.btnExpand').removeClass('shown');
+		$('.btnExpand').addClass('hidden');
+	 }
+	
+});
+
+	
+	
+});
+
+function recipient_options(){
+	var recipientrs_lists = "";
+	$('.recipients').each(function(){
+		var uid = $(this).data('user_id');
+		var uname = $(this).data('user_name');
+		var gid = $(this).data('user_group');
+		var pid = $(this).data('user_pseudo');
+		
+		if($(this).is(':checked')){
+			//alert($(this).data('user_name'));
+			var li = '<li class="user" id="selected_u_'+uid+'">'+uname+'<input type="button" data-uid="'+uid+'" data-gid="'+gid+'" class="btnRemove"></li>';
+			recipientrs_lists  = recipientrs_lists + li;
+		}
+	});
+	
+	recipientrs_lists  = recipientrs_lists + '<li class="btnSelect"><input type="button" class="btnExpand shown"></li>';
+	
+	$('.users-select').html(recipientrs_lists);
+	
+	//TODO-2989 Ancuta 09.03.2020
+	$(window).scrollTop(0);
+	$(".users-select" ).focus();
+	//-- 
+}
+
+	function check_group(that) {
+		var group = $(that).attr('alt');
+		//alert(group); 
+		if ($(that).is(':checked')) {
+			$('.group-' + group).attr('checked', true);
+		} else {
+			$('.group-' + group).attr('checked', false);
+			$('#checkall').attr('checked', false);
+		}
+		recipient_options();
+	}
+
+	function check_pseudo(that) {
+		var test = $(that).attr('rel');
+		if ($(that).is(':checked')) {
+			$('.pseudo-' + test).attr('checked', true);
+		} else {
+			$('.pseudo-' + test).attr('checked', false);
+			$('#checkall').attr('checked', false);
+		}
+		recipient_options();
+	}
+
+	function checkedall(allid) {
+
+		checkbox = document.getElementsByName('userid[]');
+
+		if (allid.checked == true) {
+			for (i = 0; i < checkbox.length; i++) {
+				checkbox[i].checked = true;
+				$('.group-chks').attr('checked', true);
+			}
+		} else {
+			for (i = 0; i < checkbox.length; i++) {
+				checkbox[i].checked = false;
+				$('.group-chks').attr('checked', false);
+			}
+		}
+		recipient_options();
+
+	}
+</script>
+
+
+
+
+
+
+
+
+
+
+<div class="nv-container">
+	<h1><? echo $this->translate('composemail') ?></h1>
+<form action="" method="post" name="frmmsg" id="frmmsg">
+    <input type="hidden" id="3" name="triggerformid" value="3"/>
+    
+    	<div id="sendmessages_ErrorMsg" class="err"><? echo $this->error_message ?><? echo $this->error_userid ?><? echo $this->error_subject ?></div>
+    	
+	<div class="form-element">	
+		<label><? echo $this->translate('reciever') ?></label>
+		<ul class="users-select">
+			<li class="btnSelect"><input type="button" class="btnExpand hidden"></li>
+		</ul>
+		<div class="users-select-dd" style="display: none">
+			<div class="close_scc"></div>
+			<div class="scrollable-container">
+				<div class="left">
+					<h3 class="groups"><?php echo $this->translate('msg_user_groups')?></h3>
+					<ul class="checkbox-container group">
+						<?php foreach($this->available_groups as $k_u=>$v_u):?>
+							<li class="cb-green" ><input name="all_group_<?=$k_u?>" alt="<?=$k_u;?>" onclick="check_group(this);" value="" type="checkbox" id="group-<?=$k_u;?>"/> <label for="group-<?=$k_u;?>">Gruppe: <?=$v_u;?></label></li>
+						<?php endforeach; ?>
+					</ul>
+				
+					<?php if(!empty($this->user_pseudo)):?>
+						<br/>	
+						<h3 class="groups"><?php echo $this->translate('msg_pseudo_groups')?></h3>
+						<ul class="checkbox-container group">
+							<?php foreach($this->user_pseudo as $k_pgr=>$v_puser):?>
+								<li class="cb-green" >
+								<input name="all_group_<?=$v_puser['id']?>" rel="<?=$v_puser['id']?>"   onclick="check_pseudo(this);" value="" type="checkbox" id="checkallps-<?=$v_puser['id']?>" class="group-chks"/> <label for="checkallps-<?=$v_puser['id']?>"><?=$v_puser['servicesname'];?></label></li>
+							<?php endforeach; ?>
+						</ul>
+					<?php endif; ?>
+				</div>
+				
+				<div class="left">
+					<h3 class="users"><?php echo $this->translate('msg_users')?></h3>
+					<ul class="checkbox-container users">
+						<?php foreach($this->user_array as $k=>$user):?>
+							<li class="cb-green">
+								<!--ISPC-2808,Elena,29.01.2021-->
+							<input type="checkbox" name="userid[]"  id="client_user_<?=$user['id']?>" value="<?=$user['id']?>" data-user_id="<?=$user['id']?>" data-user_group="<?=$user['groupid']?>"  data-user_name="<?=$user['nice_name']?>" data-user_type="user" class="recipients  group-<?=$user['groupid']?> pseudo-<?=$user['pseudo_id']?>" <?php if($this->sender_id  == $user['id'] || in_array($user['id'], $this->recipients)):?>  checked="checked"<? endif;?>/>
+							<label for="client_user_<?=$user['id'];?>"><?=$user["nice_name"];?></label></li>
+						<?php endforeach; ?>
+					</ul>
+				</div>
+				
+				<?php if(!empty($this->client_special_users)):?>
+					<div class="left">
+						<h3 class="users"><?php echo $this->translate('msg_Special_client_users')?></h3>
+						<ul class="checkbox-container users">
+							<?php foreach($this->client_special_users as $k_client_user => $v_client_user):?>
+								<li class="cb-green"> <input type="checkbox" name="userid[]" id="client_user_<?=$v_client_user['userid']?>" value="<?=$v_client_user['userid']?>"/> 
+								<label for="client_user_<?=$v_client_user['userid']?>"><?php echo ucfirst($v_client_user['details']['last_name']).'&nbsp;'.ucfirst($v_client_user['details']['first_name']);?></label>
+								</li>
+							<?php endforeach; ?>
+						</ul>
+					</div>
+				<?php endif;?>
+				
+				
+			</div>
+		</div>
+		 
+	</div>
+			
+	<div class="form-element subject">
+		<label><? echo $this->translate('subject') ?></label>
+		<input type="text"  tabindex="1" name="title"  value="<? echo $this->title ?>">
+	</div>
+	
+	<div class="form-element priority">
+		<label><? echo $this->translate('priority_subject_label') ?></label>
+ 		<?php echo $this->formSelect('priority', $this->priority, null, $this->priority_ranks); ?>
+	</div>
+	
+	<div class="form-element">
+		<label><? echo $this->translate('message') ?></label>
+		<textarea name="content" tabindex="2" cols="" rows=""><? echo $this->content ?></textarea>
+	</div>
+
+	<input type="submit" name="btnsubmit" id="btnsubmit" class="btnNSsubmit"  tabindex="3" value="<? echo $this->translate('sendmessage') ?>">
+	
+	</form>
+</div>
+ 
+<script type="text/javascript">
+
+    <? if($this->useridjs): ?>
+	var userid_js = <? echo json_encode($this->useridjs); ?>;
+    <? else: ?>
+	var userid_js = '';
+    <? endif; ?>
+    var userid_array = document.getElementsByName('userid[]');
+
+    for(j=0; j<userid_array.length;j++)
+    {
+	for(k=0;k<userid_js.length;k++)
+	{
+	    if(userid_array[j].value==userid_js[k])
+	    {
+		userid_array[j].checked = true;
+	    }
+	}
+    }
+
+</script>
+
+
+

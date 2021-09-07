@@ -1,0 +1,475 @@
+<link rel='stylesheet' type='text/css' href='<? echo RES_FILE_PATH;  ?>/css/page-css/anlage6billing.css' />
+<?php
+//anlage6billing
+	//IE Freaking hack
+	$url = APP_BASE . "patientform/anlage6billing?".$_SERVER['QUERY_STRING'];
+	if(str_replace("&list=".$_REQUEST['list']."", "", $url)){
+		$finalJsUrl = str_replace("&list=".$_REQUEST['list']."", "", $url);
+	} else {
+		$finalJsUrl = $url;
+	}
+
+
+?>
+<script type="text/javascript" >
+	function changeMonth(data){
+		var url = "<?php echo $finalJsUrl; ?>&list="+data;
+		$(location).attr('href',url);
+	}
+
+	$(document).ready(function() {
+		
+		$('form').submit(function() {
+			setTimeout(function () {$('input[type=submit]').attr('disabled', true);}, 150);
+			setTimeout(function () {$('input[type=submit]').attr('disabled', false);}, 11000);
+		});
+		
+		
+		$('#special_print').live('change',function(e){
+		e.preventDefault();
+			if($('#special_print').val() !=0){
+				$("#print_anlage_6").submit();	
+			}
+		});
+	
+		
+		var delete_id = '';
+		$('#delete_confirmation').dialog({
+			autoOpen: false,
+			title: '<?php echo $this->translate('delete_visit_title'); ?>',
+			modal: true,
+			buttons: {
+				"<?php echo $this->translate('yesconfirm'); ?>": function() {
+					$('#delete_confirmation').dialog('close');
+
+					$.ajax({
+						type: 'POST',
+						url: 'patientform/anlage6billing?id=<?php echo $_REQUEST['id']; ?>',
+						data: {
+							mode: 'del',
+							delid: 'd'+delete_id
+						},
+						success:function(data){
+							//reload page
+							window.location = '<?php echo APP_BASE; ?>patientform/anlage6billing?id=<?php echo $_REQUEST['id']; ?>&list=<?php echo $_REQUEST['list']; ?>';
+						},
+						error:function(){
+							ajax_done = 1;
+						}
+					});
+				},
+				"<?php echo $this->translate('noconfirm'); ?>": function() {
+					$(this).dialog('close');
+				}
+			}
+		});
+
+		$('.delete_visit').live('click', function(){
+// 			delete_id = $(this).attr('rel');
+// 			$('#delete_confirmation').dialog('open');
+		});
+		
+		
+		$('.submiting').live('click', function(event) { //new function
+			event.preventDefault();
+			$.action = $(this).attr('rel');
+			$(document).userSession().checksession('abort', function(result) {
+				if(result === false) {
+					event.stopImmediatePropagation(); //stop going forward
+				} else {
+					
+					$('#form_action').val($.action);
+
+					if($.action == "save")
+					{
+						jConfirm('<? echo $this->translate("confirm_saving_form - this will affect the invoicing data"); ?>', '<? echo $this->translate('confirm_saving_form_title'); ?>', function(r) {
+							if(r)
+							{	
+								$('#anlage6').submit();
+							}
+						});
+					}
+					else
+					{
+						$('#anlage6').submit();
+					}
+				}
+			});
+		});
+	});
+</script>
+<?php
+	$price_list = $this->price_list;
+	$active_days = $this->active_days;
+	$admission_days = $this->admission_dates;
+	$admission_days_arr = $this->admission_dates_arr;
+?>
+<? echo $this->patientinfo ?>
+<? echo $this->tabmenus ?>
+<div class="clearer"></div>
+<?php if($this->saved_data == "1"):?>
+<div class="form_alert_info" >
+	<p><?php echo $this->translate("Form manually saved, to revert please press reset")?></p>
+	<br />&nbsp;
+</div>
+<?php endif;?>		
+<form method="post" action="" name="anlage6" id="anlage6">
+<table id="patient_healthinsurange_details">
+	<tr>
+		<td colspan="4" style="text-align: right;">Anlage 6 - Abrechnungsformular</td>
+	</tr>
+	<tr>
+		<td colspan="4" style="text-align: center;font-weight: 700; font-size: 1.2em;text-decoration: underline;">Abrechnung spezialisierter ambulanter Palliativversorgung</td>
+	</tr>
+	<tr>
+
+		<td colspan="4" style="text-align:right;">Monat: <?php echo $this->months_selector; ?></td>
+	</tr>
+	<tr>
+		<td style="width: 165px;">Angaben zum Versicherten</td>
+		<td colspan="3">
+			<span class="underline-patient-details"><?php echo $this->last_name; ?></span>
+			<span class="underline-patient-details"><?php echo $this->first_name; ?></span>
+			<span class="underline-patient-details"><?php echo $this->dob;  ?></span>
+		</td>
+	</tr>
+	<tr>
+		<td></td>
+		<td colspan="3"><span class="underline-patient-details"><?php echo $this->health_insurance; ?></span></td>
+	</tr>
+	<tr>
+		<td colspan="5"><span>&nbsp;</span></td>
+	</tr>
+</table>
+<br class="clear">
+<table class="datatable_new">
+	<tr>
+		<th class="anlage6_header_row" colspan="2" style="height: 15px;"></th>
+
+		<td class="big_cell" rowspan="15" style="padding:0;margin:0;">
+			<div class="overflowed_div">
+				<table class="datatable_new" style="margin:0;padding:0; width: 1400px; height: 250px;border: 1px solid #000;border-top: 0px;border-bottom: 0px;">
+
+					<!-- Days row -->
+					<tr class="anlage6_header_row" >
+						<?php foreach($this->month_days_arr as $k_month => $v_month):  ?>
+							<th class="<?php if(!in_array($k_month, $active_days) || !in_array($k_month, $this->all_sapv_days)): ?>inactive_day_class<?php endif;  ?> <?php if($k_month == date('Y-m-d', time())): ?> current_day <?php endif; ?>">
+								<?php echo date('d', strtotime($k_month));  ?>
+							</th>
+						<?php endforeach;  ?>
+					</tr>
+
+					<!-- Start hours -->
+					<?php foreach ($this->operations as $o_k => $operation_name): ?>
+					<tr class="border-top">
+						<?php foreach ($this->month_days_arr as $k_month => $v_month): ?>
+							<td class="a6_ov_cell <?php if(!in_array($k_month, $active_days) || !in_array($k_month, $this->all_sapv_days)): ?>inactive_day_class<?php endif;  ?> <?php if($k_month == date('Y-m-d', time())): ?> current_day <?php endif; ?>">
+								<?php if(!in_array($k_month, $active_days) || !in_array($k_month, $this->all_sapv_days)): ?><a href="javascript:void(0);" class="delete_visit" rel="<?php echo $v_month['doctor_visits'][$o_k]['id'];  ?>"><?php endif; ?>
+								<?php if(strlen($v_month['doctor_visits'][$o_k]['kvno_begin_date_h']) > '0' ): echo str_pad( $v_month['doctor_visits'][$o_k]['kvno_begin_date_h'], 2, "0", STR_PAD_LEFT) .':'.str_pad($v_month['doctor_visits'][$o_k]['kvno_begin_date_m'], 2, "0", STR_PAD_LEFT); else: echo ' '; endif; ?>
+								<?php if(!in_array($k_month, $active_days) || !in_array($k_month, $this->all_sapv_days)): ?></a><?php endif; ?>
+							</td>
+						<?php endforeach; ?>
+					</tr>
+
+
+					<!-- End hours -->
+					<tr class="border-bottom <?php if(!in_array($k_month, $active_days)): ?>inactive_day_class<?php endif;  ?>">
+						<?php foreach ($this->month_days_arr as $k_month => $v_month): ?>
+							<td class="a6_ov_cell <?php if(!in_array($k_month, $active_days) || !in_array($k_month, $this->all_sapv_days)): ?>inactive_day_class<?php endif;  ?> <?php if($k_month == date('Y-m-d', time())): ?> current_day <?php endif; ?>">
+								<?php if(!in_array($k_month, $active_days) || !in_array($k_month, $this->all_sapv_days)): ?><a href="javascript:void(0);" class="delete_visit" rel="<?php echo $v_month['doctor_visits'][$o_k]['id'];  ?>"><?php endif; ?>
+								<?php if (strlen($v_month['doctor_visits'][$o_k]['kvno_end_date_h']) > '0'): echo str_pad($v_month['doctor_visits'][$o_k]['kvno_end_date_h'], 2, "0", STR_PAD_LEFT) . ':' . str_pad($v_month['doctor_visits'][$o_k]['kvno_end_date_m'], 2, "0", STR_PAD_LEFT); else: echo '  '; endif; ?>
+								<?php if(!in_array($k_month, $active_days) || !in_array($k_month, $this->all_sapv_days)): ?></a><?php endif;  ?>
+							</td>
+						<?php endforeach; ?>
+					</tr>
+					<?php endforeach; ?>
+
+
+					<!--Second table data rows -->
+					<!--(Pauschale empty_row)-->
+					<tr class="border-bottom-slim ">
+						<td colspan="31" class="a6_ov_cell">&nbsp;</td>
+					</tr>
+
+					<!--Shortcuts-->
+					<?php // print_r($this->month_days_arr);exit;  ?>
+					<?php $list_e_row = false;  ?>
+					<?php $list_eh_row = false;  ?>
+					<?php foreach($this->used_shortcuts_summary as $k_short_a => $v_short_a):  ?>
+
+					<tr class="border-bottom-slim">
+						<?php foreach ($this->month_days_arr as $k_month => $v_month): ?>
+							<td class="a6_ov_cell
+							<?php $disabled = '1';
+
+								if(!in_array($v_short_a, $this->hospital_alowed_shortcuts)): //exclude doctor from sapv and hospital checks
+									if(!in_array($k_month, $this->full_hospital_days) && in_array($k_month, $this->all_sapv_days)):
+										$disabled = '0';
+									endif;
+								else:
+									$disabled = '0';
+								endif;
+
+								if(!in_array($k_month, $active_days) || !in_array($k_month, $this->all_sapv_days)):
+							?>
+							inactive_day_class
+							<?php endif;  ?>
+
+							<?php if($k_month == date('Y-m-d', time())): ?> current_day <?php endif; ?>" rel="S:<?php echo $v_short_a; ?> D:<?php echo $k_month; ?> V=<?php var_dump($v_month['shortcuts'][$v_short_a]); ?>">
+
+								<?php if($v_short_a == 'E' || $v_short_a == 'EH' ): ?>
+									<?php if($v_month['shortcuts']['E'] == '1' && $v_month['shortcuts']['EH'] == '0'):  ?>
+									<input alt="E" type="checkbox" id="<?php echo strtolower('e').'-'.date('d', strtotime($k_month)); ?>" name="<?php echo strtolower('e');?>[<?php echo date('d', strtotime($k_month));  ?>]" value="1" <?php if($v_month['shortcuts']['E'] == '1' && $price_list[$k_month][0]['E']['price'] != '0.00'): ?>checked="checked"<?php endif; ?>   />
+									<?php
+										if($price_list[$k_month][0][$v_short_a]['price'] != '0.00'):
+											$totals['shortcuts']['E'] += $v_month['shortcuts']['E'];
+											$t_lists['E'][$price_list[$k_month][0]['E']['list']]['qty'] += $v_month['shortcuts']['E'];
+											$t_lists['E'][$price_list[$k_month][0]['E']['list']]['price'] = $price_list[$k_month][0]['E']['price'];
+											
+											if($t_lists['E'][$price_list[$k_month][0]['E']['list']]['qty'] > 0):
+												$list_e_row = true;
+											endif;
+										endif;
+									?>
+									<?php  elseif($v_month['shortcuts']['E'] == '1' && $v_month['shortcuts']['EH'] == '1'): ?>
+									<input alt="EH" type="checkbox" id="<?php echo strtolower('e').'-'.date('d', strtotime($k_month)); ?>" name="<?php echo strtolower('e');?>[<?php echo date('d', strtotime($k_month));  ?>]" value="1" <?php if($v_month['shortcuts']['E'] == '1' && $v_month['shortcuts']['EH'] == '1'   && $price_list[$k_month][0]['EH']['price'] != '0.00'): ?>checked="checked"<?php endif; ?>   />
+									<?php
+										if($price_list[$k_month][0]['EH']['price'] != '0.00'):
+											$totals['shortcuts']['EH'] += $v_month['shortcuts']['EH'];
+
+											$t_lists['EH'][$price_list[$k_month][0]['EH']['list']]['qty'] += $v_month['shortcuts']['EH'];
+											$t_lists['EH'][$price_list[$k_month][0]['EH']['list']]['price'] = $price_list[$k_month][0]['EH']['price'];
+
+											if($t_lists['EH'][$price_list[$k_month][0]['EH']['list']]['qty'] > 0):
+												$list_eh_row = true;
+											endif;
+										endif;
+									?>
+									<?php  else: ?>
+									<input type="checkbox" id="<?php echo strtolower('e').'-'.date('d', strtotime($k_month)); ?>" name="<?php echo strtolower('e');?>[<?php echo date('d', strtotime($k_month));  ?>]" value="1" <?php if(!in_array($k_month, $active_days) || !in_array($k_month, $this->all_sapv_days)): ?>disabled="disabled"<?php endif;  ?> />
+									<?php
+										if($price_list[$k_month][0]['E']['price'] != '0.00'):
+											$t_lists['E'][$price_list[$k_month][0]['E']['list']]['qty'] += 0;
+											$t_lists['E'][$price_list[$k_month][0]['E']['list']]['price'] = $price_list[$k_month][0]['E']['price'];
+										endif;
+
+										if($price_list[$k_month][0]['EH']['price'] != '0.00'):
+											$t_lists['EH'][$price_list[$k_month][0]['EH']['list']]['qty'] += 0;
+											$t_lists['EH'][$price_list[$k_month][0]['EH']['list']]['price'] = $price_list[$k_month][0]['EH']['price'];
+										endif;
+									?>
+									<?php  endif; ?>
+								<?php elseif($v_short_a == 'B'): ?>
+									<input type="checkbox" id="<?php echo strtolower($v_short_a).'-'.date('d', strtotime($k_month)); ?>" name="<?php echo strtolower($v_short_a);?>[]" value="1" <?php if($v_month['shortcuts'][$v_short_a] == '1' && $disabled == '0' && $price_list[$k_month][0]['B0']['price'] != '0.00'): ?>checked="checked"<?php endif; ?> disabled="disabled" />
+									<?php
+									if($disabled == '0'):
+										if($price_list[$k_month][0]['B0']['price'] != '0.00'):
+											$totals['shortcuts'][$v_short_a] += $v_month['shortcuts'][$v_short_a];
+											$t_lists[$v_short_a][0]['qty'] += $v_month['shortcuts'][$v_short_a];
+										else:
+											$totals['shortcuts'][$v_short_a] += '0';
+											$t_lists[$v_short_a][0]['qty'] += '0';
+										endif;
+										
+										$t_lists[$v_short_a][0]['price'] = $price_list[$k_month][0]['B0']['price'];
+									else:
+										$totals['shortcuts'][$v_short_a] += '0';
+										$t_lists[$v_short_a][0]['qty'] += '0';
+										$t_lists[$v_short_a][0]['price'] = $price_list[$k_month][0]['B0']['price'];
+									endif;
+									?>
+								<?php elseif($v_month['shortcuts']['visit_type'] != '0' && $k_month != 'EH' ):  ?>
+									<?php
+									if($disabled == '0' && in_array($k_month, $this->all_sapv_days)):
+										echo $v_month['shortcuts'][$v_short_a];
+										$totals['shortcuts'][$v_short_a] += $v_month['shortcuts'][$v_short_a];
+										$t_lists[$v_short_a][$price_list[$k_month][0][$v_short_a]['list']]['qty'] += $v_month['shortcuts'][$v_short_a];
+										$t_lists[$v_short_a][$price_list[$k_month][0][$v_short_a]['list']]['price'] = $price_list[$k_month][0][$v_short_a]['price'];
+									else:
+										echo '0';
+										$totals['shortcuts'][$v_short_a] += '0';
+										$t_lists[$v_short_a][$price_list[$k_month][0][$v_short_a]['list']]['qty'] += '0';
+										$t_lists[$v_short_a][$price_list[$k_month][0][$v_short_a]['list']]['price'] = $price_list[$k_month][0][$v_short_a]['price'];
+									endif;
+									?>
+								<?php endif;  ?>
+							</td>
+						<?php endforeach; ?>
+					</tr>
+					<?php endforeach;  ?>
+
+				</table>
+			</div>
+		</td>
+		<th class="anlage6_header_row" style="width: 60px;"><?php echo $this->translate('visits_total_col');  ?></th>
+	</tr>
+
+	<?php foreach ($this->operations as $o_k => $operation_name): ?>
+	<tr class="border-top">
+		<td rowspan="2" class="a6_operation_cell" style="width: 52px;"> <?php echo $this->translate($operation_name); ?> </td>
+		<td class="a6_start_cell">
+			<?php echo $this->translate($this->translate('start_visit')); ?>
+		</td>
+		<td> &nbsp; </td>
+	</tr>
+	<tr class="border-bottom">
+		<td class="a6_end_cell">
+			<?php echo $this->translate($this->translate('end_visit')); ?>
+		</td>
+		<td> &nbsp; </td>
+	</tr>
+	<?php endforeach; ?>
+	<tr class="border-bottom-slim">
+		<td>&nbsp;</td>
+		<td class="a6_start_cell"><?php echo $this->translate('Pauschale'); ?></td>
+		<td> &nbsp; </td>
+	</tr>
+	<?php $i=1; foreach($this->used_shortcuts_summary as $k_short_a => $v_short_a):  ?>
+	<tr class="border-bottom-slim" <?php if($i == count($this->used_shortcuts_summary)):  ?>style="height: 44px;" <?php endif;  ?>>
+		<td>&nbsp;</td>
+		<td class="a6_start_cell"><?php echo $this->translate($v_short_a); ?></td>
+		<?php if($v_short_a == 'E' || $v_short_a == 'EH'):  ?>
+			<td class="last_col"> <?php echo ($totals['shortcuts']["E"] + $totals['shortcuts']["EH"]); ?> </td>
+		<?php else:  ?>
+			<td class="last_col"> <?php echo $totals['shortcuts'][$v_short_a]; ?> </td>
+		<?php endif;  ?>
+	</tr>
+	<?php $i++; endforeach;  ?>
+</table>
+
+
+	<!--Totals table-->
+	<?php
+		ksort($t_lists);
+	?>
+	<table id="totals" class="datatable" style="width: 380px; float:left;">
+		<thead>
+			<tr>
+				<th>Pauschale</th>
+				<th class="a6_shortcut_amount">Anzahl</th>
+				<th class="a6_shortcut_price">x Vergütung</th>
+				<th class="a6_shortcut_total">=  Rechnungssumme</th>
+			</tr>
+		</thead>
+		<tbody>
+			<?php foreach($this->used_shortcuts as $k_short => $shortcut):  ?>
+				<?php if(($shortcut == 'EH' && $list_eh_row) || ($shortcut == 'E' && (!$list_eh_row || $list_e_row)) || ($shortcut != 'EH' && $shortcut != 'E')):  ?>
+				<tr>
+					<td class="a6_shortcut"><?php echo $shortcut; ?></td>
+					<td colspan="3" style="padding:0 0 0 0; margin: 0 0 0 0;">
+						<table style="margin:0px;padding:0px; width:100%;height:100%;">
+						<?php foreach($t_lists[$shortcut] as $k_list=>$list_qty):  ?>
+							<?php if(strlen($k_list)>'0'):  ?>
+							<tr>
+								<td class="a6_shortcut_amount"><?php echo $list_qty['qty'];  ?></td>
+								<td class="a6_shortcut_price"><?php echo $list_qty['price']; ?> &euro;</td>
+								<td class="a6_shortcut_total"><?php $total = ($list_qty['qty'] * $list_qty['price']); $total_general += $total; echo $total; ?> &euro;</td>
+							</tr>
+							<?php endif;  ?>
+						<?php endforeach;  ?>
+						</table>
+					</td>
+				</tr>
+				<?php endif;  ?>
+			<?php endforeach;  ?>
+			<tr>
+				<td colspan="3" class="a6_total_general_label">Insgesamt =</td>
+				<td class="a6_total_general"><?php echo $total_general;  ?> &nbsp;&euro;</td>
+			</tr>
+		</tbody>
+	</table>
+
+<table class="datatable_signature">
+	<tbody>
+		<tr>
+			<td colspan="2">Wir bestätigen die angegebenen Leistungen entsprechend den gesetzlichen und vertraglichen Regelungen erbracht zu haben:</td>
+		</tr>
+		<tr>
+			<td class="margin_cell"></td>
+			<td class="prefilled"><?php echo $this->lbg_client_name; ?></td>
+		</tr>
+		<tr>
+			<td colspan="2">Name des SAPV Leistungserbringers</td>
+		</tr>
+		<tr>
+			<td class="margin_cell"></td>
+			<td class="prefilled"><?php echo $this->lbg_address;  ?></td>
+		</tr>
+		<tr>
+			<td colspan="2">Anschrift</td>
+		</tr>
+		<tr>
+			<td class="margin_cell"></td>
+			<td class="prefilled"><?php echo $this->lbg_ik_nummer;  ?></td>
+		</tr>
+		<tr>
+			<td colspan="2">IK-Nummer</td>
+		</tr>
+		<tr>
+			<td class="margin_cell"></td>
+			<td class="prefilled"><?php echo date('d.m.Y');  ?></td>
+		</tr>
+		<tr>
+			<td colspan="2">Datum, Unterschrift</td>
+		</tr>
+	</tbody>
+</table>
+
+<table style="width:100%;float:left;">
+	<tr>
+		<td>
+			Folgende Kooperationspartner haben ganz oder teilweise die Leistungen erbracht (Name oder IK-Nummer):
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<textarea id="involved_users" name="involved_users" class="involved_users_textarea"><?php if(strlen($this->saved_users_involved)>0): echo $this->saved_users_involved; else: if(count($this->users_involved)): echo implode('; ', $this->users_involved); endif; endif; ?></textarea>
+		</td>
+	</tr>
+</table>
+<br />
+<br />
+<input type="button" class="submiting" value="<?php echo $this->translate('save');  ?>" name="save" id="btnsubmit" rel="save" />
+<input type="button" class="submiting" value="<?php echo $this->translate('generatepdf');  ?>" name="pdf" id="pdf"  rel="pdf"  />
+<?php if($this->saved_data == "1"):?>
+	<input type="button" class="submiting" value="RESET" name="reset" id="reset"  rel="reset"/>
+<?php endif;?>
+<input type="hidden" value="" name="form_action" id="form_action"/>
+</form>
+
+<div class="special_generation"   >
+<form action="<?php  echo APP_BASE.'patientform/anlage6multiple?id='.$_REQUEST['id'].''; ?>" method="post" name="print_anlage_6" id="print_anlage_6" >
+	<label class="special_print_label"><?php echo $this->translate("generate_pdf_for:")?></label>
+	<select id="special_print" name="print_period">
+	 <option value="0"><?php echo $this->translate("select_period_for_printing")?></option>
+	  <?php if(!empty($this->months_periods )):?>
+	  <optgroup label="<?php echo $this->translate('Monatsweise');?>">
+	  		<?php foreach($this->months_periods  as $month_id=>$month_data):?>
+	    <!--<option value="<?php echo 'month_'.$month_id.'_'.date('d.m.Y',strtotime($month_data['start'])).'_'.date('d.m.Y',strtotime($month_data['end'])) ?>"><?php echo date("d.m.Y",strtotime($month_data['start'])); ?> - <?php echo date("d.m.Y",strtotime($month_data['end'])); ?></option>-->
+	    		<option value="<?php echo 'month_'.$month_id.'_'.date('d.m.Y',strtotime($month_data['start'])).'_'.date('d.m.Y',strtotime($month_data['end'])) ?>"><?php echo date("Y-m",strtotime($month_data['start'])); ?></option>
+	    	<?php endforeach; ?>
+	  </optgroup>
+	  <?php endif;?>
+	  
+	  
+	  <?php if(!empty($this->admission_periods)):?>
+	  <optgroup label="<?php echo $this->translate('Aufnahme-Monat');?>">
+	  		<?php foreach($this->admission_periods as $admissionid=>$adm_data):?>
+	    		<option value="<?php echo 'admission_'.$admissionid.'_'.$adm_data['start'].'_'.$adm_data['end']; ?>"><?php echo $adm_data['start']; ?> - <?php echo $adm_data['end']; ?></option>
+	    	<?php endforeach; ?>
+	  </optgroup>
+	  <?php endif;?>
+	  
+	  <?php if(!empty($this->sapv_periods)):?>
+	  <optgroup label="<?php echo $this->translate('SAPV fallweise');?>">
+	  		<?php foreach($this->sapv_periods as $sapv_id =>$sapv_data):?>
+	    		<option value="<?php echo 'sapv_'.$sapv_id.'_'.$sapv_data['start'].'_'.$sapv_data['end']; ?>"><?php echo $sapv_data['start']; ?> - <?php echo $sapv_data['end']; ?></option>
+	    	<?php endforeach; ?>
+	  </optgroup>
+	  <?php endif;?>
+	</select>
+</form>
+</div>
+<div id="delete_confirmation">
+	<?php echo $this->translate('delete_visit_confirm');  ?>
+</div>

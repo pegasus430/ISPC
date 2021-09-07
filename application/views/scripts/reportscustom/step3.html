@@ -1,0 +1,122 @@
+<?php
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/reportscustom.css?' . date('Ymd'));
+?>
+
+
+<script>
+	$(document).ready(function() {
+		var fix_helper = function(e, ui) {
+			ui.children().each(function() {
+				$(this).width($(this).width());
+			});
+			return ui;
+		};
+        
+		updateIndex = function(e, ui) {
+	        $('td.index', ui.item.parent()).each(function (i) {
+	            $(this).html(i + 1);
+	        
+	        	$('#visit_patient_visit_'+$(this).attr('id')).val(i+1);
+	           
+	            
+	        });
+	    };
+	    
+		$('table.column_ordering tbody').sortable({
+			placeholder: "ui-state-highlight",
+			helper: fix_helper,
+			stop: updateIndex
+		}).disableSelection();
+	});
+</script>
+
+<form name="step3" id="step3" action="" method="post">
+	
+	<input type="hidden" name="report_id" value="<?php echo $_REQUEST['report_id']; ?>"/>
+
+<?php if(!empty($this->report_ma_columns)):?>
+
+<fieldset>
+	<legend><?php echo $this->translate("average and median")?></legend>
+		<table class="columns_av_med_table">
+			<thead>
+				<tr>
+					<th><?php echo $this->translate('columns');?></th>
+					<th><?php echo $this->translate('show_average');?></th>
+					<th><?php echo $this->translate('show_median');?></th>
+				</tr>
+			</thead>
+			<tbody>
+				<?php  $i=0; foreach($this->columns as $kc=>$v_columns):?>
+				<?php if(($v_columns['allow_average'] == "1" || $v_columns['allow_median'] == "1") && in_array($v_columns['id'],$this->allowed_cols) && in_array($v_columns['id'],$this->saved_columns['columns_ids'])):
+				if($this->saved_columns[ $_REQUEST['report_id']][$v_columns['id']]['median'] == "1"){
+					$median_check = 'checked="checked"';
+				} else{
+					$median_check = '';
+				}
+				if($this->saved_columns[ $_REQUEST['report_id']][$v_columns['id']]['average'] == "1"){
+					$average_check = 'checked="checked"';
+				} else{
+					$average_check = '';
+				}
+				
+			?>
+					<tr>
+						<td><label><?php echo $this->translate($v_columns['column_name'])?> </label></td>
+						<td><input type="checkbox" name="report[columns][<?php echo $v_columns['id']; ?>][average]"  id="line_id_<?php echo $v_columns['id'];?>" value="<?php echo $v_columns['id'];?>" <?php echo $average_check; ?>     /> </td>
+						<td><input type="checkbox" name="report[columns][<?php echo $v_columns['id']; ?>][median]"  id="column_<?php echo $v_columns['id'];?>" value="<?php echo $v_columns['id'];?>"  <?php echo $median_check; ?>   /> </td>
+						<td><input type="hidden"  name="report[columns][<?php echo $v_columns['id']; ?>][line_id]"  id="line_id_<?php echo $v_columns['id'];?>" value="<?php echo $this->saved_columns[$_REQUEST['report_id']][$v_columns['id']]['line_id']; ?>" /> </td>
+					</tr>
+				<?php endif;?>	
+				<?php $i++; endforeach;?>
+			</tbody>
+		</table>
+</fieldset>
+<?php endif;?>
+	
+<?php if($this->allow_ordering_columns):?>
+<br/>
+<fieldset>
+	<legend><?php echo $this->translate("Order columns")?></legend>
+	<?php if(!empty($this->saved_columns[$_REQUEST['report_id']])):?>
+	<table class="column_ordering">
+		<thead>
+			<tr>
+				<th>#</th>
+				<th>Column name</th>
+				<th></th>
+			</tr>
+		</thead>
+		<tbody>
+		<?php $or_nr = 1; foreach($this->saved_columns[ $_REQUEST['report_id']] as $cl_id => $cl_data):?>
+		<?php if($cl_data['order_number'] != "0"){
+					$order_number[$cl_data['line_id']] = $cl_data['order_number'];
+			 }else{
+				$order_number[$cl_data['line_id']] = $or_nr;
+			}
+		?>
+		
+			<tr id="<?php echo $cl_data['line_id']; ?>" class="sort">
+				
+				<td class="index" id="<?php echo $cl_data['line_id'];  ?>">
+					<?php echo $order_number[$cl_data['line_id']]; ?>
+				</td>
+				<td>
+					<?php echo $this->translate($cl_data['column_name'])?>
+				</td>
+				<td>
+					<span class="ui-icon ui-icon-arrowthick-2-n-s" style="display:inline-block; float: right;"></span>
+					<input type="hidden" name="report[columns][<?php echo $cl_id;?>][line_id]" class="test"   value="<?php echo $cl_data['line_id']; ?>" />
+					<input type="hidden" name="report[columns][<?php echo $cl_id;?>][order_number]" class="test" id="visit_patient_visit_<?php echo $cl_data['line_id']; ?>"  value="<?php echo $order_number[$cl_data['line_id']]; ?>" />
+				</td>
+			</tr>
+ 
+		<?php $or_nr++; endforeach;?>
+		</tbody>
+	</table>
+	<?php endif;?>	
+</fieldset>
+<?php endif;?>	
+</form>	
+	
+	

@@ -1,0 +1,119 @@
+<?php
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/jgrowl/fileuploader.js?'.date('Ymd'));
+$this->headLink()->appendStylesheet(RES_FILE_PATH.'/javascript/jgrowl/filepatient.css?'.date('Ymd'));
+$clientid = $this->clientid;
+?>
+
+<h1><?php echo $this->translate('Groups Visit Forms'); ?></h1>
+
+<br />
+<script>
+	function createUploader(groups){
+		for (i=0;i<groups.length;i++){
+			var group = groups[i];
+			var uploader = new qq.FileUploader({
+				element: document.getElementById('icon_upload_'+group),
+				action: appbase+'iconsystem/iconimageupload?op=groupsicon&gr='+group+'&dummy=',
+				allowedExtensions: ['jpg','png','gif','jpeg'],
+				onSubmit: function(id, fileName, fileUploader){
+					$('#save').attr("disabled", "true");
+				},
+				onComplete: function(id, fileName, responseJSON){
+					$('#save').removeAttr("disabled");
+				}
+			});
+		}
+
+	}
+	$(window).load(function () {
+		var groups = new Array();
+			<?php $x = 0;
+			foreach ($this->group_master as $k_jsgroup => $v_jsgroup): ?>
+				<?php if (strlen($k_jsgroup) > 0): ?>
+					groups[<?php echo $x; ?>] = <?php echo $k_jsgroup; ?>;
+				<?php $x++; endif; ?>
+			<?php endforeach; ?>
+
+		createUploader(groups);
+
+
+		$('div.qq-uploader').hide();
+		$('.tabmenu_selector_long').live('change', function(){
+			if($(this).val() != 0){
+				$(this).parent().parent().find('div.qq-uploader').show();
+			} else {
+				$(this).parent().parent().find('div.qq-uploader').hide();
+			}
+		})
+		$('.tabmenu_selector_long').each(function(){
+			if($(this).val()  !=  0){
+				$(this).parent().parent().find('div.qq-uploader').show();
+			}
+		});
+	});
+
+	$(document).ready(function() {
+
+	});
+
+</script>
+<form method="POST" name="set_group_visitforms" id="set_group_visitform" action="">
+	<table class="datatable" id="groups_visit">
+		<thead>
+			<tr>
+				<th>#</th>
+				<th id="group_col"><?php echo $this->translate('group_name'); ?></th>
+				<th id="menu_col"><?php echo $this->translate('menu'); ?></th>
+				<th><?php echo $this->translate('upload_icon'); ?></th>
+			</tr>
+		</thead>
+		<tbody>
+			<?php $i=1; foreach($this->group_master as $k_group=>$v_group):  ?>
+
+			<tr>
+				<td><?php echo $i; ?></td>
+				<td><?php echo $v_group; ?></td>
+				<td id="menu_col">
+					<select name="group_visit_form[<?php echo $k_group;  ?>]" id="group_visit_form" class="tabmenu_selector_long" >
+					<?php foreach($this->tabmenus_client_details as $k_menu => $v_menu):  ?>
+						<option value="<?php echo $v_menu['id'];  ?>" <?php if(strlen($v_menu['menu_link'])==0 && $k_menu != 0):  ?> disabled <?php endif;  ?> <?php if($this->groups_tabnames[$k_group]['tabnameid'] == $v_menu['id']):  ?>selected="selected"<?php endif;  ?>><?php echo $v_menu['space'].$v_menu['menu_title'];  ?></option>
+						<?php if($v_menu['menu_link'] == "patientform/contactform"):?>
+								<?php foreach($this->form_type2group[$k_group] as $ik=>$type_id):?>
+											<option value="<?php echo $v_menu['id'];  ?>_<?php echo $type_id ;?>"    <?php if($this->groups_tabnames[$k_group]['form_type_id'] == $type_id ):  ?>selected="selected"<?php endif;  ?>           ><?php echo $this->form_types[$type_id];?></option>
+								<?php endforeach;?>
+						<? endif;?>	
+					<?php endforeach;  ?>
+					</select>
+				</td>
+				<td>
+					<div id="icon_image" class="icon_image_preview">
+						<?php if(strlen($this->groups_tabnames[$k_group]['image'])>0):  ?>
+							<img src="<?php echo APP_BASE.'icons_system/'.$this->groups_tabnames[$k_group]['image'].'?'.time();  ?>" height="32">
+							<?php if($this->groups_tabnames[$k_group]['has_custom_image']):  ?>
+								<input type="hidden" value="<?php echo $this->groups_tabnames[$k_group]['image'];  ?>" name="image[<?php echo $k_group;  ?>]" id="existing_image" />
+								<a href="<?php echo APP_BASE.'iconsystem/groupsvisitforms?op=del&gr_id='.$k_group;  ?>" >Delete Custom Icon</a>
+							<?php else:  ?>
+								<input type="hidden" value="<?php echo $this->groups_tabnames[$k_group]['image'];  ?>" name="image[<?php echo $k_group;  ?>]" id="existing_image" />
+							<?php endif;  ?>
+						<?php endif;  ?>
+					</div>
+					<br />
+					<div class="clearer"></div>
+					<div id="icon_upload_<?php echo $k_group;  ?>">
+						<noscript>
+						Please enable JavaScript to use file uploader.
+						</noscript>
+					</div>
+				</td>
+			</tr>
+			<?php $i++; ?>
+			<?php endforeach;  ?>
+			<tr>
+				<td colspan="4">
+					<input type="submit" value="<?php echo $this->translate('save');  ?>" id="save" name="save">
+				</td>
+			</tr>
+		</tbody>
+
+	</table>
+</form>

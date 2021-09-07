@@ -1,0 +1,299 @@
+<script type="text/javascript">
+var lb_visits_deactivate = '<?php echo $this->lb_visits_deactivate ?>';
+
+$(function() {
+	$('#valid_from').datepicker({
+		dateFormat: 'dd.mm.yy',
+		showOn: "both",
+		buttonImage: $('#calImg').attr('src'),
+		buttonImageOnly: true,
+		changeMonth: true,
+		changeYear: true,
+		nextText: '',
+		prevText: ''
+});
+	$('#valid_till').datepicker({
+		dateFormat: 'dd.mm.yy',
+		showOn: "both",
+		buttonImage: $('#calImg').attr('src'),
+		buttonImageOnly: true,
+		changeMonth: true,
+		changeYear: true,
+		nextText: '',
+		prevText: ''
+	});
+});
+
+function checkLocationStatus(locs)
+{
+	$.ajax({
+	url:'locations/getlocationtype?lid='+locs.value,
+	dataType:'json',
+	success:function(response){
+	   var lid =  $(locs).parent().parent().find('.LocationId').val();
+	   if(response.callBackParameters.location_type==1)
+	   {
+	      $(locs).parent().find('#locreason').show();
+	   }
+	   else
+	   {
+	      $(locs).parent().find('#locreason').hide();
+	   }
+		  $('#location_type').val(response.callBackParameters.location_type);
+      }
+	});
+}
+
+
+function checkLocationStation(locs) {
+	$('#loading_location').show();
+
+	$.ajax({
+		url:'locations/getlocationstations?lid='+locs.value,
+		dataType:'json',
+		success:function(response){
+
+			if(response.array_stations != '0'){
+				i=0;
+				var stations_str = '';
+				for(i in response.array_stations){
+					stations_str +='<option value="'+response.array_stations[i].id+'">'+response.array_stations[i].station+'</option>';
+					i++;
+				}
+
+				var dynamic_select = '<select name="station_select[]" id="station_select" class="station_select"><option value="0"><?php echo $this->translate('select_station'); ?></option>'+stations_str+'</select>';
+
+				if($('#stationdiv input.station_select')){
+					//replace
+					$('#stationdiv .station_select').replaceWith(dynamic_select);
+				} else {
+					//insert
+					$('#stationdiv').append(dynamic_select);
+				}
+
+				$('#stationdiv').show();
+			} else {
+				$('#stationdiv').hide();
+				$('#stationdiv .station_select').replaceWith('<input type="hidden" value="0" name="station_select[]" id="station_select" class="station_select" />');
+			}
+			$('#loading_location').hide();
+		}
+	});
+}
+
+
+function getLocationPhone(locs){
+$.ajax({
+    url:'locations/getlocationtype?lid='+locs.value+'&mod=phone',
+    dataType:'json',
+    success:function(response){
+	var phone = response.callBackParameters.phone;
+
+	if(phone == ""){
+	    $('#contactphone').hide("slow");
+	} else {
+	    $('#contactphone').show("slow");
+	    //set hidden field with phone value
+	    $(locs).parent().find('.phone').val(phone);
+	}
+    }
+});
+}
+
+function getCheckedNames(){
+	var arr = new Array();
+	var $checked = $('input[name="user_id[]"]:checked');
+	$checked.each(function(){
+		arr.push($(this).val());
+	});
+	return arr;
+}
+
+
+$(document).ready(function(){
+$("select#reason-0").change(
+		function(){
+				if(this.value == '4'){
+			$(".extrareason").show();
+				} else {
+					$(".extrareason").hide();
+					$(".reasontxt").val("");
+				}
+		}
+	);
+
+
+$('#btnsubmit').bind('click', function(e) {
+	e.preventDefault() // prevents the form from being submitted
+ 
+	var error = 0;
+	var ajax_done = 0;
+
+	if($('select[id^=location_id-]').val() == "" ) {
+		error = 1;
+	}
+ 	if( $('#valid_from').val() == ""){
+		error = 2
+	}
+	if(error == 1) {
+		jAlert('Bitte Standort wählen');
+		return false;
+	} else if(error == 2) {
+		jAlert('Eingabe überprüfen: von..');
+		return false;
+	}
+	if($('input#location_type').val() == '1' && lb_visits_deactivate == '1' ){
+
+		if(error == '0'){
+			$.ajax({
+				type: 'POST',
+				url: 'ajax/checklocationvisits?id=<?php echo $_REQUEST['id']; ?>',
+				data: {
+					location_id: $('#location_id').val(),
+					location_type: $('#location_type').val(),
+					location_valid_from: $('#valid_from').val(),
+					location_valid_till: $('#valid_till').val()
+				},
+
+				success:function(data){
+					var visitdata = jQuery.parseJSON(data);
+
+					if(visitdata.visits_in_period == 1){
+						$('#visits_in_period').dialog('open');
+						return false; // used with modal
+					} else {
+						$('#btnsubmit').attr('disabled',true);
+						$('#patientlocationaddfrm').submit();
+					}
+				},
+				error:function(){
+					ajax_done = 1;
+				}
+			});
+		}
+		
+	} else {
+		 $('#patientlocationaddfrm').submit();
+	}
+});
+
+
+$('#visits_in_period').dialog({
+	autoOpen: false,
+	title: '<?php echo $this->translate('Attention'); ?>',
+	modal: true,
+	buttons: {
+		"<?php echo $this->translate('noconfirm'); ?>": function() {
+			$( this ).dialog( "close" );
+		},
+		"<?php echo $this->translate('yesconfirm'); ?>": function() {
+			$('#patientlocationaddfrm').submit();
+		}
+	}
+
+})
+
+});
+function printObject(o) {
+  var out = '';
+  for (var p in o) {
+    out += p + ': ' + o[p] + '\n';
+  }
+  alert(out);
+}
+</script>
+
+<form action="<?php echo $this->act ?>" method="post" name="patientlocationaddfrm" id="patientlocationaddfrm" autocomplete="off" >
+<?php echo $this->patientinfo ?>
+<?php echo $this->tabmenus ?>
+<div class="tab_container"  style="width: 100%; ">
+<br />
+<fieldset>
+<legend><?php echo $this->translate('addlocation') ?></legend><br />
+<div id="CalImg" style="display: none;">
+	<img id="calImg" src="<?php echo RES_FILE_PATH;  ?>/images/calendar.png" alt="Popup" class="trigger left" style="margin-top:5px;">
+</div>
+<div class="error PatiLoLied_error " style="margin:0px; height:auto;">
+
+				<?php foreach ($this->errors as $key => $val) { ?>
+
+	<div class="clearer"></div>
+	<?
+					foreach ($val as $k => $value)
+					{
+		?>
+		<?php echo $value ?><div class="clearer"></div>
+
+		<?
+	}
+				}?>
+
+</div>
+    <div class="ClrBoth"></div>
+
+  	<label for="plocation_id" id="lbl_plocation_id"><?php echo $this->translate('location') ?></label>
+			<div style="display:none;" class="loading_locations" id="loading_location"><img src="<?php echo APP_BASE.'/images/loading.gif'?>" width="15px" /></div>
+			<?php echo $this->formSelect('location_id[0]', $this->location_id, array('style' => '', 'class' => 'Location', 'onChange' => 'checkLocationStatus(this); checkLocationStation(this); getLocationPhone(this);'), $this->locationarray) ?>
+
+
+    <div id="patientMsterAd_ErrorMsg" class="error"><?php echo $this->error_location_error; ?></div>
+   <div class="ClrBoth"></div>
+			
+	<div id="locreason" style="display: none">
+	<br />
+           	<label for="plocation_id" id="lbl_reason"><?php echo $this->translate('locationreason') ?></label>
+			 <?php echo $this->formSelect('reason[0]',$this->reasons, null, $this->reasonsarray) ?>
+			 <div class="extrareason"  id="extrareason" style="display:none;" >
+            	<label for="plocation_id" id="lbl_reason"></label><input type="text" class="old_rns_add reasontxt" name="reason_txt[]" value="" />
+            </div>
+			
+			<?php if ( ! isset($this->client_modules[168]) || $this->client_modules[168] == 0 ) : ?>
+				
+			  <div class="ClrBoth"></div>
+       		<label for="plocation_id" id="lbl_hospdoc"><?php echo $this->translate('locationdoctor') ?></label>
+			  <?php echo $this->formSelect('hospdoc[0]',$this->hospdocs, null, $this->hospdocsarray) ?>
+    		  <div class="ClrBoth"></div>
+       		<label for="plocation_id" id="lbl_transport"><?php echo $this->translate('transportation') ?></label>
+			  <?php echo $this->formSelect('transport[0]',$this->transports, null, $this->transportsarray) ?>
+			  
+			<?php endif;?>	  
+	<br /><br />
+	</div>
+			<div id="stationdiv" style="display:none;">
+				<label for="station_select" id="lbl_reason"><?php echo $this->translate('station') ?></label>
+				<input type="text" value="" class="station_select" name="station_select" id="station_select" />
+			</div>
+
+			<div id="commentdiv" style="display:block;">
+				<label for="station_select" id="lbl_reason"><? echo $this->translate('comment') ?></label>
+				<input type="text" value="" class="location_comment_input" name="comment[0]" id="comment" />
+				<br/><br/>			
+			</div>
+
+
+
+ 	 <div class="ClrBoth"></div>
+    <label id="lbl_plocation_id2"><?php echo $this->translate('validfrom');?></label>
+    <input name="valid_from[0]" type="text" class="left" id="valid_from" value="<?php echo $this->valid_from?>" />
+    <div id="patientMsterAd_ErrorMsg" class="error left"><?php echo $this->error_fromerror; ?></div>
+    <div class="ClrBoth"></div>
+    <label id="lbl_plocation_id3"><?php echo $this->translate('validtill');?></label>
+    <input name="valid_till[0]" type="text" class="left" id="valid_till" value="<?php  echo $this->valid_till?>"/>
+        <div id="patientMsterAd_ErrorMsg" class="error left"><?php echo $this->error_tillerror; ?></div>
+        <div id="patientMsterAd_ErrorMsg" class="error"><?php echo $this->err_fromgreat; ?></div>
+
+    <div class="ClrBoth"></div>
+ <div class="ClrBoth"></div><br />
+
+			<input type="hidden" name="location_type" id="location_type" value="" />
+
+
+			<input type="submit" name="btnsubmit" id="btnsubmit" value="<?php echo $this->translate('submit') ?>" class="button">
+
+		</fieldset>
+</div>
+</form>
+
+<div id="visits_in_period" >
+	<?php echo $this->translate('change_to_hospital_delete_visits'); ?>
+</div>

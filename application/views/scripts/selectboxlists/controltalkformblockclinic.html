@@ -1,0 +1,340 @@
+<?
+//Maria:: Migration CISPC to ISPC 22.07.2020
+$this->headScript()->appendFile(RES_FILE_PATH . '/javascript/portamento.js?' . date('Ymd'));
+?>
+<style>
+    h2{
+        margin-top:20px;
+    }
+
+    div.mysection{
+        margin-left:18px;
+    }
+
+    .head_class_to_entry{
+        width:37px;
+    }
+    .head_class_to_entry input{
+        width:30px;
+        text-align:center;
+    }
+
+    .class_to_entry_col{
+        text-align:center;
+        width:32px;
+    }
+
+
+    #talkblockentries_table_headrow th{
+        background-color: #b2bdd6;
+        font-weight:bold;
+        padding:0px;
+    }
+    #talkblockentries_table td{
+        border-bottom:1px solid #ccc;
+        border-top:1px solid #ccc;
+        padding:2px;
+    }
+    .class_to_entry_col{
+        border-left:1px solid #ccc;
+    }
+
+    #talkblockentries_table tr.ui-state-highlight { height: 63px;}
+    .textbox-bold{
+        font-weight: bold;
+        background-color:#ffd;
+        border-bottom:2px solid black;
+    }
+
+    #talkblockentries_table td:first-child, #talkblockentries_table th:last-child{
+        border-left:1px solid #ccc;
+    }
+    #talkblockentries_table td:last-child,#talkblockentries_table th:last-child{
+        border-right:1px solid #ccc;
+    }
+
+    #talkblockentries_table tr.ui-sortable-helper td{
+        background-color: #fffff2;
+    }
+
+    #portamento_container {
+        float:none;
+        position:absolute;
+    }
+    #portamento_container #talkblockentries_table_headrow {
+        float:none;
+    }
+    #portamento_container #talkblockentries_table_headrow.fixed {
+        position:fixed;
+    }
+
+</style>
+<script>
+    $(document).ready(function(){
+
+        var fix_helper = function(e, ui) {
+            ui.children().each(function() {
+                $(this).width($(this).width());
+            });
+            return ui;
+        };
+        $('#talkblockentries_table tbody').sortable({
+            placeholder: "ui-state-highlight",
+            helper:fix_helper,
+            items: "tr.talkblockconfigentry",
+            update: function(event,ui){
+                var item = ui.item;
+                var container = item.parent();
+                var reorder = [];
+                container.children('tr').each(function(i){
+                    // save the item id order in array
+                    reorder[i] = $(this).attr('id');
+                });
+            }
+        }).disableSelection();
+
+        function setnewsize(){
+            while(($('#talkblockentries_table').width()+40)>$('.portamentowrapper1').width()){
+                $('.portamentowrapper1').css('width',$('.portamentowrapper1').width()+40);
+            }
+
+            var w=$('#talkblockentries_table').width();
+            $('#portamento_container').css('width',w);
+
+
+        }
+
+        $(document).on('click','.row_toggle_all', function(){
+            var row=$(this).parents('tr').find('.class_to_entry_cb');
+            if($(row).filter(':checked').length==0){
+                $(row).prop('checked',true);
+            }else{
+                $(row).prop('checked',false);
+            }
+            $(row).last().prop('checked', false);
+        });
+        $(document).on('click','.row_toggle_all_under', function(){
+            var headrow=$(this).parents('tr').find('.class_to_entry_cb');
+            var nextrow=$(this).parents('tr').next();
+            var rows=[];
+            while(nextrow && $(nextrow).find('.is_headline').prop('checked')==false){
+                rows.push($(nextrow).find('.class_to_entry_cb'));
+                nextrow=$(nextrow).next();
+            }
+
+            var col=0;
+            $(headrow).each(function(){
+                var colval=$(this).prop('checked');
+                for (var i=0; i<rows.length; i++){
+                    $(rows[i][col]).prop('checked',colval);
+                }
+                col++;
+            })
+        });
+
+        $(document).on('keyup change', '.talkblock_class', function(){
+            var empty_found=0;
+            $('.talkblock_class').each(function(){
+                if($(this).val()==""){
+                    empty_found=1;
+                }
+            });
+
+            if(empty_found==0){
+                var newel=$(this).parents('.head_class_to_entry').clone();
+                $(newel).find('.talkblock_class').val('');
+                $('.head_class_to_entry').last().after(newel);
+
+                $('.talkblockconfigentry').each(function(){
+                    var newel=$(this).find('.class_to_entry_col').last().clone();
+                    $(this).append(newel);
+                });
+            }
+            setnewsize();
+        });
+
+        $(document).on('change keyup', '.talkblock_entry_label', function(){
+            var empty_found=0;
+            $('.talkblock_entry_label').each(function(){
+                if($(this).val()==""){
+                    empty_found=1;
+                }
+            });
+
+            if(empty_found==0){
+                var newel=$(this).parents('.talkblockconfigentry').clone();
+                $(newel).find('.talkblock_entry_label').val('');
+                $(newel).find('input:checked').prop('checked',null);
+                $('#talkblockentries_table').append(newel);
+
+            }
+            setnewsize();
+        });
+
+        $(document).on('change', '.is_headline', function(){
+            var textel=$(this).parents('tr').find('.talkblock_entry_label');
+            if($(this).is(':checked')){
+                $(textel).addClass('textbox-bold');
+            }else{
+                $(textel).removeClass('textbox-bold');
+            }
+        });
+        $(document).on('click', '#talkblockconfig_savebutt', function(){
+            $(this).prop('disabled',true);
+            var talkblock_classes=[];
+
+            $('.talkblock_class').each(function(){
+                talkblock_classes.push($(this).val());
+            });
+
+            var entries=[];
+
+            $('.talkblockconfigentry').each(function(){
+
+                if($(this).find('.talkblock_entry_label').val()!=""){
+
+
+                    var new_entry={
+                        label:              $(this).find('.talkblock_entry_label').val(),
+                        is_headline:        $(this).find('.is_headline').prop('checked'),
+                        is_freetext:        $(this).find('.is_freetext').prop('checked'),
+                        is_acp:             $(this).find('.is_acp').prop('checked'),
+                        visible:            [],
+                    };
+                    var colcount=0;
+                    $(this).find('.class_to_entry_cb').each(function(){
+                        if($(this).prop('checked')){
+                            if(talkblock_classes[colcount]!="") {
+                                new_entry.visible.push(talkblock_classes[colcount]);
+                            }
+                        }
+                        colcount++;
+                    });
+
+
+                    entries.push(new_entry);
+                }
+            });
+            $.ajax
+            ({
+                type: "POST",
+                url: '<?php echo APP_BASE;?>selectboxlists/controltalkformblockclinic',
+                data: {'data':JSON.stringify(entries)},
+                beforeSend: function(){
+                    $('#talkblockconfig_savebutt').animate({
+                        backgroundColor: '#ffcc00',
+                    }, 500);
+                },
+                success: function () {
+                    $('#talkblockconfig_savebutt').animate({
+                        backgroundColor: '#90ee90',
+                    }, 550);
+
+                    $('#talkblockconfig_savebutt').prop('disabled',false);
+                }
+            })
+
+        });
+        $('.is_headline').change();
+
+
+        $('#talkblockentries_table_headrow').portamento({
+            wrapper: $('.portamentowrapper1'),
+            gap: 0,
+        });
+
+
+        setnewsize();
+    });
+    function col_takeover(fid){
+        var found=false;
+        $('input.talkblock_class').each(function(){
+            if($(this).val()==fid){
+                found=true;
+            }
+        });
+
+        if(!found){
+            $('input.talkblock_class').last().val(fid).change();
+        }
+
+    }
+</script>
+<form method="post">
+    <h1>Einstellungen für Kontaktformular-Gesprächsblock</h1>
+
+    <h2>Formulare mit anpassbarem Gesprächsblock</h2>
+    <table border="1">
+        <tr>
+            <th style="background-color:#b2bdd6; border:solid 1px #ddd;padding:3px; font-weight:bold;">Nr.</th>
+            <th style="background-color:#b2bdd6; border:solid 1px #ddd;padding:3px; font-weight:bold;">Titel</th>
+            <th style="background-color:#b2bdd6; border:solid 1px #ddd;padding:3px;"></th>
+        </tr>
+        <?php foreach ($this->forms as $form):?>
+        <tr>
+            <td style="border:solid 1px #ccc;padding:2px;"><?php echo $form['id'];?></td>
+            <td style="border:solid 1px #ccc;padding:2px;"><?php echo $form['name'];?></td>
+            <td style="border:solid 1px #ccc;padding:0px;"><input type="button" value="übernehmen" onclick="col_takeover(<?php echo $form['id'];?>);"></td>
+        </tr>
+        <?php endforeach;?>
+    </table>
+    <br>
+    <a href=<?php echo APP_BASE;?>socialcode/formtypes>Formulare bearbeiten</a>
+    <br><br><br>
+    <p>
+        Die Zahlen in der ersten Spalte der oberen Tabelle sind die Formular-Nummern. Diese Nummern tauchen im Kopf der unteren Tabelle auf. So ergibt jede Spalte der unteren Tabelle die Konfiguration für das entsprechende Formular.<br>
+        Mit dem Knopf "alle Formulare" kann man einfach alle Formulare mit diesem Stichpuntk ausstatten.<br>
+        Mit dem Knopf "alle Unterpunkte" wird für alle Formulare die Konfiguration dieser Zeile für alle folgenden Punkte bis zur nächsten Überschrift übernommen.
+    </p>
+    <br>
+    <h2>Einträge</h2>
+    <div class="mysection portamentowrapper1">
+
+        <table  id="talkblockentries_table_headrow">
+            <tr>
+                <th style="width:25px;"></th>
+                <th style="width:304px;">&nbsp;Stichpunkt</th>
+                <th style="width:144px;">Optionen</th>
+                <?php foreach ($this->groups as $group):?>
+                <th class="head_class_to_entry"><input class="talkblock_class" type="input" value="<?php echo $group;?>"></th>
+                <?php endforeach;?>
+            </tr>
+        </table>
+        <div style="height:30px;"></div>
+        <table id="talkblockentries_table">
+            <?php foreach ($this->config as $conf):?>
+            <tr class="talkblockconfigentry">
+                <td style="width:20px;text-align:center;vertical-align: middle;background-color: #eee;"><span class="ui-icon ui-icon-arrowthick-2-n-s" style=""></span></td>
+                <td style="width:300px;">
+                    <input style="width:280px;" type="text" class="talkblock_entry_label" value="<?php echo $conf['label'];?>"><br>
+                    <input type="button" value="alle Formulare" class="row_toggle_all">
+                    <input type="button" value="alle Unterpunkte" class="row_toggle_all_under">
+                </td>
+                <td style="width:140px;">
+                    <input type="checkbox" class="is_freetext" value="1" <?php if($conf['is_freetext']) echo "checked";?>>hat Freitextfeld
+                    <br>
+                    <input type="checkbox" class="is_headline" value="1" <?php if($conf['is_headline']) echo "checked";?>>ist Überschrift
+                    <br>
+                    <input type="checkbox" class="is_acp" value="1" <?php if($conf['is_acp']) echo "checked";?>>ist ACP Thema
+                </td>
+                <?php foreach ($this->groups as $group):?>
+                <td class="class_to_entry_col">
+                    <input  type="checkbox" class="class_to_entry_cb" value="1" <?php if(in_array($group, $conf['visible']))echo "checked";?>>
+                </td>
+                <?php endforeach;?>
+
+            </tr>
+            <?php endforeach;?>
+        </table>
+    </div>
+
+
+
+
+    <div class="mysection" style="margin-top:60px; margin-bottom:24px;">
+        <div style="text-align:right;">
+            <input style="padding:5px; background-color:#90ee90;" type="button" id="talkblockconfig_savebutt" value="Diese Einstellungen Sichern">
+        </div>
+    </div>
+
+</form>

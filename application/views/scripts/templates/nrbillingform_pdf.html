@@ -1,0 +1,157 @@
+<?php
+$weekend = 'color="#ff0000"';
+$national_holidays = $this->national_holidays;
+$full_details = $this->master_data_full;
+
+$bg = array();
+$bg['sh_doc_non_hospiz_visits'] = "background-color: #EADCDC;";
+$bg['sh_nur_non_hospiz_visits'] = "background-color: #C6D9F1;";
+$bg['sh_other_visits'] = "background-color: #FFFFA9;";
+$bg['inactive_day'] = "background-color: #F2DBD9;";
+
+$real_active_days = $this->master_data['real_active_days'];
+$hospital_days = $this->master_data['hospital_days'];
+	
+?>
+<table>
+	<tr>
+		<td>
+			<table style="width: 100%;">
+				<tr>
+					<td style="width: 50%;">
+						<h1>Leistungsnachweis für Monat: <u><?php echo date('m Y', strtotime($this->current_period['start'])); ?></u></h1>
+					</td>
+					<td>
+						<h1> </h1>
+					</td>
+				</tr>
+			</table>
+		</td>
+	</tr>
+</table>
+<br />
+
+<br />
+<table style="width: 100%;font-size:9;">
+		<tr>
+		<td width="20%">
+			<b><?php echo $this->translate('insured_patient'); ?>:</b>
+		</td>
+		<td>
+			<?php echo $this->patient_last_name; ?>, <?php echo $this->patient_first_name; ?>
+		</td>
+	</tr>
+	
+	<tr>
+		<td>
+			<b><?php echo $this->translate('shtbirthd'); ?>:</b>
+		</td>
+		<td>
+			<?php echo $this->patient_dob; ?>
+		</td>
+	</tr>
+	
+	
+	
+	<tr>
+		<td>
+			<b><?php echo $this->translate('pat_healthinsurance'); ?>:</b>
+		</td>
+		<td>
+			<?php echo $this->hi_company_name; ?>
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<b><?php echo $this->translate('healthinsurance_nr'); ?>:</b>
+		</td>
+		<td>
+			<?php echo $this->insurance_no; ?> 
+		</td>
+	</tr>
+ 
+</table>
+<br />
+<table border="0" style="width:100%;font-size:9;">
+	<tr>
+		<td style="width:50%;"></td>
+		<td style="width:51%;">
+			<table border="0" cellpadding="4">
+				<tr>
+					<td style="width:10%; text-align:right;"><?php echo $this->translate('sh_betriebsstatten_nr'); ?> </td>
+					<td style="width:35%;"><?php echo $this->betriebsstatten_nr; ?></td>
+					<td style="width:15%; text-align:right;"><?php echo $this->translate('sh_sapv_team'); ?> </td>
+					<td style="width:40%;"><?php echo $this->sapv_team; ?></td>
+				</tr>
+			</table>
+		</td>
+	</tr>
+</table>
+
+<table border="0">
+	<tr>
+		<td>
+				<table width="100%" style="font-size:9pt;" cellpadding="1">
+					<!-- Days row -->
+					<tr>
+						<td width="145px" style="text-align: left;font-weight: bold;background-color: #CCC;border:1px solid #000;">
+							&nbsp;<br />
+							&nbsp;Leistungen
+						</td>
+						<?php foreach($this->selected_month_days as $k_month => $v_month): $day_type = date('w', strtotime($v_month)); ?>
+							<td style="width:36px;text-align: center;font-weight: bold;background-color: #CCC;border:1px solid #000;" <?php if($day_type == 0 || $day_type == 6 || in_array(strtotime($v_month),$national_holidays)): echo $weekend; endif; ?>>
+								&nbsp;<br />
+								&nbsp;<?php echo date('d', strtotime($v_month));  ?>
+							</td>
+						<?php endforeach;  ?>
+							<td width="50px" style="font-weight: bold; text-align: center;font-weight: bold;background-color: #CCC;font-size:8;border:1px solid #000;">
+								&nbsp;<br />
+								<?php echo $this->translate('sh_a14_total_col'); ?>
+							</td>
+					</tr>
+
+					<!-- SH Anlage 14 Shortcuts-->
+					<?php foreach($this->shortcuts as $k_short_a => $v_short_a):  ?>
+			 
+						<?php if(!in_array($v_short_a, $this->excluded_shortcuts)):?>
+						<tr>
+							<td style="border:1px solid #000;<?php echo $bg[$v_short_a]; ?>">
+								<font size="8pt"><?php echo $this->translate('shortcut_text_'.$v_short_a); ?></font>
+							</td>
+							<?php foreach($this->selected_month_days as $k_month => $v_month): ?>
+							
+							<td style="text-align: center; border:1px solid #000;<?php  if( !in_array(date('d.m.Y', strtotime($v_month)),$real_active_days) || in_array(date('d.m.Y', strtotime($v_month)),$hospital_days)):echo $bg['inactive_day'];  else: echo $bg[$v_short_a]; endif; ?>">
+										<?php if($v_short_a != 'sh_telefonat'): ?>
+										<?php if($this->{$v_short_a}[$v_month]['checked'] == "1"):?>
+											<?php if( ! empty($full_details[$v_month][$v_short_a]['pdf_time_from'])):?>
+											<font size="8pt"><?php echo $full_details[$v_month][$v_short_a]['pdf_time_from'];?></font><br/><font size="7pt"><?php echo $full_details[$v_month][$v_short_a]['user_shortcut'];?></font>
+											<?php else: ?> 
+											<font size="8pt">X</font>
+											<?php endif;?> 
+										<?php endif;?> 
+											<!-- <img src="<?php echo PUBLIC_PATH;?>/images/<?php if($this->{$v_short_a}[$v_month]['checked'] == "1"):?>check02.jpg<?php else: ?>check01.jpg<?php endif; ?>" /> -->
+											<?php $shortcut_total[$v_short_a] += number_format($this->{$v_short_a}[$v_month]['checked'],'2',',','.'); ?>
+										<?php else: ?>
+											
+											<?php if($this->{$v_short_a}[$v_month]['qty'] > '0'): ?>
+												<?php echo $this->{$v_short_a}[$v_month]['qty']; ?>
+											<?php else: ?>
+												<?php echo ''; ?>
+											<?php endif; ?>
+											<?php $shortcut_total[$v_short_a] += number_format($this->{$v_short_a}[$v_month]['qty'],'2',',','.'); ?>
+										<?php endif; ?>
+							</td>
+							<?php endforeach; ?>
+							<td style="font-weight: bold; text-align: center;font-weight: bold;font-size:8;border:1px solid #000;vertical-align: middle; <?php echo $bg[$v_short_a ];?>">
+								<?php //echo $shortcut_total[$v_short_a]; ?>
+								<?php echo $shortcut_total[$v_short_a] != 0 ? $shortcut_total[$v_short_a]: "" ; ?>
+							</td>
+						</tr>
+						<?php endif; ?>
+					<?php endforeach;  ?>
+				</table>
+		</td>
+	</tr>
+
+</table>
+

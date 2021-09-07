@@ -1,0 +1,516 @@
+<script type="text/javascript">
+
+$(function(){
+	
+	$('#approve_visit_overlapped').dialog({
+		autoOpen: false,
+		title:'<?php echo $this->translate('approve_visit_overlapped_title'); ?>',
+		resizable: false,
+		height: 200,
+		width: 350,
+		modal: true,
+		buttons: {
+			"<?php echo $this->translate('ok_button'); ?>": function(){
+				$( "#approve_visit_overlapped" ).dialog('close');
+			}
+		}
+	});
+
+	
+    $( "#approve_visit_block" ).dialog({
+			autoOpen: false,
+	    	dialogClass : "selector_dialog",			
+			title:"<?php echo $this->translate('Set date interval'); ?>",
+			resizable: false,
+			height: 200,
+			width: 350,
+			modal: true,
+			open: function (){
+				var approved_type = $("#new_visti_type").val();
+				$('#approved_visit').val(approved_type);
+				$('#approved_from').val('<?php echo date("d.m.Y"); ?>');
+				$('#approved_until').val('');
+
+				if(approved_type == 'p1')
+				{
+					var datas = "P1 genehmigt";
+				}
+				else if(approved_type == 'p2')
+				{
+					var datas = "P2 genehmigt";
+				}
+				else if(approved_type == 'p3')
+				{
+					var datas = "P3 genehmigt";
+				}
+
+				$('#approved_visit_name').append('<span>'+datas+'</span>');
+
+				$('#approved_from').datepicker({
+					dateFormat: 'dd.mm.yy',
+					showOn: "both",
+					buttonImage: $('#calImg').attr('src'),
+					buttonImageOnly: true,
+					changeMonth: true,
+					changeYear: true,
+					maxDate: "<?php echo date('d.m.Y',mktime(0,0,0,date('m'),date('d'),date('Y'))) ?>",
+					nextText: '',
+					prevText: ''
+				});
+
+				$('#approved_until').datepicker({
+					dateFormat: 'dd.mm.yy',
+					showOn: "both",
+					buttonImage: $('#calImg').attr('src'),
+					buttonImageOnly: true,
+					changeMonth: true,
+					changeYear: true,
+					nextText: '',
+					prevText: ''
+				});
+			},
+
+
+			buttons: {
+				"<?php echo $this->translate('save'); ?>": function(){
+
+// 				    var _thisParentDialog = $(this).parents(".selector_dialog");
+				    var _thisParentDialog = null;
+
+					
+					$('.submitform', _thisParentDialog).addClass("inactive_button");
+					$('.submitform', _thisParentDialog).attr('disabled',true);
+					$(".ui-button:first" , _thisParentDialog)
+					.addClass("ui-state-disabled").attr("disabled", true).addClass("ui-state-disabled")
+					.next("button").attr("disabled", true);
+
+					
+					if($('#approved_from', this).val() == '')
+					{
+						alert('<?php echo $this->translate("please provide the start date"); ?>')
+						$('.submitform', _thisParentDialog).removeClass("inactive_button");
+						$('.submitform', _thisParentDialog).attr('disabled',false);
+						$(".ui-button:first", _thisParentDialog).attr("disabled", false).addClass("ui-state-disabled").next("button").attr("disabled", false).addClass("ui-state-disabled");
+
+						return false;
+					}
+
+
+					//check for overlapping START
+					$.ajax({
+						type: 'POST',
+						url: '<?php echo APP_BASE; ?>ajax/approvedtypesoverlapping?id=<?php echo $_REQUEST['id']; ?>',
+						data:
+						{
+							start_date: $('#approved_from').val(),
+							end_date: $('#approved_until').val()
+						},
+
+						success:function(data)
+						{
+							var pavtdata = jQuery.parseJSON(data);
+
+							if(pavtdata.interval_incorrect == 1)
+							{
+								$('.submitform', _thisParentDialog).removeClass("inactive_button");
+								$('.submitform', _thisParentDialog).attr('disabled',false);
+								$(".ui-button:first", _thisParentDialog).attr("disabled", false).addClass("ui-state-disabled").next("button").attr("disabled", false).addClass("ui-state-disabled");
+
+								alert('<?php echo $this->translate('end date must be greater than start date'); ?>')
+
+								return false;
+							}
+							else if(pavtdata.intersected == 1)
+							{
+
+								$('.submitform', _thisParentDialog).removeClass("inactive_button");
+								$('.submitform', _thisParentDialog).attr('disabled',false);
+								$(".ui-button:first", _thisParentDialog).attr("disabled", false).addClass("ui-state-disabled").next("button").attr("disabled", false).addClass("ui-state-disabled");
+
+								$('#approve_visit_overlapped').dialog('open');
+								return false;
+							}
+							else
+							{
+								if ( ! checkclientchanged()) {
+									return false; 
+								}
+						    	$('#error_div_edit').html('');
+								$('#approved_visits_type').submit();
+							}
+						}
+					});
+
+				},
+
+
+				"<?php echo $this->translate('cancel'); ?>": function(){
+					$( "#approve_visit_block" ).dialog('close');
+
+					var old_visti_type = $('#old_visti_type').val();
+					$('#'+old_visti_type+'_approved').attr('checked', true);
+
+				}
+			},
+
+			create:function () {
+
+// 			   console.log($(this).closest(".ui-dialog").find(".ui-button:first"));
+				
+		        $(this).closest(".ui-dialog")
+	            .find(".ui-button:first") // the first button
+	            .addClass("submitform");
+			},
+
+
+   			close:function () {
+		    	$('.submitform').attr('disabled',false),
+				 $(".ui-button:first").attr("disabled", false)
+				 .removeClass("ui-state-disabled").next("button").attr("disabled", false)
+				 .removeClass("ui-state-disabled");
+
+		    	$('#approved_visit_name span').remove();
+			}
+		});
+
+		$('.visit_type_approved').live('click', function(){
+			var new_value = $(this).val();
+			var selected_value = $('#old_visti_type').val();
+
+			if ($('#'+new_value+'_approved').is(":checked") && new_value != selected_value){
+
+				$('#new_visti_type').val(new_value);
+				$('#approve_visit_block').dialog('open');
+
+			}
+		});
+
+		//edit pavt
+		$( "#approve_visit_block_edit" ).dialog({
+			autoOpen: false,
+			title:'<?php echo $this->translate('editpatientarticle'); ?>',
+			resizable: false,
+			height: 200,
+			width: 350,
+			modal: true,
+			open: function (){
+
+				$('#pavt_edit_start').datepicker({
+					dateFormat: 'dd.mm.yy',
+					showOn: "both",
+					buttonImage: $('#calImg').attr('src'),
+					buttonImageOnly: true,
+					changeMonth: true,
+					changeYear: true,
+					maxDate: "<?php echo date('d.m.Y',mktime(0,0,0,date('m'),date('d'),date('Y'))) ?>",
+					nextText: '',
+					prevText: ''
+				});
+				$('#pavt_edit_end').datepicker({
+					dateFormat: 'dd.mm.yy',
+					showOn: "both",
+					buttonImage: $('#calImg').attr('src'),
+					buttonImageOnly: true,
+					changeMonth: true,
+					changeYear: true,
+					nextText: '',
+					prevText: ''
+				});
+				$('#error_div_edit').html('');
+			},
+			buttons: {
+				"<?php echo $this->translate('edit'); ?>": function(){
+
+
+					$('.submitform').addClass("inactive_button");
+					$('.submitform').attr('disabled',true);
+					$(".ui-button:first").addClass("ui-state-disabled").attr("disabled", true).addClass("ui-state-disabled").next("button").attr("disabled", true);
+
+					if($('#pavt_edit_start').val() == '')
+					{
+
+						$('.submitform').removeClass("inactive_button");
+						$('.submitform').attr('disabled',false);
+						$(".ui-button:first").attr("disabled", false).addClass("ui-state-disabled").next("button").attr("disabled", false).addClass("ui-state-disabled");
+
+						alert('<?php echo $this->translate('please provide the start date'); ?>')
+						return false;
+					}
+
+
+					//check for pavt overlapping START
+					$.ajax({
+						type: 'POST',
+						url: '<?php echo APP_BASE; ?>ajax/approvedtypesoverlapping?id=<?php echo $_REQUEST['id']; ?>',
+						data: {
+							start_date: $('#pavt_edit_start').val(),
+							end_date: $('#pavt_edit_end').val(),
+							exclude_id: $('#pavt_edit_id').val()
+						},
+
+						success:function(data)
+						{
+							var pavt_edt = jQuery.parseJSON(data);
+
+							if(pavt_edt.intersected == 1)
+							{
+								$('.submitform').removeClass("inactive_button");
+								$('.submitform').attr('disabled',false);
+								$(".ui-button:first").attr("disabled", false).addClass("ui-state-disabled").next("button").attr("disabled", false).addClass("ui-state-disabled");
+
+								$('#approve_visit_overlapped').dialog('open');
+
+							}
+							else if(pavt_edt.interval_incorrect == 1)
+							{
+
+								$('.submitform').removeClass("inactive_button");
+								$('.submitform').attr('disabled',false);
+								$(".ui-button:first").attr("disabled", false).addClass("ui-state-disabled").next("button").attr("disabled", false).addClass("ui-state-disabled");
+
+								alert('<?php echo $this->translate('end date must be greater than start date'); ?>')
+								return false;
+							}
+							else
+							{
+								if ( ! checkclientchanged()) {
+									return false; 
+								}
+								$('.submitform').addClass("inactive_button");
+								$('.submitform').attr('disabled',true);
+								$(".ui-button:first").addClass("ui-state-disabled").attr("disabled", true).addClass("ui-state-disabled").next("button").attr("disabled", true);
+
+
+								$('#edit_approved_visits_type').submit();
+							}
+						}
+					});
+				},
+
+				"<?php echo $this->translate('cancel'); ?>": function(){
+					$( "#approve_visit_block_edit" ).dialog('close');
+					$('#error_div_edit').html('');
+				}
+			},
+			create:function () {
+				$(this).closest(".ui-dialog").find(".ui-button:first").addClass("submitform");
+			},
+
+			close:function () {
+				$('.submitform').attr('disabled',false),
+			    $(".ui-button:first").attr("disabled", false).removeClass("ui-state-disabled").next("button").attr("disabled", false).removeClass("ui-state-disabled");
+			}
+		});
+
+		$('.edit_pavt').live('click', function(){
+			var curent_id = $(this).attr('alt');
+
+			$('#pavt_edit_id').val(curent_id);
+			$('#pavt_edit_start').val($('#pavt_start_'+curent_id).val());
+			$('#pavt_edit_end').val($('#pavt_end_'+curent_id).val());
+
+			$('#approve_visit_block_edit').dialog('open');
+		});
+
+
+
+		//delete pavt - patient approved visits type
+		$( "#pavt_delete" ).dialog({
+			autoOpen: false,
+			title:'Delete Appreved visits type',
+			resizable: false,
+			height: 200,
+			width: 350,
+			modal: true,
+			buttons: {
+				"<?php echo $this->translate('delete'); ?>": function(){
+					if (! checkclientchanged()) {
+						return false;
+					}
+					$('.submitform').attr('disabled',true);
+					 $(".ui-button:first").attr("disabled", true)
+					 .addClass("ui-state-disabled").next("button").attr("disabled", true)
+					 .addClass("ui-state-disabled");
+
+					$('#del_pavt').submit();
+				},
+				"<?php echo $this->translate('cancel'); ?>": function(){
+					$( "#pavt_delete" ).dialog('close');
+				}
+			},create:function () {
+		        $(this).closest(".ui-dialog")
+	            .find(".ui-button:first") // the first button
+	            .addClass("submitform");
+	    },
+	   	   close:function () {
+	    	$('.submitform').attr('disabled',false),
+			 $(".ui-button:first").attr("disabled", false)
+			 .removeClass("ui-state-disabled").next("button").attr("disabled", false)
+			 .removeClass("ui-state-disabled");
+			$('#del_pavt_id').val("");
+	    }
+		});
+
+
+		$('.delete_pavt').live('click', function(){
+			var curent_del_id = $(this).attr('alt');
+			$('#del_pavt_id').val(curent_del_id);
+			$('#pavt_delete').dialog('open');
+		});
+});
+</script>	
+	<!-- used as accordion head -->
+	<div class="entryline">
+	   <span class="selector_divisions division_5" data-division="5">Pflegebesuche</span>
+	</div>
+	
+
+	<div class="entryline">
+	
+	   <div>
+        		<table class="dontPrint">
+        
+        			<tr>
+        				<td>
+        					<input type="radio" name="visit_type" value="p1" class="visit_type_approved"  id="p1_approved" <?php if($this->approved_visit_type == "p1"):?> checked = "checked" <?php endif;?>  />
+        				</td>
+        				<td>
+        
+        					<label for="p1_approved"> P1 genehmigt</label>
+        					<input type="hidden"  name="new_visti_type" value="" id="new_visti_type" />
+        					<input type="hidden"  name="old_visti_type" value="<?php echo $this->approved_visit_type; ?>" id="old_visti_type" />
+        
+        				</td>
+        			</tr>
+        
+        			<tr>
+        				<td>
+        					<input type="radio" name="visit_type" value="p2"  class="visit_type_approved"  id="p2_approved"  <?php if($this->approved_visit_type == "p2"):?> checked = "checked" <?php endif;?> />
+        				</td>
+        				<td>
+        					<label for="p2_approved"> P2 genehmigt</label>
+        				</td>
+        			</tr>
+        
+        			<tr>
+        				<td>
+        					<input type="radio" name="visit_type" value="p3"  class="visit_type_approved"  id="p3_approved"  <?php if($this->approved_visit_type == "p3"):?> checked = "checked" <?php endif;?>   />
+        				</td>
+        				<td>
+        					<label for="p3_approved"> P3 genehmigt</label>
+        				</td>
+        			</tr>
+        
+        
+        		</table>
+        
+        		<?php if($this->approved_visit_type_history && $this->only_default != 1):?>
+        
+        		<table class="PatientDetail_datatable">
+        		<tr>
+        			<th><b><?php echo $this->translate('Pflegebesuche')?></b></th>
+        			<th><b><?php echo $this->translate('validfrom')?></b></th>
+        			<th><b><?php echo $this->translate('validtill')?></b></th>
+        			<th><b><?php echo $this->translate('actions')?></b></th>
+        		</tr>
+        
+        		<?php foreach($this->approved_visit_type_history as $kes=>$vas): ?>
+        			<tr>
+        				<td><?php echo $vas['visit_type']; ?></td>
+        				<td><?php echo $vas['start_date']; ?> <input type="hidden" id="pavt_start_<?php echo $vas['id']; ?>"  value="<?php echo $vas['start_date']; ?>" /></td>
+        				<td><?php echo $vas['end_date']; ?> <input type="hidden" id="pavt_end_<?php echo $vas['id']; ?>"  value="<?php echo $vas['end_date']; ?>" /></td>
+        				<td>
+        					<a href="javascript:void(0)" class="edit_pavt dontPrint" alt="<?php echo $vas['id']; ?>"><img border="0" src="<?php echo RES_FILE_PATH;  ?>/images/edit.png"></a>
+        					<a href="javascript:void(0)" class="delete_pavt dontPrint" alt="<?php echo $vas['id']; ?>"><img border="0" src="<?php echo RES_FILE_PATH;  ?>/images/action_delete.png"></a>
+        				</td>
+        			</tr>
+        
+        		<?php endforeach;?>
+        
+        		</table>
+        		<?php endif;?>
+        
+        
+        	</div>
+
+	
+	
+	</div>
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+<!-- dialogs -->
+	
+	
+<div id="approve_visit_overlapped" style="display:none;" class="dontPrint">
+	<p>
+		<?php echo $this->translate('approved visits types are overlapping'); ?>
+	</p>
+</div>
+
+
+<div id="approve_visit_block"  style="display:none;" class="dontPrint">
+	<form name="approved_visits_type" method="POST" action="patient/savepatientneactions?id=<?=$this->pid?>" id="approved_visits_type" >
+		<input type="hidden" name="visit_type" value=""  id="approved_visit"  />
+		<input type="hidden" name="pavt_default[start_date]" value="<?php echo $this->pavt_default['start_date'];?>" />
+		<input type="hidden" name="pavt_default[visit_type]" value="<?php echo $this->pavt_default['visit_type']?>"  />
+		<div id="approved_visit_name"></div>
+		<br/>
+
+		<div class="vt_approved_date">
+			<label><?php echo $this->translate('validfrom')?>:</label>
+			<input type="text" name="start_date" value="" id="approved_from"   />
+		</div>
+
+		<div class="vt_approved_date">
+			<label><?php echo $this->translate('validtill')?>:</label>
+			<input type="text" name="end_date" value="" id="approved_until"/>
+		</div>
+
+		<div style="display:none;"  id="medipump_ajax_load">
+			<img src="<?php echo RES_FILE_PATH;  ?>/images/loading-transp.gif" style="width:16px;"/>
+		</div>
+
+	</form>
+</div>
+
+
+
+<div id="approve_visit_block_edit"  style="display:none;" class="dontPrint">
+	<form name="edit_approved_visits_type" method="POST" action="patient/savepatientneactions?id=<?=$this->pid?>" id="edit_approved_visits_type">
+
+		<div id="edit_pavt_name"></div>
+		<br/>
+
+		<div class="vt_approved_date">
+			<label><?php echo $this->translate('validfrom')?>:</label>
+			<input type="text" name="pavt_edit[start_date]" value="" id="pavt_edit_start"   />
+		</div>
+
+		<div class="vt_approved_date">
+			<label><?php echo $this->translate('validtill')?>:</label>
+			<input type="text" name="pavt_edit[end_date]" value="" id="pavt_edit_end"/>
+		</div>
+
+		<input type="hidden" name="pavt_edit[id]" id="pavt_edit_id" value="" />
+	</form>
+</div>
+	
+<div id="pavt_delete" style="display:none;" class="dontPrint">
+	<form name="del_pavt" method="POST" action="patient/savepatientneactions?id=<?=$this->pid?>" id="del_pavt">
+		<p>
+			<?php echo $this->translate('pavt_modal_delete');  ?>
+		</p>
+
+		<input type="hidden" name="del_pavt" id="del_pavt" value="1" />
+		<input type="hidden" name="del_pavt_id" id="del_pavt_id" value="" />
+	</form>
+</div>
+	

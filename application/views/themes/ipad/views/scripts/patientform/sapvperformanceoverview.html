@@ -1,0 +1,226 @@
+<link rel='stylesheet' type='text/css' href='<? echo RES_FILE_PATH; ?>/css/page-css/sapvperformanceoverview.css' />
+<?php
+//IE Freaking hack
+$url = APP_BASE . "patientform/sapvperformanceoverview?" . $_SERVER['QUERY_STRING'];
+if (str_replace("&list=" . $_REQUEST['list'] . "", "", $url))
+{
+	$finalJsUrl = str_replace("&list=" . $_REQUEST['list'] . "", "", $url);
+}
+else
+{
+	$finalJsUrl = $url;
+}
+
+	$active_days = $this->active_days;
+	$master_data = $this->master_data;
+	$week_price_shortcuts = $this->week_price_shortcuts;
+	$hospital_days = $this->full_hospital_days;
+	$hospiz_days = $this->full_hospiz_days;
+	$days2verordnet = $this->days2verordnet;
+	$verordnet2shortcuts = $this->verordnet2shortcuts;
+
+	$master_price_list = $this->master_price_list;
+	$current_period = $this->current_period;
+?>
+
+<script type="text/javascript" >
+	function changeMonth(data) {
+		var url = "<?php echo $finalJsUrl; ?>&list=" + data;
+		$(location).attr('href', url);
+	}
+
+	$(document).ready(function() {
+		$('form').submit(function() {
+			setTimeout(function () {$('input[type=submit]').attr('disabled', true)}, 200);
+			setTimeout(function () {$('input[type=submit]').attr('disabled', false)}, 23000);
+		});
+
+		$('.checkable:not(:disabled)').live('click', function(){
+			change_range($(this));
+		});
+	});
+
+	function change_range(start_element, method) {
+		var id = start_element.attr('id');
+		var selected_day = start_element.attr('rel');
+
+		var substract = id.split('-');
+		var shortcut = substract[0];
+
+		var min_day_number = parseInt(selected_day);
+		var max_day_number = parseInt(parseInt(selected_day)+6);
+
+		if(start_element.is(':checked') && method != 'cleanup'){
+			//selecting
+
+			//setting start class
+			$('#'+id+'.checkable').addClass('starter');
+
+			//loop through next elements in group
+			for(i=min_day_number;i<=max_day_number;i++){
+
+				//search for starter in current range
+				if (i != min_day_number) {
+					if ($('#' + shortcut + '-' + i + '.checkable').hasClass('starter')) {
+						//found starter in group
+						//re-call current function with loop current element "selected_day"
+						change_range($('#' + shortcut + '-' + i + '.checkable'), 'cleanup');
+
+						//select the checbox becouse previous function resets it!
+						$('#' + shortcut + '-' + i + '.checkable').attr('checked', true).attr('disabled', true);
+
+					} else {
+						$('#' + shortcut + '-' + i + '.checkable').attr('checked', true).attr('disabled', true);
+					}
+				}
+			}
+		} else if (method == 'cleanup') { // force cleanup
+			//deselecting
+			//remove starter class first
+			$('#' + id + '.checkable').removeClass('starter');
+
+			//loop through next elements in group
+			for (ii = min_day_number; ii <= max_day_number; ii++) {
+				//in cleanup mode we deselect the starter too
+				$('#' + shortcut + '-' + ii + '.checkable').attr('checked', false).attr('disabled', false).val('0');
+				$('#' + shortcut + '-' + ii + '.checkable').val('0');
+			}
+		} else {
+			//remove starter class first
+			$('#' + id + '.checkable').removeClass('starter');
+
+			//loop through next elements in group
+			for (i = min_day_number; i <= max_day_number; i++) {
+				if (i != min_day_number) {
+					$('#' + shortcut + '-' + i + '.checkable').attr('checked', false).attr('disabled', false);
+					$('#' + shortcut + '-' + i + '.checkable').val('0');
+				}
+			}
+		}
+	}
+</script>
+
+
+<? echo $this->patientinfo ?>
+<? echo $this->tabmenus ?>
+<div class="clearer"></div>
+<h1>Sapv Leistungsübersicht</h1>
+<form method="post" action="" name="anlage6">
+	Monat: <?php echo $this->months_selector; ?>
+
+	<table class="datatable_new">
+		<tr>
+			<th class="anlage6_header_row" style="height: 15px;"></th>
+			<td class="big_cell" rowspan="15" style="padding:0;margin:0;">
+				<div class="overflowed_div">
+					<table class="datatable_new" style="margin:0;padding:0; width: 1400px; height: 250px;border: 1px solid #000;border-top: 0px;border-bottom: 0px;">
+
+						<!-- Days row -->
+						<tr class="anlage6_header_row" >
+							<?php foreach($this->month_days as $k_month => $v_month):  ?>
+								<th class="<?php if(!in_array($v_month, $active_days) || in_array($v_month, $hospital_days) || in_array($v_month, $hospiz_days)): ?>inactive_day_class<?php endif;  ?> <?php if($v_month == date('Y-m-d', time())): ?> current_day <?php endif; ?> ">
+									<?php echo date('d', strtotime($v_month));  ?>
+								</th>
+							<?php endforeach;  ?>
+						</tr>
+
+						<!--Second table data rows -->
+
+						<!--Shortcuts-->
+						<?php foreach($this->shortcuts as $k_short_a => $v_short_a):  ?>
+						<tr class="border-bottom-slim">
+							<?php foreach ($this->month_days as $k_month => $v_month): ?>
+								<td class="a6_ov_cell <?php if(!in_array($v_month, $active_days) || in_array($v_month, $hospital_days) || in_array($v_month, $hospiz_days)): ?>inactive_day_class<?php endif;  ?> <?php if($v_month == date('Y-m-d', time())): ?> current_day <?php endif; ?>">
+
+<input
+	type="checkbox"
+	id="<?php echo $v_short_a.'-'.date('j', strtotime($v_month)); ?>"
+	class="<?php if(in_array($v_month, $active_days) && in_array($v_short_a, $week_price_shortcuts) && !in_array($v_month, $hospital_days) && !in_array($v_month, $hospiz_days) && (in_array($v_short_a, $verordnet2shortcuts[end($days2verordnet[$v_month])]) && in_array($v_short_a, $week_price_shortcuts))): ?>checkable<?php endif; ?> <?php if(strlen($master_data[$v_short_a][$v_month]['qty']) > 0): ?>starter<?php endif; ?>"
+	rel="<?php echo date('j', strtotime($v_month)); ?>"
+	name="<?php echo $v_short_a;?>[<?php echo date('d', strtotime($v_month));  ?>]"
+	value="1"
+	<?php
+		if(!in_array($v_month, $active_days) || in_array($v_month, $master_data[$v_short_a]['sub_group_days']) || in_array($v_month, $hospital_days)
+		|| in_array($v_month, $hospiz_days) || (!in_array($v_short_a, $verordnet2shortcuts[end($days2verordnet[$v_month])]) && in_array($v_short_a, $week_price_shortcuts))):
+	?>
+		disabled="disabled"
+	<?php endif; ?>
+
+	<?php
+		if((strlen($master_data[$v_short_a][$v_month]['qty']) > 0 || in_array($v_month, $master_data[$v_short_a]['sub_group_days'])  && !in_array($v_month, $hospital_days) && !in_array($v_month, $hospiz_days) && !in_array($v_short_a, $week_price_shortcuts))
+		|| ((strlen($master_data[$v_short_a][$v_month]['qty']) > 0 || in_array($v_month, $master_data[$v_short_a]['sub_group_days'])) && !in_array($v_month, $hospital_days) && !in_array($v_month, $hospiz_days) && in_array($v_short_a, $verordnet2shortcuts[end($days2verordnet[$v_month])]) && in_array($v_short_a, $week_price_shortcuts))):
+	?>
+		checked="checked"
+	<?php endif;  ?>
+/>
+
+<?php if($master_data[$v_short_a][$v_month]['qty'] > '1'):  ?>
+	<input type="hidden" name="<?php echo $v_short_a.'_qty';?>[<?php echo date('d', strtotime($v_month));  ?>]" id="<?php echo $v_short_a.'-'.date('j', strtotime($v_month)); ?>_qty" value="<?php echo $master_data[$v_short_a][$v_month]['qty'];  ?>"  />
+<?php  endif; ?>
+									<?php if(in_array($v_month, $master_data[$v_short_a]['sub_group_days'])):  ?>
+									<input type="hidden" id="<?php echo $v_short_a.'-'.date('j', strtotime($v_month)); ?>" class="<?php if(in_array($v_month, $active_days) && in_array($v_short_a, $week_price_shortcuts)): ?>checkable<?php endif; ?>" name="<?php echo $v_short_a;?>_start_days[<?php echo date('d', strtotime($v_month));  ?>]" value="<?php if(strlen($master_data[$v_short_a][$v_month]['qty']) > 0 || in_array($v_month, $master_data[$v_short_a]['sub_group_days'])):  echo '1'; else: echo '0'; endif;  ?>" />
+									<?php endif;  ?>
+
+								</td>
+							<?php endforeach; ?>
+						</tr>
+						<?php endforeach;  ?>
+
+					</table>
+				</div>
+			</td>
+			<th class="anlage6_header_row" style="width: 80px;"><?php echo $this->translate('visits_total_col');  ?></th>
+		</tr>
+
+		<?php $i=1; foreach($this->shortcuts as $k_short_a => $v_short_a):  ?>
+		<tr class="border-bottom-slim">
+			<td class="a6_start_cell">
+				<strong><?php echo $this->translate('shortcut_name_'.$v_short_a); ?></strong>
+				<input type="hidden" name="<?php echo $v_short_a;  ?>[99]" id="<?php echo $v_short_a;  ?>-99" value="1"/>
+			</td>
+
+			<td class="last_col"><?php echo $this->totals[$v_short_a]; ?></td>
+
+		</tr>
+		<?php $i++; endforeach;  ?>
+	</table>
+	<br />
+	<br />
+	<table id="totals" class="datatable" style="width: 380px; float:left;">
+		<thead>
+			<tr>
+				<th>Abkürzung</th>
+				<th class="a6_shortcut_amount">Anzahl</th>
+				<th class="a6_shortcut_price">x Vergütung</th>
+				<th class="a6_shortcut_total">=  Rechnungssumme</th>
+			</tr>
+		</thead>
+		<tbody>
+			<?php foreach($this->shortcuts as $k_short_a => $v_short_a):  ?>
+				<tr>
+					<td class="a6_shortcut">
+						<strong><?php echo $this->translate('shortcut_name_'.$v_short_a); ?></strong>
+					</td>
+					<td class="a6_shortcut_amount">
+						<?php echo $this->totals[$v_short_a]; ?>
+					</td>
+					<td class="a6_shortcut_price">
+						<?php echo number_format($master_price_list[$current_period['start']][0][$v_short_a]['price'], '2', ',', '.'); ?> &euro;
+					</td>
+					<td class="a6_shortcut_total">
+						<?php $total = ($this->totals[$v_short_a] * $master_price_list[$current_period['start']][0][$v_short_a]['price']); $total_general += $total; echo number_format($total, '2', ',', '.'); ?> &euro;
+					</td>
+				</tr>
+			<?php endforeach;  ?>
+			<tr>
+				<td colspan="3" class="a6_total_general_label">Insgesamt =</td>
+				<td class="a6_total_general"><?php echo number_format($total_general, '2', ',', '.'); ?> &nbsp;&euro;</td>
+			</tr>
+		</tbody>
+	</table>
+	<br />
+	<br />
+	<input type="submit" name="save"  id="btnsubmit"  value="<?php echo $this->translate('save');  ?>" />
+	<input type="submit" name="reset" value="<?php echo $this->translate('reset');  ?>"  class="btnsubmit_usersessions"/>
+	<input type="submit" name="pdf" value="<?php echo $this->translate('generate_pdf');  ?>"  class="btnsubmit_usersessions"/>
+</form>

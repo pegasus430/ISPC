@@ -1,0 +1,485 @@
+<!--  Maria:: Migration CISPC to ISPC 22.07.2020 -->
+
+<?php
+
+
+$xx=function ($t, $ui, $name, $prefill=''){
+	$val=$this->fdata[$name];
+    if(strpos($name, "[")){
+        $parts=explode("[",$name);
+        $no=trim($parts[1],"]");
+        $val=$this->fdata[$parts[0]][$no];
+    }
+	if($t->pdf){
+		if($ui=="checkbox"){
+			if($val){
+				echo '<img src="'.PUBLIC_PATH.'/images/check02.jpg"/>';
+			}else{
+				echo '<img src="'.PUBLIC_PATH.'/images/check01.jpg"/>';
+			}
+		}else{
+			echo $val;
+		}
+
+	}else {
+		switch ($ui) {
+			case "text":
+				echo '<input type="text" name="' . $name . '" value="' . $val . '">';
+				break;
+            case "textlong":
+                echo '<input style="width:300px;" type="text" name="' . $name . '" value="' . $val . '">';
+                break;
+			case "date":
+				echo '<input class="date" type="text" name="' . $name . '" value="' . $val . '">';
+				break;
+			case "checkbox":
+				echo $this->formCheckbox($name, null, array('checked' => $val == 1));
+				break;
+			case "textarea":
+				echo '<textarea style="vertical-align:top;width:100%;height:50px;" name="' . $name . '">' .  $val  . '</textarea>';
+				break;
+            case "select":
+                $selections = $this->prefilldata[$prefill];
+                $selections = array_merge(array(''),$selections);
+                $selections=array_combine($selections, $selections);
+                echo $this->formSelect($name, $val, null, $selections);
+                break;
+		}
+	}
+};
+$width_120="4cm";
+$width_i4="4cm";
+$width_i5="4.3cm";
+?>
+<?php if($this->pdf==false):?>
+<style>
+	#entlassmgmnt_table input.date{
+		width:70px;
+	}
+	#entlassmgmnt_table h2{
+		margin-top:20px;
+	}
+	img.ui-datepicker-trigger{
+		margin-right:5px;
+	}
+</style>
+<script>
+
+	$(document).ready(function(){
+		$('#entlassmgmnt_table input.date').datepicker({
+				prevText: '&#x3c;zurück', prevStatus: '',
+				prevJumpText: '&#x3c;&#x3c;', prevJumpStatus: '',
+				nextText: 'Vor&#x3e;', nextStatus: '',
+				nextJumpText: '&#x3e;&#x3e;', nextJumpStatus: '',
+				currentText: 'heute', currentStatus: '',
+				todayText: 'heute', todayStatus: '',
+				clearText: '-', clearStatus: '',
+				closeText: 'schließen', closeStatus: '',
+				monthNames: ['Januar','Februar','März','April','Mai','Juni',
+					'Juli','August','September','Oktober','November','Dezember'],
+				monthNamesShort: ['Jan','Feb','Mär','Apr','Mai','Jun',
+					'Jul','Aug','Sep','Okt','Nov','Dez'],
+				dayNames: ['Sonntag','Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag'],
+				dayNamesShort: ['So','Mo','Di','Mi','Do','Fr','Sa'],
+				dayNamesMin: ['So','Mo','Di','Mi','Do','Fr','Sa'],
+				showMonthAfterYear: false,
+				showOn: 'both',
+				buttonImage: '<? echo RES_FILE_PATH;?>/images/calendar.png',
+				buttonImageOnly: true,
+				dateFormat:'dd.mm.yy'
+			}
+		);
+
+	});
+
+    $(document).on('change', '#mchangeform select', function(){
+        $('#mchangeform').submit();
+    })
+
+    $(document).on('change', '.multirow input, .multirow select', function(){
+        var empty=0;
+        $(this).parents('.multirowparent').find('.multirow').each(function(){
+            var cont="";
+            $(this).find('input, select').each(function(){
+                cont=cont + $(this).val();
+            });
+            if(cont==""){
+                empty++;
+                if(empty>1){
+                    $(this).remove();
+                }
+            }
+
+        });
+
+        if(empty==0){
+            var newel=$(this).parents('.multirowparent').find('.multirow').first().clone();
+            $(newel).find('input, select').val('');
+            $(this).parents('.multirowparent').append(newel);
+        }
+
+        var row=0;
+        $(this).parents('.multirowparent').find('.multirow').each(function(){
+            $(this).find('input, select').each(function(){
+                var oldname=$(this).attr('name');
+                if(oldname!=undefined) {
+                    newname = oldname.replace(/\[\d+\]/, '[' + row + ']');
+                    $(this).attr('name', newname);
+                }
+            });
+            row++;
+        });
+    })
+
+</script>
+    <?php if(count($this->fulllist)>0):?>
+        <div style="margin-top:5px;margin-bottom:20px;">
+    <form id="mchangeform">
+        <input type="hidden" name="id" value="<?php echo $this->encid;?>">
+        Vorherige Version bearbeiten:
+        <select name="formid">
+            <option value="0">auswählen</option>
+            <?php foreach($this->fulllist as $entry):?>
+                <option value="<?php echo $entry['id'];?>" <?php if (intval($this->fdata['formid'])===intval($entry['id'])) echo 'selected="selected"';?>)>Version vom <?php echo date("d.m.Y H:i", strtotime($entry['create_date']));?> Uhr</option>
+            <?php endforeach;?>
+        </select>
+    </form>
+        </div>
+    <?php endif;?>
+
+<?php endif;?>
+<?php if($this->pdf==false):?>
+<form method="post">
+    <?php endif;?>
+<table id="entlassmgmnt_table">
+	<tr>
+		<td colspan="2"><h1>Entlassungsmanagement/Sozialdienst Klinik für Palliativmedizin</h1><br></td>
+	</tr>
+    <?php if($this->pdf==false):?>
+	<tr>
+		<td style="width:<?php echo $width_120;?>;<?php if($this->pdf):?>font-size:10pt;<?php endif;?>">Datum</td>
+		<td <?php if($this->pdf):?>style="font-size:10pt;"<?php endif;?>><?php $xx($this, 'date', 'datum');?></td>
+	</tr>
+    <?php endif;?>
+	<tr>
+		<td style="width:<?php echo $width_120;?>; <?php if($this->pdf):?>font-size:10pt;<?php endif;?>">Patient</td>
+		<td <?php if($this->pdf):?>style="font-size:10pt;"<?php endif;?>><?php $xx($this, 'text', 'patient');?></td>
+	</tr>
+	<tr>
+		<td <?php if($this->pdf):?>style="font-size:10pt;"<?php endif;?>>Bearbeitet durch</td>
+		<td <?php if($this->pdf):?>style="font-size:10pt;"<?php endif;?>><?php $xx($this, 'select', 'bearbeitet','mitarbeiter');?></td>
+	</tr>
+	<tr>
+		<td <?php if($this->pdf):?>style="font-size:10pt;"<?php endif;?>>Anmeldung durch</td>
+		<td <?php if($this->pdf):?>style="font-size:10pt;"<?php endif;?>><?php $xx($this, 'select', 'anmeldung','mitarbeiter');?></td>
+	</tr>
+	<tr>
+		<td <?php if($this->pdf):?>style="font-size:10pt;"<?php endif;?>>Aufnahmediagnose</td>
+		<td <?php if($this->pdf):?>style="font-size:10pt;"<?php endif;?>><?php $xx($this, 'textlong', 'diag');?></td>
+	</tr>
+
+
+	<tr>
+		<td colspan="2">
+            <?php if($this->pdf)echo "<br>";?>
+			<h2>Versorgung vor Krankenhausaufenthalt:</h2>
+		</td>
+	</tr>
+	<tr>
+		<td colspan="2">
+			<table>
+				<tr>
+					<td><? $xx($this, 'checkbox', 'pflegegrad');?> Pflegegrad
+					</td>
+                    <td style="width:6cm"><? $xx($this, 'text', 'pflegegrad_detail');?>
+                    </td>
+                    <td><? $xx($this, 'checkbox', 'kzp');?> KZP/LZP
+                    </td>
+                    <td><? $xx($this, 'text', 'kzp_detail');?>
+                    </td>
+                </tr>
+                <tr>
+                    <td><? $xx($this, 'checkbox', 'pflegedienst');?> Pflegedienst
+                    </td>
+                    <td><? $xx($this, 'text', 'pflegedienst_detail');?>
+                    </td>
+                    <td><? $xx($this, 'checkbox', 'reha');?> Reha
+                    </td>
+                    <td><? $xx($this, 'text', 'reha_detail');?>
+                    </td>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td></td>
+                    <td><? $xx($this, 'checkbox', 'sonstige');?> Sonstige
+                    </td>
+                    <td><? $xx($this, 'text', 'sonstige_detail');?>
+                    </td>
+                </tr>
+			</table>
+		</td>
+	</tr>
+
+	<tr>
+		<td colspan="2">
+			<h2>Beratungsgespräch:</h2>
+		</td>
+	</tr>
+	<tr>
+		<td>Beratungsgespräch</td>
+		<td><?php $xx($this, 'checkbox', 'gesp_mit_pat');?>
+			mit Patient/in
+			<br><?php $xx($this, 'checkbox', 'gesp_mit_angeh');?>
+			mit Angehörigen
+			<?php $xx($this, 'select', 'gesp_mit_angeh_freetext', 'angeh');?>
+		</td>
+	</tr>
+	<tr>
+		<td>Beratung zu</td>
+		<td><?php
+			$items=array(
+				'beratungzu_pflegegrad'=>'Pflegegrad',
+				'beratungzu_pflegedienst'=>'Pflegedienst',
+				'beratungzu_haushilfe'=>'Haushaltshilfe',
+				'beratungzu_hilfsmittel'=>'Hilfsmittel',
+				'newline1'=>'newline',
+				'beratungzu_hausnotruf'=>'Hausnotruf',
+				'beratungzu_essenaufr'=>'Essen auf Rädern',
+				'beratungzu_homecare'=>'HomeCare',
+				'beratungzu_reha'=>'Reha/AHB etc.',
+				'newline2'=>'newline',
+				'beratungzu_kzp'=>'KZP/LZP',
+				'beratungzu_betreutewohn'=>'Betreutes Wohnen',
+				'beratungzu_teilstat'=>'Teilstationäre Vers.',
+				'beratungzu_hospiz'=>'Hospiz',
+				'newline3'=>'newline',
+				'beratungzu_sozialrecht'=>'Sozialrecht',
+				'beratungzu_sapv'=>'SAPV',
+				'beratungzu_ehrenamt'=>'Ehrenamt'
+			);
+			?><table>
+				<tr>
+				<?php foreach ($items as $item_k=>$item_v):?>
+					<?php if($item_v=="newline"):?>
+						</tr><tr>
+					<?php else:?>
+				<td style="width:<?php echo $width_i4;?>;">
+<?php echo $xx($this, 'checkbox', $item_k);?>
+					<?php echo $item_v;?>
+				</td>
+					<?php endif;?>
+				<?php endforeach;?>
+				</tr>
+			</table>
+			<?php $xx($this, 'checkbox', 'beratungzu_vv');?>
+			Vorsorgevollmacht/Patientenverfügung/rechtliche Betreuung<br>
+<?php $xx($this, 'checkbox', 'beratungzu_sonstiges');?> Sonstiges
+			<?php $xx($this, 'textlong', 'beratungzu_sonstiges_treetext');?>
+		</td>
+	</tr>
+	<tr>
+		<td>Bemerkungen</td>
+		<td>
+			<?php $xx($this, 'textarea', 'beratungzu_bemerkungen');?>
+		</td>
+	</tr>
+
+	<tr>
+		<td colspan="2">
+            <?php if($this->pdf)echo "<br>";?>
+			<h2>Eingeleitete Maßnahmen:</h2>
+		</td>
+	</tr>
+		<tr>
+		<td colspan="2">
+<table>
+				<tr>
+					<td >Pflegegrad beantragt am:</td><td style="width:3cm;"><?php $xx($this, 'date', 'mass1_beantragt');?>  </td>
+					<td style="width:6cm;">Rückmeldung der Pflegeversicherung am:</td><td style="width:3cm;"><?php $xx($this, 'date', 'mass1_pflegevers');?> </td>
+				</tr>
+				<tr>
+					<td>Hilfsmittel bestellt am:</td><td><?php $xx($this, 'date', 'mass1_hilsam');?> </td>
+					<td>beim Sanitätshaus:</td><td><?php $xx($this, 'text', 'mass1_hilshaus');?> </td>
+				</tr>
+				<tr>
+					<td>Auslieferung am: </td><td><?php $xx($this, 'date', 'mass1_auslieferungam');?> </td>
+					<td></td>
+				</tr>
+			</table>
+			<?php $items=array(
+				'mass_rollator'=>'Rollator',
+				'mass_toilettstuhl'=>'Toilettenstuhl',
+				'mass_steckebeck'=>'Steckbecken',
+				'mass_o2'=>'O2-Konzentrator',
+                'mass_pflegebett'=>'Pflegebett',
+				'mass_beistelltisch'=>'Pflegebeistelltisch',
+				'mass_rollstuhl'=>'Rollstuhl',
+				'mass_toiletterh'=>'Toilettensitzerhöhung',
+				'mass_weichlagermatr'=>'Weichlagerungsmatratze',
+				'mass_wechseldrmatr'=>'Wechseldruckmatratze',
+				'mass_bettverlaengerung'=>'Bettverlängerung',
+				'mass_pflegerollstuhl'=>'Pflegerollstuhl',
+				'mass_badelift'=>'Badewannenlifter',
+				'mass_duschhocker'=>'Duschhocker/-stuhl',
+				'mass_haltegriff'=>'Haltegriffe',
+				'mass_hohergehwagen'=>'Hoher Gehwagen',
+				'mass_inkonti'=>'Inkontinenzmaterialien',
+				'mass_bettschutz'=>'Bettschutzunterlagen',
+				'mass_infusionsstander'=>'Infusionsständer',
+				'mass_urinflasch'=>'Urinflaschenset',
+                'mass_sitzkissen'=>'AD-Sitzkissen',
+				'mass_sonstiges'=>'Sonstiges'
+			);?>
+<table>
+				<tr>
+					<?php
+					$count=0;
+					foreach ($items as $item_k=>$item_v):
+					$count++;
+					 if($count%5==0):?>
+				</tr><tr>
+					<?php else:?>
+						<td style="width:<?php echo $width_i5;?>;"><?php echo $xx($this, 'checkbox', $item_k);?>
+							<?php echo $item_v;?>
+						</td>
+					<?php endif;?>
+					<?php endforeach;?>
+				</tr>
+			</table>
+			<br><?php $items=array(
+				'mass2_kgymnastik'=>'Krankengymnastik',
+				'mass2_lymphdrain'=>'Lymphdrainage',
+				'mass2_atemthera'=>'Atemtherapie',
+				'mass2_colonmass'=>'Colonmassage',
+				'mass2_massage'=>'Massage',
+				'mass2_logopaed'=>'Logopädie',
+				'mass2_ergo'=>'Ergotherapie'
+			);?><table>
+				<tr>
+					<?php
+					$count=0;
+					foreach ($items as $item_k=>$item_v):
+					$count++;
+					if($count%5==0):?>
+				</tr><tr>
+					<?php else:?>
+						<td style="width:<?php echo $width_i5;?>;"><?php echo $xx($this, 'checkbox', $item_k);?> <?php echo $item_v;?>
+						</td>
+					<?php endif;?>
+					<?php endforeach;?>
+				</tr>
+			</table>
+			<br><?php $items=array(
+				'mass3_kzp'=>'KZP',
+				'mass3_lzp'=>'LZP',
+				'mass3_hosp'=>'Hospiz',
+				'mass3_reha'=>'Reha/AHB etc.',
+				'mass3_betrwohn'=>'betreutes Wohnen',
+				'mass3_teilstat'=>'teilstationäre Vers.'
+				);?><table>
+				<tr>
+					<?php
+					$count=0;
+					foreach ($items as $item_k=>$item_v):
+					$count++;
+					if($count%5==0):?>
+				</tr><tr>
+					<?php else:?>
+						<td style="width:<?php echo $width_i5;?>;">
+<?php echo $xx($this, 'checkbox', $item_k);?> <?php echo $item_v;?>
+						</td>
+					<?php endif;?>
+					<?php endforeach;?>
+				</tr>
+			</table>
+			<br>
+<?php echo $xx($this, 'checkbox', 'mass4_bevoll');?>
+			Vorsorgevollmacht/Patientenverfügung/rechtliche Betreuung erstellt/eingeleitet am:
+			<?php echo $xx($this, 'date', 'mass4_bevoll_am');?><br>
+Bevollmächtigte/r:
+			<?php echo $xx($this, 'textlong', 'mass4_bevoll_wer');?><br>
+Unterbevollmächtigte/r:
+			<?php echo $xx($this, 'textlong', 'mass4_bevoll_wer2');?><br>
+			<br>
+<?php echo $xx($this, 'checkbox', 'mass4_dok_vorhanden');?>
+			Dokumente in Patientenakte vorhanden
+			<br><br>
+			</td>
+		</tr>
+		<tr>
+			<td>Sozialrecht: </td>
+			<td><?php $items=array(
+					'mass5_scherbeh'=>'Schwerbehinderung',
+					'mass5_zuschusskk'=>'Zuschüsse der Krankenkasse',
+					'mass5_zuzahlungsbefrei'=>'Zuzahlungsbefreiung',
+					'mass5_vermittlung1'=>'Vermittlung an Netzwerkpartner / Beratung zu den Bereichen Krankengeld, ALG1/2, Rente, wirtschaftliche Hilfen',
+					'mass5_vermittlung2'=>'Vermittlung an Netzwerkpartner / Beratung zu den Bereichen Kinder- und Jugendhilfe, Versorgung Angehörige',
+				);?>
+				<?php foreach ($items as $item_k=>$item_v):?>
+					<?php echo $xx($this, 'checkbox', $item_k);?>
+					<?php echo $item_v;?><br>
+				<?php endforeach;?>
+		</td>
+		</tr>
+    <tr>
+        <td colspan="2"><br>
+            <table class="multirowparent">
+                <?php $this->fdata['partner'][]="";?>
+                <?php foreach($this->fdata['partner'] as $row=>$val):?>
+                <tr class="multirow">
+                    <td><?php echo $xx($this, 'select', "partner[".$row."]", 'versorger');?></td>
+                    <td><?php echo $xx($this, 'textlong', "partner_freetext"."[".$row."]");?></td>
+                </tr>
+                <?php endforeach?>
+            </table>
+        </td>
+    </tr>
+	<tr>
+		<td colspan="2"><br>
+			<h2>Ergebnis</h2>
+		</td>
+	</tr>
+	<tr>
+		<td colspan="2">
+			<?php $xx($this, 'checkbox', 'ergebnis_entlhause');?>
+			Entlassung nach Hause aus Sicht des Sozialdienstes möglich ab:
+			<?php $xx($this, 'date', 'ergebnis_entlhause_date');?><br>
+
+			<?php $xx($this, 'checkbox', 'ergebnis_weiterversorgung');?>
+			Entlassung in stationäre Weiterversorgung möglich ab:
+			<?php $xx($this, 'date', 'ergebnis_weiterversorgung_date');?><br>
+
+			<?php $xx($this, 'checkbox', 'ergebnis_ort');?>
+			Entlassort:
+			<?php $xx($this, 'textlong', 'ergebnis_ort_freetext');?><br>
+
+		</td>
+	</tr>
+
+	<tr>
+		<td colspan="2"><br>
+			<h2>Bei Entlassung noch vom Stationspersonal zu erledigen</h2>
+		</td>
+	</tr>
+	<tr>
+		<td colspan="2">
+			<?php $xx($this, 'checkbox', 'ergebnis_homecare');?>
+			HomeCare Material mitgeben
+            <?php $xx($this, 'textlong', 'ergebnis_homecare_freetext');?>
+			<br>
+			<?php $xx($this, 'checkbox', 'ergebnis_inkonti');?>
+			Inkontinenzmaterial mitgeben
+            <?php $xx($this, 'textlong', 'ergebnis_inkonti_freetext');?>
+		</td>
+	</tr>
+</table>
+	<?php if($this->pdf==false):?>
+	<div style="margin:40px;text-align:center;">
+		<input type="hidden" name="formid" value="<?php echo $this->fdata['formid'];?>">
+		<input type="submit" style="padding:6px; background-color: #90ee90;" value="Formular speichern">
+	</div>
+	<?php endif;?>
+    <?php if($this->pdf==false):?>
+</form>
+
+<?php endif;?>

@@ -1,0 +1,1081 @@
+<!--  Maria:: Migration CISPC to ISPC 22.07.2020 -->
+<?php
+
+$minutes_categories=[
+    'mins_patient'=>[],
+    'mins_family'=>[],
+    'mins_systemic'=>[],
+    'mins_profi'=>[]
+];
+
+function sum_ops_only($included_kats, $ientry){
+    $mysum=0;
+    $allnull=true;
+    foreach($included_kats as $ik){
+        $mysum=$mysum+intval($ientry[$ik]);
+        if(isset($ientry[$ik]) && $ientry[$ik] !== ""){
+            $allnull=false;
+        }
+    }
+
+    if($allnull){
+        $mysum="";
+    }
+    return $mysum;
+}
+
+function add_mins(&$groupmins, &$weekinfos, &$minutes_categories, $opsgrp, $ientry){
+        foreach ($minutes_categories as $k=>$foo) {
+            if(!isset($groupmins[$opsgrp][$k])) {
+                $groupmins[$opsgrp][$k] = 0;
+            }
+            if(isset($ientry[$k]) && $ientry[$k]>0){
+                $groupmins[$opsgrp][$k] = $groupmins[$opsgrp][$k] + $ientry[$k];
+                $weekinfos[count($weekinfos)-1]['mins'] = $weekinfos[count($weekinfos)-1]['mins'] + $ientry[$k];
+                if(!in_array($opsgrp, $weekinfos[count($weekinfos)-1]['groups'])) {
+                    $weekinfos[count($weekinfos) - 1]['groups'][] = $opsgrp;
+                }
+            }
+        }
+    }
+
+?>
+<?php if (!$this->pdf):?>
+<style>
+    @media print {
+        body * {
+            visibility: hidden;
+        }
+        #MainContent .ispc_fieldset ul.sf-menu, #MainContent .ispc_fieldset ul.sf-menu *{
+            display: none;
+        }
+        #MainContent .ispc_fieldset .patheaderrow5, #MainContent .ispc_fieldset .patheaderrow5 *{
+            display: none;
+        }
+        #MainContent .ispc_fieldset #memo_container, #MainContent .ispc_fieldset #memo_container *{
+            display: none;
+        }
+        #MainContent, #MainContent *{
+            visibility: visible;
+        }
+    }
+</style>
+    <?php if (!$this->quicklook):?>
+<script type="text/javascript">
+function hidePatientCaseStatusLog(id){
+    var encid="<?php echo $this->encid;?>";
+    $.get( "Ajax/hidepatientcasestatuslog?hid=" + id + "&id=" + encid);
+}
+$('document').ready(function(){
+	
+	$("#f_ops").submit(function(e){
+        $(this).find('input[type="submit"]').attr('disabled','disabled');
+        $('#ops_sendbox').dialog('close');
+		$('#throbber').show();	
+		$('#return_area').hide();
+		$('#transmit_dialog').dialog();
+        var that=this;
+
+		$.post( "Ajax/hl7transmitops", $( "#f_ops" ).serialize(), function(msg){
+            msg=$.trim(msg);
+            if (msg=="No ACK received"){
+                msg="Keine Bestätigung erhalten.<br/>Übertragung misslungen.";
+            } else{
+                $('.transmitlog_ops').append('<tr><td colspan="3" style="background-color:orangered;">Sie haben gerade erfolgreich Daten übertragen.</td></tr>');
+            }
+			$('#return_area pre').html("Antwort:\n" + msg);
+			$('#throbber').hide();
+			$('#return_area').show();
+            $(that).find('input[type="submit"]').removeAttr('disabled');
+			} );
+        $(this).find('input[type="submit"]').removeAttr('disabled');
+		return false;
+	});
+	
+	
+	
+	$("#f_leistungen").submit(function(e){
+        $(this).find('input[type="submit"]').attr('disabled','disabled');
+		$('#throbber').show();	
+		$('#return_area').hide();
+		$('#transmit_dialog').dialog();
+        var that=this;
+        $('#leistungen_sendbox').dialog('close');
+		$.post( "Ajax/hl7transmittimes", $( "#f_leistungen" ).serialize(), function(msg){
+            msg=$.trim(msg);
+			if (msg=="No ACK received"){
+                msg="Keine Bestätigung erhalten.<br/>Übertragung misslungen.";
+            } else{
+                if(msg!="FEHLER! Es wurden keine Daten gesendet: Alle Zeiten 0."){
+                 $('.transmitlog_leistungen').append('<tr><td colspan="3" style="background-color:orangered;">Sie haben gerade erfolgreich Daten übertragen.</td></tr>');
+                } else{
+                    $(that).find('input[type="submit"]').removeAttr('disabled');
+                }
+            }
+			$('#return_area pre').html("Antwort:\n" + msg);
+			$('#throbber').hide();
+			$('#return_area').show();
+            //$(that).find('input[type="submit"]').removeAttr('disabled');
+			} );
+		
+		return false;
+	});	
+
+	});
+
+</script>
+        <?php endif;?>
+<?php endif;?>
+<?php if (!$this->pdf):?>
+<div class="tab_container">
+    <?php endif;?>
+    <?php if (!$this->quicklook):?>
+        <h1>Zeiterfassung</h1>
+        <?php if($this->usercansend):?>
+            <p style="margin-top:4px;margin-bottom:4px; margin-lweft:120px;"><a href="patient/patientcasestatus?id=<?php echo $this->encid;?>">Fallstruktur bearbeiten</a></p>
+        <?php endif;?>
+    <?php endif;?>
+
+    <?php if (!$this->pdf):?>
+    <style>
+        #ops_mins_tableau{
+            width:800px;
+        }
+        .ops_day{
+            display: block;
+            float:left;
+            width:100px;
+            height:100px;
+            border:1px solid grey;
+        }
+        .ops_dayhead{
+            height:16px;
+            padding-top:2px;
+            text-align: center;
+            background-color:#d3d3d3;
+        }
+        .ops_case_konsil{
+            background-color:#90ee90;
+        }
+        .ops_case_station{
+            background-color:lightsalmon;
+        }
+        .ops_case_ambulant{
+            background-color:lightblue;
+        }
+        .ops_case_sapv{
+            background-color:orange;
+        }
+        .ops_noaction{
+            width:712px;
+            border:1px solid grey;
+            text-align:center;
+            background-color:#d3d3d3;
+            padding-top:20px;
+            padding-bottom:20px;
+            float:left;
+        }
+        .case_select{
+            margin-top:8px;
+            margin-bottom:8px;
+            background-color:lightyellow;
+            border:2px solid orange;
+            float:left;
+            width:714px;
+            position:relative;
+        }
+
+        .ops_weekmins{
+            position:absolute;
+            border: 1px solid orange;
+            background-color:lightyellow;
+            padding: 2px;
+            border-radius:4px;
+            text-align:center;
+        }
+        .ops_weekminsok{
+            position:absolute;
+            border: 1px solid orange;
+            background-color:lightgreen;
+            padding: 2px;
+            border-radius:4px;
+            text-align:center;
+        }
+        .ops_min_big,
+        .ops_profs_big{
+            font-size:14px;
+            font-weight:bold;
+        }
+        .ops_codebox{
+            margin-bottom:4px;
+            border-bottom:1px solid grey;
+            padding-bottom:4px;
+        }
+        /* ISPC-2718, elena, 30.11.2020 */
+        #ops_entries_table{
+            width : 85%;
+        }
+
+        #ops_entries_table td{
+            border:1px solid grey;
+            padding:2px;
+            border-collapse:collapse;
+        }
+        #ops_entries_table th{
+            border:1px solid grey;
+            padding:2px;
+            border-collapse:collapse;
+            background-color:#ccc;
+        }
+        .number{
+            text-align:right;
+        }
+
+        .number_ops{
+            background-color:#ffffdd;
+        }
+
+        .ops_color_ba{
+            font-weight:bold;
+        }
+        .ops_color_bp{
+            font-weight:bold;
+        }
+        .ops_color_wb{
+            font-weight:bold;
+        }
+
+        #ops_entries_table .sum_row td{
+            border-top:3px solid black;
+            padding-top:5px;
+        }
+
+        #ops_entries_table tbody tr.rowbgbydate_b {
+            background-color: #ddd;
+        }
+
+        .ops-weekstats{
+            float:right;
+            margin-left:2em;
+        }
+        .ops-warning{
+            color:darkred;
+        }
+    </style>
+    <?php endif?>
+
+    <?php
+    $mycode=null;
+    $mycode_name="8-98h.0";
+    $mycode_type=$this->ops['case']['case_type'];
+    $mycode_name=$this->config['ops_prefcode_'.$mycode_type];
+
+
+
+    foreach($this->config['codes'] as $code){
+        if($code['name'] == $mycode_name){
+            $mycode=$code;
+        }
+    }
+
+    $excluded_kats=array();
+    $included_kats=array();
+    if(!$mycode['ops_includet_patient']) {$excluded_kats[]="Patient";}else{$included_kats[]='mins_patient';}
+    if(!$mycode['ops_includet_angeh']) {$excluded_kats[]="Angeh.";}else{$included_kats[]='mins_family';}
+    if(!$mycode['ops_includet_prof']) {$excluded_kats[]="Profi";}else{$included_kats[]='mins_profi';}
+    if(!$mycode['ops_includet_sys']) {$excluded_kats[]="System.";}else{$included_kats[]='mins_systemic';}
+
+    $groupmins=array();
+    foreach ($this->config['groups'] as $group=>$foo){
+        $groupmins[$group]=array();
+    }
+
+    foreach ($this->config['groupscustom'] as $group=>$foo){
+        if(strlen($group)){
+            $groupmins[$group]=array();
+        }
+    }
+    ?>
+
+
+    <?php if (!$this->quicklook):?>
+    <script>
+
+        function ops_set_opscode(codestr){
+            $('#ops_sendbox').find('input[name="opscode"]').val(codestr);
+            $('#ops_sendbox input[name="opscode"]').change();
+        }
+
+        <?php
+        $global_ops_config=json_encode($this->config);
+        echo 'var global_ops_config = ' . $global_ops_config .';';
+        ?>
+        var global_config_ops_groups = [];
+        var global_config_ops_groups_hardcoded = [];
+        for(var k in global_ops_config.groups) {
+            global_config_ops_groups.push(k);
+            global_config_ops_groups_hardcoded.push(k);
+        }
+        for(var k in global_ops_config.groupscustom) {
+            if(k!=""){
+                global_config_ops_groups.push(k);
+            }
+        }
+
+        $(document).on('change', '#ops_sendbox input[name="opscode"]', function(){
+            var mycode = $(this).val();
+            var submit = $(this).parents('form').find('input[type="submit"]');
+            $(submit).prop('disabled', true);
+            $(submit).val('OPS-Code senden');
+
+            for (var k in global_ops_config['codes']){
+                for (var min in global_ops_config['codes'][k]['minutes']){
+                    if(global_ops_config['codes'][k]['minutes'][min]['name'] == mycode){
+                        $(submit).prop('disabled', false);
+                        if(global_ops_config['codes'][k]['ops_only_internal']){
+                            $(submit).val('OPS-Code intern vermerken');
+                        }
+                    }
+                }
+            }
+
+        });
+
+
+
+        <?php $case = $this->ops['case'];?>
+        $(document).ready(function(){
+            $(document).on('click','#open_ops_button', function(){
+                $('#ops_sendbox').dialog({'title':'OPS senden','width':'720','height':'350'})
+            });
+            $(document).on('click','#open_leistungen_button', function(){
+                $('#leistungen_sendbox').dialog({'title':'Leistungen','width':'380','height':'450'})
+            });
+        });
+
+        $(document).on('change','#ops_case_select', function(){
+            $(this).parents('form').submit();
+        });
+
+    </script>
+    <?php endif;?>
+
+<?php if (!$this->pdf):?>
+    <div>
+        <form method="get">
+            <input type="hidden" value="<? echo $this->encid;?>" name="id">
+            <b>Ausgewählter Fall:</b> <select id="ops_case_select" name="caseid">
+                <?php foreach($this->cases as $case):?>
+                    <option <?if ($case['id'] == $this->ops['case']['id']){echo "selected";}?> value="<?php echo $case['id'];?>"><?php echo ucfirst($case['case_type']) . " ab " . date('d.m.Y',strtotime($case['admdate']));?></option>
+                <?php endforeach;?>
+            </select>
+        </form>
+    </div>
+<?php endif;?>
+
+	<h2 style="margin-top:18px;">Leistungsübersicht</h2>
+    <?php if (!$this->pdf):?>
+<div id="ops_entries_list">
+    <?php endif;?>
+
+    <table <?php if ($this->pdf):?>nobr="true" border="0.1" cellpadding="3"<?php else:?> id="ops_entries_table"<?php endif;?>>
+        <tr>
+            <th  <?php if ($this->pdf){echo 'width="1.8cm"';}?> rowspan="2">Datum + Zeit</th>
+            <th  <?php if ($this->pdf){echo 'width="5cm"';}?> rowspan="2">Formular</th>
+            <th  <?php if ($this->pdf){echo 'width="4cm"';}?> rowspan="2">Wer (Rolle)</th>
+            <th <?php if ($this->pdf){echo 'width="7.4cm"';}?> colspan="6" style="text-align:center;">Minuten</th>
+        </tr>
+        <tr>
+            <th  <?php if ($this->pdf){echo 'width="1.2cm"';}?>>Summe</th>
+            <th  <?php if ($this->pdf){echo 'width="1.2cm"';}?>>Patient</th>
+            <th  <?php if ($this->pdf){echo 'width="1.2cm"';}?>>Angeh.</th>
+            <th  <?php if ($this->pdf){echo 'width="1.2cm"';}?>>Profi</th>
+            <th  <?php if ($this->pdf){echo 'width="1.2cm"';}?>>System.</th>
+            <th  <?php if ($this->pdf){echo 'width="1.4cm"';}?>>OPS<br>relev.</th>
+        </tr>
+        <?php
+        $sum_users=0;
+        $sum_min=0;
+        $sum_minp=0;
+        $sum_mina=0;
+        $sum_mino=0;
+        $sum_minprof=0;
+        $sum_minsystemic=0;
+        $sum_users=array();
+        $sum_groups=array();
+        $sum_users_igno=array();
+        $sum_groups_igno=array();
+        $last_rowclassdate="";
+        $rowclass="";
+        $weekinfos=array();
+        $weekinfos[]=array('ba'=>false, 'wb'=>false, 'mins'=>0, 'groups'=>array());
+        ?>
+
+<?php foreach ($this->ops['docs'] as $entry):?>
+    <?
+        $tprint=false;
+        $cf_link="";
+        if(isset($entry['contact_form_id'])) {
+            $cf_link = "patientcontactform/newcontactform?cid=".$entry['cfid']."&id=".$this->encid;
+            //NEW: link to pdf instead:
+            $cf_link = "stats/getpdfbyformid?doc_id=".$entry['cfid']."&tab=1&id=".$this->encid;
+            $cf_link="stats/patientfileupload?doc_id=".$entry['pdfinfo']['id'];
+        }
+        $row_groups=array();
+        $row_groups_igno=array();
+        $nextuserrows=0;
+        $users=array();
+        $rowspan="";
+        if(isset($entry['users']) && count($entry['users'])>0) {
+            $nextuserrows = count($entry['users']);
+
+            if($nextuserrows>1){
+                $rowspan=' rowspan="'.$nextuserrows.'"';
+            }
+            $users=array();
+            foreach($entry['users'] as $user){
+                $users[]=array_merge($this->usermap[$user['userid']],array('id'=>$user['userid']),$user);
+            }
+            $x=0;
+        }
+    $addclass="";
+    $dateformat="d.m.Y H:i";
+        if($entry['is_weekly_meeting']){
+            $addclass="ops_color_wb";
+            $dateformat="d.m.Y";
+            $cf_link="stats/patientfileupload?doc_id=".$entry['pdfinfo']['id'];
+            $weekinfos[count($weekinfos)-1]['wb']=true;
+        }
+        if($entry['pdfinfo']['title'] == "Behandlungsplan"){
+            $addclass="ops_color_bp";
+            $dateformat="d.m.Y";
+            $cf_link="stats/patientfileupload?doc_id=".$entry['pdfinfo']['id'];
+        }
+        if($entry['is_ba']){
+            $addclass="ops_color_ba";
+            $dateformat="d.m.Y";
+            $link=$entry['cfid'];
+            $entry['pdfinfo']['title']="Basisassessment";
+        }
+        if($entry['is_team_teammeeting']){
+            $this_week['tm']=true;
+            $addclass="ops_color_ba";
+            $dateformat="d.m.Y";
+            $rowspan='';
+            $cf_link="team/meetingfile?doc_id=".$entry['pdfinfo']['docid']."&tab=teammeeting";
+            //NEW: link to extract with patient only entries:
+            $cf_link = "team/patientextract?doc_id=".$entry['id']."&id=".$this->encid;
+
+            foreach ($entry['users'] as $user){
+                $opsgrp=$this->opsusermap[$user];
+                if ($opsgrp !=null) {
+                    if (!in_array($opsgrp, $mycode['ignored_groups'])) {
+                        $sum_users[$users[$user]['name']] = 1;
+                        $sum_groups[$opsgrp] = 1;
+                        $row_groups[$opsgrp] = 1;
+                    } else {
+                        $sum_users_igno[$users[$user]['name']] = 1;
+                        $sum_groups_igno[$opsgrp] = 1;
+                        $row_groups_igno[$opsgrp] = 1;
+                    }
+                }
+            }
+            if(count($row_groups)>0 || count($row_groups_igno)>0 ) {
+                $entry['allusers_str'] = "" . count($row_groups) . " relevante Gruppen: ";
+            }
+            if(count($row_groups)>0){
+                $entry['allusers_str'].= implode(', ',array_keys($row_groups));
+            }
+            if(count($row_groups)>0 && count($row_groups_igno)>0 ){
+                $entry['allusers_str'].= ", ";
+            }
+            if(count($row_groups_igno)>0) {
+                $entry['allusers_str'] .= "<i>" . implode(', ',array_keys($row_groups_igno)) ."</i>";
+            }
+        }
+        if(isset($entry['is_extraopsleistung'])){
+            $entry['allusers_str'] = $entry['profs'][0];
+            $opsgrp=$entry['profs'][0];
+            if (!in_array($opsgrp, $mycode['ignored_groups'])) {
+                $sum_users[$users[$user]['name']] = 1;
+                $sum_groups[$opsgrp] = 1;
+                $row_groups[$opsgrp] = 1;
+            } else {
+                $sum_users_igno[$users[$user]['name']] = 1;
+                $sum_groups_igno[$opsgrp] = 1;
+                $row_groups_igno[$opsgrp] = 1;
+            }
+
+        }
+
+        $rowclassdate=date("d.m.Y",strtotime($entry['done_date']));
+        if($last_rowclassdate!=$rowclassdate){
+            $last_rowclassdate=$rowclassdate;
+            if($rowclass=="rowbgbydate_a"){
+                $rowclass="rowbgbydate_b";
+            }else{
+                $rowclass="rowbgbydate_a";
+            }
+        }
+    ?>
+    <?php if(isset($entry['type']) && $entry['type']=='caseinfo'):?>
+        <tr nobr="true" class="<?php echo $rowclass;?> row-caseinfo">
+            <td nobr="true"><? echo date($dateformat,strtotime($entry['done_date']));?></td>
+            <td nobr="true" colspan="1"><?php echo $entry['title'];?></td>
+            <td nobr="true" colspan="7">
+
+                <?php
+                if($entry['title']!=="Aufnahme"){
+                    $this_week=$weekinfos[count($weekinfos)-1];
+                    if(!$this_week['wb']) {
+                        echo "<span class='ops-warning'>WB fehlt</span>";
+                    }
+
+                    if($mycode['ops_computetype']=="weekly"  ) {
+                        $tclass = 'ops-weekstats';
+                        if($mycode['goal_mins']>$this_week['mins']) {
+                            $tclass = 'ops-weekstats ops-warning';
+                        }
+                        echo '<span class="'.$tclass.'">'.$this_week['mins'].'/'.$mycode['goal_mins'].' Minuten</span>';
+
+                        $groupscount=array();
+                        $weekinfos[count($weekinfos)-1]['groups_raw']=$weekinfos[count($weekinfos)-1];
+                        if(count($mycode['joined_groups'])>1){
+                            foreach($this_week['groups'] as $group){
+                                if(in_array($group, $mycode['joined_groups'])) {
+                                    $group = '#joined1';
+                                }
+                                if(!in_array($group, $groupscount)) {
+                                    $groupscount[] = $group;
+                                }
+                            }
+                            $weekinfos[count($weekinfos)-1]['groups']=$groupscount;
+                        }
+                        $tclass = 'ops-weekstats';
+                        if($mycode['goal_groups']>count($groupscount)) {
+                            $tclass = 'ops-weekstats ops-warning';
+                        }
+                        echo '<span class="'.$tclass.'">'.count($groupscount).'/'.$mycode['goal_groups'].' Gruppen</span>';
+                    }
+                }
+                ?>
+
+            </td>
+        </tr>
+        <?php
+        $weekinfos[]=array('ba'=>false, 'tm'=>false, 'mins'=>0, 'groups'=>array());
+        continue;
+        ?>
+    <?php endif;?>
+    <tr nobr="true" class="<?php echo $rowclass;?>">
+        <td nobr="true" <?echo $rowspan;?>><? echo date($dateformat,strtotime($entry['done_date']));?></td>
+        <?php if (is_array($entry['pdfinfo'])):?>
+            <td nobr="true" <?echo $rowspan;?> class="<?php echo $addclass;?>"><?php if($cf_link!=""):?><?php if (!$this->pdf):?><a href="<?php echo $cf_link;?>" target="_blank"><?php endif;?><?php endif;?><? echo $entry['pdfinfo']['title'];?><?php if($cf_link!=""):?><?php if (!$this->pdf):?></a><?php endif;?><?php endif;?>
+            </td>
+        <?php else:?>
+            <?php if (!$this->pdf):?>
+            <td nobr="true" <?echo $rowspan;?>><?php if(isset($entry['is_extraopsleistung'])){echo '<a href="'.APP_BASE.'patient/extraopsleistungen?id='.$this->encid.'&caseid='.$entry['caseid'].'">' . $ttmp=($entry['is_extraopsleistung']!="")?$entry['is_extraopsleistung']:"Zeitdokumentation" . "</a>" ;}else {echo $entry['course_type']."-K&uuml;rzel";}?>
+            </td>
+                <?php else:?>
+                <td nobr="true" <?echo $rowspan;?>><?php if(isset($entry['is_extraopsleistung'])){echo $ttmp=($entry['is_extraopsleistung']!="")?$entry['is_extraopsleistung']:"Zeitdokumentation" ;}else {echo $entry['course_type']."-K&uuml;rzel";}?>
+                </td>
+                <?php endif;?>
+        <?php endif;?>
+        <td nobr="true"><?
+            if(isset($entry['allusers_str'])){
+                if(isset($entry['is_extraopsleistung'])){
+                    $tprint=true;
+                }
+                    echo $entry['allusers_str'];
+
+            }elseif(count($users)>0) {
+                $userk = 0;
+                $opsgrp=$this->opsusermap[$users[$userk]['id']];
+                $ignore_group=false;
+
+
+                    if (in_array($opsgrp, $mycode['ignored_groups'])){
+                        echo "<i>" . $users[$userk]['name'] . " (" . $opsgrp .")" . "</i>";
+                        $tprint=true;
+                        $ignore_group=true;
+                        $sum_users_igno[$users[$userk]['name']] = 1;
+                        $sum_groups_igno[$opsgrp] = 1;
+                        $row_groups_igno[$opsgrp] = 1;
+                    }else{
+                        if(isset($entry['is_extraopsleistung'])){
+                        echo "<i>" . $entry['users'][$userk]['name'] . " (" . $entry['users'][$userk]['group'] .")" . "</i>";
+                        }else{
+                        echo $users[$userk]['name'] . " (" . $opsgrp .")";
+                        }
+
+                        $sum_users[$users[$userk]['name']]=1;
+                        $sum_groups[$opsgrp]=1;
+                        $tprint=true;
+                        $row_groups[$opsgrp]=1;
+                    }
+
+                $ientry=$entry;
+                if(isset($users[$userk]['minutes'])){
+                    $ientry=$users[$userk];
+                }
+
+                add_mins($groupmins, $weekinfos, $minutes_categories, $opsgrp, $ientry);
+
+            }?></td>
+        <td <?php if ($this->pdf){echo 'align="center"';}?> class="number"><? if($tprint) {echo $ientry['minutes'];$sum_min+=intval($ientry['minutes']);}?></td>
+        <td <?php if ($this->pdf){echo 'align="center"';}?> class="number"><? if($tprint) {echo $ientry['mins_patient'];$sum_minp+=intval($ientry['mins_patient']);}?></td>
+        <td <?php if ($this->pdf){echo 'align="center"';}?> class="number"><? if($tprint) {echo $ientry['mins_family'];$sum_mina+=intval($ientry['mins_family']);}?></td>
+        <td <?php if ($this->pdf){echo 'align="center"';}?> class="number"><? if($tprint) {echo $ientry['mins_profi'];$sum_minprof+=intval($ientry['mins_profi']);}?></td>
+        <td <?php if ($this->pdf){echo 'align="center"';}?> class="number"><? if($tprint) {echo $ientry['mins_systemic'];$sum_minsystemic+=intval($ientry['mins_systemic']);}?></td>
+        <td <?php if ($this->pdf){echo 'align="center"';}?> class="number"><?
+            if($tprint) {
+                $a=0;
+                if(!$ignore_group) {
+                    $a = sum_ops_only($included_kats, $ientry);
+                    if ($a !== "") {
+                        $sum_mino = $sum_mino + $a;
+                    }
+                }
+                echo $a;
+            }?></td>
+    </tr>
+        <?php foreach ($users as $userk=>$user):?>
+            <?php if ($userk==0){continue;}?>
+            <?php if (isset($entry['allusers_str'])){break;}?>
+            <tr nobr="true" class="<?php echo $rowclass;?>">
+                <td><? if(count($users)>0) {
+                        $opsgrp=$this->opsusermap[$users[$userk]['id']];
+                        $ignore_group=false;
+                        if (in_array($opsgrp, $mycode['ignored_groups'])){
+                            echo "<i>" . $users[$userk]['name'] . " (" . $opsgrp .")" . "</i>";
+                            $tprint=true;
+                            $ignore_group=true;
+                        }else{
+                            echo $users[$userk]['name'] . " (" . $opsgrp .")";
+                            $sum_users[$users[$userk]['name']]=1;
+                            $sum_groups[$opsgrp]=1;
+                            $tprint=true;
+                            $row_groups[$opsgrp]=1;
+                        }
+                        $ientry=$entry;
+                        if(isset($users[$userk]['minutes'])){
+                            $ientry=$users[$userk];
+                        }
+                        add_mins($groupmins, $weekinfos, $minutes_categories, $opsgrp, $ientry);
+
+                    }?></td>
+                <td <?php if ($this->pdf){echo 'align="center"';}?> class="number"><? if($tprint) {echo $ientry['minutes'];$sum_min+=intval($ientry['minutes']);}?></td>
+                <td <?php if ($this->pdf){echo 'align="center"';}?> class="number"><? if($tprint) {echo $ientry['mins_patient'];$sum_minp+=intval($ientry['mins_patient']);}?></td>
+                <td <?php if ($this->pdf){echo 'align="center"';}?> class="number"><? if($tprint) {echo $ientry['mins_family'];$sum_mina+=intval($ientry['mins_family']);}?></td>
+                <td <?php if ($this->pdf){echo 'align="center"';}?> class="number"><? if($tprint) {echo $ientry['mins_profi'];$sum_minprof+=intval($ientry['mins_profi']);}?></td>
+                <td <?php if ($this->pdf){echo 'align="center"';}?> class="number"><? if($tprint) {echo $ientry['mins_systemic'];$sum_minsystemic+=intval($ientry['mins_systemic']);}?></td>
+                <td <?php if ($this->pdf){echo 'align="center"';}?> class="number"><?
+                    if($tprint) {
+                        $a=0;
+                        if(!$ignore_group) {
+                            $a = sum_ops_only($included_kats, $ientry);
+                            if ($a !== "") {
+                                $sum_mino = $sum_mino + $a;
+                            }
+                        }
+                        echo $a;
+                    }?></td>
+            </tr>
+        <?php endforeach;?>
+<?php endforeach;?>
+        <tr nobr="true" class="sum_row">
+            <td colspan="2">Summe</td>
+            <td class="number"><?php
+                    if(count($sum_users)>0) {
+                        echo "relevant: " . count($sum_users) . " aus " . count($sum_groups) . " Gruppen";
+                    }
+                    if(count($sum_users)>0 && count($sum_users_igno)>0 ) {
+                        echo "<br>";
+                    }
+                    if(count($sum_users_igno)>0){
+                        echo "weitere:" . count($sum_users_igno)  . " aus " . count($sum_groups_igno) ." Gruppen";
+                    }
+                ?>
+
+                <?php foreach ($sum_groups as $gk=>$gg):?>
+                    <input type="hidden" class="ops_group_name" value="<?php echo $gk;?>">
+                <?php endforeach;?>
+            </td>
+            <td <?php if ($this->pdf){echo 'align="center"';}?> class="number"><?php echo $sum_min;?></td>
+            <td <?php if ($this->pdf){echo 'align="center"';}?> class="number"><?php echo $sum_minp;?></td>
+            <td <?php if ($this->pdf){echo 'align="center"';}?> class="number"><?php echo $sum_mina;?></td>
+            <td <?php if ($this->pdf){echo 'align="center"';}?> class="number"><?php echo $sum_minprof;?></td>
+            <td <?php if ($this->pdf){echo 'align="center"';}?> class="number"><?php echo $sum_minsystemic;?></td>
+            <td <?php if ($this->pdf){echo 'align="center"';}?> class="number" id="ops_mins_sum"><?php echo $sum_mino;?></td>
+        </tr>
+    </table>
+
+    <?php if (!$this->quicklook):?>
+    <div style="padding:8px;">
+        <p>Der ausgewählte Fall ist vom Typ <?php echo ucfirst($mycode_type);?>. Daher ist der Ziel-OPS-Code <?php echo $mycode_name;?>.
+
+            <?php
+
+            if(count($excluded_kats)>0) echo "<br>Nicht OPS-Relevant sind hier die Zeiten aus " . implode(' + ', $excluded_kats);
+            if(count(array_filter($mycode['ignored_groups']))>0) echo "<br>Nicht OPS-Relevant sind hier die Zeiten aus " . implode(' + ', array_filter($mycode['ignored_groups']));
+            ?>
+            <br><br>
+        </p>
+        <?php if($this->usercansend && !$this->pdf):?>
+        <input type="button" id="open_ops_button" value="OPS-Code erstellen" style="padding:4px;">
+        <input type="button" id="open_leistungen_button" value="Leistungen übertragen" style="padding:4px;">
+        <?php if($this->ops['case']['case_ended']==1 && $this->ops['case']['case_finished']!=1):?>
+        <input type="button" id="open_finishcase_button" value="Fall abschließen" style="padding:4px;" onclick="$('#case_finish_sendbox').dialog({'title':'Fall Abschließen'});">
+        <?php endif;?>
+        <?php endif;?>
+        <div style="margin-top:12px;margin-left:4px;">
+            <a href="<?php $caseidstr="";if(isset($_GET['caseid'])) $caseidstr="&caseid=".$_GET['caseid'];echo APP_BASE . "patient/patientops?pdf=1&id=" . $_GET['id'] . $caseidstr; ?>">
+                <img src="<? echo RES_FILE_PATH;?>/images/doc_pdf.png">
+                PDF-Datei dieser Seite erstellen
+            </a>
+        </div>
+    </div>
+    <?php endif;?>
+
+<?php if (!$this->pdf):?>
+</div>
+<?php endif;?>
+
+    <?php if (!$this->quicklook):?>
+
+    <?php if($this->usercansend):?>
+    <div id="ops_sendbox" style="display:none;width:800px;">
+        <table>
+            <tr>
+                <td class="ops_leftcol" width="400px" style="padding-right:8px;">
+                    <?php foreach ($this->config['codes'] as $code):?>
+                        <?php
+                        if ($code['ops_computetype'] =="weekly" && $mycode['ops_computetype']!=="weekly"){continue;}
+                        if (!$code['ops_case_' . $this->ops['case']['case_type']]){continue;}
+
+                        $excluded_kats=array();
+                        $included_kats=array();
+                        if(!$code['ops_includet_patient']) {$excluded_kats[]="mins_patient";}else{$included_kats[]='mins_patient';}
+                        if(!$code['ops_includet_angeh']) {$excluded_kats[]="mins_family";}else{$included_kats[]='mins_family';}
+                        if(!$code['ops_includet_prof']) {$excluded_kats[]="mins_profi";}else{$included_kats[]='mins_profi';}
+                        if(!$code['ops_includet_sys']) {$excluded_kats[]="mins_systemic";}else{$included_kats[]='mins_systemic';}
+
+                        ?>
+                        <div class="ops_codebox">
+                            <b><?php echo $code['name'];?></b><br>
+
+                            <?php
+
+                            if($code['ops_computetype'] =="weekly"){
+                                array_pop($weekinfos);
+                                $code_index=0;
+                                foreach($weekinfos as $weekinfo){
+                                    $prettygroups=array();
+                                    foreach($week['groups_raw'] as $grp){
+                                        if(!in_array($grp, $code['ignored_groups'])){
+                                            if(in_array($grp, $code['joined_groups'])){
+                                                $grp='#joined1';
+                                            }
+                                            if(!in_array($grp,$prettygroups )){
+                                                $prettygroups[]=$grp;
+                                            }
+                                        }
+                                    }
+                                    if($week['min']>=$code['goal_mins'] && count($prettygroups)>=$code['goal_mins']){
+                                        $code_index++;
+                                    }
+                                }
+
+                                echo '<p>Die Kriterien dieses Codes werden in <b>'.$code_index.' Wochen</b> erfüllt.</p>';
+
+                            }else{
+                                $code_index=0;
+                                $waste_cats=0;
+                                $waste_groups=0;
+                                foreach($groupmins as $prof=>$catmins){
+                                    if(!in_array($prof, $code['ignored_groups'])) {
+                                        $code_index += sum_ops_only($included_kats, $catmins);
+                                        $waste_cats += sum_ops_only($excluded_kats, $catmins);
+                                    }else{
+                                        $waste_groups += sum_ops_only(['mins_patient','mins_family','mins_profi','mins_systemic'], $catmins);
+                                    }
+                                }
+                                echo '<p>Es können <b>'.$code_index.' Minuten</b> berücksichtigt werden.</p>';
+                                if($waste_groups>0){
+                                    echo '<p><b>'.$waste_groups.' Minuten</b> in nicht berücksichtigten Berufsgruppen.</p>';
+                                }
+                                if($waste_cats>0){
+                                    echo '<p><b>'.$waste_cats.' Minuten</b> in nicht berücksichtigten Kategorien.</p>';
+                                }
+                            }
+
+                            $selected_code="";
+                            foreach($code['minutes'] as $code_data){
+                                if($code_data['mins']<=$code_index){
+                                    $selected_code=$code_data['name'];
+                                }
+
+                            }
+
+                            ?>
+
+
+                            <?php if($code['ops_only_internal'] ):?>
+                            <p>Dieser Code wird nicht übertragen, sondern nur in ISPC vermerkt.</p>
+                            <?php endif;?>
+                            <p><input type="button" value="Code: <?php echo $selected_code;?>" onclick="ops_set_opscode('<?php echo $selected_code;?>')"></p>
+                        </div>
+
+                    <?php endforeach;?>
+                </td>
+                <td class="ops_rightcol">
+                    <form id="f_ops" method="post">
+                        <input type="hidden" id="opscode_opsmins" name="opsmins" value='{"min":"<?php echo $sum_min;?>","minp":"<?php echo $sum_minp;?>","mina":"<?php echo $sum_mina;?>","minprof":"<?php echo $sum_minprof;?>","minsystemic":"<?php echo $sum_minsystemc;?>","mino":"<?php echo $sum_mino;?>","url":"2016k"}'>
+                        <input name="encid" value="<?php echo $this->encid; ?>" type="hidden"/>
+                        <table>
+                            <tr>
+                                <td>OPS-Code</td>
+                                <td>
+                                    <input style="width:60px;" name="opscode" type="text"
+                                           value=""/>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Beginn:</td>
+                                <td><input style="width:120px;" type="text" readonly="true" name="startdate" value="<?php echo date_create($this->ops['case']['admdate'])->format('d.m.Y H:i:s');?>"></td>
+                            </tr>
+                            <tr>
+                                <td>Ende:</td>
+                                <td><input style="width:120px;" type="text" readonly="true" name="enddate" value="<?php echo date_create($this->ops['case']['disdate_virtual'])->format('d.m.Y H:i:s');?>"></td>
+                            </tr>
+                            <tr>
+                                <td>Behandlungstage:</td>
+                                <td><input style="width:60px;" type="text" readonly="true" name="treatdays" value="<?php echo $this->ops['case']['number_of_days'];?>"></td>
+                            </tr>
+                            <tr>
+                                <td>Erbringende OE:</td>
+                                <td>
+                                    <input style="width:60px;" type="text" name="erbringende_oe_pflegerisch"
+                                           value="<?php echo $this->ops['case']['e_oe'];?>">
+                                    <input style="width:60px;" type="text" name="erbringende_oe_fachlich"
+                                           value="<?php echo $this->ops['case']['e_oe2'];?>">
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Anfordernde OE:</td>
+                                <td>
+                                    <input style="width:60px;" type="text" name="anf_oe_pflegerisch"
+                                           value="<?php echo $this->ops['case']['pflegerisch'];?>">
+                                    <input style="width:60px;" type="text" name="anf_oe_fachlich"
+                                           value="<?php echo $this->ops['case']['fachlich'];?>">
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Fallnummer:</td>
+                                <td><input type="text" name="case_number" value="<?php echo $this->ops['case']['case_number'];?>">
+                                    <input type="hidden" name="opsdate" value="<?php echo $this->ops['case']['admdate'];?>">
+                                    <input type="hidden" name="caseid" value="<?php echo $this->ops['case']['id'];?>">
+                                </td>
+                            </tr>
+                            <tr>
+                                <td></td>
+                                <td><input type="submit" disabled="disabled" value="OPS-Code senden"></td>
+                            </tr>
+
+                        </table>
+                    </form>
+                </td>
+            </tr>
+        </table>
+    </div>
+    <?php endif;?>
+
+
+    <?php if($this->usercansend):?>
+        <div id="case_finish_sendbox" style="display:none;">
+            <form id="f_casefinish" method="post" action="unfinishedcases/index">
+                <input name="encid" value="<?php echo $this->encid;?>" type="hidden" />
+                <input type="hidden" name="finish_id" value="<?php echo $this->ops['case']['case_id'];?>">
+
+                <input type="submit" value="Fall abschließen">
+                <p>Danach wird die Liste der kürzlich entlassenen Patienten angezeigt</p>
+
+            </form>
+        </div>
+    <?php endif;?>
+
+    <?php if($this->usercansend && (count($this->opslog)>0 || count($this->timeslog)>0)):?>
+        <div class="documentation" style="margin-top:24px;">
+            <h2>Protokoll</h2>
+            <?php if(count($this->opslog)>0):?>
+                <div style="margin-left:20px;margin-top:8px;">
+                    <b>Erfolgreich übertragene OPS</b><br />
+                    <table class="transmitlog_ops">
+                        <tr><td width="100px">Datum</td><td width="90px">Benutzer</td><td width="450px">Info</td></tr>
+                        <?php foreach ($this->opslog as $log):?>
+                            <?php
+                            $logdata=json_decode($log['log_data'],1);
+                            ?>
+                            <tr>
+                                <td><?php echo date('d.m.Y H:i',strtotime($log['log_date']));?></td>
+                                <td><?php echo $logdata['username'];?></td>
+                                <td><?php echo $logdata['opscode'];?></td>
+                                <?php if ($this->isadmin):?>
+                                    <td><input type="button" value="ausblenden" onclick="hidePatientCaseStatusLog(<?php echo $log['id'];?>); $(this).parents('tr').hide();"></td>
+                                <?php endif;?>
+                            </tr>
+                        <?php endforeach;?>
+                    </table>
+                </div>
+            <?php endif;?>
+
+                <?php if(count($this->timeslog)>0):?>
+                    <div style="margin-left:20px;margin-top:24px;">
+                        <b>Erfolgreich übertragene Leistungen</b><br />
+                        <table class="transmitlog_leistungen">
+                            <tr><td width="100px">Datum</td><td width="90px">Benutzer</td><td width="450px">Info</td></tr>
+                            <?php foreach ($this->timeslog as $log):?>
+                                <?php
+                                $logdata=json_decode($log['log_data'],1);
+                                $logstr=[];
+                                foreach($logdata['mins'] as $logk=>$logi){
+                                    $logstr[]=$logk.":".$logi;
+                                }
+                                ?>
+                                <tr>
+                                    <td><?php echo date('d.m.Y H:i',strtotime($log['log_date']));?></td>
+                                    <td><?php echo $logdata['username'];?></td>
+                                    <td><?php echo implode('; ',$logstr);?></td>
+                                    <?php if ($this->isadmin):?>
+                                        <td><input type="button" value="ausblenden" onclick="hidePatientCaseStatusLog(<?php echo $log['id'];?>); $(this).parents('tr').hide();"></td>
+                                    <?php endif;?>
+                                </tr>
+                            <?php endforeach;?>
+                        </table>
+                    </div>
+                <?php endif;?>
+
+        </div>
+    <?php endif;?>
+
+
+
+
+    <?php if($this->usercansend && !$this->pdf):?>
+        <div id="leistungen_sendbox" style="display:none;">
+		<form id="f_leistungen" method="post">
+            <input type="hidden" name="mins_details" value='<?php echo json_encode($groupmins);?>'>
+						<input name="encid" value="<?php echo $this->encid;?>" type="hidden" />
+		<table style="width:300px;">
+			<tr>
+				<td>Fallnummer:</td>
+				<td><input type="text" readonly="true" value="<?php echo $this->ops['case']['case_number'];?>">
+                    <input type="hidden" name="caseid" value="<?php echo $this->ops['case']['id'];?>">
+                </td>
+			</tr>
+			
+			<tr>
+				<td>Datum:</td>
+				<td><input type="text" readonly="true" value="<?php echo date('d.m.Y H:i:s',strtotime($this->ops['case']['admdate']));?>"></td>
+			</tr>
+			
+			<tr>
+				<td>Erbringende OE:</td>
+				<td>
+					<input style="width:60px;" type="text" name="erbringende_oe_pflegerisch" value="<?php echo $this->ops['case']['e_oe'];?>">
+					<input style="width:60px;" type="text" name="erbringende_oe_fachlich" value="<?php echo $this->ops['case']['e_oe2'];?>">
+				</td>
+			</tr>
+			<tr>
+				<td>Anfordernde OE:</td>
+				<td>
+					<input style="width:60px;" type="text" name="anf_oe_pflegerisch" value="<?php echo $this->ops['case']['pflegerisch'];?>">
+					<input style="width:60px;" type="text" name="anf_oe_fachlich" value="<?php echo $this->ops['case']['fachlich'];?>">
+				</td>
+			</tr>
+
+
+			
+			<?php foreach($groupmins as $key=>$mins):?>
+							
+				<tr>
+					<td>Minuten <?php echo $key; ?></td>
+					<td>
+                        <?php
+
+                        $a=0;
+
+                        $my_mins=sum_ops_only(array_keys($minutes_categories), $mins);
+                        if($my_mins==""||$my_mins<1){
+                            $my_mins=0;
+                        }
+
+                        ?>
+						<input name="mins[<?php echo $key; ?>]" type="text" style="width:36px;" value="<?php echo $my_mins;?>" />
+					</td>
+				</tr>
+			<?php endforeach;?>
+			
+			
+			<tr>
+				<td></td>
+				<td><input type="submit" value="Leistungen senden"></td>
+			</tr>
+
+		</table>
+		</form>
+        </div>
+
+
+    <?php endif;?>
+
+
+	
+	<div class="documentation" style="margin-top:32px;">
+
+	</div>
+    <?php if (!$this->pdf):?>
+</div>
+<?php endif;?>
+
+
+
+<div id="transmit_dialog" title="Datenübertragung">
+	<div id="return_area">
+		<pre></pre>
+	</div>
+	<div align="center" style="width:100%;">
+		<img src="<? echo RES_FILE_PATH; ?>/images/ajax-loader.gif" id="throbber" style="display:none;">
+	</div>
+</div>
+<?php endif;?>
+
+
+
+<?php if ($this->loguname=="Admin, Admin" && 1==0):?>
+    <div>
+        <script>
+            $(document).on('click', '.caseeditor_quickchange', function(){
+                var ta=$(this).parents('form').find('textarea.opsmins2');
+                var oldval=$('#opscode_opsmins').val();
+                $(ta).val(oldval);
+            });
+
+        </script>
+        <?php foreach ($this->opslog as $ops):?>
+            <div style="border-bottom:2px solid blue;margin-bottom:20px;padding-bottom:20px;">
+                <form class="quickedit_caselog" method="post" action="ajax/opslogquickchange">
+                    <input type="hidden" name="rowid" value="<?php echo $ops['rowid'];?>">
+                    <textarea style="width:700px;"name="descr"><?php echo $ops['text'];?></textarea>
+                    <br>
+                    <textarea class="opsmins2" style="width:700px;"name="opsmins"><?php echo $ops['opsmins'];?></textarea>
+                    <br>
+                    gelöscht: <input type="checkbox" name="isdelete" <?php if ($ops['isdelete']) echo "checked";?>>
+                    &nbsp;&nbsp;&nbsp;&nbsp;
+                    <input type="button" class="caseeditor_quickchange" value="als neuer Code markieren">&nbsp;&nbsp;&nbsp;&nbsp;
+                    <input type="submit" value="Ändern">
+                </form>
+            </div>
+        <?php endforeach;?>
+    </div>
+<?php endif;?>

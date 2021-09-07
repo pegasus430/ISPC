@@ -1,0 +1,116 @@
+<script>
+    var diagsyncwidget=function() {
+        var diagsyncwidget_data = <?php echo json_encode($this->diags);?>;
+
+        <?php if(count($this->diags)>0 && $this->done==false):?>
+        $('#diagsync_wrap').dialog({width: '660', height: '340', title: 'Übertragene Diagnosen einfügen'});
+        <?php endif;?>
+
+        $(document).on('click', '#diagsync_mutebutton', function(){
+            $('#diagsync_wrap').dialog('close');
+            $.get( "<?php echo APP_BASE;?>ajax/marksyncdiagpacketdone", {syncid:"<?php echo $this->syncid;?>",});
+        });
+
+        $(document).on('click', '#diagsync_act_butt', function(){
+            var myact=$('#diagsync_act').val();
+            $('select[name="act_value"]').val(myact).change();
+        });
+
+        $(document).on('click', '.diagsyncwidget_takeover', function () {
+            var srcrow=$(this).parents('tr.diagsync_diagrow');
+            var my_icd = $(srcrow).find('.icd').val();
+            var my_descr = $(srcrow).find('.descr').val();
+            var my_typeid = $(srcrow).find('.typeid').val();
+
+            var firstempty=false;
+            $('.diagdesc').each(function(){
+                var trow=$(this).parents('tr');
+                var linec = $(trow).find('.diagicd').val() +  $(trow).find('.diagdesc').val();
+                if (linec == "" && firstempty==false){
+                    firstempty=trow;
+                }
+            });
+
+            $(firstempty).find('.diagicd').val(my_icd).change();
+            $(firstempty).find('.diagdesc').val(my_descr).change();
+            $(firstempty).find('input[value="'+my_typeid+'"][type="radio"]').attr('checked',true);
+
+
+            var i=0;
+            var found=0;
+            $(srcrow).find('.meta').each(function(){
+                var mymeta=$(this).val();
+                var sels=$(firstempty).next().find('select');
+                $(sels[i]).find('option').each(function(){
+                    if(mymeta == $(this).text()) {
+                        $(this).attr('selected',true);
+                        found=1;
+                    }
+                });
+                i++;
+            });
+
+            if(found==1){
+                $(firstempty).find('a.AddButton').click();
+            }
+        });
+    }();
+</script>
+
+<div id="diagsync_wrap" style="display:none;">
+    <?php if(count($this->diags)>0):?>
+        <p>
+            <?php echo $this->message;?>
+        </p>
+        <p><input type="button" style="background-color:#fbb;" id="diagsync_mutebutton" value="Diesen Diagnosesatz nicht wieder einblenden."></p>
+        <p style="text-align:right;margin-bottom:8px;">
+            Datum der übertragenen Diagnosen: <?php echo $this->date;?>
+        </p>
+    <table>
+        <tr>
+            <th>ICD</th>
+            <th>Beschreibung</th>
+            <th>HD/ND</th>
+            <th></th>
+        </tr>
+    <?php foreach ($this->diags as $diag):?>
+        <tr class="diagsync_diagrow">
+            <td><input style="width:66px;" type="text" class="icd" value="<?php echo $diag['icdnumber'];?>"></td>
+            <td><input style="width:420px;" type="text" class="descr" value="<?php echo $diag['diagnosis'];?>">
+
+            <?php foreach ($diag['metas'] as $meta):?>
+                <?php if ($meta!==null):?>
+                    <br><span style="margin-left:20px;">Metastasierung: </span> <input type="text" style="width:200px;" class="meta" value="<?php echo $meta;?>">
+                <?php endif;?>
+            <?php endforeach;?>
+
+            </td>
+            <td>
+                <input style="width:50px;" type="text" class="hdnd" value="<?php echo $diag['type'];?>">
+                <input  type="hidden" class="typeid" value="<?php echo $diag['typeid'];?>">
+            </td>
+            <td><input class="diagsyncwidget_takeover" type="button" value="übernehmen"></td>
+        </tr>
+    <?php endforeach;?>
+    </table>
+
+        <?php if (isset ($this->act_val)):?>
+            <table style="margin-top:20px;">
+            <tr><td>ACT: <input style="width:30px;" type="text" id="diagsync_act" value="<?php echo $this->act_val;?>"></td>
+                <td><input type="button" id="diagsync_act_butt" value="Übernehmen"></td>
+            </tr>
+            </table>
+        <?php endif;?>
+
+    <?php else:?>
+        <p>Es sind keine übertragenen Diagnosen vorhanden.</p>
+    <?php endif;?>
+
+</div>
+
+
+<?php if(count($this->diags)>0):?>
+    <p style="margin-top:30px;margin-bottom:30px;cursor:pointer;color:blue;" onclick="$('#diagsync_wrap').dialog({width:'660', height:'340', title:'Übertragene Diagnosen einfügen'});">
+        Übertragene Diagnosen anzeigen
+    </p>
+<?php endif;?>

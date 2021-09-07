@@ -1,0 +1,243 @@
+<?php
+$clients_array = $this->clientsarray;
+$clients_details_array = $this->clientsarray_details;
+
+$saved_group_clients = $this->saved_group_clients;
+$saved_parent_group_clients = $this->saved_parent_group_clients;
+
+$group_clients = $this->group_clients;
+$parent_group_clients = $this->parent_group_clients;
+?>
+
+<script type="text/javascript">
+
+	function checkedall(allid)
+	{
+
+		hdn = document.getElementsByName('assigned_client[]');
+
+		if(allid.checked==true)
+		{
+			for(i=0; i<hdn.length;i++)
+			{
+				document.getElementById('assigned_id_'+hdn[i].value).checked = true;
+			}
+		}else{
+			for(i=0; i<hdn.length;i++)
+			{
+				document.getElementById('assigned_id_'+hdn[i].value).checked = false;
+			}
+		}
+	}
+
+	$(document).ready(function() {
+		
+		
+		$('.clickable').click(function(){
+			window.location = appbase+'client/assignvwclients?gid='+$(this).attr('rel')+'&act=edit';
+		});
+		
+ 
+		
+		$("[id^=parent_assigned_id_]").live('change', function(){
+			var user_id = $(this).val(); 
+			var assign;
+			if($(this).is(':checked')) {
+				assign = 1
+				$('#child_assigned_id_'+user_id).prop('checked', true);
+			} else {
+				$('#parent_assigned_id_'+user_id).prop('checked', false);
+				assign = 0
+			}
+		});
+		
+		$("[id^=child_assigned_id_]").live('change', function(){
+			var user_id = $(this).val(); 
+			var assign;
+			if($(this).is(':checked')) {
+				assign = 1
+				$('#child_assigned_id_'+user_id).prop('checked', true);
+			} else {
+				$('#parent_assigned_id_'+user_id).prop('checked', false);
+				assign = 0
+			}
+		});
+		
+		
+		
+		$('.delete_link').live('click', function(){
+			var group_id = $(this).attr('rel');
+			
+			   jConfirm('<?php echo $this->translate('confirmdeleterecord'); ?>', '', function(r) {
+					if(r)
+					{
+	 					location.href = "<?php echo APP_BASE.'client/assignvwclients?gid="+group_id+"&act=del';  ?>";
+					}
+			});
+			return false;
+			
+		})
+		
+		
+		
+		$('#add_btn').click(function(e){
+			e.preventDefault();
+			
+			var error = 0;
+			
+			var radio_buttons = $("input[name^='assigned_client[parent]']");
+			if( radio_buttons.filter(':checked').length == 0){
+			  error = 1;
+			} else {
+			  error = 0;
+			}
+			
+			
+			if(error == '1'){
+				alert("<?php echo $this->translate('Parent client is mandatory')?>")
+			}
+			
+	
+			
+			
+ 
+			if(error == '0'){
+				$('#associate_clients_form').submit();
+			}
+		});
+		
+	});
+
+</script>
+
+<table id="assignmodules_clientNameTable">
+	<tr id="tableTrOne">
+		<td id="tableTrOne_tdOne" colspan="3" valign="top">&nbsp;</td>
+
+	</tr>
+	<tr id="tableTrThree" >
+		<td id="tableTrThree_tdOne" colspan="3" valign="top">&nbsp;</td>
+	</tr>
+</table>
+<h1><?php echo $this->translate('voluntary workers - client connections'); ?></h1>
+<!-- Groups Table start	-->
+<table width="100%" class="datatable" border="0" id="assignmodules_clientDetailTable">
+	<tr id="TableTwo_TrOne">
+		<th width="2%">ID</td>
+		<th width="25%"><? echo $this->translate('groupname') ?></td>
+		<th width="25%"><? echo $this->translate('client - Parent') ?></td>
+		<th width="43%"><? echo $this->translate('associated_clients') ?></td>
+		<th width="5%"><? echo $this->translate('actions') ?></td>
+	</tr>
+	<?php $f = 1;foreach ($this->agroups as $kgroup => $vgroup): ?>
+		<tr id="TableTwo_Trtwo" class="row <?php if($vgroup['id'] == $_REQUEST['gid']): ?>selected_group<?php endif; ?>" rel="<?php echo $vgroup['id']; ?>" >
+			<td valign="top" class="clickable" rel="<?php echo $vgroup['id']; ?>" ><?php echo $f; ?></td>
+			<td valign="top" class="clickable" rel="<?php echo $vgroup['id']; ?>" ><?php echo $vgroup['name'] . ' #' . $vgroup['id']; ?></td>
+			<td valign="top"  class="clickable" rel="<?php echo $vgroup['id']; ?>">
+				<?php
+				foreach ($saved_parent_group_clients[$vgroup['id']] as $client_k => $client):
+					?>
+					<?php 
+						$parent_clients_ids_arr[$vgroup['id']][] = $client; 
+						$parent_clients_arr[$vgroup['id']][] = $clients_details_array[$client]['client_name']; 
+					?>
+
+				<?php endforeach; ?>
+				<?php echo implode(', ', $parent_clients_arr[$vgroup['id']]); ?>
+			</td>
+			
+			<td valign="top" class="clickable" rel="<?php echo $vgroup['id']; ?>" >
+				<?php
+				foreach ($this->saved_groups_clients[$vgroup['id']] as $client_k => $client):
+					?>
+					<?php 
+						if(!in_array($client,$parent_clients_ids_arr[$vgroup['id']])){
+						$clients_arr[$vgroup['id']][] = $clients_details_array[$client]['client_name']; 
+					}
+					?>
+				<?php endforeach; ?>
+				<?php echo implode(',<br/>', $clients_arr[$vgroup['id']]); ?>
+			</td>
+			<td valign="top"><a href="javascript:void()" rel="<?php echo $vgroup['id']; ?>" class="delete_link" ><img src="<?php echo RES_FILE_PATH; ?>/images/action_delete.png" border="0" /></a></td>
+		</tr>
+	<?php $f++; endforeach; ?>
+</table>
+<!-- Groups Table end	-->
+
+
+
+<br />	
+
+
+<h1><?php echo $this->translate('clients_list'); ?></h1>
+<!-- Clients List start -->
+<form action="" method="post" name="frmuser" id="associate_clients_form" >
+	<div id="assignmodules_GridTableDiv" class="grid">
+		<?php if($_REQUEST['gid']):?>
+			<input type="hidden" name="edit_group" value="<?php echo $_REQUEST['gid']; ?>" id="edit_group" />
+		<?php endif;?>
+
+		<table width="100%" class="datatable" border="0" id="assignmodules_clientDetailTable">
+
+			<tr id="TableTwo_TrOne">
+				<th id="TableTwo_TrOne_thOne">ID</th>
+				<th id="TableTwo_TrOne_thTwo"><? echo $this->translate('clientname') ?></th>
+				<th id="TableTwo_TrOne_thTwo"><? echo $this->translate('status') ?></th>
+				<th id="TableTwo_TrOne_thThree"><? echo $this->translate('client - Parent') ?>&nbsp;</th>
+				<th id="TableTwo_TrOne_thThree"><? echo $this->translate('connected clients') ?></th>
+			</tr>
+			<?php $cl = 1; foreach ($this->clientsarray as $kclient => $vclient): ?>
+				<?php  if(!in_array($vclient['id'],$this->used_clients)): ?>
+				<tr id="TableTwo_Trtwo" class="row">
+					<td id="TableTwo_Trtwo_tdOne" valign="top" rel="<?php echo $vclient['id']; ?>"><?php echo $cl; ?></td>
+					<td id="TableTwo_Trtwo_tdTwo" valign="top"><?php echo $vclient['client_name']; ?></td>
+					<td id="TableTwo_Trtwo_tdTwo" valign="top">
+						<?php
+						if ($vclient['isactive'] == '0')
+						{
+							echo $this->translate('useractive');
+						}
+						else
+						{
+							echo $this->translate('userinactive');
+						}
+						?>
+					</td>
+					<?php
+						if($_REQUEST['act'] == 'edit')
+						{
+							if(in_array($vclient['id'], $group_clients[$_REQUEST['gid']]))
+							{
+								$conntected_selected = 'checked="checked"';
+							}
+							else
+							{
+								$conntected_selected = '';
+							}
+
+						}
+						if($_REQUEST['act'] == 'edit')
+						{
+							if(in_array($vclient['id'], $parent_group_clients[$_REQUEST['gid']]))
+							{
+								$parent_selected = 'checked="checked"';
+							}
+							else
+							{
+								$parent_selected = '';
+							}
+						}
+					?>
+					<td id="TableTwo_Trtwo_tdThree" valign="top"><input type="radio" name="assigned_client[parent]" rel="<?php echo $vclient['id']; ?>" id="parent_assigned_id_<?php echo $vclient['id']; ?>" value="<?php echo $vclient['id']; ?>" class="parent_clients" <?php echo $parent_selected; ?>/></td>
+					<td id="TableTwo_Trtwo_tdThree" valign="top"><input type="checkbox" name="assigned_client[connected][]" id="child_assigned_id_<?php echo $vclient['id']; ?>" value="<?php echo $vclient['id']; ?>" <?php echo $conntected_selected; ?>/></td>
+				</tr>
+				
+				<?php endif;?>
+			<?php $cl++; endforeach; ?>
+			<tr id="TableTwo_Trthree">
+				<td id="TableTwo_Trthree_tdTwo" valign="top" colspan="5"><input type="submit" name="add_btn" id="add_btn" class="button" style="float:right; margin: 0 0 0 10px;" value="<?php echo $this->translate('assoc_sel_clients'); ?>"></td>
+			</tr>
+		</table>
+	</div>
+</form>
+<!-- Clients List end -->

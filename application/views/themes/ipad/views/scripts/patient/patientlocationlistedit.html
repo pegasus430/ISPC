@@ -1,0 +1,512 @@
+<?php
+$this->headScript()->appendFile(RES_FILE_PATH . '/javascript/dateUtil.js');
+?>
+<script type="text/javascript">
+	var pid = '<?php echo $this->pid ?>';
+	var lb_visits_deactivate = '<?php echo $this->lb_visits_deactivate ?>';
+	var new_rows = '0';
+
+	$(function() {
+		$(".validDatepic").datepicker({
+			dateFormat: 'dd.mm.yy',
+			showOn: "both",
+			buttonImage: $('#calImg').attr('src'),
+			buttonImageOnly: true,
+			changeMonth: true,
+			changeYear: true,
+			nextText: '',
+			prevText: '',
+			onSelect: function(date_text, selector) {
+				if ($(this).hasClass('patLocValidTill')) {
+					$(this).parent().parent().next().find('input.patLocValidFrom').val(date_text);
+				}
+
+				if ($(this).hasClass('patLocValidFrom')) {
+					$(this).parent().parent().prev().find('input.patLocValidTill').val(date_text);
+				}
+			}
+		});
+
+		$(".listPatiAddLink").locationPicker();
+	});
+
+	function checkLocationStatus(locs) {
+		$.ajax({
+			url: 'locations/getlocationtype?lid=' + locs.value,
+			dataType: 'json',
+			success: function(response) {
+				//alert(response.callBackParameters.location_type);
+				var lid = $(locs).parent().parent().find('.LocationId').val();
+				var loc_type = response.callBackParameters.location_type;
+
+				if (loc_type == 1) {
+					$(locs).parent().find('.extradiv').show();
+				} else if (loc_type == 2) { //is hospiz =1
+					$(locs).parent().find('.extradiv').hide();
+					$(locs).parent().find('#extradiv').hide();
+				} else { //not hospiz then =0
+					$(locs).parent().find('.extradiv').hide();
+					$(locs).parent().find('#extradiv').hide();
+				}
+			$(locs).parent().find('.location_type').val(loc_type);
+			}
+		});
+	}
+
+	function checkLocationStation(locs) {
+	var row_id = $(locs).attr('alt');
+		$('#loading_location_' + $(locs).attr('alt')).show();
+	$.ajax({
+			url: 'locations/getlocationstations?lid=' + locs.value,
+			dataType: 'json',
+			success: function(response) {
+
+				if (response.array_stations != '0') {
+					i = 0;
+				var stations_str = '';
+					for (i in response.array_stations) {
+						stations_str += '<option value="' + response.array_stations[i].id + '">' + response.array_stations[i].station + '</option>';
+					i++;
+				}
+
+					var dynamic_select = '<select name="station_select[]" id="station_select' + row_id + '" class="station_select"><option value="0"><?php echo $this->translate('select_station'); ?></option>' + stations_str + '</select>';
+
+					if ($('#stationdiv' + row_id + ' input.station_select')) {
+					//replace
+						$('#stationdiv' + row_id + ' .station_select').replaceWith(dynamic_select);
+				} else {
+					//insert
+						$('#stationdiv' + row_id).append(dynamic_select);
+				}
+
+					$('#stationdiv' + row_id).show();
+			} else {
+					$('#stationdiv' + row_id).hide();
+					$('#stationdiv' + row_id + ' .station_select').replaceWith('<input type="hidden" value="0" name="station_select[]" id="station_select' + row_id + '" class="station_select" />');
+			}
+				$('#loading_location_' + $(locs).attr('alt')).hide();
+		}
+	});
+	}
+
+	//	get phone for a new added location
+	function getLocationPhone(locs) {
+
+		$.ajax({
+			url: 'locations/getlocationtype?lid=' + locs.value + '&mod=phone',
+			dataType: 'json',
+			success: function(response) {
+				var phone = response.callBackParameters.phone;
+				//	set hidden field with phone value
+				$(locs).parent().find('.phone').val(phone);
+			}
+
+		});
+	}
+	
+	$.fn.locationPicker = function(options) {
+		var anchorList = this;
+		var init = function() {
+			anchorList.each(function() {
+				var parentRow = $(this).parent().parent();
+				bindEventToDatePickers(parentRow);
+				parentRow.find("a.removeRows").click(function() {
+					var patlocid = $(this).attr('href').substr(1);
+
+					if (patlocid != 0) {
+						if ( ! checkclientchanged()){
+							return false;
+						}
+						//ISPC-1256 - remove locations on submit only
+						$('#removed_locations').val($('#removed_locations').val()+','+patlocid);
+						
+						//why we get the location type in remove procedure?
+//						$.ajax({
+//							url: 'locations/getlocationtype?patlid=' + patlocid,
+//							dataType: 'json',
+//							success: function(response) {
+//								var loc_type = response.callBackParameters.location_type;
+//								parentRow.remove();
+//								ajaxCallserver({url: 'contact/locationeditajax?delid=' + patlocid});
+//							}
+//						});
+
+						//get deleted row valid_from
+						var current_valid_from = parentRow.children('td.tddateloc').find('input').val();
+
+						$.ajax({
+							url: 'contact/locationeditajax?delid=' + patlocid,
+							dataType: 'json',
+							success: function(response) {
+								//update next row valid_from with the deleted row valid_from
+								if(parentRow.next('tr')) {
+									parentRow.next('tr').children('td.tddateloc').find('input.patLocLiTxt').val(current_valid_from);
+								}
+									parentRow.remove();
+							}
+						});
+
+					} else {
+						parentRow.remove();
+					}
+					return false;
+				});
+
+				parentRow.find("select#reason").change(function() {
+					var pat_loc = $(this).parent().parent().find('input.locid').val();
+					if (pat_loc) {
+
+
+					} else {
+						pat_loc = "-0";
+					}
+					if (this.value == '4') {
+						$(".extrareason" + pat_loc).show();
+					} else {
+						$(".extrareason" + pat_loc).hide();
+						$(".reasontxt" + pat_loc).val("");
+					}
+				});
+
+				$(this).click(function() {
+
+				//setup increment new row value
+					new_rows = parseInt(new_rows + 1);
+
+					var newrow = $('<tr class="new" id="row_id_' + new_rows + '">' + parentRow.html() + '</tr>').insertAfter(parentRow);
+
+					var tilldate = parentRow.find('input.patLocValidTill').val();
+
+					if (newrow.find('select.station_select').html()) { //avoid ie errors of not found element
+					newrow.find('select.station_select option:selected').removeAttr("selected");
+				}
+					newrow.find('.extradiv').hide();
+					newrow.find('.stationdiv').attr('id', 'stationdiv' + new_rows).hide(); //set new id for stationdiv to know where to append stations select
+					newrow.find('.commentdiv').attr('id', 'commentdiv' + new_rows).show(); //set new id for commentdiv to know where to append stations select
+					newrow.find('#extrareason').hide();
+
+					newrow.find('#extrareason').attr('class', 'extrareason-0');
+					newrow.find('.old_rns').attr('class', 'old_rns reasontxt-0');
+
+					newrow.find('.ent').remove();
+					newrow.find('.Location').show();
+					newrow.find('.Location').attr('alt', new_rows);
+					newrow.find('.loading_locations').attr('id', 'loading_location_' + new_rows).hide();
+
+					newrow.find('.isdischarged').val('0');
+
+					newrow.find('input').val('');
+					newrow.find('input[name="newr[]"]').val('1');
+					newrow.find('#location_id option:selected').removeAttr("selected");
+
+					newrow.find('input.patLocValidFrom').val(tilldate);
+					newrow.find('select').val('');
+
+					newrow.find("input.validDatepic").removeClass('hasDatepicker');
+					newrow.find("input.validDatepic").removeAttr('id');
+					newrow.find("img.ui-datepicker-trigger").remove();
+
+					newrow.find("a.removeRows").attr('href', '#0');
+					newrow.find('.location_type').attr('id', 'location_type-' + new_rows); //set new id for location type
+					newrow.find(".validDatepic").datepicker({
+					dateFormat: 'dd.mm.yy',
+					showOn: "both",
+					buttonImage: $('#calImg').attr('src'),
+					buttonImageOnly: true,
+					changeMonth: true,
+					changeYear: true,
+					nextText: '',
+					prevText: '',
+						onSelect: function(date_text, selector) {
+							if ($(this).hasClass('patLocValidTill')) {
+								$(this).parent().parent().next().find('input.patLocValidFrom').val(date_text);
+							}
+
+							if ($(this).hasClass('patLocValidFrom')) {
+								$(this).parent().parent().prev().find('input.patLocValidTill').val(date_text);
+							}
+					}
+				});
+					newrow.find(".listPatiAddLink").locationPicker();
+					return false;
+				});
+			});
+		};
+
+		var bindEventToDatePickers = function(parentRow) {
+
+			parentRow.find('.saveRows').bind('click', function() {
+
+				var validfrom = parentRow.find('input.patLocValidFrom').val();
+				var validtill = parentRow.find('input.patLocValidTill').val();
+				var lid = parentRow.find('input.LocationId').val();
+				var previd = parentRow.find('input.PrevId').val();
+
+				if (previd.length < 1)
+				{
+					jAlert('Select Previous Location');
+					return false;
+				}
+
+				var urls = 'contact/locationeditajax?valid_from=' + validfrom + '&valid_till=' + validtill + '&lid=' + lid + '&location_id=' + location_id + '&previd=' + previd + '&pid=' + pid;
+
+
+				$.ajax({
+					url: urls,
+					mode: "abort",
+					secureuri: false,
+					fileElementId: 'icon',
+					dataType: 'json',
+					success: function(data, status)
+					{
+						var locerror = "";
+						for (i in data.error)
+						{
+							locerror = locerror + data.error[i] + "<br>";
+						}
+
+						parentRow.find('input.LocationId').val(data.callBackParameters.lid);
+						$(".locerror").hide();
+						$(".locerror").html('<div style="color:red;" >'+locerror+'</div>').slideDown('slow');
+					},
+					error: function (data, status, e)
+					{
+					}
+			});
+		});
+				}
+		init();
+	};
+
+	function deleteRecord(ltrval)
+	{
+		if(ltrval)
+		{
+			ajaxCallserver({url:'contact/locationeditajax?ltr='+ltrval,callLoading:loading});
+		}
+	}
+
+	function getCheckedNames(){
+		var arr = new Array();
+
+		var $checked = $('input[name="user_id[]"]:checked');
+		$checked.each(function(){
+			if($(this).parent().parent().parent().parent().parent().is(':visible')){ //added to get visible selected checkboxes values only
+				arr.push($(this).val());
+			}
+		});
+		return arr;
+	}
+
+	$(document).ready(function(){
+		$('#btnsubmit').live('click', function(e) {
+			e.preventDefault() // prevents the form from being submitted
+			var validated = "1";
+			var validatedN = parseInt(0);
+			var CompareDates = "";
+			var errorMessage = "";
+			var line = 1;
+			var lineS = 1;
+			var curentDate = '<?php echo date("d.m.Y"); ?>';
+
+ 
+			$('input[name="valid_from[]"]').each(function(){
+				var listLine = Math.round((line/2));
+				var $this = $(this);
+				var $next = $(this).closest('td').next('td').find('input[name="valid_till[]"]');
+				if(listLine > 1){
+					var $prev = $(this).closest('tr').prev('tr').find('input[name="valid_till[]"]');
+				}
+
+				if($this.val() == "undefined" || $this.val() == ""){
+					validated = "0";
+				}
+				if($next.val() == "undefined" || $next.val() == "") {
+					validatedN += 1;
+				}
+
+				if(isDate($this.val(), 'dd.MM.y') && isDate($next.val(), 'dd.MM.y')){
+					CompareDates = compareDates($this.val(),'dd.MM.y', $next.val(),'dd.MM.y');
+
+					if(CompareDates == 1){
+						errorMessage += "<p>Line "+listLine+": bis heute sind mehr als ab-Datum</p>";
+						validated = 0;
+					} else if(CompareDates == -1){
+						errorMessage += "<p>Line "+listLine+": ungültiges Datum eingegeben</p>";
+						validated = 0;
+					}
+				}
+				if(listLine == 1){
+
+					if(compareDates(curentDate, 'dd.MM.y', $this.val(), 'dd.MM.y') != "1" && curentDate != $this.val()){
+						errorMessage += "<p>Line "+listLine+": Datum darf nicht in der Zukunft liegen</p>";
+						validated = 0;
+					}
+
+					if(compareDates(curentDate, 'dd.MM.y', $next.val(), 'dd.MM.y') != "1" && line>1 && curentDate != $this.val()){
+						errorMessage += "<p>Line "+listLine+": Datum darf nicht in der Zukunft liegen</p>";
+						validated = 0;
+					}
+
+
+				} else if (listLine > 1){ // line 1
+					if (isDate($next.val(), 'dd.MM.y') && $next.val() != ""){
+						if(curentDate != $next.val()){
+							CompareDateNext = compareDates(curentDate, 'dd.MM.y', $next.val(), 'dd.MM.y');
+
+							if(CompareDateNext != "1"){
+								errorMessage += "<p>Line "+listLine+": Datum darf nicht in der Zukunft liegen</p>";
+								validated = 0;
+							}
+						}
+					}
+					if(isDate($this.val(), 'dd.MM.y') && isDate($prev.val(), 'dd.MM.Y')){
+						CompareDatePrevious = compareDates($this.val(), 'dd.MM.y', $prev.val(), 'dd.MM.y');
+
+
+						if(CompareDatePrevious == 0){
+							errorMessage += "<p>Line "+listLine+": Zeitraum muss kontinuierlich sein</p>";
+							validated = 0;
+						} else if(CompareDatePrevious == -1) {
+							errorMessage += "<p>Line "+listLine+": ungültiges Datum eingegeben</p>";
+							validated = 0;
+						}
+					}
+				}
+
+				line += 2;
+			});
+
+
+			if (validated == "1" && validatedN < 2) {
+				
+				if (lb_visits_deactivate == '1') {
+				
+				var ajax_done = 0;
+				var form = $('#frmuser');
+				$.ajax({
+						type: 'POST',
+						url: 'ajax/checkeditlocationvisits?id=<?php echo $_REQUEST['id']; ?>',
+						data: {
+							form_data: form.serialize()
+						},
+						success: function(data) {
+							var visitdata = jQuery.parseJSON(data);
+
+							if (visitdata.visits_in_period == 1) {
+								$('#visits_in_period').dialog('open');
+								return false; // used with modal
+							} else {
+								$('#btnsubmit').attr('disabled', true);
+								$('#frmuser').submit();
+							}
+						},
+						error: function() {
+							ajax_done = 1;
+						}
+					});			
+				} else {
+					$('#frmuser').submit();
+				}
+				
+			} else {
+				$('#validate').dialog('open');
+				$('#errorMessages').html(errorMessage);
+			}
+		});
+
+		$('#visits_in_period').dialog({
+			autoOpen: false,
+			title: '<?php echo $this->translate('Attention'); ?>',
+			modal: true,
+			buttons: {
+				"<?php echo $this->translate('noconfirm'); ?>": function() {
+					$(this).dialog("close");
+				},
+				"<?php echo $this->translate('yesconfirm'); ?>": function() {
+					$('#frmuser').submit();
+				}
+			}
+		});
+		
+		$("#validate").dialog({
+			autoOpen: false,
+			resizable: false,
+			height: 200,
+			width: 230,
+			modal: true,
+			buttons: {
+				"Ok": function() {
+					$(this).dialog('close');
+				}
+			},
+			close: function(event, ui) {
+				$('#errorMessages').html('');
+			}
+		});
+	});
+</script>
+
+<form enctype="multipart/form-data"  action="<?php echo $this->act ?>" method="post" name="frmuser" id="frmuser" autocomplete="off" >
+	
+	<div style="display: none;">
+		<img id="calImg" src="<?php echo RES_FILE_PATH; ?>/images/calendar.png" alt="Popup" class="trigger">
+	</div>
+	
+	<?php echo $this->patientinfo ?>
+	<?php echo $this->tabmenus ?>
+
+	<div class="tab_container">
+		<br />
+		<div id="TableContentOuter"  >
+			<table width="100%" border="0" cellspacing="0" cellpadding="0">
+				<tr>
+					<td width="23" align="left"  valign="top"><h1><?php echo $this->translate('patientlocation'); ?></h1></td>
+				</tr>
+				<tr >
+					<td width="100%" align="left"  valign="top" ></td>
+				</tr>
+				<tr>
+					<td align="left" valign="top"><div class="error PatiLoLied_error " style="margin:0px; height:auto;">
+
+							<?
+							foreach ($this->errors as $key => $val) {
+								echo "Error at line no " . $key;
+								?>
+
+								<div class="clearer"></div>
+								<?
+								foreach ($val as $k => $value) {
+									?>
+									<?php echo $value ?><div class="clearer"></div>
+
+									<?
+								}
+							}
+							?>
+
+						</div>
+						<div class="clearer"></div></td>
+				</tr>
+				<tr>
+					<td id="patLocLis_tr1_td1" width="80%" align="left" valign="top"><?php echo $this->location ?></td>
+				</tr>
+				<tr>
+					<td width="23" align="left" valign="top">
+						<input type="hidden" name="removed_locations" id="removed_locations" value="0" />
+						<input name="btnsubmut" id="btnsubmit" type="submit" class="button" value="<?php echo $this->translate('save'); ?>"   />
+					</td>
+				</tr>
+			</table>
+		</div>
+	</div>
+</form>
+
+<div id="validate" >
+	<b>Bitte füllen Sie alle Datumsfelder!</b>
+	<div id="errorMessages"></div>
+</div>
+
+<div id="visits_in_period" >
+	<?php echo $this->translate('change_to_hospital_delete_visits'); ?>
+</div>

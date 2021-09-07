@@ -1,0 +1,517 @@
+<?php
+	$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/tinymce3/jscripts/tiny_mce/tiny_mce.js');
+	$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/invoice_internal_sh.js');
+	$this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/page-css/invoice/invoice_sh_shifts_style.css');
+
+
+	$invoice_data = $this->invoice_data;
+	$invoice_items = $invoice_data['items'];
+	$client_details = $this->client_details;
+
+?>
+<script>
+	var hide_patient_tab = 1;
+	var res_file_path = '<?php echo RES_FILE_PATH; ?>';
+	
+	$(function() {
+		update_total();
+		$('.remove_item, .remove_sys_item, .remove_saved_item').live('click', function(){
+			$(this).parent().parent().hide('slow').remove();
+			update_total();
+		});
+		
+		/*
+		$('.amount').live('keyup change ', function(){
+// 			$(this).val($(this).val().replace(/[^0-9\.]/g,''));
+			$(this).val($(this).val().replace(/[^0-9\.-]/g,''));
+			if($.isNumeric($(this).val()))
+			{
+				var row_id = $(this).attr('id').substr(('amount_').length);
+// 				$(this).val(parseInt($('#amount_'+row_id).val()));
+				
+				if($('#price_'+row_id).val().length != '0' && $('#price_'+row_id).val() != '' && $(this).val().length != '0'){
+					$('#total_' + row_id).val(parseFloat(parseFloat($(this).val())*parseFloat($('#price_'+row_id).val())).toFixed(2));
+				} else if($(this).val().length == '0' || $('#price_'+row_id).val().length) {
+					$('#total_' + row_id).val('0,00');
+				}
+				update_total();
+			}
+		});
+		
+		$('.price').live('keyup change ', function() {
+			$(this).val($(this).val().replace(/[^0-9\.-]/g,''));
+			if($.isNumeric($(this).val()))
+			{
+				var row_id = $(this).attr('id').substr(('price_').length);
+
+				if ($('#amount_' + row_id).val().length != '0' && $('#amount_' + row_id).val() != '' && $(this).val().length != '0') {
+					$('#total_' + row_id).val(parseFloat(parseFloat($(this).val())*parseFloat($('#amount_'+row_id).val())).toFixed(2));
+				} else if($(this).val().length == '0' || $('#amount_'+row_id).val().length) {
+					$('#total_' + row_id).val('0,00');
+				}
+
+				update_total();
+			}
+
+		});
+		*/
+		<?php
+		/**
+		  * please, in the future, do NOT use like this... make the changes on rows or objects, not individual cells with ids
+		  * also i suggest a delayTimer should be used instead of the direct keyup
+		 **/
+		?>
+		$('.price, .amount').live('focusout', function(event) {
+			var _target = $( event.target );
+			var _val	= format_str2number(_target.val()); 
+			if($.isNumeric(_val)) {
+				_target.val(german_format(parseFloat(_val)))
+			} else {
+				_target.val('0,00');
+			}
+		});
+		$('.price, .amount').live('input propertychange', function(event) {
+					
+			var edited = "";
+			if (~$(this).attr('id').indexOf('amount_')) {
+				var row_id = $(this).attr('id').substr(('amount_').length);
+				edited = "amount";
+			} else if (~$(this).attr('id').indexOf('price_')) {
+				var row_id = $(this).attr('id').substr(('price_').length);
+				edited = "price";
+			} else {
+				//fatal error
+				return;
+			}
+			
+			var val_price	= format_str2number($('#price_' + row_id).val()); 
+			var val_amount	= format_str2number($('#amount_' + row_id).val());
+
+			//update row total
+			if($.isNumeric(val_price) && $.isNumeric(val_amount)) {
+				$('#total_' + row_id).val(	german_format( parseFloat(val_price) * parseFloat(val_amount) ));
+			} else {
+				$('#total_' + row_id).val('0,00');
+			}
+			
+			update_total();
+			
+			if( edited != "price") {
+				if($.isNumeric(val_price) ) {
+					$('#price_' + row_id).val(german_format(parseFloat(val_price)))
+				} else {
+					$('#price_' + row_id).val('0,00');
+				}
+			}
+			if( edited != "amount") {
+				if($.isNumeric(val_amount)) {
+					$('#amount_' + row_id).val(german_format(parseFloat(val_amount)))
+				} else {
+					$('#amount_' + row_id).val('0,00');
+				}
+			}
+
+
+		});
+		
+		$('#completed_date').datepicker({
+			dateFormat: 'dd.mm.yy',
+			showOn: "both",
+			buttonImage: $('#calImg').attr('src'),
+			buttonImageOnly: true,
+			changeMonth: true,
+			changeYear: true,
+			nextText: '',
+			prevText: ''
+		});
+		
+		$('#storno').click(function(event){					
+			$('#storno_dialog').dialog('open');
+		});
+
+		$('#storno_dialog').dialog({
+			autoOpen:false,
+			modal:true,
+			draggable: false,
+			resizable: false,
+			buttons: {
+				"<?php echo $this->translate('yesconfirm'); ?>": function() {
+					set_storno('<?php echo $_REQUEST['invoiceid']; ?>');
+					$( this ).dialog( "close" );
+				},
+				"<?php echo $this->translate('noconfirm'); ?>": function() {
+					$( this ).dialog("close");
+				}
+			},
+			open: function(){
+				$( "#storno_dialog" ).dialog( "option", "title", "<?php echo $this->translate('storno_invoice_no'); ?> "+$('input[name="invoice[prefix]"]').val()+$('input[name="invoice[invoice_number]"]').val());
+			}			
+		});
+		
+		$('#confirmDelete').dialog({
+			autoOpen:false,
+			resize:false,
+			draggable:false,
+			width:300,
+			height:200,
+			title: '<?php echo $this->translate('confirmdeletetitle'); ?>',
+			buttons: {
+				<?php echo $this->translate('delete'); ?>: function() {
+
+						$('#edit_sh_internal_invoice').submit();
+				},
+				<?php echo $this->translate('cancelModalRechnung'); ?>: function(){
+							$('input[name=deletemore]').val("");
+							$( this ).dialog( "close" );
+				}
+			}
+		});;
+
+		$('.delete').live('click',function(event){
+			event.preventDefault();
+			$('#deletemore').val("1");
+			$('#confirmDelete').dialog('open');
+		});
+	});
+	
+	var min_number = '0'; //to avoid NaN
+
+	function german_format(number) {
+		var postComma, preComma, stringReverse, _ref;
+		stringReverse = function(str) {
+			return str.split('').reverse().join('');
+		};
+
+		_ref = number.toFixed(2).split('.'), preComma = _ref[0], postComma = _ref[1];
+
+		//handle - sign
+		var modified_preComma = String(Number(preComma)*(-1)).length;
+
+		var minus_sign = '';
+		if(preComma.length > modified_preComma) {
+			minus_sign = '-';
+			preComma = String(Number(preComma)*(-1));
+		} else {
+			minus_sign = '';
+		}
+
+		preComma = stringReverse(stringReverse(preComma).match(/.{1,3}/g).join('.'));
+
+		return minus_sign + preComma + "," + postComma;
+	}
+	
+	<?php
+	/** 
+	  * format_str2number 
+	  * 2017.06.02 - claudiu 
+	  * format a german-style-number-string into a string you can use on js parseFloat
+	  * turns 123,77 into 123.77
+	  * turns 123,123.77 into 123.12377
+	  * turns 12.3123.77 into 12312377 
+	  * turns 12..31.23,77 into 123123,77 
+	  * turns -1a...2b-3c..,5y.5y into -123.55
+	  *
+	  * claudiu regex for inputs: .replace(/[^0-9,-]/g, "").replace(/(?!^)-/g, '').replace(/[,](?=.*[,])/g, "").replace(/[,]/g, ".")
+	  * replace all that is not [0-9]|,|-
+	  * leave only first minus
+	  * leave only last comma
+	  * replace comma with dot
+	 **/
+	?>
+	function format_str2number ( str ) {
+		return str.replace(/[^0-9,-]/g, "").replace(/(?!^)-/g, '').replace(/[,](?=.*[,])/g, "").replace(/[,]/g, ".");
+	}
+	
+
+	function createnewitem()
+	{
+		var itemcount = $('#counter').val();
+
+		var trInnerHtml = $('\n\
+		<tr id="row_'+itemcount+'" class="custom_item">\n\
+			<td class="shortcut_column" id="item_shortcut_row_'+itemcount+'"> \n\
+				<input type="hidden" value="1" name="custom[]" id="custom_'+itemcount+'" />\n\
+				<input type="text" name="shortcut[]" id="shortcut_'+itemcount+'" class="shortcut" value="" />\n\
+			</td>\n\
+			<td class="description_column" id="item_description_row_'+itemcount+'"> \n\
+				<input type="text" name="description[]" id="description_'+itemcount+'" class="description" value="" />\n\
+			</td>\n\
+			<td class="qty_column" id="item_amount_row_'+itemcount+'"> \n\
+				<input type="text" name="qty[]" id="amount_'+itemcount+'" class="amount" value="" autocomplete="off" />\n\
+			</td>\n\
+			<td class="price_column" id="item_price_row_'+itemcount+'"> \n\
+				<input type="text" name="price[]" id="price_'+itemcount+'" class="price" value="" autocomplete="off" />\n\
+			</td>\n\
+			<td class="row_total_column" id="item_total_row_'+itemcount+'"> \n\
+				<input type="text" name="total[]" id="total_'+itemcount+'" class="total" value="0.00" readonly="readonly" />\n\
+			</td>\n\
+			<td class="row_delete">\n\
+				<a href="javascript:void(0)" class="remove_item" id="'+itemcount+'"><img src="<?php echo RES_FILE_PATH; ?>/images/action_delete.png" border="0"></a>\n\
+			</td>\n\
+		</tr>');
+
+		if($('#pseudo_row').length) {
+			$('#pseudo_row').before(trInnerHtml);
+		} else {
+			$('#new_med_row_action').before(trInnerHtml);
+		}
+		itemcount++;
+		$('#counter').val(itemcount);
+	}
+
+	function update_total()
+	{
+		var custom_total = 0;
+		$('.total').each(function(){
+			var val_total = format_str2number($(this).val());		
+			//$(this).val(parseFloat($(this).val()).toFixed(2))
+			$(this).val(german_format( parseFloat(val_total) ) );
+			//custom_total += parseFloat($(this).val());
+			custom_total += parseFloat(val_total);
+		});
+
+		var grand_total = parseFloat(parseFloat(custom_total)+parseFloat(min_number)).toFixed(2);
+		$('#invoice_total').val(grand_total);
+		$('#grand_total_cell').html(german_format(parseFloat(grand_total)));
+	}
+	
+	function set_storno(invoice_id) {
+		var url = '<?php echo APP_BASE; ?>invoicenew/shshiftsinternalinvoices';
+		window.location = url + '?' + 'mode=setstorno&inv_id='+invoice_id;
+	}
+	
+	function validation() {
+		var armed = false;
+		
+		$('input[name="custom[]"]').each(function(){
+			var row_id = $(this).attr('id').split('_');
+			if($('#shortcut_'+row_id[1]).val() == "" && $('#description_'+row_id[1]).val() == "")
+			{
+				armed = true;
+			}
+		});
+		
+		if(armed)
+		{
+			jAlert('<?php echo $this->translate('alert_missing_fields_text'); ?>', '<?php echo $this->translate('alert_missing_fields_title'); ?>');
+			return false;
+		}
+	}
+</script>
+
+
+
+<div style="display: none;"><img id="calImg" src="<?php echo RES_FILE_PATH;  ?>/images/calendar.png" alt="Popup" class="trigger"></div>
+
+<form name="edit_sh_internal_invoice" id="edit_sh_internal_invoice" method="POST" action="" onsubmit="return validation();">
+	<table class="table" id="health_insurance_invoice_table" cellspacing="2" cellpadding="2" width="100%">
+		<tr class="rowa">
+			<td class="col1 cell"></td>
+			<td class="col2 cell"></td>
+			<td class="col3 cell"></td>
+		</tr>
+		<tr class="rowb">
+			<td class="col1 cell" style="width: 635px;height: 50px;">
+				<textarea name="recipient" id="invoice_recipient" cols="37" rows="7" class="textareawhitehalf"><?php echo $invoice_data['recipient']; ?></textarea>
+			</td>
+			<td class="col2 cell"></td>
+			<td class="col3 cell"></td>
+		</tr>
+
+		<tr class="rowa">
+			<td class="col2 cell" style="text-align: left;" colspan="2"></td>
+			<td class="col1 cell"></td>
+		</tr>
+
+		<tr class="rowb">
+			<td class="col1 cell" colspan="3">
+				&nbsp;
+			</td>
+		</tr>
+
+
+		<tr class="rowb">
+			<td class="col2 cell" style="text-align: left; font-size:16px;" colspan="2"><b>Rechnung Nr.: &nbsp;<?php echo $invoice_data['prefix'].$invoice_data['invoice_number']; ?></b></td>
+			<td class="col1 cell" style="text-align: right;width:380px;">
+				<?php if($invoice_data['completed_date_sort'] != '0000-00-00 00:00:00' && date('Y', strtotime($invoice_data['completed_date_sort'])) != "1970"): ?> 
+					<?php echo strftime('%A, %d. %B %Y', strtotime($invoice_data['completed_date_sort']));  ?>
+				<?php endif; ?>
+				<br />
+				<?php if($invoice_data['status'] > '1'):  ?>
+					<?php echo $this->translate('complete_date'); ?>
+					<input type="text" id="completed_date" value="<?php if($invoice_data['completed_date'] == '0000-00-00 00:00:00'): echo date('d.m.Y', strtotime($invoice_data['create_date'])); else: echo date('d.m.Y', strtotime($invoice_data['completed_date'])); endif;  ?>" name="completed_date" />
+				<?php else:  ?>
+					<input type="hidden" value="<?php echo date('d.m.Y', time()); ?>" name="completed_date" />
+				<?php endif;  ?>
+			</td>
+		</tr>
+	
+		<tr class="rowb">
+			<td class="col1 cell" colspan="3">
+				&nbsp;
+			</td>
+		</tr>
+		<tr class="rowb">
+			<td class="col1 cell" colspan="3">
+				<b><?php echo $this->translate('patient');?>:</b> <?php echo $invoice_data['patient_details'];?>
+			</td>
+		</tr>
+		<tr class="rowb">
+			<td class="col1 cell" colspan="3">
+				<b><?php echo $this->translate('sh_shifts_invoiced_month');?>:</b> <?php echo $invoice_data['invoiced_month'];?>
+			</td>
+		</tr>
+		<tr class="rowb">
+			<td class="col1 cell" colspan="3">
+				<table class="sapv_invoice_items">
+					<tr class="tr_invoice_th">
+						<th style="text-align: left!important;">Abkürzung</th>
+						<th width="50%" style="text-align: left!important;">Leistung</th>
+						<th> Anzahl</th>
+						<th> Einzelpreis  &euro;</th>
+						<th> Gesamtpreis &euro;</th>
+						<th> </th>
+					</tr>
+					<?php foreach($invoice_data['items'] as $k_shortcut_item => $v_shortcut_values): ?>
+					<?php if($v_shortcut_values['custom'] == '1'): ?>
+					<tr id="row_saved_<?php echo $v_shortcut_values['id']; ?>" class="saved_item">
+						<td style="text-align: left;">
+							<input type="hidden" name="custom[]"  value="<?php echo $v_shortcut_values['custom'] ?>" id="custom_<?php echo $v_shortcut_values['id']; ?>" />
+							<input type="text" name="shortcut[]" value="<?php echo $v_shortcut_values['shortcut']; ?>" id="shortcut_<?php echo $v_shortcut_values['id']; ?>" class="shortcut" autocomplete="off" <?php if($this->read_only_items == '1'):  ?>readonly="readonly"<?php endif;  ?> />
+						</td>
+						
+						<td style="text-align: left;">
+							<input type="text" name="description[]" value="<?php echo $v_shortcut_values['description']; ?>" id="description_<?php echo $v_shortcut_values['id']; ?>" class="description" autocomplete="off" <?php if($this->read_only_items == '1'):  ?>readonly="readonly"<?php endif;  ?> />
+							<input type="hidden" name="shift_type[]" value="<?php echo $v_shortcut_values['shift_type']; ?>"  />
+						</td>
+						
+						<td align="right">
+							<input type="text" name="qty[]" value="<?php echo number_format($v_shortcut_values['qty'], '2', ',', '.'); ?>" id="amount_<?php echo $v_shortcut_values['id']; ?>" class="amount" <?php if($this->read_only_items == '1'):  ?>readonly="readonly"<?php endif;  ?> />
+						</td>
+						
+						<td align="right">
+							<input type="text" name="price[]" value="<?php echo number_format($v_shortcut_values['price'], '2', ',', '.'); ?>" id="price_<?php echo $v_shortcut_values['id']; ?>" class="price" <?php if($this->read_only_items == '1'):  ?>readonly="readonly"<?php endif;  ?> />
+						</td>
+						<td align="right">
+							<input type="text" name="total[]" value="<?php echo number_format($v_shortcut_values['total'], '2', ',', '.'); ?>" id="total_<?php echo $v_shortcut_values['id']; ?>"  class="total" readonly="readonly" />
+						</td>
+						<td>
+							<?php if($this->read_only_items == '0'):  ?>
+							<!--delete icon-->
+							<a href="javascript:void(0)" class="remove_saved_item"><img src="<?php echo RES_FILE_PATH; ?>/images/action_delete.png" border="0"></a>
+							<?php endif; ?>
+						</td>
+					</tr>
+					<?php else: ?>
+						<tr id="row_sys_<?php echo $v_shortcut_values['id']; ?>" class="system_item">
+							<td style="text-align: left;">
+									<input type="hidden" name="custom[]"  value="<?php echo $v_shortcut_values['custom'] ?>" id="custom_<?php echo $v_shortcut_values['id']; ?>" />
+									<input type="text" name="shortcut[]" value="<?php echo $v_shortcut_values['shortcut']; ?>" id="shortcut_<?php echo $v_shortcut_values['id']; ?>" class="shortcut" <?php if($this->read_only_items == '1'):  ?>readonly="readonly"<?php endif;  ?> autocomplete="off"/>
+							</td>
+							<td style="text-align: left;">
+								<input type="text" name="description[]" value="<?php echo $v_shortcut_values['description']; ?>" id="description_<?php echo $v_shortcut_values['id']; ?>" class="description" <?php if($this->read_only_items == '1'):  ?>readonly="readonly"<?php endif;  ?> autocomplete="off" />
+								<input type="hidden" name="shift_type[]" value="<?php echo $v_shortcut_values['shift_type']; ?>"  />
+							</td>
+							<td align="right">
+								<input type="text" name="qty[]" value="<?php echo number_format($v_shortcut_values['qty'], '2', ',', '.'); ?>" id="amount_<?php echo $v_shortcut_values['id']; ?>" class="amount" <?php if($this->read_only_items == '1'):  ?>readonly="readonly"<?php endif;  ?> />
+							</td>
+
+							<td align="right">
+								<input type="text" name="price[]" value="<?php echo number_format($v_shortcut_values['price'], '2', ',', '.'); ?>" id="price_<?php echo $v_shortcut_values['id']; ?>" class="price" <?php if($this->read_only_items == '1'):  ?>readonly="readonly"<?php endif;  ?> />
+							</td>
+							<td align="right">
+								<input type="text" name="total[]" value="<?php echo number_format($v_shortcut_values['total'], '2', ',', '.'); ?>" id="total_<?php echo $v_shortcut_values['id']; ?>"  class="total" readonly="readonly"/>
+							</td>
+							<td>
+								<?php if($this->read_only_items == '0'):  ?>
+								<!--delete icon-->
+								<a href="javascript:void(0)" class="remove_sys_item"><img src="<?php echo RES_FILE_PATH; ?>/images/action_delete.png" border="0"></a>
+								<?php endif; ?>
+							</td>
+						</tr>
+						<?php endif; ?>
+					<?php endforeach;  ?>
+
+					<tr id="new_med_row_action">
+						<td colspan="6">
+							<div class="add_new_medi">
+								<?php if($this->read_only_items == '0'):  ?>
+								<a href="javascript:createnewitem()">
+									<img src="<?php echo RES_FILE_PATH; ?>/images/edit_add.png" width="20" height="20" />
+									<?php echo $this->translate('add_new_item_sh'); ?>
+								</a>
+								<?php endif; ?>
+							</div>
+						</td>
+					</tr>
+					
+					<tr class="tr_invoice_tr_total">
+						<td colspan="2"> </td>
+						<td colspan="2">
+							<b>Rechnungsbetrag:</b>
+							<input type="hidden" name="invoice_total" id="invoice_total" value="<?php echo $invoice_data['invoice_total'];  ?>" />
+						</td>
+						<td id="grand_total_cell" colspan="2">
+							<?php echo number_format($invoice_data['invoice_total'], '2', ',', '.');  ?>
+						</td>
+					</tr>
+					
+				</table>
+			</td>
+		</tr>
+		<tr class="rowb">
+			<td class="col1 cell" colspan="3">
+				&nbsp;
+			</td>
+		</tr>
+		<tr class="rowb">
+			<td class="col1 cell" colspan="3">
+				<textarea name="comment" id="comment" cols="" rows="10" style="width: 100%;"  ><?php echo $invoice_data['comment']; ?></textarea>
+			</td>
+		</tr>
+		<tr class="rowa">
+			<td class="col1 cell" colspan="3">&nbsp;</td>
+		</tr>
+
+	</table>
+
+	<div class="buttonsBar">
+			<input type="hidden" name="deletemore" value="" id="deletemore"/>
+		<?php if($invoice_data['status'] >= '2'):  ?>
+			<!--Save when completed-->
+			<input type="submit" value="<?php echo $this->translate('save'); ?>" name="completed" class="bigbutton ui-state-default ui-corner-all submit" />
+		<?php endif;  ?>
+			
+		<?php if($invoice_data['status'] == '1'):  ?>			
+			<!--Save when in draft-->
+			<input type="submit" value="<?php echo $this->translate('save'); ?>" name="edit_invoice"  class="bigbutton ui-state-default ui-corner-all submit" />
+		<?php endif;  ?>
+		
+		<?php if($invoice_data['status'] == '1'):  ?>
+			<!--Complete when in draft-->
+			<input type="submit" value="<?php echo $this->translate('Fertigstellen'); ?>" name="completed" class="bigbutton ui-state-default ui-corner-all submit" />
+		<?php endif;  ?>
+			
+		<?php if($invoice_data['status'] != '3' && $invoice_data['status'] != '4'):  ?>
+			<!--Paid when not paid ( but draft, completed, partial paid -->
+			<input type="submit" value="<?php echo $this->translate('mark_as_paid'); ?>" name="paid" class="bigbutton ui-state-default ui-corner-all submit" />
+		<?php endif;  ?>
+			
+		<?php if($invoice_data['status'] == 1 || $invoice_data['status'] == 2 ): ?>
+			<input type="submit" value="<?php echo $this->translate('Löschen'); ?>" name="deleted" class="bigbutton ui-state-default ui-corner-all submit delete" />
+		<?php endif; ?>
+				
+		<input type="submit" value="<?php echo $this->translate('Pdf'); ?>" name="pdf" class="bigbutton ui-state-default ui-corner-all submit" />
+		<?php if($invoice_data['status'] > '1' && $this->has_storno == '0'): ?>
+		<input type="button"  id="storno"  value="<?php echo $this->translate('storno_button'); ?>" name="storno" class="bigbutton ui-state-default ui-corner-all submit" />
+		<?php endif; ?>
+	</div>
+	<input type="hidden" value="999999999" id="counter" />
+	<input type="hidden" value="<?php echo $this->read_only_items;  ?>" name="readonlyitems" id="readonlyitems"/>
+</form>
+<div id="storno_dialog">
+	<p>
+		<?php echo $this->translate('storno_dialog_text');  ?>
+	</p>
+</div>
+<div id="confirmDelete"><?php echo $this->translate('confirm_invoice_delete'); ?></div>

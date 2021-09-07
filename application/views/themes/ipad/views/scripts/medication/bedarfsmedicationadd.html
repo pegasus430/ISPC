@@ -1,0 +1,300 @@
+<?php 
+	$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/jquery.tablesorter.js');
+
+	$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/pharmaindex/medi_pharmaindex.js?'.date('YmdHis'));
+	$this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/pharmaindex/medi_pharmaindex.css?'.date('Ymd'));
+	$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/views/medication/bedarfsmedicadd.js?');
+	$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/page-css/bedarfsmedicadd.css?' . date('Ymd'));
+
+	$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/jquery.viewport.js');
+
+	$client_medication_extra = $this->client_medication_extra;
+	$allow_normal_scheduled = $this->allow_normal_scheduled;
+	$medication_type = $this->medication_type;
+
+if($this->err)
+{
+	$medication_array = $this->medication_array_err[$medication_type];
+}
+else
+{
+	$medication_array = $this->medication_array[$medication_type];
+}
+//var_dump($medication_array);exit;
+?>
+
+
+<script type="text/javascript">
+//Define all needed variables
+var new_med = '<?php echo $this->new_med; ?>';
+var jsusers = <?php echo $this->jsusers ?>;
+var js_unit = <?php echo $this->js_med_unit ?>;
+var js_dosage_form = <?php echo $this->js_med_dosage_form ?>;
+var js_type = <?php echo $this->js_med_type ?>;
+var js_indication = <?php echo $this->js_med_indication ?>;
+var healthinsuranceik = "";
+var client = '<?php echo $this->clientid ?>';
+
+var allow_normal_scheduled =  "<?php echo $this->allow_normal_scheduled; ?>";
+var show_mmi = "<?php echo $this->show_mmi; ?>";
+
+//ISPC-2554 pct.1 Carmen 06.04.2020
+var js_dosageform_mmi = <?php echo $this->js_med_dosageform_mmi ?>;
+//--
+
+</script>
+<a href="<?php echo $this->url(array('controller'=>'medication' , 'action' => 'bedarfsmediclist' )); ?>"><?php echo $this->translate("back")?></a>
+<form action="<? echo $this->act ?>" method="post" name="frmuser" id="frmuser" autocomplete="off" >
+	
+	<div style="display: none;">
+		<img id="calImg" src="<? echo RES_FILE_PATH;  ?>/images/calendar.png" alt="Popup" class="trigger">
+	</div>
+	
+	<div class="tab_container">
+	<br />
+	<fieldset>
+		<legend><? echo $this->translate('bedarfsmedication') ?></legend>
+		<div id="addmedication_MsgError" class="err"><? echo $this->error_message ?></div>
+		<label for="title" id="lbl_title"><? echo $this->translate('title') ?></label>
+		<input type="text" name="title" id="title" style="width:177px;" value="<? echo $this->title ?>" >
+		<div class="error"> <?php echo $this->error_title ?></div>&nbsp;
+		<br />
+			
+		<table id='isbedarfs_med_table'>
+			<thead>
+		 		<tr>
+		 			<th rowspan="2" width="35%"><?php echo $this->translate('medication_name');?> / <?php echo $this->translate('medication_drug'); ?></th>
+		 			
+		 			<th rowspan="2" width="25%">
+		 				<?php echo $this->translate('medication_dosage'); ?>
+		 			</th>	 			
+		 			
+		 			<th rowspan="2" width="35%"><?php echo $this->translate('medication_indication'); ?> /<br/><?php echo $this->translate('medication_comments'); ?></th>
+
+		 			<!-- <th rowspan="2"  width="100px"><?php echo $this->translate('medication_prescribed_by'); ?> / <?php echo $this->translate('medication_importance'); ?></th> -->
+
+		 			<th rowspan="2" width="5%"></th>
+		 		</tr>		 		
+		 	</thead>
+		 	
+		 	<tbody>
+		 		<?php $cnt = 1; foreach($medication_array as $k =>$med):?>
+					<tr id="tr<?php echo $medication_type;?><?php echo $cnt;?>">
+						<!-- ############################## -->
+						<!-- TD  MEDICATION :: NAME  / DRUG  -->
+						<td>
+							<!-- MEDICATION NAME -->						
+							<label><?php echo $this->translate('medication_name');?></label>
+							<input type="text" name="medication_block[<?php echo $medication_type; ?>][medication][<?php echo $cnt;?>]" value="<?php echo $med['medication'];?>" id="medication_<?php echo $medication_type; ?>_<?php echo $cnt; ?>"  autocomplete="off"  data-medication_type="<?php echo $medication_type; ?>"  class="livesearchmedinp med meds_<?php echo $medication_type; ?>_line_<?php echo $cnt; ?> referral change_status livesearchmedinp_fixedwidth onchange_reset_pzn" title="<?php echo $medication_type; ?>_<?php echo $cnt;?>" rel="<?php echo $medication_type; ?>"/>
+														
+							<?php if($this->show_mmi == "1") :?>
+								<input type="button" class="mmi_search_button" value="<?php echo $this->translate('mmi_button');?>" id="mmi_search_<?php echo $medication_type; ?>_<?php echo $cnt; ?>" name="mmi_search">
+							<?php endif;?>
+						<?php if($this->err) { ?>
+							<input name="medication_block[<?php echo $medication_type; ?>][hidd_medication][<?php echo $cnt; ?>]" value="<?php echo $med['hidd_medication'];?>" id="hidd_medication_<?php echo $medication_type; ?>_<?php echo $cnt; ?>" type="hidden">
+							<input type="hidden" id="drid_<?php echo $medication_type; ?>_[<?php echo $cnt; ?>]" name="medication_block[<?php echo $medication_type; ?>][drid][<?php echo $cnt; ?>]" value="<?php echo $med['drid'];?>" />
+						    
+						<?php } else { ?>
+							<input name="medication_block[<?php echo $medication_type; ?>][hidd_medication][<?php echo $cnt; ?>]" value="<?php echo $med['medication_id'];?>" id="hidd_medication_<?php echo $medication_type; ?>_<?php echo $cnt; ?>" type="hidden">
+		    				<input type="hidden" id="drid_<?php echo $medication_type; ?>_[<?php echo $cnt; ?>]" name="medication_block[<?php echo $medication_type; ?>][drid][<?php echo $cnt; ?>]" value="<?php echo $med['id'];?>" />
+		    			<?php } ?>
+						    <input type="hidden" id="edited_<?php echo $medication_type; ?>_<?php echo $cnt; ?>" name="medication_block[<?php echo $medication_type; ?>][edited][<?php echo $cnt; ?>]" value="0" />
+							<!-- MEDICATION DRUG -->
+							<label><?php echo $this->translate('medication_drug');?></label>
+							<input type="text" name="medication_block[<?php echo $medication_type; ?>][drug][<?php echo $cnt; ?>]" id="drug_<?php echo $medication_type; ?>_<?php echo $cnt; ?>"  value="<?php echo $med['drug'];?>"  data-medication_type="<?php echo $medication_type; ?>"  class="medication_drug referral  change_status onchange_reset_pzn" title="<?php echo $medication_type; ?>_<?php echo $cnt;?>" rel="<?php echo $medication_type; ?>"/>
+							
+			<?php /** hidden inputs neded for the PZN **/ ?>				
+			<?php $medication_row = $cnt; ?>
+            <?php
+				$field_name = "medication_block[{$medication_type}][{$medication_row}][pzn]";
+				$field_value = $med['MedicationMaster']['pzn'];
+				$attr = array("id" => "{$medication_type}_medication_pzn-{$medication_row}", "class" => "medication_pzn");
+				echo $this->formHidden($field_name, $field_value, $attr); 
+			?>
+			<?php
+				$field_name = "medication_block[{$medication_type}][{$medication_row}][source]";
+				$field_value = $med['MedicationMaster']['source'];
+				$attr = array("id" => "{$medication_type}_medication_source-{$medication_row}", "class" => "medication_source");
+				echo $this->formHidden($field_name, $field_value, $attr); 
+			?>
+			<?php
+				$field_name = "medication_block[{$medication_type}][{$medication_row}][dbf_id]";
+				$field_value = $med['MedicationMaster']['dbf_id'];
+				$attr = array("id" => "{$medication_type}_medication_dbf_id-{$medication_row}", "class" => "medication_dbf_id");
+				echo $this->formHidden($field_name, $field_value, $attr); 
+			?>
+			<?php
+				//ISPC-2554 pct.3 Carmen 06.04.2020
+				$field_name = "medication_block[{$medication_type}][{$medication_row}][atc]";
+				$field_value = $med['MedicationMaster']['atc'];
+				$attr = array("id" => "{$medication_type}_medication_atc-{$medication_row}", "class" => "medication_atc");
+				echo $this->formHidden($field_name, $field_value, $attr); 
+			?>
+						</td>
+							
+						<!-- ############################## -->
+						<!-- TD  MEDICATION :: DOSAGE INPUTS-->
+						<td>
+							<label><?php echo $this->translate('medication_dosage');?></label>
+							<input type="text" name="medication_block[<?php echo $medication_type; ?>][dosage][<?php echo $cnt;?>]"   value="<?php echo $med['dosage'];?>"  data-medication_type="<?php echo $medication_type; ?>"  class="dosage_inptuts dosage_input referral  change_status" title="<?php echo $medication_type; ?>_<?php echo $cnt;?>"  rel="<?php echo $medication_type; ?>"/>
+						</td>
+
+						<!-- ##################################### -->
+						<!-- TD MEDICATION :: INDICATION / COMMENTS-->
+						<td>
+							<!--  MEDICATION INDICATION -->				
+							<label><?php echo $this->translate('medication_indication');?>:</label>
+						<?php if(!$this->err) { ?>						
+							<select name="medication_block[<?php echo $medication_type; ?>][indication][<?php echo $cnt;?>]"  data-medication_type="<?php echo $medication_type; ?>"  class="indication_color_select referral" title="<?php echo $medication_type; ?>_<?php echo $cnt;?>" <?php if(strlen($med['indication_id'])>0 && $med['indication_id'] != "0"):?> style="background: #<?php echo $client_medication_extra['indication'][$med['indication_id']]['color'];?>" <?php endif; ?>   rel="<?php echo $medication_type; ?>">
+						<?php } else { ?>
+							<select name="medication_block[<?php echo $medication_type; ?>][indication][<?php echo $cnt;?>]"  data-medication_type="<?php echo $medication_type; ?>"  class="indication_color_select referral" title="<?php echo $medication_type; ?>_<?php echo $cnt;?>" <?php if(strlen($med['indication'])>0 && $med['indication'] != "0"):?> style="background: #<?php echo $client_medication_extra['indication'][$med['indication']]['color'];?>" <?php endif; ?>   rel="<?php echo $medication_type; ?>">
+						<?php } ?>
+								<option value="0" >  </option>
+								<?php foreach($client_medication_extra['indication'] as $indication_id => $indication) :?>
+								<?php if(!$this->err) { ?>		
+									<option value="<?php echo $indication_id; ?>"  id="<?php echo $medication_type; ?>_<?php echo $cnt; ?>_<?php echo $indication_id; ?>#<?php echo $indication['color'];?>" style="background: #<?php echo $indication['color'];?>"  <?php if($med['indication_id'] == $indication_id):?> selected="selected" <?php endif; ?> ><?php echo $indication['name'];?></option>
+								<?php } else { ?>
+									<option value="<?php echo $indication_id; ?>"  id="<?php echo $medication_type; ?>_<?php echo $cnt; ?>_<?php echo $indication_id; ?>#<?php echo $indication['color'];?>" style="background: #<?php echo $indication['color'];?>"  <?php if($med['indication'] == $indication_id):?> selected="selected" <?php endif; ?> ><?php echo $indication['name'];?></option>
+								<?php } ?>
+								<?php endforeach; ?>
+							</select>
+							
+							
+							<!--  MEDICATION COMMENTS-->
+							<label><?php echo $this->translate('medication_comments');?>:</label>						
+							<textarea name="medication_block[<?php echo $medication_type; ?>][comments][<?php echo $cnt;?>]"  id="comments_<?php echo $medication_type; ?>_<?php echo $cnt;?>" data-medication_type="<?php echo $medication_type; ?>"  class="med_com_textarea referral  change_status" title="<?php echo $medication_type; ?>_<?php echo $cnt;?>" rows="2" cols=""  rel="<?php echo $medication_type; ?>" ><?php echo $med['comments'];?></textarea>
+						</td>
+
+						<!-- ############################################# -->
+						<!-- TD  MEDICATION  VERORDNET VON / SORT -->
+						<!-- <td> -->
+							<!--  MEDICATION  VERORDNET VON -->
+							<!-- <label><?php echo $this->translate('medication_prescribed_by');?>:</label>						
+							<select name="medication_block[<?php echo $medication_type; ?>][verordnetvon][<?php echo $cnt;?>]"  data-medication_type="<?php echo $medication_type; ?>"  class="verordnetvon_select referral  change_status" title="<?php echo $medication_type; ?>_<?php echo $cnt;?>"  rel="<?php echo $medication_type; ?>">
+								<?php foreach($this->users as $user_id => $unsername) :?>
+									<option value="<?php echo $user_id; ?>" <?php if($med['verordnetvon'] == $user_id):?> selected="selected" <?php endif; ?> ><?php echo $unsername;?></option>
+								<?php endforeach; ?>
+							</select> -->
+							
+							<!--  MEDICATION SORT -->
+							<!-- <label><?php echo $this->translate('medication_importance');?>:</label>						
+							<input type="text" name="medication_block[<?php echo $medication_type; ?>][importance][<?php echo $cnt;?>]"   data-medication_type="<?php echo $medication_type; ?>"  class="small_input medication_importance referral change_status" title="<?php echo $medication_type; ?>_<?php echo $cnt;?>"  value="<?php echo $med['importance'];?>"  rel="<?php echo $medication_type; ?>" />
+							<input type="hidden" name="medication_block[<?php echo $medication_type; ?>][replace_with][<?php echo $cnt;?>]"   data-medication_type="<?php echo $medication_type; ?>"  class="small_input replace_with referral" value="<?php echo $med['replace_with'];?>"  rel="<?php echo $medication_type; ?>" /> -->							
+						<!-- </td> -->	
+						
+						<!-- ############################## -->
+						<!-- TD MEDICATION :: DELETE -->
+						<td>
+							<a class="delete_medication" href="javascript:void(0)"  onclick="delMedications('#tr<?php echo $medication_type; ?><?php echo $cnt; ?>','<?php echo $med['id']; ?>')" data-medication_type="<?php echo $medication_type; ?>"  ><img width="13px" alt="delete" src="<?php echo RES_FILE_PATH?>/images/action_delete.png"></a>
+						</td>						
+					</tr>
+					 
+					<!-- child row toggler  -->
+					<tr id="tr<?php echo $medication_type;?><?php echo $cnt;?>_child_toggle" onclick="medi_child_toggle(this);" class="child_row child_row_toggler">
+						<td class="medi_child_toggle_td border_bottom_solid medi_child_toggle_td_arrow" colspan="4">
+								<?php echo $this->translate('medication_type'); ?>,
+								<?php echo $this->translate('medication_dosageform'); ?>,
+								<?php echo $this->translate('medication_unit'); ?>,
+								etc
+						</td>
+					</tr>
+					
+					<!-- child row  -->
+					<tr id="tr<?php echo $medication_type;?><?php echo $cnt;?>_child" style="display:none;"  class="child_row child_row_holder">
+					
+						<!-- ############################## -->
+						<!-- TD  MEDICATION :: UNIT / TYPE / DOSAGE FORM / CONCENTRATION -->
+						<td class="border_bottom_solid" colspan="4">							
+							<!--  MEDICATION  CONCENTRATION  -->
+							<div class="div_float_left_extra">
+								<label><?php echo $this->translate('medication_concentration');?>:</label>						
+								<input style="width:85px" type="text" name="medication_block[<?php echo $medication_type; ?>][concentration][<?php echo $cnt;?>]"   data-medication_type="<?php echo $medication_type; ?>"  class="small_input numeric_only medication_concentration referral change_status concentration_calculation" data-dosage_row_info="<?php echo $medication_type; ?>_<?php echo $cnt;?>"  title="<?php echo $medication_type; ?>_<?php echo $cnt;?>"  value="<?php echo $med['concentration'];?>"  rel="<?php echo $medication_type; ?>"   id="concentration_<?php echo $medication_type; ?>_<?php echo $cnt;?>"   />
+							</div>						
+							
+							<!--  MEDICATION  UNIT -->
+							<div class="div_float_left_extra">
+							<label><?php echo $this->translate('medication_unit');?>:</label>
+							<select name="medication_block[<?php echo $medication_type; ?>][unit][<?php echo $cnt;?>]"  data-medication_type="<?php echo $medication_type; ?>" class="medication_unit referral  change_status small_input" title="<?php echo $medication_type; ?>_<?php echo $cnt;?>" rel="<?php echo $medication_type; ?>">
+								<option value="0" >  </option>
+								<?php foreach($client_medication_extra['unit'] as $unit_id => $unit) :?>
+								<?php if(!$this->err) { ?>
+									<option value="<?php echo $unit_id; ?>" <?php if($med['unit_id'] == $unit_id):?> selected="selected" <?php endif; ?> ><?php echo $unit;?></option>
+								<?php } else { ?>
+									<option value="<?php echo $unit_id; ?>" <?php if($med['unit'] == $unit_id):?> selected="selected" <?php endif; ?> ><?php echo $unit;?></option>
+								<?php } ?>
+								<?php endforeach; ?>
+							</select>
+							</div>
+							
+							<div style="float:left; padding-top:20px">
+								<label><?php echo $this->translate('pro');?> : </label>
+							</div>		
+		
+							<!--  MEDICATION  DOSAGE FORM -->
+							<div class="div_float_left_extra">
+							<label><?php echo $this->translate('medication_dosageform');?>:</label>
+							<select name="medication_block[<?php echo $medication_type; ?>][dosage_form][<?php echo $cnt;?>]"  data-medication_type="<?php echo $medication_type; ?>" class="medication_dosage_form referral  change_status small_input" title="<?php echo $medication_type; ?>_<?php echo $cnt;?>" rel="<?php echo $medication_type; ?>">
+								<option value="0" >  </option>
+								<!-- ISPC-2554 pct.1 Carmen 03.04.2020 -->
+								<?php if($this->show_mmi == "1" && !empty($client_medication_extra['dosageform_mmi'])):?>
+								<optgroup label="<?php echo $this->translate('client dosageform list'); ?>">
+								<?php endif; ?>
+								<!-- ISPC-2554 pct.1 Carmen 03.04.2020 -->
+								<?php foreach($client_medication_extra['dosage_form'] as $dosage_form_id => $dosage_form) :?>
+								<?php if(!$this->err) { ?>
+									<option value="<?php echo $dosage_form_id; ?>" <?php if($med['dosage_form_id'] == $dosage_form_id):?> selected="selected" <?php endif; ?> ><?php echo $dosage_form;?></option>
+								<?php } else { ?>
+									<option value="<?php echo $dosage_form_id; ?>" <?php if($med['dosage_form'] == $dosage_form_id):?> selected="selected" <?php endif; ?> ><?php echo $dosage_form;?></option>
+								<?php } ?>
+								<?php endforeach; ?>
+								<!-- ISPC-2554 pct.1 Carmen 03.04.2020 -->
+								<?php if($this->show_mmi == "1" && !empty($client_medication_extra['dosageform_mmi'])):?>
+            					</optgroup>
+            					<optgroup label="<?php echo $this->translate('mmi dosageform list'); ?>">
+            						<?php foreach($client_medication_extra['dosageform_mmi'] as $dosage_form_id => $dosage_form) :?>
+            							<?php if(!$this->err) { ?>
+											<option value="<?php echo $dosage_form_id; ?>" <?php if($med['dosage_form_id'] == $dosage_form_id):?> selected="selected" <?php endif; ?> ><?php echo $dosage_form;?></option>
+										<?php } else { ?>
+											<option value="<?php echo $dosage_form_id; ?>" <?php if($med['dosage_form'] == $dosage_form_id):?> selected="selected" <?php endif; ?> ><?php echo $dosage_form;?></option>
+										<?php } ?>
+            						<?php endforeach; ?>
+            					</optgroup>
+            					<?php endif; ?>
+            					<!-- ISPC-2554 pct.1 Carmen 03.04.2020 -->
+							</select>
+							</div>							
+							
+							<!--  MEDICATION  TYPE  -->
+							<div class="div_float_left_extra">
+							<label><?php echo $this->translate('medication_type');?>:</label>
+							<select name="medication_block[<?php echo $medication_type; ?>][type][<?php echo $cnt;?>]"  data-medication_type="<?php echo $medication_type; ?>"  class="medication_type referral  change_status small_input" title="<?php echo $medication_type; ?>_<?php echo $cnt;?>"  rel="<?php echo $medication_type; ?>">
+								<option value="0" >  </option>
+								<?php foreach($client_medication_extra['type'] as $type_id => $type) :?>
+								<?php if(!$this->err) { ?>
+									<option value="<?php echo $type_id; ?>" <?php if($med['type_id'] == $type_id):?> selected="selected" <?php endif; ?> ><?php echo $type;?></option>
+								<?php } else { ?>
+									<option value="<?php echo $type_id; ?>" <?php if($med['type'] == $type_id):?> selected="selected" <?php endif; ?> ><?php echo $type;?></option>
+								<?php } ?>
+								<?php endforeach; ?>
+							</select>
+							</div>													
+						</td>
+						
+						<!-- <td class="border_bottom_solid">
+						</td> -->
+					</tr>				
+					
+					<?php $cnt++; endforeach;?>
+		 		</tbody>
+			</table>
+			<br />
+			
+			<div class="add_new_medi"><a  href="javascript:void(0)"  rel="<?php echo $medication_type?>" class="medication_add_link"><div class="add_new_medi_link"><? echo $this->translate('addnewmedication'); ?></div></a></div><div class="clearer"></div>
+			<input type="hidden" value="<?php echo $cnt;?>" id="new_line">
+			
+			<input type="submit" name="btnsubmit" id="btnsubmit" value="<? echo $this->translate('submit') ?>" class="button">
+		
+		</fieldset>
+	</div>
+	
+</form>

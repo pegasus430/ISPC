@@ -1,0 +1,141 @@
+
+<table width="85%" border="0" align="left" cellpadding="0" cellspacing="0" id="medicationedit" class="datatable">
+    <tr>
+        <th width="80" align="left" valign="top"><strong><? echo $this->translate('date'); ?></strong></th>
+        <th align="left" valign="top"><strong><? echo $this->translate('medication'); ?></strong></th>
+        <th width="100" align="left" valign="top"><strong><? echo $this->translate('dosage'); ?></strong></th>
+        <th width="100" align="left" valign="top"><strong><? echo $this->translate('information'); ?></strong></th>
+	<th height="20" align="left" valign="top"><strong><? echo $this->translate('registeredby'); ?></strong></th>
+	<th height="20" align="left" valign="top"><strong><? echo $this->translate('prescribedby'); ?></strong></th>
+    </tr>
+    <gridrow>
+	<phpscript>
+		$cnt++;
+		$view->jsmedadd = $cnt;
+		$pid = $_GET['id'];
+		$username = $view->all_users[$create_user];
+
+		$med = new Medication();
+		$medarr = $med->getMedicationById($medication_master_id);
+		$medication = htmlspecialchars($medarr[0]['name']);
+		$hidd_medication = $medarr[0]['id'];
+		//ISPC-2329 Ancuta 03.04.2020
+		$pzn = $medarr[0]['pzn'];
+		$dbf_id = $medarr[0]['dbf_id'];
+		$source = $medarr[0]['source'];
+		//--		
+		
+		$create_date = date('d.m.Y', strtotime($create_date));
+
+		$replace_with = "";
+		$medication_date_change = "";
+
+		if($medication_change != '0000-00-00 00:00:00')
+		{
+			$medication_date_change = date('d.m.Y', strtotime($medication_change));
+			$replace_with = "none";
+		} elseif($medication_change == '0000-00-00 00:00:00' && $change_date != '0000-00-00 00:00:00') {
+			$medication_date_change = date('d.m.Y', strtotime($change_date));
+			$replace_with = "change";
+		} else {
+			$medication_date_change = date('d.m.Y', strtotime($create_date));
+			$replace_with = "create";
+		}
+
+		if($view->show_mmi == "1")
+		{
+			$mmi_medication_style = "width:75%!important;";
+			$mmi_button_search = '<input type="button" name="mmi_search" id="mmi_search_'.$cnt.'" value="'.$view->translate('mmi_button').'" class="mmi_search_button" />';
+			$mmi_txtinput_style = "width:87%!important;";
+			$mmi_selectuser_style = "width: 80px;";
+		}
+
+		$users = $view->users;
+		$userdrop = $view->formSelect('verordnetvon['.$cnt.']', $verordnetvon, array("class" => "user_selector", "style" => $mmi_selectuser_style), $users);
+		if($view->kvnodelicon == 1){
+			$userdropd = '<td align="left" valign="top"><div style="float:left; padding-left: 5px;">
+				<a href="javascript:void(0)"><img src="'.$res_file_path.'/images/action_delete.png" class="remove_tr" border="0" /></a>
+			</div></td>';
+		}
+		
+			    
+	    $acknowledge  = $view->acknowledge; 
+	    $non_approved_line="";
+		$red_back = " ";
+		$new_non_approved = "";			 
+			 
+		if($acknowledge  == "1"){
+			if(!empty($on_hold_changes[$id])){
+			  	$change_username[$id] = $view->all_users[$on_hold_changes[$id]['create_user']];
+			  	$change_prescribed[$id] = $view->all_users[$on_hold_changes[$id]['verordnetvon']];
+				$red_back = " red_back"; 
+				if($on_hold_changes[$id]['status'] == "delete")
+				{
+					$set_for_deletion = '<span class="red_text">'.$view->translate("Delete medication: ").'</span>'; 
+				} 
+				else
+				{
+					$set_for_deletion = '';
+					 
+				}
+				
+				if($on_hold_changes[$id]['status'] == "new")
+				{
+					$add_username[$id] = $view->all_users[$create_user];
+				  	$add_prescribed[$id] = $view->all_users[$verordnetvon];
+				  	
+					$red_back = " red_back"; 
+					$non_approved_line = '<tr class="red_back"><td colspan="5"><b>'.$view->translate("Unapproved newly added medication: ").'</b><br/>'.$on_hold_changes[$id]['medication_change_date'].' | '.$on_hold_changes[$id]['name'].' | '.$on_hold_changes[$id]['dosage'].' | '.$on_hold_changes[$id]['comments'].' | '.$add_username[$id].' | '.$add_prescribed[$id] .'</td><td>'.$app_rights.'</td></tr>';
+					$new_non_approved = '  ';
+				} else{
+					$non_approved_line = '<tr class="red_back"><td colspan="6"><b>'.$view->translate("Unapproved changes: ").'</b><br/>'.$set_for_deletion.' '.$on_hold_changes[$id]['medication_change_date'].' | '.$on_hold_changes[$id]['name'].' | '.$on_hold_changes[$id]['dosage'].' | '.$on_hold_changes[$id]['comments'].' | '.$change_username[$id].' | '.$change_prescribed[$id] .'</td></tr>';
+					$new_non_approved = "";
+				}
+			}
+			else
+			{
+				$non_approved_line = "";
+				$red_back = " ";
+				$new_non_approved = ""; 
+			}
+		} 
+		else
+		{
+			$non_approved_line = "";
+			$red_back = " "; 
+			$new_non_approved = "";
+		}
+		
+	</phpscript>
+	<tr id="line_[[id]]" alt="[[cnt]]" class="form_med_line [[red_back]]" [[new_non_approved]]>
+		<td align="left" class="date_line_[[id]]" valign="top">
+			<input name="medication_change[[[cnt]]]" value="[[medication_date_change]]" type="text" class="med_date" rel="med_date[[cnt]]">
+			<input name="replace_with[[[cnt]]]" value="[[replace_with]]" type="hidden">
+		</td>
+		<td align="left" valign="top">
+			<input name="medication[[[cnt]]]" value="[[medication]]" id="medication[[cnt]]" type="text" autocomplete="off" class="livesearchmedinp med meds_line_[[id]]" style="[[mmi_medication_style]]" >
+			<input name="hidd_medication[[[cnt]]]" value="[[hidd_medication]]" id="hidd_medication[[cnt]]" type="hidden">
+			[[mmi_button_search]]
+			<input type="hidden" id="drid" name="drid[[[cnt]]]" value="[[id]]" />
+			<input type="hidden" id="edited[[cnt]]" name="edited[[[cnt]]]" value="0" />
+			<!--//ISPC-2329 Ancuta 03.04.2020 -->
+			<input name="drug[[[cnt]]]" value="[[]]" id="drug[[cnt]]" type="hidden">
+			<input name="[[cnt]][pzn]" value="[[pzn]]" id="pzn[[cnt]]" type="hidden" class="medication_pzn" />
+			<input name="[[cnt]][dbf_id]" value="[[dbf_id]]" id="dbf_id[[cnt]]" type="hidden" class="medication_dbf_id">
+			<input name="[[cnt]][source]" value="[[source]]" id="source[[cnt]]" type="hidden"  class="medication_source"/>
+			<!--//--  -->
+		</td>
+		<td align="left" valign="top">
+			<input  name="dosage[[[cnt]]]" id="dosage[[cnt]]" class="dosage dsg_line_[[id]]" value="[[dosage]]"  style="[[mmi_dosage_style]]"  />
+		</td>
+		<td align="left" id="line_[[id]]_row" valign="top">
+			<input  name="comments[[[cnt]]]" class="med comm_line_[[id]]" value="[[comments]]" id="comment[[cnt]]"  />
+		</td>
+		<td width="120" id="line_[[id]]_row" align="left" valign="top" class="usrname_line_[[id]]">[[username]]</td>
+		<td align="left" id="line_[[id]]_row"  valign="top">[[userdrop]]</td>
+		[[userdropd]]
+	</tr>
+	
+	[[non_approved_line]]
+</gridrow>
+</table>

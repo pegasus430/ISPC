@@ -1,0 +1,809 @@
+<?php
+// ISPC-2697, elena, 25.11.2020
+$pdf=0;
+
+//TODO-3924,Elena,09.03.2021
+if(!function_exists('clear_label_name')){
+
+function clear_label_name($label){
+
+ return str_replace([';', '.', ',', ':', ' ', '(', ')'], ['_', '_', '_', '_', '_', '_', '_'], $label);
+}
+}
+ 
+
+
+$blockname = $this->config['belongsto'];
+//print_r($this->f_values);
+$machine_chosen = $this->machine_chosen;
+//print_r($this->anordnungen);
+$machine_opt = (isset($this->f_values['beatmung']['machine_opt'])) ? $this->f_values['beatmung']['machine_opt'] : '';
+
+$form_type =  (isset($this->f_values['beatmung']['form'])) ? $this->f_values['beatmung']['form'] : ((!$this->machine_chosen && empty($this->anordnungen) ) ? 'oxygen' : 'machine');
+
+$used_data = null;
+if(isset($this->f_values['beatmung']['used_data'])){
+$used_data = json_decode($this->f_values['beatmung']['used_data'], true);
+}
+
+
+//print_r($used_data);
+
+//print_r($this->options);
+if($this->pdf ){
+$pdf=1;
+}
+
+?>
+<?php if(intval($pdf) == 0): ?>
+
+<script>
+    var aErrors = {};
+    var sollTpl = '<h2>Soll-Werte:</h2><table>' +
+        '<tr>' +
+        '<td id="soll_name_label"></td>' +
+        '<td id="soll_name"></td>'
+        '<td><div id="soll_color" style="width:20px;height:20px;"> </div></td>'
+        '</tr>'
+        '</table><div id="soll_params"></div>';
+
+    var timeel = null;
+    var aAnord = [];
+    try{
+    	//Maria 05.03.2021
+    	<? if(!empty($this->anordnungen)) : ?>
+        aAnord = JSON.parse('<?php echo json_encode($this->anordnungen); ?>');
+        <? else:?>
+     	aAnord = [];     
+        <? endif;?>
+    }catch(except){
+        //console.log(except);//TODO-3924,Elena,09.03.2021
+    }
+    //@see https://stackoverflow.com/questions/5069464/replace-multiple-strings-at-once
+    function replaceBulk( str, findArray, replaceArray ){
+        var i, regex = [], map = {}, str;//TODO-3924,Elena,09.03.2021
+        for( i=0; i<findArray.length; i++ ){
+            regex.push( findArray[i].replace(/([-[\]{}()*+?.\\^$|#,])/g,'\\$1') );
+            map[findArray[i]] = replaceArray[i];
+        }
+        regex = regex.join('|');
+        str = str.replace( new RegExp( regex, 'g' ), function(matched){
+            return map[matched];
+        });
+        return str;
+    }
+
+    //TODO-3924,Elena,09.03.2021
+    function replaceCharsInLabel(label){
+    	var label_for_form = replaceBulk(label, [':', ';', '.', ',', ')', '(', ' '], ['_', '_', '_', '_', '_', '_', '_']);
+    	return label_for_form;
+    }
+
+
+    //var aAnordnungen = JSON.parse('<?php echo json_encode($this->anordnungen); ?>');
+        //ISPC-2904,Elena,30.04.2021
+    <?php if(isset($this->f_values['beatmung']['used_data'])): ?>
+    $('#used_data').val('<?php echo ($this->f_values['beatmung']['used_data']); ?>');
+    <?php endif; ?>
+    var relevanteAnord = null;
+    var usedAnord = null;
+    try{
+        //console.log('used anord set');
+        //Maria 05.03.2021
+        <?php if(strlen($this->f_values['beatmung']['used_data'])>0): ?>
+        usedAnord = JSON.parse('<?php echo ($this->f_values['beatmung']['used_data']); ?>');
+        <? else: ?>
+        usedAnord = null; 
+        <?php endif;?>
+        
+        //console.log('used anord berechnet', usedAnord);//TODO-3924,Elena,09.03.2021
+    }catch(except){
+        //console.log(except);//TODO-3924,Elena,09.03.2021
+    }
+
+    $(document).ready(function(){
+        var begin_hour = $('select[name="begin_date_h"]').val();
+        timeel = $('select[name="begin_date_h"]');
+        $('#beatmung_group').tabs();
+
+        $('.tablink').on('click', function(e){
+            //console.log('tabllicked', $(this));
+            if($(this).attr('id') == 'oxy'){
+
+                $('#form_type').val('oxygen');
+            }else {
+                $('#form_type').val('machine');
+            }
+
+
+        })
+
+
+        <?php if((!$this->machine_chosen && empty($this->anordnungen) ) || ($this->f_values['beatmung']['form'] == 'oxygen')): ?>
+            $('#oxy').click();
+        <?php endif; ?>
+
+    <?php if(isset($this->with_datetime) && $this->with_datetime): ?>
+        <?php
+         //ISPC-2904,Elena,30.04.2021
+         if(isset($this->f_values['beatmung']['date'])){
+             $datum_plus = $this->f_values['beatmung']['date'];
+         }else{
+         $datum_plus = date('d.m.Y', time());
+         }
+         if(isset($this->f_values['beatmung']['time'])){
+             $time_plus = $this->f_values['beatmung']['time'];
+         }else{
+         $time_plus = date('H:i', time());
+         }
+
+
+        ?>
+        $('.datepicker').datepicker();
+         //ISPC-2904,Elena,30.04.2021
+         $('.beatmung_timepicker').timepicker({
+            hourText: 'Stunde',
+            minuteText: 'Minute',
+             controlType: 'select',
+             //oneLine: true,
+             timeFormat: 'HH:mm',
+             timeOnlyTitle: translate('Choose Time')
+        });
+        begin_hour = $('input[name="<?php echo $blockname; ?>[beatmung][time]"]').val();
+        //console.log('begin_hour', begin_hour);//TODO-3924,Elena,09.03.2021
+        begin_hour = parseInt(begin_hour);
+    //console.log('begin_hour int', begin_hour);//TODO-3924,Elena,09.03.2021
+        timeel = $('input[name="<?php echo $blockname; ?>[beatmung][time]"]');
+        //console.log('timeel', timeel);//TODO-3924,Elena,09.03.2021
+
+    <?php endif; ?>
+
+
+
+
+        <?php if(!$this->machine_chosen): ?>
+        $('#sets_table').hide();
+
+
+
+        $('#choose_machine').on('change', function(){
+            //console.log('select machine', $(this).val());//TODO-3924,Elena,09.03.2021
+            var selected_machine_opt = $(this).val();
+
+        $.ajax({
+            type: 'POST',
+            data : {
+                blockname: '<?php echo $blockname; ?>'
+            },
+            url: '<?php echo APP_BASE; ?>ajax/beatmungsform?opt=' + $('#choose_machine').val(),
+
+            beforeSend: function () {
+                //loading image
+
+            },
+            success: function (data) {
+                $('#machine_opt').val(selected_machine_opt);
+
+                $('#formdata').html(data).promise().done(function () {
+                //console.log('formdata da');//TODO-3924,Elena,09.03.2021
+                buildSollWidget();
+                setUsedAnordnungData();
+
+
+                });
+            },
+        })
+
+        });
+
+    <?php if(isset($this->used_machine)): ?>
+        //console.log('<?php echo $this->used_machine; ?>');//TODO-3924,Elena,09.03.2021
+    $('#choose_machine').val('<?php echo $this->used_machine; ?>');
+    $('#choose_machine').trigger('change');
+
+    <?php endif; ?>
+
+
+        <?php else: ?>
+        $('#choose_machine').hide();
+
+        <?php endif; ?>
+
+
+        function rebuildErrors(){
+            var message = '';
+            //console.log('rebuild');//TODO-3924,Elena,09.03.2021
+            //console.log(aErrors);//TODO-3924,Elena,09.03.2021
+            $('.beatmung_errors').html('');
+
+            $.each( aErrors, function( index, val ){
+               // console.log('error',val, index);//TODO-3924,Elena,09.03.2021
+                message += val + '<br>';
+            });
+            $('.beatmung_errors').html(message);
+
+        }
+
+        findAnordnung();
+
+        $(timeel).on('change', function(){
+            //console.log('timeel' + $(timeel).val());//TODO-3924,Elena,09.03.2021
+            begin_hour = parseInt($(timeel).val());
+            findAnordnung();
+        });
+
+        function findAnordnung(){
+
+            var found = false;
+            for(var j =0;j< aAnord.length; j++){
+               // console.log(aAnord[j]);//TODO-3924,Elena,09.03.2021
+                var anord = aAnord[j];
+
+                var timelinedata = anord['timelinedata'];
+                if(!$.isArray(timelinedata)){
+                   //console.log('no array');//TODO-3924,Elena,09.03.2021
+                    timelinedata = [];
+                }
+                for(var i=0; i< timelinedata.length; i++ ){
+                    //console.log(i, timelinedata[i]);//TODO-3924,Elena,09.03.2021
+                    if(begin_hour >= timelinedata[i]['from'] && begin_hour < timelinedata[i]['till'] ){
+                        relevanteAnordnung = anord;
+                        if(usedAnord == null){
+                            usedAnord = relevanteAnordnung;
+                            //console.log('set to relevant');//TODO-3924,Elena,09.03.2021
+
+                            $('#used_data').val(JSON.stringify(relevanteAnordnung));
+                            setUsedAnordnungData();
+                            //ISPC-2836,Elena,23.02.2021
+                            //if we haven't any used anordnung and used machine yet, set to relevant
+                            $('#choose_machine').val(relevanteAnordnung.machine);
+                            $('#choose_machine').trigger('change');
+                         }
+                        //console.log(relevanteAnordnung);//TODO-3924,Elena,09.03.2021
+                        found = true;
+                        $('#soll_data').val(JSON.stringify(relevanteAnordnung));
+                        buildSollWidget();
+
+                    }
+
+
+                }
+            }
+
+            if(!found){
+                relevanteAnordnung = null;
+                $('#soll_data').val = '';
+                buildSollWidget();
+            }
+
+
+        }
+
+
+        function buildSollWidget(){
+            if(relevanteAnordnung === null){
+
+        $('#soll_color').css('background-color', '#cccccc');//ISPC-2816,Elena,04.02.2021
+        $('#soll_name_label').html( '');
+        $('#soll_name').html( '');
+        $('#soll_machine').html( '');
+        $('#soll_params').html('');
+        $('#soll_widget').hide('slow');
+
+
+        }else{
+               // console.log('soll füllen');//TODO-3924,Elena,09.03.2021
+                //ISPC-2816,Elena,04.02.2021
+                var rows = [];
+                var aAdditionals = [];
+                var aKeys = [];
+
+
+                $('#soll_color').css('background-color', '#' + relevanteAnordnung.color);
+                $('#soll_name_label').html('Relevante Anordnung');
+                $('#soll_name').html( relevanteAnordnung.name);
+                $('#soll_machine').html( relevanteAnordnung.machine_name);
+                $('#soll_params').html('');
+                var datatable = '';
+                datatable += '<table  border="1">';
+                Object.keys(relevanteAnordnung.parameters).forEach(function(key) {
+                //console.log(key, relevanteAnordnung.parameters[key]);//TODO-3924,Elena,09.03.2021
+                    //ISPC-2816,Elena,04.02.2021
+                var isAdditional = false;
+                var main_key = '';
+                if(key.indexOf('alarm_higher')!== -1 ){
+                    //console.log('higher',key, relevanteAnordnung.parameters[key]);//TODO-3924,Elena,09.03.2021
+                    var key_for_form = replaceCharsInLabel(key);
+                    //console.log('id for higher',$('#'+ key));
+                    //ISPC-2816,Elena,04.02.2021
+                    main_key = key_for_form.replace('_alarm_higher', '');
+                    //console.log('mainkey', main_key);
+                    //TODO-3924,Elena,09.03.2021
+                    try{
+                        $('#'+ key_for_form).val(relevanteAnordnung.parameters[key]);
+                    }catch(except){//do nothing
+                        }
+
+
+
+                    //ISPC-2816,Elena,04.02.2021
+                    isAdditional = true;
+                    if(aAdditionals[main_key] == undefined){
+                        aAdditionals[main_key] = [];
+                    }
+                    aAdditionals[main_key]['higher'] = relevanteAnordnung.parameters[key]
+
+                }
+                if(key.indexOf('alarm_lower')!== -1 ){
+                    //TODO-3924,Elena,09.03.2021
+                    var key_for_form = replaceCharsInLabel(key);
+                    try{
+                        $('#' + key_for_form).val(relevanteAnordnung.parameters[key]);
+                    }catch(except){
+
+                     //do nothing
+                    }
+
+                    //ISPC-2816,Elena,04.02.2021
+                    main_key = key_for_form.replace('_alarm_lower','');
+                    //console.log('mainkey', main_key);//TODO-3924,Elena,09.03.2021
+                    isAdditional = true;
+                    if(aAdditionals[main_key] == undefined){
+                        aAdditionals[main_key] = [];
+                    }
+                    aAdditionals[main_key]['lower'] = relevanteAnordnung.parameters[key];
+                    //console.log('lower',key, relevanteAnordnung.parameters[key]);
+                }
+
+                var key_for_show = key.replace('_alarm_higher', ' höhere Alarmgrenze');
+                key_for_show = key_for_show.replace('_alarm_lower', ' niedrigere Alarmgrenze');
+                    //ISPC-2816,Elena,04.02.2021
+                    if(!isAdditional){
+                        var key_for_form =  replaceCharsInLabel(key);//TODO-3924,Elena,09.03.2021
+                        aKeys.push(key_for_form);
+                        datatable+= ('<tr><td style="padding-right:10px;"><b>' + key_for_show + '</b></td><td id="value_' + key_for_form + '">' + relevanteAnordnung.parameters[key] +  '</td></tr>')
+
+                    }//ISPC-2816,Elena,04.02.2021
+
+
+
+
+                });
+
+                datatable += ('</table>');
+                $('#soll_params').append(datatable);
+                //ISPC-2816,Elena,04.02.2021
+                aKeys.forEach(function(akey){
+                    var cellVal = $('#value_' + akey).html();
+                    if(aAdditionals[akey] !== undefined){
+                        var addVal = ' (' + aAdditionals[akey]['lower'] + '/' + aAdditionals[akey]['higher'] + ')';
+                        $('#value_' + akey).html(cellVal + addVal);
+
+                    }
+
+                })
+
+
+                $('#soll_widget').show('slow');
+
+            }
+            if(usedAnord !== null){
+                //console.log('to set', usedAnord);//TODO-3924,Elena,09.03.2021
+
+                //setUsedAnordnungData()
+            }
+
+
+        }
+
+
+        $('.input_value').live('input', function(e){
+             //console.log('to validation');//TODO-3924,Elena,09.03.2021
+
+            var validation = $(this).attr('data-validation');
+            var val = $(this).val();
+            var label = $(this).attr('data-name');
+            //TODO-3924,Elena,09.03.2021
+            //console.log(validation);
+            //console.log(val);
+            //console.log(label);
+            if(validation == 'integer'){
+                var val2 = parseInt(val);
+                if(val2 != val){
+                    aErrors[label] = label + ' muss eine Ganzzahl sein.';
+                    //console.log(aErrors);//TODO-3924,Elena,09.03.2021
+                }
+                else{
+                    delete aErrors[label];
+                }
+                rebuildErrors();
+
+            }else if(validation == 'decimal'){
+                var val_with_point = val.replace(',', '.')
+                var val2 = parseFloat(val_with_point);
+                if(val2 != val_with_point){
+                    aErrors[label] = label + ' muss eine Dezimalzahl sein.';
+                }
+                else{
+                    delete aErrors[label];
+                }
+                rebuildErrors()
+            }
+
+        });
+
+        $('.input_value_sauer').on('input', function(e){
+            var val = $(this).val();
+        var val_with_point = val.replace(',', '.')
+        var val2 = parseFloat(val_with_point);
+        if(val2 != val_with_point){
+            $('.errors_oxy').html( 'Sauerstoffgabe muss eine Dezimalzahl sein.');
+        } else{
+        $('.errors_oxy').html( '');
+        }
+
+        });
+
+
+
+        function setUsedAnordnungData(){
+        //TODO-3924,Elena,09.03.2021}
+        //console.log('set used anordnung', usedAnord);
+
+        if(usedAnord !== null){
+        //TODO-3924,Elena,09.03.2021
+        Object.keys(usedAnord.parameters).forEach(function(key) {
+        //console.log('param paar', key, usedAnord.parameters[key]);
+        if(key.indexOf('alarm_higher')!== -1 ){
+        //console.log('higher',key, usedAnord.parameters[key]);
+        //TODO-3924,Elena,09.03.2021
+        var key_for_form = replaceCharsInLabel(key);
+            //console.log('higher 2',key, key_for_form, usedAnord.parameters[key]);
+        try{
+            $('#'+ key_for_form).val(usedAnord.parameters[key]);
+
+        }catch(e){//do nothing
+        }
+
+
+
+
+    }
+        else if(key.indexOf('alarm_lower')!== -1 ){
+
+            //TODO-3924,Elena,09.03.2021
+            var key_for_form = replaceCharsInLabel(key);
+            //console.log('lower',key, key_for_form, usedAnord.parameters[key]);
+            try{
+            $('#' + key_for_form).val(usedAnord.parameters[key]);
+            }catch(e){//do nothing
+            }
+
+
+
+    }else{
+        //TODO-3924,Elena,09.03.2021
+        var key_for_form =  replaceCharsInLabel(key);
+        key_for_form = key_for_form + '_soll';
+        //console.log('key_for_form soll', key_for_form);//TODO-3924,Elena,09.03.2021
+        //Maria 05.03.2021
+        if($('#' + key_for_form).length) {
+	        $('#' + key_for_form).val(usedAnord.parameters[key]);
+        }
+    }
+
+    })
+        var aRadios = $('input[name="FormBlockBeatmung[beatmung][chosen]"]');
+        $( aRadios).each(function( index ) {
+        if($(this).attr('value') == usedAnord.id){
+        $(this).attr('checked', 'checked');
+
+    }
+
+    });
+    }
+
+    }
+
+        $('input[name="<?php echo $blockname; ?>[beatmung][chosen]"').on('change', function(){
+            //console.log($(this).val());//TODO-3924,Elena,09.03.2021
+            var anord_id = $(this).val();
+            for(var j =0;j< aAnord.length; j++){
+            //console.log(aAnord[j]);//TODO-3924,Elena,09.03.2021
+            var anord = aAnord[j];
+            if(anord.id == anord_id){
+                //console.log('found', anord);//TODO-3924,Elena,09.03.2021
+                usedAnord = anord;
+                $('#used_data').val(JSON.stringify(usedAnord));
+                if(anord.machine !==  $('#choose_machine').val()){
+                    $('#choose_machine').val(anord.machine);
+                    $('#choose_machine').trigger('change');
+
+                }else{
+                    //console.log('choes changed');//TODO-3924,Elena,09.03.2021
+
+                    setUsedAnordnungData()
+
+                }
+
+            }
+
+            }
+
+
+    });
+
+
+
+    });
+</script>
+<style>
+    .beatmung_errors, .errors_oxy{
+        color: red;
+    }
+    .alarm_box{
+        width: 40px;
+    }
+    .input_field{
+        width: 100px;
+    }
+    #soll_name_label, #soll_machine_label{
+        padding-right: 10px;
+        font-weight: bold;
+    }
+    #soll_name, #soll_machine{
+        padding-right: 10px;
+
+    }
+    #soll_widget table tr td{
+        line-height: 1.5em;
+    }
+    #soll_widget{
+        padding: 5px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        display: inline-block;
+
+    }
+    .anordnung_color_cont{
+        width:20px;
+        height: 20px;
+        display: inline-block;
+    }
+    #formdata .datatable{
+        width: 100% !important;
+    }
+
+</style>
+<?php if(isset($this->id)) : ?><!--//ISPC-2904,Elena,30.04.2021-->
+<input type="hidden" name="<?php echo $blockname; ?>[beatmung][id]" value="<?php echo $this->id ?>" />
+<?php endif; ?>
+<div id="beatmung_group">
+    <ul>
+        <li><a id="form_machine" href="#tab-machine" class="tablink">Anordnungen</a></li>
+        <li><a id="oxy" href="#tab-oxy" class="tablink">Sauerstoffgabe</a></li>
+
+    </ul>
+<div id="tab-machine" class="form_block_beatmung">
+    <?php if(isset($this->with_datetime) && $this->with_datetime): //ISPC-2904,Elena,30.04.2021 ?>
+    Datum: <input type="text" class="datepicker" id="date_ventilation_plus" name="<?php echo $blockname; ?>[beatmung][date]" value="<?php echo $datum_plus; ?>">
+    <!--//ISPC-2904,Elena,30.04.2021-->
+    Uhrzeit: <input type="text" class="beatmung_timepicker" id="time_ventilation_plus" name="<?php echo $blockname; ?>[beatmung][time]" value="<?php echo $time_plus; ?>">
+
+    <?php endif; ?>
+    <div id="soll_widget">
+        <h4>Soll-Werte</h4>
+        <table cellpadding="5">
+            <tr>
+                <td id="soll_name_label"></td>
+                <td id="soll_name"></td>
+                <td rowspan="2"  style="padding-left:20px;"><div id="soll_color" style="width:20px;height:20px;"></div></td>
+            </tr>
+            <tr>
+                <td id="soll_machine_label">Maschine</td><td id="soll_machine"></td>
+            </tr>
+        </table>
+        <div id="soll_params"></div>
+
+    </div>
+    <input type="hidden" name="<?php echo $blockname; ?>[beatmung][form]" id="form_type" value="<?php echo $form_type; ?>">
+    <div id="choice_group">
+        Gewählte Anordnung
+        <?php foreach($this->anordnungen as $anord): ?>
+
+        <div><input type="radio" name="<?php echo $blockname; ?>[beatmung][chosen]" value="<?php echo $anord['id']; ?>" <?php if($used_data['id'] == $anord['id']){ echo 'checked'; }  ?> > <div class="anordnung_color_cont" style="background-color:#<?php echo $anord['color']; ?>;"></div> <?php echo $anord['name']; ?></div>
+        <?php endforeach; ?>
+    </div>
+
+    <div class="beatmung_errors"></div>
+
+    <?php if(isset($this->machine)) : ?>
+    <h4>Beatmungsmaschine: <?php echo $this->machine->machine_name; ?></h4>
+
+    <?php else: ?>
+    <h4>Bitte wählen Sie Beatmungsmachine</h4>
+    <select id="choose_machine" class="input_field">
+        <?php $mcounter = 0; ?>
+        <option value="-1">-----</option>
+        <?php foreach($this->machines as $device): ?>
+
+        <option value="<?php echo $device['id']; ?>"><?php echo $device['machine_name']; ?></option>
+        <?php $mcounter++; ?>
+        <?php endforeach; ?>
+    </select>
+    <?php endif; ?>
+    <input type="hidden" id="machine_opt" name="<?php echo $blockname; ?>[beatmung][machine_opt]" value="<?php echo $machine_opt; ?>" >
+    <input type="hidden" id="soll_data" name="<?php echo $blockname; ?>[beatmung][soll_data]" >
+    <input type="hidden" id="used_data" name="<?php echo $blockname; ?>[beatmung][used_data]" >
+    <div id="formdata">
+
+
+       <?php if($this->machine_chosen): ?>
+        <table width="100%" class="datatable" id="sets_table">
+            <tr>
+                <th>Bezeichnung</th><!--ISPC-2816,Elena,04.02.2021-->
+                <th>Wert</th>
+                <th>Einheit</th><!--ISPC-2816,Elena,04.02.2021-->
+                <th>Alarmgrenzen</th>
+                <th>Werte der <br>gewählten Anordnung</th>
+
+            </tr>
+            <?php $sets = json_decode($this->machine->parameters, true);  ?>
+            <?php foreach($sets as $set): ?>
+            <tr>
+                <td><?php echo $set['label']; ?></td>
+                <td>
+                    <?php if($set['value'] == 'dropdown'): ?>
+                    <select name="<?php echo $blockname; ?>[beatmung][<?php echo $set['label']; ?>]" data-name="<?php echo $set['label']; ?>" class="input_field">
+                        <?php foreach($set['list'] as $listentry) : ?>
+                        <option value="<?php echo $listentry; ?>"  <?php if($listentry == $this->f_values['beatmung'][$set['label']]){ echo 'selected' ;} ?> ><?php echo $listentry; ?></option>
+                        <?php endforeach; ?>
+                    </select>
+
+                    <?php else: ?>
+                    <input type="text" class="input_field" data-validation="<?php echo $set['validation'] ?>" name="<?php echo $blockname;; ?>[beatmung][<?php echo $set['label']; ?>]" data-name="<?php echo $set['label']; ?>" value="<?php echo  $this->f_values['beatmung'][$set['label']]; ?>" >
+
+                    <?php endif; ?>
+
+                </td>
+                <td><?php echo $set['unit']; ?></td>
+                <td>
+                    <?php if($set['has_alarm'] == '1'): ?>
+                    <input type="text" class="alarm_box" readonly id="<?php echo str_replace( [';', '.', ',', ':'], ['_', '_', '_', '_'], $set['label']); ?>_alarm_higher" value="<?php echo ((isset($used_data['parameters'][ $set['label']  .'_alarm_higher'])) ? $used_data['parameters'][ $set['label'] .'_alarm_higher'] : '' ); ?>"> / <input type="text" class="alarm_box" id="<?php echo str_replace( [';', '.', ',', ':'], ['_', '_', '_', '_'], $set['label']); ?>_alarm_lower" readonly value="<?php echo ((isset($used_data['parameters'][ $set['label']  .'_alarm_lower'])) ? $used_data['parameters'][ $set['label'] .'_alarm_lower'] : '' ); ?>">
+                    <?php endif; ?>
+
+                </td>
+                <td>
+                    <input type="text" class="input_field" readonly id="<?php echo str_replace([';', '.', ',', ':', ' '], ['_', '_', '_', '_', '_'], $set['label']); ?>_soll" name="<?php echo $this->blockname; ?>[beatmung][<?php echo $set['label']; ?>_soll]" value="<?php echo ((isset($used_data['parameters'][ $set['label']])) ? $used_data['parameters'][ $set['label']] : '' ); ?>" data-name="<?php echo $set['label']; ?>"  >
+
+
+                </td>
+
+            </tr>
+
+            <?php endforeach; ?>
+        </table>
+
+       <?php endif; ?>
+
+
+    </div>
+
+
+</div>
+<div id="tab-oxy"  class="form_block_oxygen">
+ <h4>Sauerstoffgabe</h4>
+    <div class="errors_oxy"></div>
+    <div style="display:table;"><!--//ISPC-2904,Elena,30.04.2021-->
+        <div style="display:table-row;">
+        <label for="oxygen_from" class="oxygen_label" style="display:table-cell;">Datum von</label>
+        <input id="oxygen_from" class="datepicker"  style="display:table-cell;"name="<?php echo $blockname; ?>[beatmung][oxygen_date_from]" value="<?php echo $this->f_values['beatmung']['oxygen_date_from']; ?>"/>
+            <!--//ISPC-2904,Elena,30.04.2021-->
+            <input id="oxygen_time_from" style="display:table-cell;" class="beatmung_timepicker" name="<?php echo $blockname; ?>[beatmung][oxygen_time_from]" value="<?php echo $this->f_values['beatmung']['oxygen_time_from']; ?>"/>
+        </div>
+        <div style="display:table-row;">
+        <label for="oxygen_bis"  class="oxygen_label" style="display:table-cell;">Datum bis</label>
+        <input id="oxygen_bis" style="display:table-cell;" class="datepicker" name="<?php echo $blockname; ?>[beatmung][oxygen_date_bis]" value="<?php echo $this->f_values['beatmung']['oxygen_date_bis']; ?>"/>
+            <!--//ISPC-2904,Elena,30.04.2021-->
+            <input id="oxygen_time_bis" style="display:table-cell;" class="beatmung_timepicker" name="<?php echo $blockname; ?>[beatmung][oxygen_time_bis]" value="<?php echo $this->f_values['beatmung']['oxygen_time_bis']; ?>"/>
+        </div>
+        <div style="display:table-row;">
+            <label for="oxygen_open_end" style="display:table-cell;">Ende ungewiss</label>
+            <input type="checkbox" style="display:table-cell;" value="1" id="oxygen_open_end" name="<?php echo $blockname; ?>[beatmung][oxygen_open_end]"  <?php if(isset($this->f_values['beatmung']['oxygen_open_end']) && $this->f_values['beatmung']['oxygen_open_end'] == '1'){echo 'checked';} ?> /><!--//ISPC-2904,Elena,30.04.2021-->
+        </div>
+    </div>
+    <table>
+        <tr>
+            <td style="padding-right:10px;vertical-align:top;padding-top:3px;">
+                <label for="oxygen_data">Sauerstoffgabe, l: </label>
+            </td>
+            <td>
+                <input type="text" id="oxygen_data" class="input_value_sauer input_field" data-validation="decimal" name="<?php echo $blockname; ?>[beatmung][oxygen]" value="<?php echo $this->f_values['beatmung']['oxygen']; ?>">
+
+            </td>
+        </tr>
+        <tr>
+            <td style="padding-right:10px;vertical-align:top;padding-top:3px;">
+                <label for="oxygen_description">Kommentar: </label>
+            </td>
+            <td>
+                <textarea id="oxygen_description" style="width:300px;height:50px;" name="<?php echo $blockname; ?>[beatmung][oxygen_description]"><?php echo $this->f_values['beatmung']['oxygen_description']; ?></textarea>
+
+            </td>
+        </tr>
+    </table>
+
+</div>
+</div>
+
+<?php else: ?>
+<?php if($this->f_values['beatmung']['form'] == 'oxygen'): ?>
+<h4>Sauerstoffgabe</h4>
+<div class="errors_oxy"></div>
+<table><!--//ISPC-2904,Elena,30.04.2021-->
+    <tr>
+        <td>Datum von</td>
+        <td><?php echo $this->f_values['beatmung']['oxygen_date_from']; ?> <?php echo $this->f_values['beatmung']['oxygen_time_from']; ?></td>
+
+    </tr>
+    <tr>
+        <td>Datum bis</td><!--//ISPC-2904,Elena,30.04.2021-->
+        <td><?php echo $this->f_values['beatmung']['oxygen_date_bis']; ?> <?php echo $this->f_values['beatmung']['oxygen_time_bis']; ?></td>
+
+    </tr>
+    <tr>
+        <td>Ende ungewiss:</td>
+      <td><?php if(isset($this->f_values['beatmung']['oxygen_open_end'])){echo 'Ja';}else{echo 'Nein';} ?></td>
+    </tr>
+    <tr><!--//ISPC-2904,Elena,30.04.2021-->
+        <td>Sauerstoffgabe, l:</td>
+        <td>
+            <?php echo $this->f_values['beatmung']['oxygen']; ?>
+
+        </td>
+    </tr><!--//ISPC-2904,Elena,30.04.2021-->
+    <tr>
+        <td>Kommentar:</td><!--//ISPC-2904,Elena,30.04.2021-->
+        <td>
+            <?php echo $this->f_values['beatmung']['oxygen_description']; ?>
+
+        </td>
+    </tr>
+</table>
+
+<?php else: ?>
+<h4>Beatmungsmaschine: <?php echo $this->machine->machine_name; ?></h4>
+<table with="100%" border="1" cellpadding="5" cellspacing="0">
+    <tr>
+        <th><b>Bezeichnung</b></th><!--ISPC-2816,Elena,04.02.2021-->
+        <th><b>Wert</b></th>
+        <th><b>Einheit</b></th><!--ISPC-2816,Elena,04.02.2021-->
+        <th><b>Alarmgrenzen</b></th>
+
+
+    </tr>
+    <?php $sets = json_decode($this->machine->parameters, true);  ?>
+    <?php foreach($sets as $set): ?>
+    <tr>
+        <td><?php echo $set['label']; ?></td>
+        <td>
+           <?php echo $this->f_values['beatmung'][$set['label']] ?>
+
+
+        </td>
+        <td><?php echo $set['unit']; ?></td>
+        <td>
+            <?php if($set['has_alarm'] == '1'): ?>
+            <?php echo $set['alarm_higher']; ?> / <?php echo $set['alarm_lower']; ?>
+            <?php endif; ?>
+
+        </td>
+
+
+    </tr>
+
+    <?php endforeach; ?>
+</table>
+<?php endif; ?>
+
+<?php endif; ?>

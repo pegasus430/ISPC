@@ -1,0 +1,195 @@
+<?php $this->headScript()->appendFile(RES_FILE_PATH.'/javascript/pharmaindex/medi_pharmaindex.js?'.date('Ymd'));?>
+<?php $this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/pharmaindex/medi_pharmaindex.css?'.date('Ymd'));?>
+<?php $this->headScript()->appendFile(RES_FILE_PATH.'/javascript/autogrow/jquery.elastic.js');?>
+<script type="text/javascript">
+	// make the textarea grow
+	$(function() {
+	      $('textarea').elastic();
+	  });
+	var jsmedcount = "";
+	var jsbmedcount = "0";
+	var patidencrypt = "<?php echo $_REQUEST['id']; ?>"
+	var healthinsuranceik = "<?php echo $this->kassen_no; ?>";
+	var medcount = '<?php echo $this->mcntr + 1 ?>';
+	var jsusers = <?php echo $this->jsusers ?>;
+	var medblur = Array();
+	var isdischarged = '<?php echo $this->isdischarged ?>';
+	var client = '<?php echo $this->clientid ?>';
+	
+	<?php if($this->show_mmi == "1"):?>
+	//used in mmi dialog
+	var active_recipe_row = null;
+
+	$(document).on('click', '.mmi_search_button', function(){
+		var receipt_field = $(this).prev().prev();
+		active_recipe_row = receipt_field;
+	});
+	
+	<?php endif; ?>
+		
+	$(document).ready(function(){
+	<?php if($this->show_mmi == "1"):?>
+		 //INSTALL MEDIINDEX-WIDGET
+		var pi = new pharmaindex();
+//		pi.input_medname = ".medication";
+		pi.input_medname = ".med";
+		pi.input_rowparent = "tr";
+		pi.input_receipe_butt = ".mmi_search_button";
+		pi.input_to_recipe = ".to_recipe";
+		pi.mode="recipe";
+		pi.ikno = "#ikno_input";
+		pi.use_suggestions = '0';
+		pi.otcWarningSw = '0';
+
+		//PATH FOR THE AJAX SCRIPTS
+		pi.ajaxPath = "pharmaindex";
+
+		//PATH FOR THE IMAGE FOLDER
+		pi.imagePath="images/pharmaindex";
+
+		pi.callback = function(recipe){
+			//console.log(active_recipe_row.attr('id'));
+			$(active_recipe_row).val(recipe);
+		};
+
+		pi.install();
+		
+		$('.livesearchmedinp').live('change', function() {
+			var input_row = parseInt($(this).attr('id').substr(('medication').length));
+			reset_medications(input_row);
+		}).liveSearch({
+			url: 'pharmaindex/getproductsmedils?ik_no='+healthinsuranceik+'&sm=0&client='+client+'&searchtext=',
+			id: 'livesearch_admission_medications',
+			aditionalWidth: '300',
+			noResultsDelay: '900',
+			typeDelay: '900',
+			returnRowId: function (input) {return parseInt($(input).attr('id').substr(('medication').length));}
+		});
+		<?php else: ?>
+			$('.livesearchmedinp').live('change', function() {
+				var input_row = parseInt($(this).attr('id').substr(('medication').length));
+				reset_medications(input_row);
+			}).liveSearch({
+			url: 'ajax/medications?q=',
+			id: 'livesearch_admission_medications',
+			aditionalWidth: '200',
+			noResultsDelay: '900',
+			typeDelay: '900',
+			returnRowId: function (input) {return parseInt($(input).attr('id').substr(('medication').length));}
+		});
+		<?php endif; ?>
+
+	});
+	
+	function reset_medications(input_row)
+	{
+		if($('#hidd_medication'+input_row).val()){
+			$('#hidd_medication'+input_row).val('');
+			$('#drid'+input_row).val('');
+		}
+	}
+
+	function selectMedications(mid, row, mmi_handler)
+	{
+		$('#medication'+row).val($('#medi_me_'+mid).val());
+		if(!mmi_handler)
+		{
+			$('#comment'+row).val($('#medi_comment_'+mid).val());
+			$('#hidd_medication'+row).val($('#medi_id_'+mid).val());
+		}
+	}
+
+	function removeElem(ids)
+	{
+		$(ids).remove();
+	}
+
+	function createnewmedic()
+	{
+		var client = '<?php echo $this->clientid ?>';
+		<?php if($this->show_mmi == "1"): ?>
+			var mmi_medication_style = 'width:80%!important;';
+			var mmi_button_search = '&nbsp;<input type="button" name="mmi_search" id="mmi_search_'+medcount+'" value="<?php echo $this->translate('mmi_button')?>" class="mmi_search_button" />';
+			var mmi_dosage_style = 'width:87%!important;';
+		<?php else: ?>
+			var mmi_medication_style = '';
+			var mmi_button_search = '';
+			var mmi_dosage_style = '';
+		<?php endif; ?>
+				
+				
+		var usrstr = "";
+		for(var i in jsusers)
+		{
+			usrstr +='<option value="'+i+'">'+jsusers[i]+'</option>';
+		}
+
+		var userdrop = '<select class="verordnetvon_select" name="add[verordnetvon]['+medcount+']">'+usrstr+'</select>';
+		var trInnerHtml = $('<tr id="medadd'+medcount+'"><td align="left" valign="top"><input name="add[medication]['+medcount+']" value="" id="medication'+medcount+'" type="text" class="livesearchmedinp med" style="'+mmi_medication_style+'"><input name="add[hidd_medication]['+medcount+']" value="" id="hidd_medication'+medcount+'" type="hidden">'+mmi_button_search+'</td><td align="left" valign="top"><input  name="add[dosage]['+medcount+']" id="dosage" class="dosage" value="" style="'+mmi_dosage_style+'" /></td><td align="left" valign="top"><input  name="add[comments]['+medcount+']" value="" id="comment'+medcount+'"  /></td><td align="left" valign="top">'+userdrop+'</td><td width="60" align="left" valign="top"><a href="javascript:void(0)" onclick="removeElem(\'#medadd'+medcount+'\')"><img src="_ipad/images/action_delete.png" border="0" /></a></td></tr>');
+
+		$('#medaddtable').append(trInnerHtml);
+
+		$('#medication'+medcount).bind('keyup keydown change paste',function(){
+			<?php if($this->show_mmi == "1"): ?>
+			$(this).live('change', function() {
+				var input_row = parseInt($(this).attr('id').substr(('medication').length));
+				reset_medications(input_row);
+			}).liveSearch({
+				url: 'pharmaindex/getproductsmedils?ik_no='+healthinsuranceik+'&sm=0&searchtext=',
+				id: 'livesearch_admission_medications',
+				aditionalWidth: '300',
+				noResultsDelay: '900',
+				typeDelay: '900',
+				returnRowId: function (input) {return parseInt($(input).attr('id').substr(('medication').length));}
+			});
+			<?php else: ?>
+			//livesearch medications ls
+			$(this).live('change', function() {
+				var input_row = parseInt($(this).attr('id').substr(('medication').length));
+				reset_medications(input_row);
+			}).liveSearch({
+				url: 'ajax/medications?q=',
+				id: 'livesearch_admission_medications',
+				aditionalWidth: '300',
+				noResultsDelay: '900',
+				typeDelay: '900',
+				returnRowId: function (input) {return parseInt($(input).attr('id').substr(('medication').length));}
+			});
+			<?php endif; ?>
+		});
+		medcount++;
+	}
+</script>
+<form action="" name="frmpatinethealth" id="frmpatinethealth" method="post" autocomplete="off" >
+	<?php echo $this->patientinfo ?>
+	<?php echo $this->tabmenus ?>
+	<input type="hidden" name="ikno_input" id="ikno_input" value="<?php echo $this->kassen_no; ?>" />
+	<div class="tab_container">
+		<br />
+		<div id="pat_medication_add">
+			<fieldset>
+			<legend><?php echo $this->translate('add medication '.$this->medication_type) ?></legend>
+				<div id="med">
+					<?php echo $this->medicgrid; ?>
+				</div>
+
+				<div class="clearer"></div>
+			<div class="clearer"></div>
+
+				<div class="add_new_medi">
+					<a href="javascript:createnewmedic()">
+					<img src="<?php echo RES_FILE_PATH; ?>/images/edit_add.png" width="20" height="20" />
+						<div class="add_new_medi_link">
+							<?php echo $this->translate('addnewmedication'); ?>
+						</div>
+					</a>
+				</div>
+
+				<div class="clearer"></div>
+				<label></label>
+			<input type="button" name="btnsubmit" id="btnsubmit-save" value="<?php echo $this->translate('submit') ?>" class="button" onclick="checkdischargednew('frmpatinethealth');" />
+
+			</fieldset>
+		</div>
+	</div>
+</form>

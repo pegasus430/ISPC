@@ -1,0 +1,134 @@
+<?php
+//ISPC-2562, elena, 24.08.2020 page for videos and files
+//  Maria:: Migration CISPC to ISPC 02.09.2020 
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/tinymce5/js/tinymce/tinymce.min.js');
+
+?>
+<style>
+    #tutorial_content {
+        width: 100%;
+        height: 500px;
+    }
+
+    .mce-content-body {
+        font-size: 12px !important;
+        font-family: "Arial", Helvetica, sans-serif;
+    }
+</style>
+
+<script type="text/javascript">
+    //
+    var dialogConfig = {
+        title: "<?php echo $this->translate('uploaded_tutorials'); ?>",
+        url: "<?php echo APP_BASE . '/tutorial/filelist'; ?>",
+        buttons: [
+            {
+                type: "custom",
+                name: "insert-and-close",
+                text: "<?php echo $this->translate('insert_and_close'); ?>",
+                primary: true,
+                align: "end"
+            },
+            {
+                type: "cancel",
+                name: "cancel",
+                text: "<?php echo $this->translate('cancel_dialog'); ?>"
+            }
+        ],
+        width: 600,
+        height: 300,
+        onAction: function (instance, trigger) {
+            instance.sendMessage({
+                mceAction: "customInsertAndClose"
+            });
+        }
+    };
+    $(document).ready(function () {
+
+        tinyMCE.init({
+
+            mode: "exact",
+            language: "de",
+            skin: 'smartq',
+            elements: "tutorial_content",
+            theme: "silver",
+            relative_urls: false,
+            absolute_urls: true,
+
+            plugins: "spellchecker,pagebreak,table,save, insertdatetime,preview,media,searchreplace,print,contextmenu,paste,directionality,fullscreen,noneditable,visualchars,nonbreaking,template,code, link",
+
+            menu: {
+                file: {title: 'File', items: 'newdocument restoredraft | preview | print '},
+                edit: {title: 'Edit', items: 'undo redo | cut copy paste | selectall | searchreplace'},
+                view: {
+                    title: 'View',
+                    items: 'code | visualaid visualchars visualblocks | spellchecker | preview fullscreen'
+                },
+                insert: {
+                    title: 'Insert',
+                    items: 'image link media template codesample inserttable | charmap emoticons hr | pagebreak nonbreaking anchor toc | insertdatetime'
+                },
+                format: {
+                    title: 'Format',
+                    items: 'bold italic underline strikethrough superscript subscript codeformat | formats blockformats fontformats fontsizes align | forecolor backcolor | removeformat'
+                },
+                tools: {title: 'Tools', items: 'spellchecker spellcheckerlanguage | code wordcount'},
+                table: {title: 'Table', items: 'inserttable | cell row column | tableprops deletetable'},
+                help: {title: 'Help', items: 'help'}
+            },
+            toolbar: 'iframe urldialog undo redo | formatselect | ' +
+                'bold italic backcolor | alignleft aligncenter ' +
+                'alignright alignjustify | bullist numlist outdent indent | ' +
+                'removeformat | help',
+            setup: function (editor) {
+                editor.ui.registry.addButton("iframe", {
+                    text: '<?php echo $this->translate("Attach File") ?>',
+                    //icon: "frame",
+                    onAction: () => {
+                        _api = editor.windowManager.openUrl(dialogConfig);
+                    }
+                });
+
+                editor.addCommand("iframeCommand", function (ui, value) {
+                    editor.insertContent(
+                        `<a href="${value.url}">${value.name}</a>`
+                    );
+                });
+
+                editor.ui.registry.addButton('urldialog', {
+                    text: '<?php echo $this->translate("upload file") ?>',
+                    //icon: 'code-sample',
+                    onAction: function () {
+                        editor.windowManager.openUrl({
+                            title: 'Datei hochladen',
+                            url: '<?php echo APP_BASE . '/tutorial/fileupload'; ?>',
+                            height: 640,
+                            width: 640
+                        });
+                    }
+                })
+                editor.on('SetContent', function (e) {
+                    console.log('content set.');
+                    $('#tutorial_content_ifr').contents().find('body').css('font-size', '12px');
+
+                });
+            },
+
+
+        });
+
+    })
+
+</script>
+<h2><?php echo $this->translate('Edit Tutorial'); ?></h2>
+<br>
+<div>
+    <?php echo $this->translate('max_upload'); ?>: <?php echo $this->max_upload; ?><br>
+    <?php echo $this->translate('max_post'); ?>: <?php echo $this->max_post; ?><br>
+</div>
+<div id="tutorial_edit">
+    <form method="post" id="edit_tutorial">
+        <textarea id="tutorial_content" name="tutorial[content]"><?php echo $this->page_content ?></textarea>
+        <input type="submit" value="<?php echo $this->translate('save_tutorial'); ?>">
+    </form>
+</div>

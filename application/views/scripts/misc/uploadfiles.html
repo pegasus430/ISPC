@@ -1,0 +1,375 @@
+<?php
+
+	$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/data_tables/jquery.dataTables.js');
+	$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/data_tables/dataTables.jqueryui.js');
+
+	$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/data_tables/dataTables.jqueryui.css');
+
+
+    //add file uploader
+    $this->headScript()->appendFile(RES_FILE_PATH.'/javascript/fine-uploader/fine-uploader.min.js');
+    $this->headLink()->appendStylesheet(RES_FILE_PATH.'/javascript/fine-uploader/fine-uploader.css');
+
+    //rendered-add the fine-uploader file-uploader template
+    //$qqtemplate = $this->render("templates/qq_fileupload_template_small_2017_09.html");
+    $qqtemplate = Pms_Template::createTemplate(array(), 'templates/qq_fileupload_template_multiple_2018_09.html');
+    $this->headScript()->setAllowArbitraryAttributes(true)->appendScript($qqtemplate, 'text/template', array("id" => "qq-template", "noescape" => true));
+
+
+    //$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/jgrowl/fileuploader.js');
+    //$this->headLink()->appendStylesheet(RES_FILE_PATH.'/javascript/jgrowl/filepatient.css');
+
+
+function return_bytes($val) {
+    $val = trim($val);
+    $last = strtolower($val[strlen($val)-1]);
+    switch($last) {
+        // The 'G' modifier is available since PHP 5.1.0
+        case 'g':
+            $val *= (1024 * 1024 * 1024); //1073741824
+            break;
+        case 'm':
+            $val *= (1024 * 1024); //1048576
+            break;
+        case 'k':
+            $val *= 1024;
+            break;
+    }
+
+    return $val;
+}
+
+//$upload_max_filesize = '10M'; ??
+$upload_max_filesize = ini_get('upload_max_filesize');
+
+$upload_max_filesize_bytes = return_bytes($upload_max_filesize);
+
+$selected_tab = 0;
+$cnt_tabs = 0;
+foreach($this->associated_clients as $client) {
+    if ($this->selected_tab == $client['id']) {
+        $selected_tab = $cnt_tabs;
+        break;
+    }
+    $cnt_tabs++;
+}
+    
+?>
+
+<script> 
+
+var _max_filesize = <?=$upload_max_filesize_bytes ?>;
+var _selected_tab = <?=$selected_tab?>;
+
+</script>
+
+<style>
+.dataTables_sizing .DataTables_sort_wrapper strong {
+	height:0px!important; 
+	font-size: 0px!important;
+}
+.dataTable>tbody>tr:nth-of-type(2n+1) {
+	background-color: #f8f8f8;
+}
+.ui-accordion .ui-accordion-content {
+    padding: 0;
+}
+
+
+.qq_file_uploader_multiple .qq-uploader {
+    max-height:none;
+}
+.qq_file_uploader_multiple .qq-uploader .qq-upload-list li{
+    border-bottom: 1px solid white;
+}
+
+
+</style>
+
+<div class="page_title" >
+    <h1><? echo $this->translate('Dateien');?></h1>
+</div>
+
+
+
+<div class="add_folders">
+    <a href="misc/clientfilesfolder">
+        <img width="20" height="20" border="0" src="<?php echo RES_FILE_PATH; ?>/images/edit_add.png">
+        <span class="add_new_folder_link"><?php echo $this->translate('createclientfilesfolder');?> </span>
+    </a>
+</div>
+<br/>
+
+
+<div style="display: none;">
+    <img id="calImg" src="<? echo RES_FILE_PATH;  ?>/images/calendar.png" alt="Popup" class="trigger">
+</div>
+
+<!-- navigation tabs for linked clients-->
+<div id="associated_clients_tabs" style="display:none;">
+  <ul>
+    <?php $counter_tabs = 0; ?>
+    <?php foreach($this->associated_clients as $client) : ?>
+        <?php
+        if ( ! $this->logendin_client_ismaster && $client['id'] != $this->logendin_clientid) {
+            continue;
+        }
+        ?>
+    <li><a href="#tabs-<?=$counter_tabs++?>"  data-cid="<?=Pms_Uuid::encrypt($client['id']);?>"><?=$client['client_name']?></a></li>
+    <?php endforeach; ?>
+    
+    <?php if ( ! $this->logendin_client_ismaster && count($this->associated_clients) >  1) : ?>
+        <li><a href="#tabs-<?=$counter_tabs++?>"  data-cid="associated"><?=$this->translate('Associated ClientFiles Tab');?></a></li>
+    <?php endif; ?>
+    
+  </ul>
+  
+<?php $counter_tabs = 0; ?>
+<?php foreach($this->associated_clients as $client) : ?>
+    <?php
+        if ( ! $this->logendin_client_ismaster && $client['id'] != $this->logendin_clientid) {
+            continue;
+        }
+    ?>
+
+  <div id="tabs-<?=$counter_tabs++?>">
+
+
+
+<?php 
+    $client_files_data = $this->files_data[ $client['id'] ];
+    $files2folders = $client_files_data['files2folders'];
+    $client_folders = $client_files_data['client_folders'];
+    $filesData = $client_files_data['filesData'];
+    $allusers = $client_files_data['allusers'];
+    $allUsers = $allusers;
+
+    $folder_array = array('0'=> $this->translate("AllClientfiles")) + array_column($client_folders, 'folder_name', 'id');
+?>
+
+
+
+<form enctype="multipart/form-data"  action="<? echo $this->act ?>" method="post" name="frmuser" id="frmuser" autocomplete="off" >
+
+    <div id="accordion">
+	   <?php  
+            $count = array(); 
+            $count[0] = count($files2folders[0]); 
+       ?>
+      <h3><a  id="folder_all" ><?php echo $this->translate("AllClientfiles")?> (<?php echo $count[0];?>)</a></h3>
+      <div data-id="all" data-cid="<?=Pms_Uuid::encrypt($client['id']);?>"> 
+      
+      </div>
+      
+      
+      <?php if ( ! empty($client_folders)) :?>
+    	  <?php foreach ($client_folders as $folder_id => $folder_data):?>
+          
+    	  	<?php $count[$folder_id] = count($files2folders[$folder_id]); ?>
+            
+    		  <h3><a id="folder_<?php echo $folder_id; ?>" ><?php echo $folder_data['folder_name'];?> (<?php echo $count[$folder_id];?>)</a></h3>
+    		  <div data-id="<?php echo $folder_id; ?>" data-cid="<?=Pms_Uuid::encrypt($client['id']);?>">
+    		  	
+    	  	  </div>
+    	  <?php endforeach;?>
+      <?php endif;?>
+    </div>
+ 
+ 
+     
+     <fieldset style="border: 1px solid #aed0ea;">
+         <legend>
+            <? echo $this->translate('uploadnewfile');?></strong>  (<? echo $this->translate('maxfilesize'); ?>: <?=$upload_max_filesize;?>B)
+         </legend>
+        
+        <table width="100%" border="0" cellspacing="0" cellpadding="0">
+         
+          <tr>
+            <td align="left" valign="top">
+            <div id="TableContentOuter" style="width:auto">
+            <table width="100%" border="0" cellspacing="0" cellpadding="0">
+             
+              <tr>
+                <!--  
+                <td width="35%" height="28" align="left" valign="top"><? echo $this->translate('file_upload_title')?></td>
+                -->
+                <td colspan=3>
+                        <input type="hidden" name="fileuploads" value="1" />
+                        <input type="hidden" name="cid" value="<?=Pms_Uuid::encrypt($client['id']);?>" />
+                        <!-- 
+                    <label>
+                        <input type="text" name="title" id="title" />
+                        
+                    </label>
+                         -->
+                </td>
+              </tr>
+             
+              
+              <tr>
+                <td height="28" align="left" valign="top"><? echo $this->translate('file_upload select folder')?></td>
+                <td align="left" valign="top">
+                    <label>
+                        <?=$this->formSelect('folder_id', '-1', array(), $folder_array); ?>
+                    </label>
+                </td>
+                <td align="left" valign="top" class="err"><? echo $this->error_title;?></td>
+              </tr>
+              
+              
+              <tr>
+                <td height="28" align="left" valign="top"><? echo $this->translate('uploadfile_user')?>*</td>
+                <td height="28" align="left" valign="top">
+                    <div class='qq_file_uploader_placeholder qq_file_uploader_multiple' data-parent='table'>
+                		<noscript>
+                			Please enable JavaScript to use file uploader.
+                		</noscript>
+        	        </div>
+                </td>
+                <td height="28" align="left" valign="top"><? echo $this->error_filename ;?></td>
+              </tr>
+              
+              <tr>
+                <td height="28" align="left" valign="top">&nbsp;</td>
+                <td height="28" align="left" valign="top"><label>
+                <input type="submit" name="btnsubmit" id="btnsubmit" value="<? echo $this->translate('submit')?>" class="button btnSubmit2018">
+                </label></td>
+                <td height="28" align="left" valign="top">&nbsp;</td>
+              </tr>
+        
+            </table></div></td>
+          </tr>
+        </table>
+    </fieldset>
+    
+    <br/>
+
+
+<?php $deleted_files_count = count(array_filter(array_column($filesData, 'isdeleted'))); ?>
+    
+    <div id="del_accordion">
+      <h3><a><?= $this->translate('deleted Dateien');?> (<?=$deleted_files_count;?>)</a></h3>
+      <div> 
+        	<table width="85%" border="0" align="left" cellpadding="0" cellspacing="0" class="deleted_file_table" >
+        	<thead>
+    		<tr>
+    			<th align="left" valign="top" width="15%"><strong><? echo $this->translate('date');?></strong></th>
+    			<th align="left" valign="top" width="15%"><strong><? echo $this->translate('hidden_date');?></strong></th>
+    			<th align="left" valign="top" width="55%"><strong><? echo $this->translate('title');?></strong></th>
+    			<th align="left" valign="top" width="15%"><strong><? echo $this->translate('filetype');?></strong></th>
+    			<th align="left" valign="top" width="15%"><strong><? echo $this->translate('uploadby');?></strong></th>
+    		</tr>
+    		</thead>
+    		<tbody>
+    			<?php
+    			$filetypearray = array("zip"=>"zip.png","msword"=>"word.png","vnd.openxmlformats-officedocument.wordprocessingml.document"=>"word.png","docx"=>"word.png","excel"=>"excel.png","xls"=>"excel.png","XLSX"=>"excel.png","vnd.openxmlformats-officedocument.spreadsheetml.sheet"=>"excel.png","pdf"=>"pdf.png","txt"=>"text.png","text"=>"text.png","plain"=>"text.png","vnd.ms-powerpoint"=>"powerpoint.png","vnd.openxmlformats-officedocument.presentationml.presentation"=>"powerpoint.png","jpeg"=>"file-jpg.png","jpg"=>"file-jpg.png","gif"=>"file-gif.png");
+
+		foreach ($filesData as $keyf => $fileData) {
+
+		  $filetype = strtoupper($fileData['file_type']);
+		  $file_type = $filetypearray[$fileData['file_type']];
+		  //$allUsers = $this->allusers;
+
+		  if ($fileData['isdeleted'] == 1) {
+            $title = $fileData['title'];
+			$deltete = " - ";
+			$prefix = " - ";
+                ?>
+		<tr class="row">
+			<td align="left" valign="top"><i><?=date("d.m.Y H:i", strtotime($fileData['create_date']))?></i></td>
+			<td align="left" valign="top"><?=$fileData['create_date']?></td>
+			<td align="left" valign="top"><i><?=$title?></i></td>
+			<td align="left" valign="top"><i><?=$filetype?></i></td>
+			<td align="left" valign="top"><i><?=$allUsers[$fileData['create_user']]?></i></td>
+		</tr>
+
+		<?php };}; ?>
+        
+    		</tbody>
+    	</table>
+      </div>
+    </div>
+</form>
+
+
+
+  </div>
+  <?php endforeach; ?>
+ 
+  
+    <?php if ( ! $this->logendin_client_ismaster && count($this->associated_clients) >  1) : ?>
+    <!-- start accordion associated -->
+
+      
+      <?php 
+        //count the without-folder we have from any client
+        $count_without_folder = 0;
+        foreach($this->associated_clients as $client) {
+            if ( $client['id'] == $this->logendin_clientid) {
+                continue; // we allready listed this one in his own first tab
+            }
+            
+            $client_files_data = $this->files_data[ $client['id'] ];
+            $count_without_folder += (int)count($client_files_data['files2folders'][0]) ;
+
+        }
+       ?>
+      
+      
+      
+      
+      
+        <div id="tabs-<?=$counter_tabs++?>">
+        
+        <div id="accordion">
+        
+        <h3><a  id="folder_all" ><?php echo $this->translate("AllClientfiles")?> (<?= $count_without_folder;?>)</a></h3>
+        <div data-id="all" data-cid="all_associated"  data-associated_tab='1'> 
+        </div>
+        
+        
+        <?php foreach($this->associated_clients as $client) : ?>
+        <?php
+            if ( $client['id'] == $this->logendin_clientid) {
+                continue; // we allready listed this one in his own first tab
+            }
+        ?>
+        
+        <?php 
+    $client_files_data = $this->files_data[ $client['id'] ];
+    $files2folders = $client_files_data['files2folders'];
+    $client_folders = $client_files_data['client_folders'];
+    $filesData = $client_files_data['filesData'];
+    $allusers = $client_files_data['allusers'];
+    $allUsers = $allusers;
+
+    $folder_array = array('0'=> $this->translate("AllClientfiles")) + array_column($client_folders, 'folder_name', 'id');
+    ?>
+        
+         <?php if ( ! empty($client_folders)) :?>
+          <?php foreach ($client_folders as $folder_id => $folder_data):?>
+          
+            <?php $count[$folder_id] = count($files2folders[$folder_id]); ?>
+            
+              <h3>
+                <a id="folder_<?php echo $folder_id; ?>"><?php echo $folder_data['folder_name'];?> (<?php echo $count[$folder_id];?>) <span style='float:right'><?=$client['client_name'] ?></span></a>
+                
+              </h3>
+              <div data-id="<?php echo $folder_id; ?>" data-cid="<?=Pms_Uuid::encrypt($client['id']);?>" data-associated_tab='1'>
+                
+              </div>
+          <?php endforeach;?>
+      <?php endif;?>
+      
+      
+        <?php endforeach; ?>
+        </div> 
+        <!-- end accordion associated -->
+        
+        
+        
+        </div>
+    <?php endif; ?>
+  
+  
+</div>

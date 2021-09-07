@@ -1,0 +1,101 @@
+<gridrow>
+<phpscript>
+$mid = $this->mid;
+$logininfo = new Zend_Session_Namespace('Login_Info');
+if(!isset($cntr))
+{
+	$cntr = '1';
+}
+else
+{
+	$cntr++;
+}
+
+$list_link = false;
+$title_tring = $menu_title;
+$list_ident   = 'Liste';
+$list_link = strpos($title_tring, $list_ident);
+
+if (strlen($menu_link) > 0) {
+	if($list_link !== false ){
+		if(strpos($menu_link, "?")){
+			$menu_link = $menu_link."&lf=list";
+		} else{
+			$menu_link = $menu_link."?lf=list";
+		}
+	} 
+	if ($openin == 1) {
+		$onclick = "onclick=window.open('" . $menu_link . "')";
+	} else {
+		$onclick = 'onClick="setSelected(\'m_' . $id . '\',\'' . $menu_link . '\')"';
+	}
+} else {
+	$onclick = "";
+}
+
+$inboxmailcount = "";
+$foldermailcount = "";
+$folderoptions = "";
+
+if ($id == '28') {
+	$mail_count = Pms_CommonData::getNewmsg($logininfo->userid, 0);
+	if ($mail_count > 0) {
+		$inboxmailcount = "(" . $mail_count . ")";
+	}
+
+	$folderarray = Pms_CommonData::msgFolder($logininfo->userid);
+	//print_r($folderarray);die();
+	if (count($folderarray) > 0) {
+	
+	//adaugat de radu
+		//$fldIds = "9999999999999999";
+		$fldIds = array_column($folderarray, "id");
+		$fldIds = implode(',', $fldIds);
+		//$comma = ",";
+		foreach($folderarray as $k=>$v){
+			$folders[$v['id']] = $v;
+			//$fldIds .= $comma.$v['id'];
+			//$comma = ",";
+		}
+		$msglist = Doctrine_Query::create()
+        		->select("id, folder_id as fldid, count(*) as count")
+                ->from("Messages m")
+                
+                ->leftJoin("m.MessagesDeleted m2 ON m.id = m2.messages_id AND m2.messages_id IS NOT NULL AND m2.recipient = ?", $logininfo->userid)
+				->where(' m2.messages_id IS NULL ')
+				
+                ->andWhere("m.read_msg = 0 and m.delete_msg=0 and m.recipient = ? and m.folder_id IN (?)" , array($logininfo->userid, $fldIds))
+			 ->groupBy("id, folder_id");
+          $newMsg = $msglist->fetchArray();
+
+		if(count($newMsg)>0){
+			foreach($newMsg as $fldcnt){
+				$folders[$fldcnt['fldid']]['count'] = $fldcnt['count'];
+			}
+		}
+
+		//adaugat de radu
+		foreach ($folders as $key => $val) {
+			$foldermailcount = "";
+			if (!empty($val['count'])) {
+				$foldermailcount = "(" . $val['count'] . ")";
+			}
+			$link = "setSelected('m_" . $val['id'] . "','" . $menu_link . "?fld=" . $val['id'] . "')";
+			$folderoptions.='<li id="m27_menu_1' . $cntr . '"><a href="javascript:void(0)" onClick="' . $link . '" >&nbsp;-&nbsp;' . ucfirst($val['folder_name']) . '&nbsp;' . $foldermailcount . '</a></li>';
+		}
+	}
+}
+/* ISPC-2782 CRISTI.C 20.01.2021 */
+$active_class ="";
+	if($menu_link == $view->current_page_link){
+		$active_class = "open";
+	}
+
+	if($menu_icon == "") {
+		$menu_icon = "001-browser.png";
+	}
+</phpscript>
+<!-- <li id="m[[mid]]_menu_[[cntr]]" class="[[active_class]]" ><a href="javascript:void(0)" [[onclick]] [[newwindow]]><img src="<?php echo RES_FILE_PATH; ?>/images/main_navigation_img/[[menu_icon]]" />[[menu_title]] [[inboxmailcount]]</a> </li> -->
+<li id="m[[mid]]_menu_[[cntr]]" class="[[active_class]]" ><a href="javascript:void(0)" [[onclick]] [[newwindow]]>[[menu_title]] [[inboxmailcount]]</a> </li>
+[[folderoptions]]
+</gridrow>

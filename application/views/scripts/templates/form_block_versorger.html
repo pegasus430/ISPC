@@ -1,0 +1,150 @@
+<!--  Maria:: Migration CISPC to ISPC 22.07.2020 -->
+<?php
+$pdf=false;
+if ($this->pdf){
+    $pdf=true;
+}
+
+$fdata=$this->options['patient_html_json'];
+$actual_data=true;
+
+if(isset($this->f_values['data']) && strlen($this->f_values['data'])){
+    $fdata=json_encode($this->f_values['data']);
+    $actual_data=false;
+}
+$raw_html=json_decode($fdata);
+
+if($pdf){
+    $raw_html = str_replace("\r\n","",$raw_html);
+    $raw_html = str_replace("\n","",$raw_html);
+    $raw_html = str_replace("\t","",$raw_html);
+}
+?>
+<?php if(!$this->pdf):?>
+    <script></script>
+    <script>
+        $(document).ready(function(){
+            var box_is_loaded=false;
+            var my_fdata=<?php echo $fdata;?>;
+
+            $('#fb_versorger-fdata').val(my_fdata);
+
+            $(document).on('click', '#fb_versorger_edit_butt', function(){
+
+                if(!box_is_loaded) {
+                    $('#patversorgereditor').empty();
+                    $('#patversorgereditor').block({
+                        css: {
+                            border: 'none',
+                            padding: '15px',
+                            backgroundColor: '#000',
+                            '-webkit-border-radius': '10px',
+                            '-moz-border-radius': '10px',
+                            opacity: .5,
+                            color: '#fff',
+                            height: 'auto'
+                        },
+                        message: '<h2>' + translate('processing') + '</h2><div class="spinner_square"></div>'
+                    });
+
+                    $('#patversorgereditor').load("<?php echo APP_BASE . "patientnew/versorger?id=" . $this->options['encid'] . "&ajax=1";?>", function () {
+                        $('#patversorgereditor').unblock();
+                        $('#patversorgereditor #box-masterdata').hide();
+                        $('#patversorgereditor #box-fallhistorie').hide();
+                        $('#patversorgereditor #box-patientlocation').hide();
+
+                        $('#patversorgereditor .qq_file_uploader').prev().prev().prev().hide();
+
+                        $('#patversorgereditor .qq_file_uploader').hide();
+                    });
+
+                    box_is_loaded=true;
+                }
+                $('#patversorgereditor').dialog(
+                    {
+                        width:860,
+                        height:620,
+                        title:"Versorger bearbeiten",
+                        buttons:[{
+                            text: "Daten ins Formular übernehmen",
+                            click: function( e ) {
+                                $("#fb_versorger-content").block({
+                                    css: {
+                                        border: 'none',
+                                        padding: '15px',
+                                        backgroundColor: '#000',
+                                        '-webkit-border-radius': '10px',
+                                        '-moz-border-radius': '10px',
+                                        opacity: .5,
+                                        color: '#fff',
+                                        height: 'auto'
+                                    },
+                                    message: '<h2>' + translate('processing') + '</h2><div class="spinner_square"></div>'
+                                });
+
+                                $('#patversorgereditor').dialog('close');
+                                $.ajax({
+                                    //dataType: "text/html",
+                                    url: "<?php echo APP_BASE . "patientnew/versorgerreport?id=" . $this->options['encid'] ;?>",
+                                    success: function( data ){
+                                        data=JSON.parse(data);
+                                        $('#fb_versorger-content').html(data);
+                                        $('#fb_versorger-fdata').val(data);
+                                        $("#fb_versorger-content").unblock("hide", 1);
+                                    }
+                                });
+
+//                                $.getJSON( "<?php //echo APP_BASE . "patientnew/versorgerreport?id=" . $this->options['encid'] ;?>//", function( data ){
+//                                    $('#fb_versorger-content').html(data);
+//                                    $('#fb_versorger-fdata').val(data);
+//                                    $("#fb_versorger-content").unblock("hide", 1);
+//                                });
+
+                            }
+                        }
+                        ]
+                    }
+                );
+            });
+
+        });
+    </script>
+<style>
+
+    .fb_versorger_empty{
+        height:8px;
+    }
+    .fb_versorger_col_head{
+        font-weight:bold;
+        border-bottom: 2px solid #b3bed7;
+    }
+    .fb_versorger_tab{
+        margin:4px;
+        width:356px;
+    }
+    .fb_versorger_col_left{
+        width:120px;
+    }
+
+    #patversorgereditor .tab_container{
+        width: 810px;
+    }
+</style>
+
+    <div id="patversorgereditor" style="display:none;">
+    </div>
+
+    <div style="background-color: #ffffcc;border:1px solid #ccc;margin:4px;padding:4px;">
+        <?php if (!$actual_data):?>
+            <p>Dieser Block enthält die mit diesem Formular abgespeicherten Daten. Die aktuelle Dokumentation des Patienten kann mittlerweile anders sein.</p>
+        <?php endif;?>
+        <p>    <input type="button" style="padding:3px;margin:3px;" value="Patientendaten prüfen" id="fb_versorger_edit_butt"> Über diesen Button kann die aktuelle Dokumentation des Patienten eingesehen, geändert und übernommen werden.</p>
+        <input type="hidden" id="fb_versorger-fdata" name="<?php echo $this->blockname;?>[data]" value="<?php echo htmlspecialchars($raw_html);?>">
+    </div>
+<?php endif;?>
+
+<div id="fb_versorger-content">
+    <?php
+    echo $raw_html;
+    ?>
+</div>

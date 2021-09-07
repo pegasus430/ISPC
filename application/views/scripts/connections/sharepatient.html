@@ -1,0 +1,472 @@
+<!-- Maria:: Migration ISPC to CISPC 08.08.2020 -->
+<?php
+$patient_details = $this->patient_details;
+$client_details = $this->clients_details;
+$clients_data = $this->clients_data;
+$cspl = $this->client_sent_patients_linked;
+$crpl = $this->client_received_patients_linked;
+?>
+<script type="text/javascript">
+	function toggle_shortcuts(){
+		if($('#patientid').val() == ''){
+			$('#shortcuts_list input[type=checkbox]').attr('disabled', true);
+			$('#shortcut_all').attr('disabled', true);
+			$('#shortcut_all').attr('checked', false);
+		} 
+		else 
+		{
+			$('.shortcut_chk').each(function(){
+				if($(this).data('status') == "available"){
+					$(this).prop('disabled', false);
+				} else{
+					$(this).prop('disabled', true);
+				}
+			});
+			$('#shortcut_all').attr('disabled', false);
+			$('#shortcut_all').attr('checked', false);
+		}
+	}
+
+	function DoNav(theUrl)
+	{
+		document.location.href = appbase+theUrl;
+	}
+
+	function selectSharePatient(pid, epid, firstname, lastname, admission, dob)
+	{
+		$('#searchdropdown_share').slideUp('slow');
+
+		var selected_list = '<table class="datatable" style="width:100%"><thead><tr class="BlueBg" ><td class="first" width="233">'+translate('epid')+'</td><td class="first" width="233">'+translate('firstname')+'</td><td width="200">'+translate('lastname')+' </td><td width="200">'+translate('admissiondate')+' </td><td width="200">'+translate('dateofbirth')+' </td></tr></thead><tbody>';
+		selected_list+='<tr class="row">';
+		selected_list+='<td class="first" width="233">'+epid +'</td>';
+		selected_list+='<td class="first" width="233">'+unescape(firstname)+'</td>';
+		selected_list+='<td width="200">'+unescape(lastname) +'</td>';
+		selected_list+='<td width="200">'+admission +'</td>';
+		selected_list+='<td width="200">'+dob +'</td>';
+		selected_list+='</tr></tbody></table>';
+		$('#patientid').val(pid);
+
+		$('#searchdropdown_share_selected').html(selected_list);
+
+		$('#searchdropdown_share_selected').slideDown('slow');
+		$('#patientsearch_share').val(epid);
+		toggle_shortcuts()
+	}
+
+	$(document).ready(function() {
+		$('#patientsearch_share').liveSearch({
+			url: 'ajax/patientsearchshare?q=',
+			id: 'livesearch_share_patient',
+			aditionalWidth: '62',
+			noResultsDelay: '1200',
+			typeDelay: '1200'
+		});
+
+		$('#select_patient_dialog').dialog({
+			modal: true,
+			autoOpen: false,
+			draggable: false,
+			resizable: false,
+			title: '<?php echo $this->translate('Alert Dialog'); ?>',
+			buttons: {
+				"<?php echo $this->translate('Ok'); ?>": function() {
+					$( this ).dialog( "close" );
+				}
+			}
+		});
+		
+		$('#select_client_dialog').dialog({
+			modal: true,
+			autoOpen: false,
+			draggable: false,
+			resizable: false,
+			title: '<?php echo $this->translate('dialog_alert'); ?>',
+			buttons: {
+				"<?php echo $this->translate('Ok'); ?>": function() {
+					$( this ).dialog( "close" );
+				}
+			}
+		});
+		
+		
+		$('#select_client_connection_dialog').dialog({
+			modal: true,
+			autoOpen: false,
+			draggable: false,
+			resizable: false,
+			title: '<?php echo $this->translate('dialog_alert'); ?>',
+			buttons: {
+				"<?php echo $this->translate('Ok'); ?>": function() {
+					$( this ).dialog( "close" );
+				}
+			}
+		});
+
+		$('.shortcut_chk').click(function(){
+			var all_chck = 1;
+			$('.shortcut_chk').each(function(){
+
+				if($(this).is(':checked')){
+				} else {
+					all_chck = 0;
+				}
+			});
+
+			if(all_chck == 1){
+				$('#shortcut_all').attr('checked', true);
+			} else {
+				$('#shortcut_all').attr('checked', false);
+			}
+		});
+
+		$('#shortcut_all').click(function(){
+			if($(this).is(':checked')){
+				
+				
+				$('.shortcut_chk').each(function(){
+					if($(this).data('status') == "available"){
+						$(this).attr('checked', true);
+					} else{
+						$(this).attr('checked', false);
+					}
+				});
+				
+				
+// 				$('#shortcuts_list input[type=checkbox]').attr('checked', true);
+			} else {
+				$('#shortcuts_list input[type=checkbox]').attr('checked', false);
+			}
+		});
+		
+		$('#share_patient_sumbit').click(function(e){
+			e.preventDefault();
+			var error = 0;
+
+			if($('#patientid').val() == ''){
+				$('#select_patient_dialog').dialog('open');
+				error = 1;
+			}
+
+			if($('#target_client').val() == '0'){
+				$('#select_client_dialog').dialog('open');
+				error = 1;
+			}
+
+			// check if patient is already connected!  // TODO-2371
+						
+			var patient_epid = $('#patientsearch_share').val();
+			var selected_client  = $('#target_client').val();
+			var connected_epids2client = '<?php echo $this->js_connected_epids2client; ?>';
+			var connected_epids2client_obj = jQuery.parseJSON(connected_epids2client);
+			
+			if($.isArray(connected_epids2client_obj[patient_epid]) &&  $.inArray(selected_client,connected_epids2client_obj[patient_epid]) != "-1"){
+				$('#select_client_connection_dialog').dialog('open');
+				error = 2;
+			} 
+			/* else {		//TODO-2686 Lore 29.11.2019
+				error = 0;
+			} */
+ 
+			if(error == '0'){
+				$('#share_patient_sumbit').prop('disabled', true);
+				$('#share_patient').submit();
+			}
+		});
+
+		$('input[name=allow_copy]').live('change', function(){
+			if($(this).val() == '1'){
+				$('#copy_options_row').show();
+			} else {
+				$('#copy_options_row').hide();
+
+				$('#stammdaten').attr('checked', false);
+				$('#diagnosis').attr('checked', false);
+				$('#medications').attr('checked', false);
+
+			}
+		});
+		
+		//lastest changes
+		$("#tabs").tabs();
+		xhr = $.ajax();
+		$("#tabs").bind("tabsselect", function(event, ui) {
+			//added abort of previous request...causing columns misbehaving when changing tabs
+			xhr.abort();
+			//load list
+//			console.log("tab index");
+//			console.log(ui.index);
+			if(ui.index != "0")
+			{
+				fetchtabdata(ui.index, "1");
+			}
+		});
+		
+		// new changes 16.06.2016
+		
+		$('#target_client').on("change",function(){
+			if($(this).val() != "0"){
+				
+				$('#shortcuts_list').load('<?php  echo APP_BASE."ajax/sharingshortcutlist?clid='+$(this).val()+'"; ?>',
+						function(){
+							toggle_shortcuts();
+							/* if($('#patientid').val() != ''){
+								$('.shortcut_chk').each(function(){
+									if($(this).data('status') == "available"){
+										$(this).prop('disabled', false);
+									} else{
+										$(this).prop('disabled', true);
+									}
+								});
+								$('#shortcut_all').prop('disabled', false);
+							} */		
+						}
+				);
+			}
+		})
+	});
+	
+	function fetchtabdata(tab, page) {
+		//tab 2 fetch url - keep first tab empty
+		var tabs2fetchurl= new Array("", "connections/fetchsentrequest", "connections/fetchreceivedrequest", "connections/fetchsharedrequest", "connections/fetchreceivedsharedrequest");
+		
+		//tab 2 id where list is shown - keep first tab empty
+		var tabs2list = new Array("", "sent_requests_list", "received_requests_list", "shared_requests_list", "received_shared_requests_list");
+		//var tabs2name= new Array("", "sentrequests", "receivedrequests", "sharedrequests");
+			
+		var url = '<?php echo APP_BASE; ?>' + tabs2fetchurl[tab];
+		var filters = '';
+		var sortby = $('#sortby').val();
+		var sortdir = $('#sortdir').val();
+
+		//show a loading animation
+		$('#'+tabs2list[tab]).html('<br/><div class="loadingdiv" align="center"><img src="<?php echo RES_FILE_PATH; ?>/images/ajax-loader.gif"><br /><?php echo $this->translate('loadingpleasewait'); ?></div><br/>');
+
+		filters = $('#overalllist_form').serialize() + '&page=' + page;
+
+		if(sortby) {
+			filters = filters + '&ord=' + sortby;
+		}
+
+		if(sortdir) {
+			filters = filters + '&sort=' + sortdir;
+		}
+		
+		xhr = $.ajax({
+			url : url + '?' + filters,
+			success : function(response) {
+				response_obj = jQuery.parseJSON(response);
+				response_object = response_obj.callBackParameters;
+
+				$('#'+tabs2list[tab]).html(response_object[tabs2list[tab]]);
+				
+				if(tab == "3")
+				{
+					//autoload tab 4 data inside tab 3 after tab 3 first table is loaded
+					fetchtabdata("4", "1");
+				}
+			}
+		});
+	}
+</script>
+<style>
+	.datatable {
+		width: 100%;
+	}
+	
+	.ui-state-active, .ui-widget-content .ui-state-active, .ui-widget-header .ui-state-active,
+	.ui-widget-header,
+	.ui-state-default, .ui-widget-content .ui-state-default, .ui-widget-header .ui-state-default
+	{
+		border-color: #dddddd;
+	}
+	.ui-state-default a, .ui-state-default a:link, .ui-state-default a:visited
+	{
+		color: #555;
+	}
+	.ui-widget-header,
+	.ui-state-active, .ui-widget-content .ui-state-active, .ui-widget-header .ui-state-active,
+	.ui-state-default, .ui-widget-content .ui-state-default, .ui-widget-header .ui-state-default,
+	.ui-widget-content{
+		background: #ffffff;
+	}
+</style>
+<table id="assignmodules_clientNameTable">
+	<tr id="tableTrOne">
+		<td id="tableTrOne_tdOne" colspan="3" valign="top">&nbsp;</td>
+	</tr>
+	<tr id="tableTrTwo">
+		<td id="tableTrTwo_tdOne" valign="top">&nbsp;</td>
+		<td id="tableTrTwo_tdTwo" valign="top"><b><? echo $this->translate('clientname') ?> :</b></td>
+		<td id="tableTrTwo_tdThree" valign="top"><? echo $this->client_name ?></td>
+	</tr>
+	<tr id="tableTrThree" >
+		<td id="tableTrThree_tdOne" colspan="3" valign="top">&nbsp;</td>
+
+	</tr>
+</table>
+<?php if( !empty($_REQUEST['flg']) && $_REQUEST['flg'] == "patient_exists_in_target" ):?>
+<?php  $error_text = $this->translate('Selected patient is already  connected to selected client');
+$error_text = str_replace('%patient_epid', $_REQUEST['p'],$error_text);
+$error_text = str_replace('%target_clientname', $_REQUEST['tc'],$error_text);
+?>
+<div class="err"><p><?php echo $error_text; ?></p></div>
+<?php endif; ?>
+<!-- Tabs newly added 20.07.2015 -->
+<div id="tabs">
+	<ul>
+		<li><a href="#share_patient_tab"><?php echo $this->translate("share_patient_tab_lbl"); ?></a></li>
+		<li><a href="#sent_requests_tab"><?php echo $this->translate("share_posted_patient_tab_lbl"); ?></a></li>
+		<li><a href="#received_requests_tab"><?php echo $this->translate("share_received_patient_tab_lbl"); ?></a></li>
+		<li><a href="#shared_requests_tab"><?php echo $this->translate("share_shared_patient_tab_lbl"); ?></a></li>
+	</ul>
+	<div id="share_patient_tab">
+		<!-- "Share patient" Table & Form start	-->
+		<h1><?php echo $this->translate('share_patient') ?></h1>
+		<form name="share_patient" id="share_patient" action="" method="post">
+			<table border="0" cellspacing="2" cellpadding="2" class="datatable">
+				<tbody>
+					<tr>
+						<td style="width:80px;"><label  class="bigger_label"><?php echo $this->translate('step1'); ?></label> </td>
+						<td><label  class="bigger_label_second"><?php echo $this->translate('search_patient_share'); ?> </label></td>
+					</tr>
+					<tr>
+						<td style="width:35px;"></td>
+						<td colspan="2">
+							<input type="text" name="patientsearch_share" id="patientsearch_share" class="patientsearch_share" value="" autocomplete="off"/>
+							<input type="hidden" value="" name="patientid" id="patientid" />
+							<div id="searchdropdown_share_selected" style="display:none;"></div>
+						</td>
+					</tr>
+					<tr>
+						<td style="width:80px;"><label  class="bigger_label"><?php echo $this->translate('step2'); ?></label> </td>
+						<td><label class="bigger_label_second"><?php echo $this->translate('select_target_client'); ?></label></td>
+					</tr>
+					<tr>
+						<td style="width: 35px;"></td>
+						<td>
+							<select name="target_client" id="target_client">
+								<?php if (!empty($this->associated_clients)): ?>
+									<option value="0"><?php echo $this->translate('selectclient'); ?></option>
+									<?php foreach ($this->associated_clients as $group_client => $client_data): ?>
+										<optgroup label="Group #<?php echo $group_client; ?>">
+											<?php foreach ($client_data as $k_client => $v_client): ?>
+												<option value="<?php echo $v_client['client']; ?>"><?php echo $client_details[$v_client['client']]['client_name']; ?></option>
+											<?php endforeach; ?>
+										</optgroup>
+									<?php endforeach; ?>
+								<?php else: ?>
+									<option><?php echo $this->translate('no_associated_clients'); ?></option>
+								<?php endif; ?>
+							</select>
+						</td>
+					</tr>
+					<tr>
+						<td style="width:80px;"><label  class="bigger_label"><?php echo $this->translate('step3'); ?></label> </td>
+						<td style="vertical-align: top;"><label  class="bigger_label_second"><?php echo $this->translate('shortcuts_to_share'); ?> </label></td>
+					</tr>
+					<tr>
+						<td style="width:35px; vertical-align: top;"></td>
+						<td>
+							<div class="shortcutlist_patientshare" id="shortcuts_list">
+ 
+							</div>
+							<div class="shortcutlist_patientshare">
+								<ul>
+									<li>
+										<div class="smallcolLeft">
+											<input type="checkbox" id="shortcut_all" value="1" name="shortcut_all" disabled="disabled" />
+										</div>
+
+										<div class="colRight">
+											<label for="shortcut_all"><?php echo $this->translate('all_shortcuts') ?></label>
+										</div>
+									</li>
+								</ul>
+							</div>
+						</td>
+					</tr>
+					<tr>
+						<td style="width:80px;"><label  class="bigger_label"><?php echo $this->translate('step4'); ?></label> </td>
+						<td><label  class="bigger_label_second"><?php echo $this->translate('request_share'); ?> </label></td>
+					</tr>
+					<tr>
+						<td style="width:35px;"></td>
+						<td>
+							<label for="request_share_yes"><input type="radio" name="request_share" id="request_share_yes" value="1" checked="checked" /><?php echo $this->translate('yes_radio') ?></label>
+							<label for="request_share_no"><input type="radio" name="request_share" id="request_share_no" value="0" /><?php echo $this->translate('no_radio') ?></label>
+						</td>
+					</tr>
+					<tr>
+						<td style="width:80px;"><label  class="bigger_label"><?php echo $this->translate('step5'); ?></label> </td>
+						<td><label  class="bigger_label_second"><?php echo $this->translate('copy_patient_data'); ?> </label></td>
+					</tr>
+					<tr>
+						<td style="width: 35px;"></td>
+						<td>
+							<label for="allow_copy_yes"><input type="radio" name="allow_copy" id="allow_copy_yes" value="1" checked="checked" /><?php echo $this->translate('yes_radio') ?></label>
+							<label for="allow_copy_no"><input type="radio" name="allow_copy" id="allow_copy_no" value="0" /><?php echo $this->translate('no_radio') ?></label>
+						</td>
+					</tr>
+					<tr>
+						<td colspan="2"><label class="bigger_label_second"><?php echo $this->translate('data_to_copy'); ?> </label></td>
+					</tr>
+					<tr id="copy_options_row">
+						<td style="width: 35px;"></td>
+						<td>
+							<label for="stammdaten"><input type="checkbox" name="copy_options[]" id="stammdaten" value="1"  checked="checked" /><?php echo $this->translate('copy_masterdata') ?></label>
+							<label for="diagnosis"><input type="checkbox" name="copy_options[]" id="diagnosis" value="2" /><?php echo $this->translate('copy_diagnosis') ?></label>
+							<label for="medications"><input type="checkbox" name="copy_options[]" id="medications" value="3" /><?php echo $this->translate('copy_medications') ?></label>
+						</td>
+					</tr>
+					
+					<tr>
+						<td style="width:80px;"><label  class="bigger_label"><?php echo $this->translate('step6'); ?></label> </td>
+						<td><label  class="bigger_label_second"><?php echo $this->translate('copy_patient_documents'); ?> </label></td>
+					</tr>
+									
+					<tr>
+						<td style="width: 35px;"></td>
+						<td>
+							<label for="copy_files_yes"><input type="radio" name="copy_files" id="copy_files_yes" value="1" checked="checked" /><?php echo $this->translate('yes_radio') ?></label>
+							<label for="copy_files_no"><input type="radio" name="copy_files" id="copy_files_no" value="0" /><?php echo $this->translate('no_radio') ?></label>
+						</td>
+					</tr>					
+					
+					
+					
+					<tr>
+						<td colspan="2" style="text-align: center;">
+							<input type="submit" value="<?php echo $this->translate('share'); ?>" name="share_patient_sumbit" id="share_patient_sumbit" />
+						</td>
+					</tr>
+				</tbody>
+			</table>
+		</form>
+		<!-- "Share patient" Table & Form end	-->
+	</div>
+	<div id="sent_requests_tab">
+		<div id="sent_requests_list"></div>
+	</div>
+	<div id="received_requests_tab">
+		<div id="received_requests_list"></div>
+	</div>
+	<div id="shared_requests_tab">
+		<div id="shared_requests_list"></div>
+		<br />
+		<br />
+		<div id="received_shared_requests_list"></div>
+	</div>
+</div>
+<!-- Tabs newly added 20.07.2015 * END -->
+
+
+<!-- dialog modal divs -->
+<div id="select_patient_dialog">
+	<p><?php echo $this->translate('must_select_target_patient'); ?></p>
+</div>
+<div id="select_client_dialog">
+	<p><?php echo $this->translate('must_select_target_client'); ?></p>
+</div>
+<div id="select_client_connection_dialog">
+	<p><?php echo $this->translate('Patient is already  connected to selected client'); ?></p>
+</div>

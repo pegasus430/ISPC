@@ -1,0 +1,391 @@
+<script type="text/javascript">
+	function togglebutton(vals)
+	{
+		if(vals>0 || vals!="")
+		{
+			$('#MedicButton').removeAttr('disabled','disabled');
+		}
+		else
+		{
+			$('#MedicButton').attr('disabled','disabled');
+		}
+	}
+
+	function submitAction()
+	{
+		if($("#buttonAction").val()==1) {
+			document.frmuser.action = "patientform/medicationformpdf?id=<?php echo $_GET['id'];?>&pst=post";
+			document.frmuser.submit();
+		} else if($("#buttonAction").val()==2) {
+			document.frmuser.action = "patient/openpdf?id=<?php echo $_GET['id'];?>";
+			document.frmuser.target = "_blank";
+			document.frmuser.submit();
+
+		} else if($("#buttonAction").val()==3) {
+			document.frmuser.action = "patientform/newmedikamentenplanpdf?id=<?php echo $_GET['id']?>&pst=post";
+			document.frmuser.submit();
+		} else if($("#buttonAction").val()==4) {
+			document.frmuser.action = "patientform/schmerzpumpeplanpdf?id=<?php echo $_GET['id']?>&pst=post";
+			document.frmuser.submit();
+		} else if($("#buttonAction").val()==5) {
+			document.frmuser.action = "patientform/newmediandschmerzpumpeplanpdf?id=<?php echo $_GET['id']?>&pst=post";
+			document.frmuser.submit();
+		}else if($("#buttonAction").val()==6) {
+			document.frmuser.action = "patientform/treatmentcareplanpdf?id=<?php echo $_GET['id']?>&pst=post";
+			document.frmuser.submit();
+		}else if($("#buttonAction").val()==7) {
+			document.frmuser.action = "patientform/medicationformnewpdf?id=<?php echo $_GET['id'];?>&pst=post";
+			document.frmuser.submit();
+		} 
+	}
+	$(document).ready(function() {
+		if($('#schmerze tr:last').attr('class') == "cHeader"){
+		}
+	
+		
+		$('.med_approve_rights').removeAttr('disabled','disabled');
+		$('.med_approve_rights').live('click',function(e){
+			e.preventDefault();
+			
+			var action = $(this).data('action');
+			var recordid = $(this).data('recordid');
+			var alt_id = $(this).data('alt_id');
+			$('.med_approve_rights').attr('disabled','disabled');
+			if(action && recordid){
+				$.ajax({
+					type: 'POST',
+					url: 'ajax/applymedicationchanges?id=<?php echo $_REQUEST['id']; ?>',
+					data: {
+						action: action,
+						recordid: recordid,
+						alt_id: alt_id
+					},
+					success:function(data){
+						location.href = "<?php echo APP_BASE ?>patient/patientmedication?flg=suc&id=<?php echo $_REQUEST['id']; ?>";
+					},
+					error:function(){
+						ajax_done = 1;
+						// failed request; give feedback to user
+					}
+				});
+			}
+		});
+		
+		$('.pump_med_approve_rights').removeAttr('disabled','disabled');
+		$('.pump_med_approve_rights').live('click',function(e){
+			e.preventDefault();
+			
+			var action = $(this).data('action');
+			var recordid = $(this).data('recordid');
+			var alt_id = $(this).data('alt_id');
+			$('.med_approve_rights').attr('disabled','disabled');
+			
+			if(action && recordid){
+				$.ajax({
+					type: 'POST',
+					url: 'ajax/applypumpmedicationchanges?id=<?php echo $_REQUEST['id']; ?>',
+					data: {
+						action: action,
+						recordid: recordid,
+						alt_id: alt_id
+					},
+					success:function(data){
+						location.href = "<?php echo APP_BASE ?>patient/patientmedication?flg=suc&id=<?php echo $_REQUEST['id']; ?>";
+					},
+					error:function(){
+						ajax_done = 1;
+						// failed request; give feedback to user
+					}
+	});
+			}
+		});
+	});
+</script>
+
+<form enctype="multipart/form-data"  action="<?php echo $this->act ?>" method="post" name="frmuser" id="frmuser" autocomplete="off" >
+	<div style="display: none;">
+		<img id="calImg" src="<?php echo RES_FILE_PATH;  ?>/images/calendar.png" alt="Popup" class="trigger">
+	</div>
+
+	<?php echo $this->patientinfo ?>
+	<?php echo $this->tabmenus ?>
+
+	<div class="tab_container">
+	
+	<div class="allergies_comment_box">
+		<label><?php echo $this->translate('allergies_comment')?>:</label>
+		<div id="allergies_container">
+			<span class="editText" id="allergies_pat"><?php if(!empty($this->allergies_comment)):?><?php echo $this->allergies_comment?><?php else: ?><?php echo $this->translate('no alergies'); ?><?php endif;  ?></span>
+		</div>
+	</div>
+
+		<div id="TableContentOuter" >
+
+			<table class="medication_table" border="0" cellspacing="0" cellpadding="0">
+				<tr >
+					<td colspan="2" align="left"  valign="top" style="padding: 0 5px 0 5px; border-top: 1px dashed #000; border-left: 1px dashed #000; border-right: 1px dashed #000;"><h1><?php echo $this->translate('medication');?> <?php if($this->mededit == 1): ?><input name="btnsubmut" type="button" class="button" value="<?php echo $this->translate('edit'); ?>" onclick="location.href='<?php echo APP_BASE ?>patient/patientmedicationedit?id=<?php echo $this->pid?>&case=medication'" style="float:right;" /><?php endif; ?></h1></td>
+				</tr>
+				<tr style="border-left: 1px dashed #000; border-right: 1px dashed #000;">
+					<td  style="padding: 0 5px 0 5px;border-left: 1px dashed #000; border-right: 1px dashed #000;" colspan="2" align="left"  valign="top" height="20"><div class="add_new_medi"><a href="patient/patientmedicationadd?id=<?php echo $_GET['id']?>"><img src="<?php echo RES_FILE_PATH;  ?>/images/edit_add.png" width="20" height="20" /><div class="add_new_medi_link"><?php echo $this->translate('addnewmedication'); ?></div></a></div></td>
+				</tr>
+				<tr><td colspan="2" style="padding: 0 5px 0 5px;border-left: 1px dashed #000; border-right: 1px dashed #000;"><div class="err"><?php echo $this->error_message ?></div></td></tr>
+				<tr >
+					<td colspan="2" align="left" valign="top" style=" border-bottom: 1px dashed #000; border-left: 1px dashed #000; border-right: 1px dashed #000;"><?php echo $this->medications?>
+					</td>
+				</tr>
+				<tr><td colspan="2"><br /><br /></td></tr>
+				<tr>
+					<td colspan="2" align="left"  valign="top" style="padding: 0 5px 0 5px; border-top: 1px dashed #000; border-left: 1px dashed #000; border-right: 1px dashed #000;"><h1><?php echo $this->translate('listbedarfsmedication');?>  <?php if($this->bdedit == 1): ?><input name="btnsubmut" type="button" class="button" value="<?php echo $this->translate('edit'); ?>" onclick="location.href='<?php echo APP_BASE ?>patient/patientmedicationedit?id=<?php echo $this->pid?>&case=bedarfsmedication'" style="float:right" /><?php endif; ?></h1></td>
+				</tr>
+				<tr>
+					<td  colspan="2" align="left"  valign="top" height="20" style="padding: 0 5px 0 5px;border-left: 1px dashed #000; border-right: 1px dashed #000;">
+						<table  width="100%" border="0" cellspacing="0" cellpadding="0">
+							<tr style="border-bottom: 1px dashed #000; border-left: 1px dashed #000; border-right: 1px dashed #000;">
+								<td align="left" width="340">
+
+									<div class="add_new_medi" ><a href="patient/patientmedicationadd?id=<?php echo $_GET['id']?>&isbedarfs=1"><img src="<?php echo RES_FILE_PATH;  ?>/images/edit_add.png" width="20" height="20" /><div class="add_new_medi_linkNew"><?php echo $this->translate('addbedarfsmedication');?></div></a>
+										<div class="add_new_medi_linkNew_Txt left"><?php echo $this->translate('selectset');?></div></div>
+
+									<div class="ClrBoth"></div>         </td>
+
+								<td width="30" align="left"> <?php echo $this->formSelect('bid', $this->bid, array('onChange'=>'togglebutton(this.value)'), $this->bedarfsdrop) ?></td>
+								<td width="239" align="left"><input name="Go" type="submit" id="MedicButton" value="<?php echo $this->translate('add'); ?>" disabled="disabled" /></td>
+								<td width="50" align="right"> <!--<input name="btnsubmut" type="button" class="button" value="<?php echo $this->translate('edit'); ?>" onclick="location.href='<?php echo APP_BASE ?>patient/patientmedicationbedarfsedit?id=<?php echo $this->pid?>'" />--></td>
+							</tr>
+						</table>
+					</td>
+				</tr>
+				<tr style="">
+					<td style="padding: 0 5px 5px 5px; border-bottom: thin dashed black;border-left: thin dashed black;border-right:thin dashed black;border-collapse: collapse;" colspan="2">
+						<?php echo $this->bedarfsmedications?>
+					</td>
+				</tr>
+				<?php
+					if($this->iscrisis):
+				?>		
+				<!-- start Crisis  -->	
+				<tr><td colspan="2"><br /><br /></td></tr>
+				<tr style="border-top:thin dashed black;border-left: thin dashed black;border-right:thin dashed black;border-collapse: collapse;">
+					<td style="padding: 0 5px 0 5px; border-top: 1px dashed #000; border-left: 1px dashed #000; border-right: 1px dashed #000;" colspan="2" align="left"  valign="top">
+						<h1>
+							<?php echo $this->translate('listcrisismedication');?> 
+							<?php if($this->crisisedit == 1): ?>
+								<input name="btnsubmut" type="button" class="button" value="<?php echo $this->translate('edit'); ?>" onclick="location.href='<?php echo APP_BASE ?>patient/patientmedicationedit?id=<?php echo $this->pid?>&case=crisismedication'" style="float:right" />
+							<?php endif; ?>
+						</h1>
+					</td>
+				</tr>
+				<tr style="border-left: thin dashed black;border-right:thin dashed black;border-collapse: collapse;">
+					<td style="padding: 0 5px 0 5px; border-left: 1px dashed #000; border-right: 1px dashed #000;" colspan="2" align="left"  valign="top" height="20">
+						<div class="add_new_medi">
+							<a href="patient/patientmedicationadd?id=<?php echo $_GET['id']?>&medication_type=crisis">
+								<img src="<?php echo RES_FILE_PATH;  ?>/images/edit_add.png" width="20" height="20" />
+								<div class="add_new_medi_linkNew" style="width:300px;"><?php echo $this->translate('add medication crisis');?></div>
+							</a>
+						</div>
+					</td>
+				</tr>
+				<tr style="border-bottom: thin dashed black;border-left: thin dashed black;border-right:thin dashed black;border-collapse: collapse;">
+					<td style="border-bottom: 1px dashed #000;border-left: 1px dashed #000; border-right: 1px dashed #000;" colspan="2" align="left" valign="top" >
+						<?php echo $this->crisismedications; ?>
+					</td>
+				</tr>	
+				<!-- End Crisis  -->		
+				<?php
+					endif;
+				?>				
+				<?php
+				if($this->iv):
+				?>
+				<tr><td colspan="2"><br /><br /></td></tr>
+				<tr >
+					<td colspan="2" align="left"  valign="top" style="padding: 0 5px 0 5px; border-top: 1px dashed #000; border-left: 1px dashed #000; border-right: 1px dashed #000;"><h1><?php echo $this->translate('listivmedication');?> <?php if($this->ivedit == 1): ?><input name="btnsubmut" type="button" class="button" value="<?php echo $this->translate('edit'); ?>" onclick="location.href='<?php echo APP_BASE ?>patient/patientmedicationedit?id=<?php echo $this->pid?>&case=ivmedication'" style="float:right" /><?php endif; ?></h1></td>
+				</tr>
+				<tr>
+					<td colspan="2" style="padding: 0 5px 0 5px; border-left: 1px dashed #000; border-right: 1px dashed #000;">
+						<table width="100%" border="0" cellspacing="0" cellpadding="0">
+							<tr>
+								<td align="left" width="340">
+
+									<div class="add_new_medi"><a href="patient/patientmedicationadd?id=<?php echo $_GET['id']?>&isivmed=1"><img src="<?php echo RES_FILE_PATH;  ?>/images/edit_add.png" width="20" height="20" /><div class="add_new_medi_linkNew"><?php echo $this->translate('addivmedication');?></div></a>
+										<div class="add_new_medi_linkNew_Txt left"></div></div>
+
+									<div class="ClrBoth"></div>         </td>
+
+								<td width="30" align="left"></td>
+								<td width="239" align="left"></td>
+								<td width="50" align="right"></td>
+							</tr>
+						</table>
+					</td>
+				</tr>
+				<tr style="border-bottom: 1px dashed #000; border-left: 1px dashed #000; border-right: 1px dashed #000;">
+					<td colspan="2" align="left" valign="top" style="border-bottom: 1px dashed #000;border-left: 1px dashed #000; border-right: 1px dashed #000;"><?php echo $this->ivmedications?></td>
+				</tr>
+				<?php endif; ?>
+
+
+
+	          <?php
+				if($this->isnutrition):
+				?>
+				<tr><td colspan="2"><br /><br /></td></tr>
+				<tr >
+					<td colspan="2" align="left"  valign="top" style="padding: 0 5px 0 5px; border-top: 1px dashed #000; border-left: 1px dashed #000; border-right: 1px dashed #000;"><h1><?php echo $this->translate('nutrition');?> <?php if($this->nutritionedit == 1): ?><input name="btnsubmut" type="button" class="button" value="<?php echo $this->translate('edit'); ?>" onclick="location.href='<?php echo APP_BASE ?>patient/patientmedicationedit?id=<?php echo $this->pid?>&case=isnutrition'" style="float:right" /><?php endif; ?></h1></td>
+				</tr>
+				<tr>
+					<td colspan="2" style="padding: 0 5px 0 5px; border-left: 1px dashed #000; border-right: 1px dashed #000;">
+						<table width="100%" border="0" cellspacing="0" cellpadding="0">
+							<tr>
+								<td align="left" width="340">
+
+									<div class="add_new_medi"><a href="patient/patientmedicationadd?id=<?php echo $_GET['id']?>&isnutrition=1"><img src="<?php echo RES_FILE_PATH;  ?>/images/edit_add.png" width="20" height="20" /><div class="add_new_medi_linkNew"><?php echo $this->translate('addnutrition');?></div></a>
+										<div class="add_new_medi_linkNew_Txt left"></div></div>
+
+									<div class="ClrBoth"></div>         </td>
+
+								<td width="30" align="left"></td>
+								<td width="239" align="left"></td>
+								<td width="50" align="right"></td>
+							</tr>
+						</table>
+					</td>
+				</tr>
+				<tr style="border-bottom: 1px dashed #000; border-left: 1px dashed #000; border-right: 1px dashed #000;">
+					<td colspan="2" align="left" valign="top" style="border-bottom: 1px dashed #000;border-left: 1px dashed #000; border-right: 1px dashed #000;"><?php echo $this->nutrition?></td>
+				</tr>
+				<?php endif; ?>
+
+
+
+
+				<?php
+				if($this->schmerzepumpe):
+				?>
+				<tr><td colspan="2"><br /><br /></td></tr>
+				<tr style="">
+					<td style="padding: 10px 5px 0 5px; border-top: thin dashed black;border-left: thin dashed black;border-right:thin dashed black;border-collapse: collapse;" colspan="2" align="left"  valign="top"><h1><?php echo $this->translate('listschmerzpumpemedication');?></h1></td>
+				</tr>
+
+				<tr style="border-left: thin dashed black;border-right:thin dashed black;border-collapse: collapse;">
+					<td colspan="2" style="padding: 0 5px 0px 5px; border-left: thin dashed black;border-right:thin dashed black;border-collapse: collapse;">
+						<?php if($this->addnewlink == 1): ?>
+						<table width="100%" border="0" cellspacing="0" cellpadding="0">
+							<tr>
+								<td align="left" width="340">
+									<div class="add_new_medi"><a href="patient/patientmedicationadd?id=<?php echo $_GET['id']?>&isschmerzpumpe=1"><img src="<?php echo RES_FILE_PATH;  ?>/images/edit_add.png" width="20" height="20" /><div class="add_new_medi_linkNew"><?php echo $this->translate('addschmerzpumpemedication');?></div></a>
+										<div class="add_new_medi_linkNew_Txt left"></div></div>
+									<div class="ClrBoth"></div>
+								</td>
+
+								<td width="30" align="left"></td>
+								<td width="239" align="left"></td>
+								<td width="50" align="right"></td>
+							</tr>
+						</table>
+						<?php endif; ?>
+					</td>
+				</tr>
+
+				<tr style="border-bottom: thin dashed black;border-left: thin dashed black;border-right:thin dashed black;border-collapse: collapse;">
+					<td colspan="2" align="left" valign="top" style="padding: 0 5px 5px 5px; border-bottom: thin dashed black;border-left: thin dashed black;border-right:thin dashed black;border-collapse: collapse;"><?php echo $this->schmerzepumpemedications?></td>
+				</tr>
+
+
+				<?php endif; ?>
+				
+				<?php
+					if($this->tr):
+				?>
+				<tr><td colspan="2"><br /><br /></td></tr>
+				<tr>
+					<td colspan="2" align="left"  valign="top" style="padding: 0 5px 0 5px; border-top: 1px dashed #000; border-left: 1px dashed #000; border-right: 1px dashed #000;">
+					<h1>
+						<?php echo $this->translate('list_medication_treatment_care');?> <?php if($this->tredit == 1): ?><input name="btnsubmut" type="button" class="button" value="<?php echo $this->translate('edit'); ?>" onclick="location.href='<?php echo APP_BASE ?>patient/patientmedicationedit?id=<?php echo $this->pid?>&case=treatment_care'" style="float:right" /><?php endif; ?></h1></td>
+				</tr>
+				
+				<tr>
+					<td colspan="2" style="padding: 0 5px 0 5px; border-left: 1px dashed #000; border-right: 1px dashed #000;">
+						<table width="100%" border="0" cellspacing="0" cellpadding="0">
+							<tr>
+								<td align="left" width="340">
+
+									<div class="add_new_medi">
+										<a href="patient/patientmedicationadd?id=<?php echo $_GET['id']?>&treatment_care=1">
+											<img src="<?php echo RES_FILE_PATH;  ?>/images/edit_add.png" width="20" height="20" />
+											<div class="add_new_medi_linkNew"><?php echo $this->translate('addtreatment');?></div>
+										</a>
+										<div class="add_new_medi_linkNew_Txt left"></div></div>
+									<div class="ClrBoth"></div>         
+								</td>
+
+								<td width="30" align="left"></td>
+								<td width="239" align="left"></td>
+								<td width="50" align="right"></td>
+							</tr>
+						</table>
+					</td>
+				</tr>
+				<tr style="border-bottom: 1px dashed #000; border-left: 1px dashed #000; border-right: 1px dashed #000;">
+					<td colspan="2" align="left" valign="top" style="border-bottom: 1px dashed #000;border-left: 1px dashed #000; border-right: 1px dashed #000;"><?php echo $this->treatmentcare?></td>
+				</tr>
+				
+				
+				<?php endif; ?>
+				
+				
+				
+				<tr><td><br /><br /></td></tr>
+				<tr > <td colspan="2" style="padding: 0 5px 0 5px;border-top: 1px dashed #000; border-left: 1px dashed #000; border-right: 1px dashed #000;"><h1><strong><?php echo $this->translate('discontinuedmedlist');?></strong> <?php if($this->deledit == 1): ?><input name="btnsubmut" type="button" class="button" value="<?php echo $this->translate('edit'); ?>" onclick="location.href='<?php echo APP_BASE ?>patient/patientmedicationedit?id=<?php echo $this->pid?>&case=dismedication'" style="float:right" /><?php endif; ?></h1>
+					</td></tr>
+				<tr><td colspan="2"  style="border-bottom: 1px dashed #000; border-left: 1px dashed #000; border-right: 1px dashed #000;"><?php echo $this->delmedications?></td></tr>
+				<tr><td>&nbsp;</td></tr>
+				<?php if($this->isrecords>0)
+				{ ?>
+				<tr><td width="50%" align="left" valign="top"></td>
+
+					<td width="913" align="left" valign="top"></td>
+				</tr>
+				<?php } ?>
+			</table>
+		</div>
+
+		<div class="PatMedBtnOuter">
+			<table>
+			<tr>
+				<td><span style="padding-top:5px; font-weight:800; display:  block;"> Plan ausdrucken </span></td>
+				<td><?php echo $this->formSelect('buttonAction', 0, null, $this->buttonarray) ?></td>
+				<td><input type="button" name="btnsubmit1" id="btnsubmit1" onclick="submitAction();" class="button" value="<?php echo $this->translate('submit') ?>" /></td>
+				
+			</tr>
+			</table>
+			
+			<table>
+			<tr>
+			<td>
+			<?php
+			if($this->pharmacyorder == '1'){
+			echo '<input type="button" class="button" value="Apotheken Bestellung" name="pharmacyorder" id="pharmacyorder" onclick="location.href=\''.APP_BASE.'patient/pharmacyorder?id='.$this->pid.'\'" />';
+			}
+			?>
+			</td>
+			<td>
+				<?php if (! empty($this->checkModulePrivileges['75'])  && $this->has_btm_permission == '1') : ?>
+				<!-- btm button -->
+				<input type="button" class="button" value="BTM Buch" name="btmbuch" id="btmbuch" onclick="location.href='<?php echo APP_BASE; ?>patient/btmbuch?id=<?php echo $this->pid; ?>'" />
+				<?php endif; ?>
+			</td>
+			
+			<td>
+				<?php if (! empty($this->checkModulePrivileges['150'])) : ?>
+				<!-- recipe request button -->				
+ 				<input type="button" class="button" value="<?php echo $this->translate('reciperequest_button');?>" name="reciperequest" id="reciperequest" onclick="location.href='<?php echo APP_BASE; ?>patientnew/reciperequest?id=<?php echo $this->pid; ?>'" />
+				<?php endif; ?>
+			</td>
+			</tr>
+			</table>
+			
+		<div class="clearer"></div>
+		</div>
+	</div>
+</form>

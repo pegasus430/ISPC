@@ -1,0 +1,209 @@
+<script type="text/javascript">
+
+function openSgbv(theUrl)
+{
+	document.location.href = appbase+theUrl;
+}
+
+
+$(function(){
+	
+
+	$('.status_sgbv_radio').live('change click', function(){
+		if($(this).val() == '5'){
+			$('#approve_date_sgbv').show();
+		} else {
+			$('#approve_date_sgbv').hide();
+		}
+
+	});
+
+	$('.sgbv_show_actions').live('click', function(){
+		var row_id = $(this).attr('rel');
+		$('#sgbv_actions_'+row_id+'').toggle()
+	});
+
+	$('#sgbv_quick_approve').dialog({
+		autoOpen:false,
+		modal: true,
+		title: '<?php echo $this->translate('quick_status_change'); ?>',
+		width: '345',
+		height: '250',
+		resizable: false,
+		open: function() {
+			$('#approve_date_sgbv_txt').datepicker({
+				dateFormat: 'dd.mm.yy',
+				showOn: "both",
+				buttonImage: $('#calImg').attr('src'),
+				buttonImageOnly: true,
+				changeMonth: true,
+				changeYear: true,
+				nextText: '',
+				prevText: ''
+			});
+		},
+		buttons: {
+			"<?php echo $this->translate('save'); ?>": function() {
+				$( this ).dialog( "close" );
+				$('#quick_status_change').submit();
+			},
+			"<?php echo $this->translate('cancel'); ?>": function() {
+				$( this ).dialog( "close" );
+			}
+		}
+	});
+
+
+	$('.quick_approve').live('click', function(){
+		$('#sgbv_quick_approve').dialog('open');
+
+		$('#sgbv_id_edit').val($(this).attr('rel'));
+
+		var status = $('#status_'+$(this).attr('rel')).val();
+		var approve_date = $('#approve_'+$(this).attr('rel')).val();
+		$('#sgbv_'+status).attr('checked', true);
+		$('#approve_date_sgbv_txt').val(approve_date);
+		$('#sgbv_initial_status').val(status);
+
+		if(status == '5'){
+			$('#approve_date_sgbv').show();
+		} else {
+			$('#approve_date_sgbv').hide();
+		}
+	});
+	
+	
+
+	$('#sgbv_delete_block').dialog({
+		autoOpen:false,
+		modal: true,
+		title: '<?php echo $this->translate('sgbv_delete'); ?>',
+		width: '345',
+		height: '150',
+		resizable: false,
+		buttons: {
+			"<?php echo $this->translate('delete'); ?>": function() {
+				if (! checkclientchanged()) {
+					return false;
+				}
+				$( this ).dialog( "close" );
+				$('#delete_sgbv_form').submit();
+			},
+			"<?php echo $this->translate('cancel'); ?>": function() {
+				$( this ).dialog( "close" );
+			}
+		}
+	});
+
+	$('#sgbv_delete').live('click', function(){
+		$('#sgbv_delete_block').dialog('open');
+		$('#del_sgbv_id').val($(this).attr('rel'));
+	});
+
+	
+});
+	
+</script>	
+	<!-- used as accordion head -->
+	<div class="entryline">
+	   <span class="selector_divisions division_2" data-division="2">SGBV</span>
+	</div>
+	
+
+	<div class="entryline">
+    	<div style="padding: 0px!important;">
+    		<a href="patient/sgbvverordnung?id=<?php echo $this->pid ?>"  class="sgbv_add_link dontPrint">[<?php echo $this->translate('add') ?>]</a>
+    		<?php if( !empty($this->patient_sgbv) ):?>
+    		<?php $sgbv_actions = $this->patient_sgbv_actions; ?>
+    
+    		<table  class="sgbv_details" style="float:none">
+    			<tr>
+    				<th colspan="2"><?php echo $this->translate('SGB V Verordnung')?></th>
+    				<th><?php echo $this->translate('details')?></th>
+    				<th class="dontPrint"><?php echo $this->translate('action')?></th>
+    			</tr>
+    
+    			<?php $i = 1; foreach($this->patient_sgbv as $sgbv_id =>$sgbv_details):?>
+    			<tr>
+    				<td onclick="openSgbv('patient/sgbvverordnung?id=<?php echo $this->pid?>&sgbv_form_id=<?php echo $sgbv_id; ?>' )"   width="5%">#</td>
+    				<td class="sgbv_show_actions"  onclick="openSgbv('patient/sgbvverordnung?id=<?php echo $this->pid?>&sgbv_form_id=<?php echo $sgbv_id; ?>' )"   width="55%">
+    					<ul class="sgbv_name">
+    					<?php foreach ($sgbv_actions[$sgbv_id] as $ka=>$valuea):?>
+    							<li>
+    								<a href="patient/sgbvverordnung?id=<?php echo $this->pid?>&sgbv_form_id=<?php echo $sgbv_id; ?>" 	<?php if($this->patient_sgbv_actions_foc[$sgbv_id][$ka] == '1'):?>	style="color: red;"	<?php endif;?>><?php echo $valuea; ?>;</a>
+    							</li>
+    					<?php endforeach;?>
+    					</ul>
+    				</td>
+    				<td class="sgbv_show_actions"   onclick="openSgbv('patient/sgbvverordnung?id=<?php echo $this->pid?>&sgbv_form_id=<?php echo $sgbv_id; ?>' )" width="30%" >
+    					<b><a href="patient/sgbvverordnung?id=<?php echo $this->pid?>&sgbv_form_id=<?php echo $sgbv_id; ?>"><?php echo $this->translate('validfrom');?>:</b> <?php echo date('d.m.Y',strtotime($sgbv_details['valid_from']));?></a><br/>
+    					<b><a href="patient/sgbvverordnung?id=<?php echo $this->pid?>&sgbv_form_id=<?php echo $sgbv_id; ?>"><?php echo $this->translate('validtill');?>:</b> <?php echo date('d.m.Y',strtotime($sgbv_details['valid_till']))?></a><br/>
+    					<b><a href="patient/sgbvverordnung?id=<?php echo $this->pid?>&sgbv_form_id=<?php echo $sgbv_id; ?>"><?php echo $this->translate('status');?>:</b> <?php echo $this->sgbv_status[$sgbv_details['status']]; ?></a><br/>
+    				</td>
+    				<td style="vertical-align: top!important;" width="10%" class="dontPrint">
+    					<a href="javascript:void(0);" class="sgbv_edit quick_approve" id="quick_approve" rel="<?php echo $sgbv_id?>" title="<?php echo $this->translate('quick approve'); ?>"><?php echo $this->translate('update') ?></a>
+    					<input type="hidden" value="<?php echo $sgbv_details['status'];  ?>" id="status_<?php echo $sgbv_id?>" />
+    					<input type="hidden" value="<?php if($sgbv_details['approved_limit'] != '0000-00-00 00:00:00'): echo date('d.m.Y', strtotime($sgbv_details['approved_limit'])); else:  echo date('d.m.Y', time()); endif;  ?>" id="approve_<?php echo $sgbv_id?>" />
+    
+				<a href="javascript:void(0);" class="sgbv_delete" id="sgbv_delete" rel="<?php echo $sgbv_id?>" title="<?php echo $this->translate('delete sgbv'); ?>"><?php echo $this->translate('delete') ?></a>												
+				</td>
+    			</tr>
+    
+    			<?php $i++; endforeach; ?>
+    		</table>
+    		<?php else:?>
+    			<span class="sgbv_msg"><?php echo $this->translate('no sgbv added')?></span>
+    		<?php endif;?>
+    	</div>
+	</div>
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+<div id="sgbv_quick_approve"  style="display:none;" class="dontPrint">
+	<form name="quick_status" method="POST"  id="quick_status_change" action="patient/savepatientneactions?id=<?php echo $this->pid?>">
+		<div>
+			<?php
+			$status_data = Pms_CommonData::getSgbvStatusRadio();
+			foreach ($status_data as $k_status => $v_status):
+				?>
+				<div class="status_modal">
+					<label for="sgbv_<?php echo $k_status; ?>"><?php echo $v_status; ?></label>
+					<input type="radio" name="status_sgbv" value="<?php echo $k_status ?>" id="sgbv_<?php echo $k_status; ?>" class="status_sgbv_radio"  />
+				</div>
+			<?php endforeach; ?>
+			<div class="status_modal_datepicker" id="approve_date_sgbv">
+				<input type="text" value="" name="approve_date" id="approve_date_sgbv_txt" />
+			</div>
+			<input type="hidden" name="sgbv_id_edit" id="sgbv_id_edit" value="" />
+			<input type="hidden" name="sgbv_initial_status" id="sgbv_initial_status" value="" />
+
+		</div>
+	</form>
+</div>
+
+<div id="sgbv_delete_block"  style="display:none;" class="dontPrint">
+	<form name="delete_sgbv_form" method="POST" id="delete_sgbv_form" action="patient/savepatientneactions?id=<?php echo $this->pid?>">
+		<p>
+			<?php echo $this->translate('are you sure you want to delete this sgbv entry?');  ?>
+		</p>
+		<input type="hidden" name="deletion_of_sgbv" id="deletion_of_sgbv" value="1" />
+		<input type="hidden" name="del_sgbv_id" id="del_sgbv_id" value="" />
+	</form>
+</div>
+	

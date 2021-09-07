@@ -1,0 +1,914 @@
+<?php
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/page-css/dischargeplanning_style.css');
+?>
+<?
+	$plan = $this->plan ;
+?>
+<script type="text/javascript" src="<?php echo RES_FILE_PATH; ?>/javascript/livesearch/pflegedienste_edit_modal.js"></script>
+<script type="text/javascript">
+var isdischarged = '<? echo $this->isdischarged ?>';
+
+
+var carediv = function(params)
+{
+	document.getElementById('listcarelevel').innerHTML=params.carelist;
+}
+
+var chks;
+var formid;
+
+function updatePatientInformation(modname,fldname,formid,chk,patid,drp){
+	if(chk.checked == true){
+		chks = 1;
+	} else {
+		chks = 0;
+	}
+	if(drp=='drop')
+	{
+		chks = chk.value;
+	}
+	ajaxcall(modname,fldname,chks,patid,formid);
+}
+
+function ajaxcall(modname,fldname,chks,patid,formid){
+
+	if(isdischarged==1){
+		jConfirm('<? echo $this->translate('dischargealert'); ?>', '', function(r) {
+			if(r){
+				ajaxCallserver({url:appbase+'patient/updatepatientinfo?modname='+modname+'&fldname='+fldname+'&chkval='+encodeURIComponent(chks)+'&patid='+patid+'&formid='+formid});
+			}
+		});
+
+		return false;
+	} else {
+		ajaxCallserver({url:appbase+'patient/updatepatientinfo?modname='+modname+'&fldname='+fldname+'&chkval='+encodeURIComponent(chks)+'&patid='+patid+'&formid='+formid});
+	}
+}
+
+$(document).ready(function() { /*------ Start $(document).ready --------------------*/
+	$( ".datepick" ).datepicker({
+		dateFormat: 'dd.mm.yy',
+		showOn: "both",
+		buttonImage: $('#calImg').attr('src'),
+		buttonImageOnly: true,
+		changeMonth: true,
+		changeYear: true,
+		nextText: '',
+		prevText: ''
+	});
+		$('.time_field').mask('99:99')
+
+		var first_pflegedienst_option = "<? echo $plan['existing_care_service']; ?>"
+
+		if(first_pflegedienst_option == '1'){
+			$('#first_pflegedienst_option').val('1');
+		}
+
+/*--------------------------------------------------------------------------------------------------*/
+/*----------------------------------- Contact person -----------------------------------------------*/
+/*--------------------------------------------------------------------------------------------------*/
+
+	$("#contactperson_dialog").dialog({
+		autoOpen: false,
+		width: 600,
+		height: 445,
+		modal:true,
+		resizable: false,
+		title: "Angehörigen",
+		open: function(){
+			$('#submit_contact').attr('alt','contactperson_dialog');
+		}
+	});
+
+	$('#contactperson_option').click(function(){
+		if($(this).val() == '1' ){
+			if($(this).is(":checked")){
+				$(this).removeAttr('checked');
+			}
+
+			$( "#contactperson_dialog" ).dialog('open');
+
+		}
+	});
+
+
+	$('#submit_contact').live('click', function(event){
+
+		//fix for ie8 ->event.preventDefault() is not working in ie8 so we use event.returnValue=false;
+		if (event.preventDefault) {
+			event.preventDefault();
+		} else {
+			event.returnValue = true;
+		}
+		var curentDialogId = $(this).attr('alt');
+		$().ajaxStart(function() {
+			$('#ui-dialog-title-'+curentDialogId).html('<img src="<? echo RES_FILE_PATH; ?>/images/ajax-title-loader.gif" width="14" />&nbsp;&nbsp;Loading...');
+		}).ajaxStop(function() {
+
+				$('#ui-dialog-title-'+curentDialogId).text("Private Pflegeperson");
+
+		});
+
+		var dataString = $("#frmcontact").serialize();
+
+		$.ajax({
+			type: "POST",
+			url: '<?php echo APP_BASE; ?>patient/savecontactperson?id=<?php echo $_GET['id']; ?>',
+			data: dataString,
+			success: function() {
+
+				$('#contactperson_option').val('contact').attr('checked', true).attr('onclick', 'return false;').attr('onkeydown', 'return false;');
+
+				if($('#cnt_phone').val() == ''){
+					alert("<? echo $this->translate('phone_error')?>");
+					event.preventDefault();
+				} else{
+
+					$('#interview_contact').val($('#cnt_first_name').val()+' '+$('#cnt_last_name').val()+'\n'+ $('#cnt_street1').val() +'\n'+ $('#cnt_zip').val()+' '+ $('#cnt_city').val()+'\nTelefon: '+$('#cnt_phone').val()   );
+
+					$('#'+curentDialogId).dialog('close');
+				}
+			},
+			error: function(xhr, ajaxOptions, thrownError) {
+			}
+		});
+	});
+
+/*--------------------------------------------------------------------------------------------------*/
+/*----------------------------------- Pflegedienst -----------------------------------------------*/
+/*--------------------------------------------------------------------------------------------------*/
+
+		/*-------------------------------First pflegedienst   - > betreut bereits -----------------------------------*/
+		$('#first_pflegedienst_option').live('click', function(){
+			if($(this).val() == '0' ){
+				var url = 'patient/pflegedienste?id=<?php echo $_GET['id']; ?>&mod=modal&pflid='+$('#pflidhidden').val();
+				var dialog = $("#first_pflege_dialog");
+				if ($("#first_pflege_dialog").length == 0) {
+					dialog = $('<div id="first_pflege_dialog" style="display:hidden"></div>').appendTo('body');
+				}
+				// load remote content
+				dialog.load(url,{},function(responseText, textStatus, XMLHttpRequest) {
+					dialog.dialog({
+						width: 600,
+						height: 545,
+						modal:true,
+						resizable: false,
+						title: "Pflegedienst",
+						open: function(){
+							if($("#first_pflegedienst_option").is(":checked")){
+								$("#first_pflegedienst_option").removeAttr('checked');
+							}
+							$('#pflegedienste').live('change', function() {
+								$('#hidd_pflegeid').val('');
+							}).liveSearch({
+								url: 'ajax/pflegedienste?q=',
+								id: 'livesearch_stammdaten_pflege',
+								aditionalWidth: '120',
+								noResultsDelay: '900',
+								typeDelay: '900'
+							});
+							$('#submit_btn_pfl').attr('alt','first_pflege_dialog');
+						},
+						close: function(){
+							$('#first_pflege_dialog').remove();
+						}
+							});
+						});
+
+			} else {
+
+
+			}
+		});
+
+
+		/*-------------------------------  New pflegedienst   - > wird eingeschaltet -----------------------------------*/
+		$('#new_pflegedienst_option').live('click', function(){
+			if($(this).val() == '0' ){
+				var url = 'patient/pflegedienste?id=<?php echo $_GET['id']; ?>&mod=modal&pflid='+$('#pflidhidden').val();
+				var dialog = $("#new_pflege_dialog");
+				if ($("#new_pflege_dialog").length == 0) {
+					dialog = $('<div id="new_pflege_dialog" style="display:hidden"></div>').appendTo('body');
+				}
+				// load remote content
+				dialog.load(url,{},function(responseText, textStatus, XMLHttpRequest) {
+					dialog.dialog({
+						width: 600,
+						height: 545,
+						modal:true,
+						resizable: false,
+						title: "Pflegedienst",
+						open: function(){
+							if($("#new_pflegedienst_option").is(":checked")){
+								$("#new_pflegedienst_option").removeAttr('checked');
+							}
+							$('#pflegedienste').live('change', function() {
+								$('#hidd_pflegeid').val('');
+							}).liveSearch({
+								url: 'ajax/pflegedienste?q=',
+								id: 'livesearch_stammdaten_pflege',
+								aditionalWidth: '120',
+								noResultsDelay: '900',
+								typeDelay: '900'
+							});
+							$('#submit_btn_pfl').attr('alt','new_pflege_dialog');
+						},
+						close: function(){
+							$('#new_pflege_dialog').remove();
+						}
+							});
+						});
+
+			} else {
+
+
+			}
+		});
+
+
+		$('#submit_btn_pfl').live('click', function(event){
+			//fix for ie8 ->event.preventDefault() is not working in ie8 so we use event.returnValue=false;
+			if (event.preventDefault) {
+				event.preventDefault();
+			} else {
+				event.returnValue = false;
+			}
+			var curentDialogId = $(this).attr('alt');
+
+			$().ajaxStart(function() {
+				$('#ui-dialog-title-'+curentDialogId).html('<img src="<? echo RES_FILE_PATH; ?>/images/ajax-title-loader.gif" width="14" />&nbsp;&nbsp;Loading...');
+			}).ajaxStop(function() {
+
+				if(curentDialogId == "first_pflege_dialog"){
+					$('#ui-dialog-title-'+curentDialogId).text("Pflegedienst");
+				} else if(curentDialogId == "new_pflege_dialog") {
+					$('#ui-dialog-title-'+curentDialogId).text("Pflegedienst");
+				}
+			});
+
+			var dataString = $("#frmuserpfl").serialize();
+			$.ajax({
+				type: "POST",
+				url: '<?php echo APP_BASE; ?>patient/pflegedienste?id=<?php echo $_GET['id']; ?>&noredir=1',
+				data: dataString,
+				success: function(vars) {
+
+					var obj = $.parseJSON(vars); //parse returned json pflid
+					//					update hidden id with returned pflid
+					if(curentDialogId == "first_pflege_dialog"){
+						$('#first_pflegedienst_option').val('1').attr('checked', true).attr('onclick', 'return false;').attr('onkeydown', 'return false;');
+						$('#first_pflegedienst_details').val($('#pflegedienste').val()+' \n '+$('#first_name').val()+' '+$('#last_name').val()+' \n '+$('#street1').val()+'  \n '+$('#zip').val()+' '+$('#city').val()  );
+					}
+					else if(curentDialogId == "new_pflege_dialog") {
+						$('#new_pflegedienst_option').val('1').attr('checked', true).attr('onclick', 'return false;').attr('onkeydown', 'return false;');
+						$('#new_pflegedienst_details').val($('#pflegedienste').val()+' \n '+$('#first_name').val()+' '+$('#last_name').val()+' \n '+$('#street1').val()+'  \n '+$('#zip').val()+' '+$('#city').val()  );
+					}
+
+					$('#'+curentDialogId).dialog('close');
+				},
+				error: function(xhr, ajaxOptions, thrownError) {
+				}
+			});
+		});
+
+
+		/*-------------------------------  Other Pflegedienste -> Nur Uberleitung an anderen Dienst -----------------------------------*/
+		$('#other_pflegedienst_details').live('change', function() {
+			$('#other_pflegeid').val('');
+			$('#other_pflegedienst_option').val('1').attr('checked', true).attr('onclick', 'return false;').attr('onkeydown', 'return false;');
+			$('#other_pflege_block').show();
+		}).liveSearch({
+			url: 'ajax/otherpflegedienste?q=',
+			id: 'livesearch_stammdaten_pflege',
+			aditionalWidth: '120',
+			noResultsDelay: '900',
+			typeDelay: '900'
+		});
+
+
+/*-----------------------------------------------------------------------------------------------------------------------------*/
+/*---------------------------------------  Supplies  -> Bestellt bei Firma ----------------------------------------------------*/
+/*-----------------------------------------------------------------------------------------------------------------------------*/
+		$('.details_supplier_tr').hide();
+		$('.supplier_info').hide();
+
+// 		aid_formulated
+
+
+		$("input[id^= aid_formulated]").each(function() {
+			var aid_id = $(this).attr('rel');
+			if($('#aid_formulated_'+aid_id).is(':checked')){
+				$('#supplier_info_'+aid_id).show();
+			}
+		});
+
+
+		if($('.aid_type:checked').val() == 2){
+			var supplier_row = $(this).attr('rel');
+			$('#supplier_info_'+supplier_row).show();
+		} else{
+			var supplier_row = $(this).attr('rel');
+			$('#supplier_info_'+supplier_row).hide();
+		}
+
+
+		$(".aid_type").bind('click',function() {
+
+			var supplier_row = $(this).attr('rel');
+
+			if($(this).val() == 2){
+				$('#supplier_info_'+supplier_row).show();
+			} else {
+				$('#supplier_info_'+supplier_row).hide();
+				$('#details_supplier_'+supplier_row).hide();
+
+				$('#supplier_id_'+supplier_row).val('');
+				$('#supplier_'+supplier_row).val('');
+				$('#supplier_first_name_'+supplier_row).val('');
+				$('#supplier_last_name_'+supplier_row).val('');
+
+				$('#supplier_street1_'+supplier_row).val('');
+				$('#supplier_zip_'+supplier_row).val('');
+				$('#supplier_city_'+supplier_row).val('');
+				$('#supplier_phone_'+supplier_row).val('');
+				$('#supplier_fax_'+supplier_row).val('');
+				$('#supplier_comment_'+supplier_row).val('');
+
+			}
+		});
+
+
+
+		//supplies ls
+		$('.aid_supplier').live('keydown', function() {
+			var supplier_row = $(this).attr('rel');
+
+			$('#hidd_supplier_id').val('');
+			$('#details_supplier_'+supplier_row).show();
+
+			$('#supplier_'+$(this).attr('rel')).liveSearch({
+				url: 'ajax/supplies?multiple='+$(this).attr('rel')+'&q=',
+				id: 'livesearch_stammdaten_supp',
+				aditionalWidth: '120',
+				noResultsDelay: '900',
+				typeDelay: '900'
+			});
+
+		})
+
+		$('.add_new_line').live('click',function(){
+
+			var row_status = $('#rows_status').val();
+
+			var aid_status ='<tr class="aid_row"><td><input type="text" name="aid['+row_status+'][aid_item]" value=""/><input type="hidden" name="aid['+row_status+'][aid_item_id]" value="'+row_status+'" /></td><td><input type="radio" class="aid_type" rel="'+row_status+'" id="aid_available_'+row_status+'"  name="aid['+row_status+'][aid_type]" value="1" /></td><td><input type="radio" class="aid_type" rel="'+row_status+'" id="aid_formulated_'+row_status+'" name="aid['+row_status+'][aid_type]" value="2" /></td>';
+			var aid_company = '<td width="50%"><div class="supplier_info" id="supplier_info_'+row_status+'" ><input type="text"  rel="'+row_status+'" class="aid_supplier full_size"  id="supplier_'+row_status+'" name="supplier['+row_status+'][supplier]" value="<? echo $aid['aid_company']?>"  class="full_size" /></div>';
+			var aid_company_details = '<table class="planning_table_aid_supp details_supplier_tr"  id="details_supplier_'+row_status+'"  style="display: none"><tr><td width="50%"><input type="hidden" value="" id="supplier_id_'+row_status+'" name="supplier['+row_status+'][supplier_id]" ><table><tr><td><label>Vorname</label></td>	<td><input type="text" value="" id="supplier_first_name_'+row_status+'"	 name="supplier['+row_status+'][first_name]"  ></td></tr><tr><td><label><? echo $this->translate('street')?></label></td><td><input type="text" value="" id="supplier_street1_'+row_status+'"  name="supplier['+row_status+'][street1]"  ></td></tr>';
+			var aid_company_address = '<tr><td><label>PLZ</label></td><td><input type="text" value="" id="supplier_zip_'+row_status+'"  name="supplier['+row_status+'][zip]"  ></td></tr><tr><td><label>Stadt</label></td>	<td><input type="text" value="" id="supplier_city_'+row_status+'"  name="supplier['+row_status+'][city]"  ></td></tr></table></td><td width="50%"><table><tr><td><label>Nachname</label></td><td><input type="text" value="" id="supplier_last_name_'+row_status+'"  name="supplier['+row_status+'][last_name]"  ></td>	</tr><tr><td><label>Telefon</label></td><td><input type="text" value="" id="supplier_phone_'+row_status+'"  name="supplier['+row_status+'][phone]"   ></td></tr><tr><td><label>Fax</label></td><td><input type="text" value="" id="supplier_fax_'+row_status+'"  name="supplier['+row_status+'][fax]"  ></td></tr></table></td></tr>';
+			var aid_company_comment = '<tr><td colspan="2"><table width="100%"><tr><td style="vertical-align: top;"> <? echo $this->translate('comment')?> </td><td><textarea id="supplier_comment_'+row_status+'"  name="supplier['+row_status+'][comment]"  ></textarea></td></tr></table></td></tr></table></td></tr>';
+
+			$('#planning_table_aid').append(aid_status+aid_company+aid_company_details+aid_company_address+aid_company_comment);
+			$('#supplier_info_'+row_status).hide();
+
+			$(".aid_type").bind('click',function() {
+
+				var supplier_row = $(this).attr('rel');
+
+				if($(this).val() == 2){
+					$('#supplier_info_'+supplier_row).show();
+				} else {
+					$('#supplier_info_'+supplier_row).hide();
+					$('#details_supplier_'+supplier_row).hide();
+
+					$('#supplier_id_'+supplier_row).val('');
+					$('#supplier_'+supplier_row).val('');
+					$('#supplier_first_name_'+supplier_row).val('');
+					$('#supplier_last_name_'+supplier_row).val('');
+
+					$('#supplier_street1_'+supplier_row).val('');
+					$('#supplier_zip_'+supplier_row).val('');
+					$('#supplier_city_'+supplier_row).val('');
+					$('#supplier_phone_'+supplier_row).val('');
+					$('#supplier_fax_'+supplier_row).val('');
+					$('#supplier_comment_'+supplier_row).val('');
+
+				}
+			});
+
+			var new_row = parseInt(row_status) + 1;
+
+			$('#rows_status').val(new_row);
+
+		});
+
+
+});/*-- END  $(document).ready ----------- --*/
+
+
+
+		function selectPflegedienst(pflid)
+		{
+			$('#hidd_pflegeid').val($('#pflege_id_'+pflid).val());
+			$('#pflegedienste').val($('#pflege_nu_'+pflid).val());
+			$('#first_name').val($('#pflege_fn_'+pflid).val());
+			$('#last_name').val($('#pflege_ln_'+pflid).val());
+
+			$('#street1').val($('#pflege_st_'+pflid).val());
+			$('#zip').val($('#pflege_zip_'+pflid).val());
+			$('#city').val($('#pflege_ci_'+pflid).val());
+			$('#phone_practice').val($('#pflege_ph_'+pflid).val());
+			$('#phone_emergency').val($('#pflege_phem_'+pflid).val());
+			$('#fax').val($('#fax'+pflid).val());
+
+		}
+
+
+
+
+		function selectOtherPflegedienst(pflid)
+		{
+			$('#other_pflegeid').val($('#pflege_id_'+pflid).val());
+			$('#other_pflegedienst_details').val($('#pflege_nu_'+pflid).val());
+			$('#other_first_name').val($('#pflege_fn_'+pflid).val());
+			$('#other_last_name').val($('#pflege_ln_'+pflid).val());
+
+			$('#other_street1').val($('#pflege_st_'+pflid).val());
+			$('#other_zip').val($('#pflege_zip_'+pflid).val());
+			$('#other_city').val($('#pflege_ci_'+pflid).val());
+			$('#other_phone_practice').val($('#pflege_ph_'+pflid).val());
+			$('#other_phone_emergency').val($('#pflege_phem_'+pflid).val());
+			$('#other_fax').val($('#fax'+pflid).val());
+		}
+
+
+
+	function selectSupplier(suppid,row_id)
+	{
+		$('#supplier_id_'+row_id).val($('#supp_id_'+suppid).val());
+		$('#supplier_'+row_id).val($('#supp_su_'+suppid).val());
+		$('#supplier_first_name_'+row_id).val($('#supp_fn_'+suppid).val());
+		$('#supplier_last_name_'+row_id).val($('#supp_ln_'+suppid).val());
+
+		$('#supplier_street1_'+row_id).val($('#supp_st_'+suppid).val());
+		$('#supplier_zip_'+row_id).val($('#supp_zip_'+suppid).val());
+		$('#supplier_city_'+row_id).val($('#supp_ci_'+suppid).val());
+		$('#supplier_phone_'+row_id).val($('#supp_ph_'+suppid).val());
+		$('#supplier_fax_'+row_id).val($('#supp_fax_'+suppid).val());
+
+	}
+
+
+</script>
+<?php echo $this->patientinfo;  ?>
+<?php echo $this->tabmenus;  ?>
+  <div id="CalImg" style="display: none;"> <img id="calImg" src="<? echo RES_FILE_PATH;  ?>/images/calendar.png" alt="Popup" class="trigger"> </div>
+<form action="" method="post" name = "discharge_planning"  id="discharge_planning">
+<table class="planning_table">
+	<tr>
+ 		<th>Klinikbesuch Brückenpflege Entlassplanung</th>
+ 	</tr>
+ 	
+ 	
+	<tr>
+		<td>
+			<table class="planning_table_sec">
+				<tr>
+					<td width="10%"><?php echo $this->translate("patient");?> : </td>
+					<td width="55%"><?php echo $this->firstname.' '.$this->lastname?></td>
+					<td width="10%"><?php echo $this->translate("birthd");?> :</td>
+					<td width="25%"><?php echo $this->birth;?></td>
+				</tr>
+			</table>
+		</td>
+	</tr>			
+				
+
+	<tr>
+		<td>
+			<table class="planning_table_sec">
+				<tr>
+					<td>Beginn Besuch: </td>
+					<td><input type="text"  name="plan[start_time]" value="<? echo $plan['start_time']?>" id="start_time" class="time_field" /></td>
+					<td> Ende Besuch:</td>
+					<td><input type="text"  name="plan[end_time]" value="<? echo $plan['end_time']?>"  id="end_time" class="time_field"  /></td>
+					<td>Datum :</td>
+					<td><input type="text"  name="plan[plan_date]" value=" <?  if( $plan['plan_date'] != '0000-00-00 00:00:00' && !empty($plan['plan_date']) ){ echo date('d.m.Y',strtotime($plan['plan_date'])) ;} ?> "  id="plan_date" class="datepick"  /></td>
+				</tr>
+
+				<tr>
+					<td>Fahrtzeit / km </td>
+
+					<td style="padding:0px;">
+						<table class="time_km">
+							<tr>
+								<td class="driving_time">
+									<select name="plan[driving_time]">
+										<option value="--">--</option>
+											<?php for ($i=1; $i<=90; $i++){?>
+												<option value="<?php echo $i; ?>" <?php if($i == $plan['driving_time'] || (empty($plan['driving_time']) && $i == $plan['driving_time'])){ echo 'selected';}?>><?php echo $i; ?></option>
+											<?php }?>
+									</select>
+								</td>
+								<td class="driving_sep">/</td>
+								<td class="driving_distance">
+									<input type="text" name="plan[driving_distance]" value="<?php echo $plan['driving_distance'];?>" />
+								</td>
+							</tr>
+						</table>
+					</td>
+					<td></td>
+					<td></td>
+					<td></td>
+					<td></td>
+				</tr>
+				<tr>
+					<td></td>
+					<td></td>
+					<td> Klinik /Abteilung: </td>
+					<td colspan="3"><input type="text" name="plan[location]" value="<? echo $plan['location']?>" class="full_size" /></td>
+				</tr>
+
+				<tr>
+					<td></td>
+					<td></td>
+					<td>Telefon Nr. :  </td>
+					<td><input type="text" name="plan[location_phone]" value="<? echo $plan['location_phone']?>" /></td>
+					<td>FAX-Nr. :  </td>
+					<td><input type="text" name="plan[location_fax]" value="<? echo $plan['location_fax']?>" /></td>
+				</tr>
+			</table>
+		</td>
+ 	</tr>
+ 	<tr>
+ 		<td>
+			<table class="planning_table_sec">
+				<tr>
+					<td width="71%">Voraussichtliche Entlassung:</td>
+					<td>Datum: </td>
+					<td><input type="text" name="plan[expected_discharge_date]" value="<?  if( $plan['expected_discharge_date'] != '0000-00-00 00:00:00' && !empty($plan['expected_discharge_date']) ){ echo date('d.m.Y',strtotime($plan['expected_discharge_date'])) ;} ?>" id="expected_discharge_date" class="datepick"  /></td>
+				</tr>
+			</table>
+		</td>
+	</tr>
+ 	<tr>
+ 		<td>
+			<table class="planning_table_sec">
+				<tr>
+					<td width="40%" >Ansprechpartner / Bezugspflegekraft:</td>
+					<td width="31%"><input type="text" name="plan[user_details]"  value="<? echo $plan['user_details']?>"  /></td>
+					<td>Telefon: </td>
+					<td><input type="text" name="plan[user_phone]"  value="<? echo $plan['user_phone']?>"  /></td>
+				</tr>
+			</table>
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<table class="planning_table_sec">
+				<tr>
+					<td width="31%" >Gespräch mit:</td>
+					<td width="3%"><input type="checkbox" name="plan[interview_with_patient]" value="1" <? if($plan['interview_with_patient'] == '1'){ echo 'checked="checked" ';}?> /></td>
+					<td width="20%" >Patient</td>
+					<td width="3%"><input type="checkbox" name="plan[interview_with_nurse]" value="1" <? if($plan['interview_with_nurse'] == '1'){ echo 'checked="checked" ';}?> /></td>
+					<td width="20%" >Pflege</td>
+					<td width="3%"><input type="checkbox" name="plan[interview_with_doctor]" value="1" <? if($plan['interview_with_doctor'] == '1'){ echo 'checked="checked" ';}?> /></td>
+					<td width="15%">Arzt</td>
+					<td></td>
+				</tr>
+				<tr>
+					<td colspan="8" ><input type="text" name="plan[interview_details]" value="<? echo $plan['interview_details'] ?>"  class="extra_size"/></td>
+				</tr>
+				<tr>
+					<td></td>
+					<td><input type="checkbox" name="plan[interview_with_contact]" id="contactperson_option" value="1" <? if($plan['interview_with_contact'] == '1'){ echo 'checked="checked" ';}?> /></td>
+					<td>Angehörigen</td>
+					<td colspan="5" ><textarea name="plan[interview_contact]" id="interview_contact" ><? echo $plan['interview_contact'] ?></textarea></td>
+				</tr>
+			</table>
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<table class="planning_table_sec">
+
+				<tr>
+					<td width="31.5%">Pflegedienste und Versorger:</td>
+					<td width="3%"><input type="checkbox" name="plan[existing_care_service]" id="first_pflegedienst_option" value="0" <? if($plan['existing_care_service'] == '1'){ echo 'checked="checked" ';}?> /></td>
+					<td width="28%"> betreut bereits</td>
+					<td width="3%"><input type="checkbox" name="plan[new_care_service]" id="new_pflegedienst_option" value="0" <? if($plan['new_care_service'] == '1'){ echo 'checked="checked" ';}?> /></td>
+					<td width="33%">wird eingeschaltet</td>
+				</tr>
+
+				<tr>
+					<td></td>
+					<td colspan="2" ><textarea name="plan[existing_care_service_text]" id="first_pflegedienst_details"> <? echo $plan['existing_care_service_text']?></textarea></td>
+					<td colspan="2" ><textarea name="plan[new_care_service_text]" id="new_pflegedienst_details" > <? echo $plan['new_care_service_text']?></textarea></td>
+				</tr>
+
+			</table>
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<table class="planning_table_sec">
+				<tr>
+					<td width="62%">Antrag auf Pflegeversicherung nach SGB XI:</td>
+					<td></td>
+					<td><input type="checkbox" name="plan[care_application_set]" value="1" <? if($plan['care_application_set'] == '1'){ echo 'checked="checked"';} ?>  /></td>
+					<td>ist gestellt</td>
+				</tr>
+				<tr>
+					<td></td>
+					<td></td>
+					<td><input type="checkbox" name="plan[care_application_provided]"  value="1"  <? if($plan['care_application_provided'] == '1'){ echo 'checked="checked"';} ?>   /></td>
+					<td>wird gestellt</td>
+				</tr>
+
+
+				<tr>
+					<td></td>
+					<td></td>
+					<td><input type="radio" name="stage"  value="1"   <? if($this->stage == '1'){ ?> checked="checked" <? } ?> onclick="updatePatientInformation('MaintainanceStage','stage','grow7',this,<?php echo "'".$this->patid."'"; ?>,'drop')"    /></td>
+					<td>Pflegestufe I eingestuft</td>
+				</tr>
+				<tr>
+					<td></td>
+					<td></td>
+					<td><input type="radio" name="stage"  value="2"  <? if($this->stage == '2'){ ?> checked="checked" <? } ?> onclick="updatePatientInformation('MaintainanceStage','stage','grow7',this,<?php echo "'".$this->patid."'"; ?>,'drop')"   /></td>
+					<td>Pflegestufe II eingestuft</td>
+				</tr>
+				<tr>
+					<td></td>
+					<td></td>
+					<td><input type="radio" name="stage"  value="3"  <? if($this->stage == '3'){ ?> checked="checked" <? } ?> onclick="updatePatientInformation('MaintainanceStage','stage','grow7',this,<?php echo "'".$this->patid."'"; ?>,'drop')"   /></td>
+					<td>Pflegestufe III eingestuft</td>
+				</tr>
+				<tr>
+					<td></td>
+					<td></td>
+					<td><input type="checkbox" name="plan[care_application_upgrade]"  value="1"  <? if($plan['care_application_upgrade'] == '1'){ echo 'checked="checked"';} ?>   /></td>
+					<td>Antrag auf Höherstufung</td>
+				</tr>
+			</table>
+		</td>
+	</tr>
+
+	<tr>
+		<td>
+		<table class="planning_table_aid" id="planning_table_aid">
+			<tr>
+				<th>Hilfsmittel</th>
+				<th>vorhanden</th>
+				<th>rezeptiert</th>
+				<th>Bestellt bei Firma</th>
+			</tr>
+
+		<? foreach($plan['existing_aid'] as $k => $aid): ?>
+
+			<tr class="aid_row">
+				<td>
+					<input type="text" name="aid[<? echo $k; ?>][aid_item]" value="<? echo $aid['aid_item']; ?>"/>
+					<input type="hidden" name="aid[<? echo $k; ?>][aid_item_id]" value="<? echo $k; ?>" />
+				</td>
+				<td>
+					<input type="radio" class="aid_type" rel="<? echo $k; ?>" id="aid_available_<? echo $k; ?>"  name="aid[<? echo $k; ?>][aid_type]" value="1"  <? if($aid['aid_type']=='1'){?> checked="checked" <? }?> />
+				</td>
+				<td>
+					<input type="radio" class="aid_type" rel="<? echo $k; ?>" id="aid_formulated_<? echo $k; ?>" name="aid[<? echo $k; ?>][aid_type]" value="2" <? if($aid['aid_type']=='2'){?> checked="checked" <? }?> />
+				</td>
+				<td width="50%">
+					<div class="supplier_info" id="supplier_info_<? echo $k; ?>" >
+						<input type="text"  rel="<? echo $k; ?>" class="aid_supplier full_size"  id="supplier_<? echo $k; ?>" name="supplier[<? echo $k; ?>][supplier]" value="<? echo $aid['aid_company']?>"  class="full_size" />
+					</div>
+
+					<table class="planning_table_aid_supp details_supplier_tr"  id="details_supplier_<? echo $k; ?>" >
+					<tr>
+					<td width="50%"><input type="hidden" value="" id="supplier_id_<? echo $k; ?>" name="supplier[<? echo $k; ?>][supplier_id]" >
+						<table>
+							<tr>
+								<td><label>Vorname</label></td>
+								<td><input type="text" value="" id="supplier_first_name_<? echo $k; ?>"	 name="supplier[<? echo $k; ?>][first_name]"  ></td>
+							</tr>
+							<tr>
+								<td><label><? echo $this->translate('street')?></label></td>
+								<td><input type="text" value="" id="supplier_street1_<? echo $k; ?>"  name="supplier[<? echo $k; ?>][street1]"  ></td>
+							</tr>
+
+							<tr>
+								<td><label>PLZ</label></td>
+								<td><input type="text" value="" id="supplier_zip_<? echo $k; ?>"  name="supplier[<? echo $k; ?>][zip]"  ></td>
+							</tr>
+
+							<tr>
+								<td><label>Stadt</label></td>
+								<td><input type="text" value="" id="supplier_city_<? echo $k; ?>"  name="supplier[<? echo $k; ?>][city]"  ></td>
+							</tr>
+						</table>
+					</td>
+
+					<td width="50%">
+						<table>
+							<tr>
+								<td><label>Nachname</label></td>
+								<td><input type="text" value="" id="supplier_last_name_<? echo $k; ?>"  name="supplier[<? echo $k; ?>][last_name]"  ></td>
+							</tr>
+							<tr>
+								<td><label>Telefon</label></td>
+								<td><input type="text" value="" id="supplier_phone_<? echo $k; ?>"  name="supplier[<? echo $k; ?>][phone]"   ></td>
+							</tr>
+							<tr>
+								<td><label>Fax</label></td>
+								<td><input type="text" value="" id="supplier_fax_<? echo $k; ?>"  name="supplier[<? echo $k; ?>][fax]"  ></td>
+							</tr>
+						</table>
+					</td>
+				</tr>
+				<tr>
+					<td colspan="2">
+						<table width="100%">
+							<tr>
+								<td style="vertical-align: top;"> <? echo $this->translate('comment')?> </td>
+								<td><textarea id="supplier_comment_<? echo $k; ?>"  name="supplier[<? echo $k; ?>][comment]"  ></textarea></td>
+							</tr>
+						</table>
+
+					</td>
+				</tr>
+			</table>
+				</td>
+		</tr>
+		<? endforeach; ?>
+		</table>
+		<input type="hidden" id="rows_status" value="<? echo $plan['zkey'];?>" />
+
+		<a class="add_new_line" rel=""  title="" href="javascript:void(0)"><img width="20" height="20" src="<? echo RES_FILE_PATH;  ?>/images/edit_add.png"><span><? echo $this->translate('add_new_line')?></span> </a>
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<table class="planning_table_sec">
+				<tr>
+					<td width="3%"><input type="checkbox" name="plan[another_service]"  id="other_pflegedienst_option" value="1"  <? if($plan['another_service'] == '1'){ echo 'checked="checked"';} ?>   /></td>
+					<td  width="30%">Nur Überleitung an anderen Dienst</td>
+					<td width="67%"><input type="text" name="plan[another_service_text]"   id="other_pflegedienst_details"  value="<? echo $plan['another_service_text']?>"  class="full_size"/></td>
+				</tr>
+				<tr id="other_pflege_block" style="display: none;">
+					<td width="3%"></td>
+					<td  width="30%"></td>
+					<td  width="67%"   style="border: 1px solid #e4e4e4!important; ">
+					<table class="other_pflege_table">
+						<tr>
+						<td width="50%"><input type="hidden" value="" id="other_pflegeid" name="pflege[pflegeid]">
+							<table>
+								<tr>
+									<td><label>Vorname</label></td>
+									<td><input type="text" value="" id="other_first_name"	 name="pflege[first_name]"></td>
+								</tr>
+								<tr>
+									<td><label><? echo $this->translate('street')?></label></td>
+									<td><input type="text" value="" id="other_street1"  name="pflege[street1]"></td>
+								</tr>
+
+								<tr>
+									<td><label>PLZ</label></td>
+									<td><input type="text" value="" id="other_zip"  name="pflege[zip]"></td>
+								</tr>
+
+								<tr>
+									<td><label>Stadt</label></td>
+									<td><input type="text" value="" id="other_city"  name="pflege[city]"></td>
+								</tr>
+							</table>
+						</td>
+
+						<td width="50%">
+							<table>
+								<tr>
+									<td><label>Nachname</label></td>
+									<td><input type="text" value="" id="other_last_name"  name="pflege[last_name]"></td>
+								</tr>
+								<tr>
+									<td><label>Telefon</label></td>
+									<td><input type="text" value="" id="other_phone_practice"  name="pflege[phone_practice]"></td>
+								</tr>
+								<tr>
+									<td><label>Notruf Telefon</label></td>
+									<td><input type="text" value="" id="other_phone_emergency"  name="pflege[phone_emergency]"></td>
+								</tr>
+								<tr>
+									<td><label>Fax</label></td>
+									<td><input type="text" value="" id="other_fax"  name="pflege[fax]"></td>
+								</tr>
+							</table>
+						</td>
+					</tr>
+					<tr>
+						<td colspan="2">
+							<table>
+								<tr>
+									<td style="vertical-align: top;"> <? echo $this->translate('comment')?> </td>
+									<td><textarea id="other_comment"  name="pflege[commen]t"></textarea></td>
+								</tr>
+							</table>
+
+						</td>
+					</tr>
+
+
+				</table>
+						</td>
+		</tr>
+		</table>
+		</td>
+
+
+	</tr>
+
+	<tr>
+		<td>
+			<table class="planning_table_sec">
+				<tr>
+					<td  style="vertical-align: top" width="25%" >Ergänzender Kommentar: </td>
+					<td><textarea name="plan[official_comment]" class="txt_big"><? echo $plan['official_comment']; ?></textarea></td>
+				</tr>
+			</table>
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<table class="planning_table_sec">
+				<tr>
+					<td  style="vertical-align: top"  width="25%">Ergänzender interner Kommentar: </td>
+					<td><textarea name="plan[inofficial_comment]" class="txt_big"><? echo $plan['inofficial_comment']; ?></textarea></td>
+				</tr>
+			</table>
+		</td>
+	</tr>
+</table>
+<input name="save" type="submit" value="<? echo $this->translate('save') ?>" class="btnsubmit_usersessions"/>
+<input name="pdfexport" type="submit" value="<? echo $this->translate('generatepdf') ?>" class="btnsubmit_usersessions"/>
+</form>
+
+<div class="contactperson_block" id="contactperson_dialog">
+	<form action="<? echo $this->act ?>" name="frmcontact" id="frmcontact" method="post" class="contactperson_modal">
+		<div>
+			<label><? echo $this->translate('firstname') ?></label>
+			<input type="text" name="cnt_first_name" id="cnt_first_name" value="<? echo $this->cnt_first_name ?>" />
+		</div>
+		<div>
+			<label><? echo $this->translate('lastname') ?></label>
+			<input type="text" name="cnt_last_name" id="cnt_last_name" value="<? echo $this->cnt_last_name ?>" />
+		</div>
+		<div>
+			<label><? echo $this->translate('street') ?></label>
+			<input type="text" name="cnt_street1" id="cnt_street1" value="<? echo $this->cnt_street1 ?>" />
+		</div>
+
+		<div>
+			<label><? echo $this->translate('city') ?></label>
+			<input type="text" name="cnt_city" id="cnt_city" value="<? echo $this->cnt_city ?>" />
+		</div>
+
+		<div>
+			<label><? echo $this->translate('zip') ?></label>
+			<input type="text" name="cnt_zip" id="cnt_zip" value="<? echo $this->cnt_zip ?>" />
+		</div>
+
+		<div>
+			<label><? echo $this->translate('phone1') ?><span class="rederr">*</span></label>
+			<input type="text" name="cnt_phone" id="cnt_phone" value="<? echo $this->cnt_phone ?>" />
+			<span class="error1"><? echo $this->error_cnt_phone ?></span>
+		</div>
+		<div>
+			<label><? echo $this->translate('phone2') ?></label>
+			<input type="text" name="cnt_mobile" id="cnt_mobile" value="<? echo $this->cnt_mobile ?>" />
+		</div>
+		<div>
+			<label><? echo $this->translate('hatversorgungsvollmacht') ?></label>
+			<? echo $this->formCheckbox('cnt_hatversorgungsvollmacht', $_POST['cnt_hatversorgungsvollmacht'], null, array ('1')); ?>
+		</div>
+		<div>
+			<label>Gesetzlicher Betreuer</label>
+			<? echo $this->formCheckbox('cnt_legalguardian', $_POST['cnt_legalguardian'], null, array ('1')); ?>
+		</div>
+		<div>
+			<label><? echo $this->translate('patientrelationship') ?></label>
+			<? echo $this->formSelect('cnt_familydegree_id', $_POST['cnt_familydegree_id'], null, $this->familydegree) ?>
+		</div>
+		<div>
+			<label><? echo $this->translate('comment') ?></label>
+			<textarea name="cnt_comment" id="cnt_comment" cols="25" rows="5"></textarea>
+		</div>
+		<div>
+			<input type="button" name="submit_contact" id="submit_contact" value="<? echo $this->translate('submit') ?>" class="button" />
+		</div>
+	</form>
+
+
+</div>
+	<div id="patientDet_Infor_denPat" class="dtbox" style="display: none">
+		<h4 class="LineHeading"><? echo $this->translate('carelevellist') ?></h4>
+		<div id="listcarelevel" class="grid">
+<? echo $this->carelevellist ?>
+		</div>
+		<div class="ClrBoth"></div>
+	</div>

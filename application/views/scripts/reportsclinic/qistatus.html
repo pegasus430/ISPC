@@ -1,0 +1,347 @@
+<!--  Maria:: Migration CISPC to ISPC 22.07.2020 -->
+<script>
+
+    $(document).ready(function(){
+
+        $(document).on('change', '#filters select[name="filter-range"]', function(){
+            $('#filters').find('select[name="filter-month"]').hide();
+            $('#filters').find('select[name="filter-quartal"]').hide();
+            $('#filters').find('select[name="filter-year"]').hide();
+            if($(this).val()==1){
+                $('#filters').find('select[name="filter-month"]').show();
+                $('#filters').find('select[name="filter-year"]').show();
+            }
+            if($(this).val()==2){
+                $('#filters').find('select[name="filter-quartal"]').show();
+                $('#filters').find('select[name="filter-year"]').show();
+            }
+            if($(this).val()==3){
+                $('#filters').find('select[name="filter-year"]').show();
+            }
+        });
+
+        $('#filters select[name="filter-range"]').change();
+
+        var chartdata=<?php echo json_encode($this->data);?>;
+
+
+        $('.q-chart').each(function(){
+            var my_prefix=$(this).attr('data-prefix');
+            var tt_enable=true;
+            var c0='#434348';
+            var v0=chartdata[my_prefix]['yes'].length;
+            var v1=chartdata[my_prefix]['no'].length;
+            var percentage="keine Patienten";
+            if($(this).hasClass('q-chart-disabled')){
+                percentage="keine Erfassung";
+            }
+            if(v0+v1<1){
+                v1=1;
+                tt_enable=false;
+                c0='#cccccc';
+            }else{
+                percentage=parseInt(v0/(v0+v1)*100).toString();
+            }
+            var newel=$("<div>");
+            if(percentage.length<3){newel.addClass('percentage');}
+            if(percentage=="100"){newel.addClass('percentage100');}
+            if(percentage.length>3){newel.addClass('percentagetext');}
+            $(newel).append(percentage);
+            if(percentage.length<4){$(newel).append("<span class='light'>%</span>")};
+            $(this).parent().find('.q-right').empty().append(newel);
+            var parent=$(this).parent();
+
+
+        Highcharts.chart(this, {
+            chart:{
+                type:'pie',
+                spacingBottom: 0,
+                spacingRight:0,
+                spacingTop: 0,
+                spacingLeft:0,
+            },
+            title: {
+                text: '',
+                floating:true,
+            },
+            tooltip: {
+                enabled:tt_enable,
+                headerFormat: '',
+                pointFormat: '{point.name}<br><span style="font-size:18px;font-weight: bolder;">{point.y}</span>'
+            },
+            plotOptions:{
+                pie: {
+                    dataLabels: {
+                        enabled: false,
+                        distance: -30,
+                    }
+                },
+                series: {
+                    cursor: 'pointer',
+                }
+            },
+            credits:{enabled:false,},
+            exporting:{enabled:false,},
+
+            series:[{
+                data:[
+                    {name:'erfüllt', color:'#7FCC72',y:v0},
+                    {name:'nicht erfüllt', color:c0, y:v1},
+                ],
+                point:{
+                    events:{
+                        click: function (event) {
+                            //if(this.y >0 && tt_enable){
+                                if( 1|| tt_enable){
+                                var yn='no';
+                                if(this.name == "erfüllt"){
+                                    yn='yes';
+                                }
+                                var l=chartdata[my_prefix][yn];
+                                var table=$('<table class="datatable"><tr><td class="hcaseno">Fallnummer</td><td class="hname">Patient</td><td class="hdate">Fallzeitraum</td></tr></table>');
+                                for(var i in l){
+                                    var d=l[i];
+                                    var row=$('<tr>');
+                                    $(row).data('encid',d['encid']);
+                                    $(row).on('click', function(){
+                                        var xx=$(this).data('encid');
+                                        window.open('<?php echo APP_BASE;?>/patientcourse/patientcourse?id='+xx,'_blank');
+                                    });
+                                    var col=$('<td>');
+                                    $(col).append(d['case_no']);
+                                    $(row).append(col);
+
+                                    var col=$('<td>');
+                                    $(col).append(d['name']);
+                                    $(row).append(col);
+
+                                    var col=$('<td>');
+                                    $(col).append(d['datetext']);
+                                    $(row).append(col);
+
+                                    $(table).append(row);
+                                }
+                                var dlg=$('#patientlistdlg');
+                                $(dlg).empty().append(table);
+                                $(dlg).append($(parent).find('.q-explain').clone());
+                                $(dlg).dialog({
+                                    title:this.name+": "+my_prefix,
+                                    width:580,
+                                    height:400,
+                                });
+                            }
+                        }
+                    }
+                },
+            },
+            ]
+        });
+        });
+
+    });
+
+</script>
+<style>
+    .q-box{
+        border:1px solid #ccc;
+        width:190px;
+        height:120px;
+        vertical-align: top;
+        display:inline-block;
+        margin: 3px 2px;
+        border-radius:2px;
+    }
+    .q-chart{
+        display:inline-block;
+        width:90px;
+        height:90px;
+        vertical-align: top;
+    }
+    .q-right{
+        display: inline-block;
+        width:90px;
+        height:90px;
+        vertical-align: top;
+    }
+    .q-right .percentage{
+        font-size: 58px;
+        color:#555;
+        font-weight: bold;
+        margin-top:18px;
+        text-align: center;
+    }
+    .q-right .percentage100{
+        font-size: 42px;
+        color:#555;
+        font-weight: bold;
+        margin-top:30px;
+        text-align: center;
+    }
+    .q-right .percentagetext{
+        font-size: 18px;
+        color:#555;
+        font-weight: bold;
+        margin-top:24px;
+        text-align: center;
+    }
+    .q-right .light{
+        font-size: 25px;
+        color:#999;
+    }
+    .q-box .caption{
+        font-size: 1em;
+        color:#111;
+        height:25px;
+        background-color: #c1c9d7;
+        padding:1px;
+    }
+    .q-group{
+        padding:2px;
+        margin-bottom:8px;
+    }
+    .q-group h2{
+        font-size:2em;
+        color: #a4acba;
+    }
+    input.big{
+        padding:6px;
+        margin:6px;
+    }
+    input.green{
+        background-color: #90ee90;
+    }
+    #patientlistdlg{
+        display:none;
+    }
+    #patientlistdlg .datatable{
+        width:540px;
+        margin-top:4px;
+    }
+
+    #patientlistdlg .datatable td{
+        border-color:#999;
+    }
+    #patientlistdlg .datatable td.hcaseno{
+        width:100px;
+    }
+    #patientlistdlg .datatable td.hdate{
+        width:145px;
+    }
+
+    #filters{
+        margin:24px 16px;
+    }
+    .q-box .q-explain{
+        display:none;
+    }
+    #patientlistdlg .q-explain{
+        display:block;
+        margin-top:12px;
+    }
+</style>
+<h1>Qualitätsindikatoren</h1>
+
+<div id="filters">
+<form method="get">
+    <div style="display:inline-block;width:400px;">
+    <?php echo $this->formSelect('filter-icd',$this->rfilter['filter-icd'],"",array(0=>'Alle Patienten',1=>'Nur Patienten mit ICD C00 - D48',2=>'Nur Patienten ohne ICD C00 - D48')); ?>
+    <?php echo $this->formSelect('filter-casetype',$this->rfilter['filter-casetype'],"",array('station'=>'der Station','konsil'=>'des Palliativdienstes','ambulant'=>'der Ambulanz')); ?>
+
+    <br>
+    mit Entlassung
+
+    <?php echo $this->formSelect('filter-range',$this->rfilter['filter-range'],"",array(0=>'in den letzten 100 Tagen',1=>'im Monat',2=>'im Quartal', 3=>'im Jahr')); ?>
+
+    <?php
+    $months=array("Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember");
+    $quartals=array_combine(range(1,4),range(1,4));
+    $years=range(date('Y'),2016);
+    ?>
+
+    <?php echo $this->formSelect('filter-month',$this->rfilter['filter-month'],"",$months); ?>
+    <?php echo $this->formSelect('filter-quartal',$this->rfilter['filter-quartal'],"",$quartals); ?>
+    <?php echo $this->formSelect('filter-year',$this->rfilter['filter-year'],"",array_combine($years,$years)); ?>
+    </div>
+    <div style="display:inline-block;width:200px;">
+    <input type="submit" value="Aktualisieren" class="big green">
+    </div>
+</form>
+</div>
+
+
+<?php
+$l=array(
+    array(  'label'=>'Allgemein',
+            'data'=>array(
+                array('label'=>'Reduktion Schmerz', 'prefix'=>'Q1',),
+                array('label'=>'Reduktion Atemnot', 'prefix'=>'Q2',),
+                array('label'=>'Opiate und Laxantien', 'prefix'=>'Q3',),
+            ),
+    ),
+    array(  'label'=>'Sterbephase',
+            'data'=>array(
+                array('label'=>'Symptomassessment', 'prefix'=>'Q4'),
+                array('label'=>'Erfassung von Unruhe', 'prefix'=>'Q5'),
+                array('label'=>'Beenden von tumorspezifischen Maßnahmen', 'prefix'=>'Q6'),
+                array('label'=>'Beenden von medizinischen Maßnahmen', 'prefix'=>'Q7'),
+            ),
+    ),
+    array(  'label'=>'Therapieplanung',
+            'data'=>array(
+                array('label'=>'Screening auf Depression', 'prefix'=>'Q8'),
+                array('label'=>'Vorausschauende Versorgungsplanung', 'prefix'=>'Q9'),
+                array('label'=>'Screening mittels IPOS', 'prefix'=>'Q10'),
+            ),
+    )
+);
+
+$explain=array();
+$explain['Q2']="Zähler: Anzahl Patienten mit Reduktion der Atemnot innerhalb von 48h<br>Nenner: Alle Patienten mit mittlerer/starker Atemnot ";
+$explain['Q1']="Zähler: Anzahl Patienten mit Reduktion des Schmerzes innerhalb von 48h<br>Nenner: Alle Patienten mit mittlerem/starkem Schmerz ";
+$explain['Q3']="Zähler: Anzahl Patienten ohne Therapie mit osmotisch wirksamen und/oder stimulierenden Laxantien (wird erhoben bei Entlassung)<br>Nenner: Alle Patienten mit Opiatmedikation (wird erhoben bei Entlassung)";
+
+$explain['Q4']="Zähler: Anzahl Patienten mit IPOS in den letzten 72h vor Versterben<br>Nenner: Alle verstorbenen Patienten";
+$explain['Q5']="Zähler: Anzahl Patienten mit Evaluation von Unruhe in den letzten 72h vor Versterben<br>Nenner: Alle verstorbenen Patienten mit IPOS in letzten 72h";
+$explain['Q6']="Zähler: Anzahl Patienten mit tumorspezifischen Maßnahmen (system. Th, Radioth.) innerhalb von 14 Tagen vor Versterben (wird erhoben bei Entlassung)<br>Nenner: Alle verstorbenen Patienten";
+$explain['Q7']="Zähler: Anzahl Patienten mit Dialyse, Hämofiltration oder Beatmung innerhalb von 7 Tagen vor Versterben (wird erhoben bei Entlassung)<br>Nenner: Alle verstorbenen Patienten";
+$explain['Q8']="Zähler: Anzahl Patienten mit Screening auf Depression bei Therapieplanung (über Kontaktformularblock)<br>Nenner: Alle Patienten mit Diagnose C00-D48 (Hauptdiagnose unter Diagnosen)";
+
+$explain['Q9']="Zähler: Anzahl Patienten mit Gespräch über die vorausschauende Versorgungsplanung bei Therapieplanung (erhoben im Behandlungsplan)<br>Nenner: Alle Patienten mit Diagnose C00-D48 (Hauptdiagnose unter Diagnosen)";
+if($this->qi9fromacp){
+    $explain['Q9']="Zähler: Anzahl Patienten mit ACP-Gesprächsinhalt im Gesprächsblock<br>Nenner: Alle Patienten mit Diagnose C00-D48 (Hauptdiagnose unter Diagnosen)";
+}
+
+$explain['Q10']="Zähler: Anzahl Patienten mit Screening mittels IPOS bei Therapieplanung (liegt IPOS in den ersten 48h nach Aufnahme vor?)<br>Nenner: Alle Patienten mit Diagnose C00-D48 (Hauptdiagnose unter Diagnosen)";
+
+
+if(!$this->dgp){
+    //DGP Module is not active. No Data.
+    $l[0]['data'][2]['disabled']=true;
+    $l[1]['data'][2]['disabled']=true;
+    $l[1]['data'][3]['disabled']=true;
+}
+
+?>
+<?php foreach ($l as $group):?>
+    <div class="q-group">
+    <h2><?php echo $group['label'];?></h2>
+    <?php foreach ($group['data'] as $item):?>
+            <div class="q-box <?php if($item['disabled']):?>q-box-disabled<?php endif;?>" >
+                <div class="caption"><?php echo $item['prefix'];?>: <?php echo $item['label'];?></div>
+                <div class="q-chart <?php if($item['disabled']):?>q-chart-disabled<?php endif;?>" data-prefix="<?php echo $item['prefix'];?>">
+                </div>
+                <div class="q-right <?php if($item['disabled']):?>q-right-disabled<?php endif;?>">
+                    <div class="percentage"><?php echo "?";?><span class="light">%</span></div>
+                </div>
+                <div class="q-explain"><b>Hinweis zur Ermittlung:</b><br><?php echo $explain[$item['prefix']];?></div>
+            </div>
+    <?php endforeach;?>
+    </div>
+<?php endforeach;?>
+
+
+<div id="patientlistdlg">
+
+</div>
+
+

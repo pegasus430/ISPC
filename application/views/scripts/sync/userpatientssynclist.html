@@ -1,0 +1,291 @@
+<?php
+$this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/pagination_style.css?'.date('Ymd'));
+$this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/qtip/jquery.qtip.min.css?'.date('Ymd'));
+
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/jquery.blockUI.js?'.date('Ymd'));
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/qtip/jquery.qtip.min.js?'.date('Ymd'));
+?>
+<script type="text/javascript">
+
+	function getoveralllist(page) {
+		var url = '<?php echo APP_BASE; ?>sync/fetchpatientsync';
+		var filters = '';
+		var sortby = $('#sortby').val();
+		var sortdir = $('#sortdir').val();
+
+		//show a loading gif
+		$('#overallpatientlist').html('<br/><div class="loadingdiv" align="center"><img src="<?php echo RES_FILE_PATH; ?>/images/ajax-loader.gif"><br /><?php echo $this->translate(loadingpleasewait); ?></div><br/>');
+
+		filters = $('#overalllist_form').serialize() + '&page=' + page;
+
+		if(sortby) {
+			filters = filters + '&ord=' + sortby;
+		}
+
+		if(sortdir) {
+			filters = filters + '&sort=' + sortdir;
+		}
+		xhr = $.ajax({
+			url : url + '?' + filters,
+			success : function(response) {
+				$('#overallpatientlist').html(response);
+			}
+		});
+	}
+
+	
+	
+	
+
+	$(function() {
+		$('#apply').click(function() {
+			//reset pages and sorting
+			$('#sortby').val('');
+			$('#sortdir').val('');
+			$('#current_page').val('');
+			getoveralllist();
+			return false;
+
+		});
+
+		$('.checkcolumns').click(function(){
+			$('#savecols').val('1');
+			getoveralllist();
+			return false;
+		});
+		$('.overallpages').live('click',function(){
+			getoveralllist($(this).attr('rel'));
+		});
+
+		$('.overallsort').live('click',function(){
+			$('#sortby').val($(this).attr('rel'));
+			$('#sortdir').val($(this).attr('title'));
+			$('#current_page').val('');
+			getoveralllist();
+		});
+
+
+		$("#patientlisttabs").bind("tabsselect", function(event, ui) {
+			xhr.abort(); //added abort of previous request...causing columns misbehaving when changing tabs
+			$('#sortby').val('ln')//change sort to defaul value "ln"
+			var tabsid2string = new Array("assignedpats","active");
+			$('#f_status').val(tabsid2string[ui.index]);
+			$('#savecols').val('0'); //reset save method each time a tab is changed
+			//reset filters when changing tabs
+			$(':input','#overalllist_form')
+				.not(':button, :submit, :reset, :hidden, .checkcolumns, select[name=f_dob_start], select[name=f_dob_end], input[name="icon_sys[]"], input[name="icon_cust[]"], .icon_input')
+				.val('')
+				.removeAttr('checked')
+				.removeAttr('selected');
+			$('select[name=f_dob_start] option:last-child').attr('selected', true);
+			$('select[name=f_dob_end] option:first-child').attr('selected', true);
+
+			$('td#filters_row input[type=checkbox]').removeAttr('checked');
+			//load list
+			getoveralllist();
+
+		});
+
+
+ 
+		getoveralllist(1);
+	});
+
+	
+	
+	
+	$(document).ready(function() {
+		$("#paneln").hide();
+
+		$(".btn-slide-n_p").live('click',function(){
+			$("#paneln").slideToggle("slow");
+			$(this).toggleClass("active");
+			return false;
+		});
+		$(".btn-slide-n_p").addClass('ui-state-default ui-corner-bottom');
+		$( "#patientlisttabs" ).tabs();
+
+		
+		
+		$('#sync_patients_button').live('click', function(){
+			jConfirm('<?php echo $this->translate("confirm_sync_patients"); ?>', '<?php echo $this->translate("confirmdeletetitle"); ?>', function(r) {
+				if(r){
+					var syncArray = $('.sync_patients:checked').map(function(){ return $(this).val();}).get().join(",");
+
+
+					var selected = [];
+					var unselected = [];
+					$('.sync_patients').each(function() {
+					   if ($(this).is(':checked')) {
+					       selected.push($(this).val());
+					   } else {
+					       unselected.push($(this).val());
+					   }
+					});
+					
+					
+					$.ajax({
+						type: 'post',
+						url: 'sync/userpatientssynclist',
+						data: {
+							sync_patients : syncArray,
+							selected : selected,
+							unselected : unselected,
+							action: 'sync'
+						},
+						success: function() {
+							window.location.href = "<?php echo APP_BASE; ?>sync/userpatientssynclist";
+							$('.sync_patients:checked').each(function(){
+							});
+						}
+					});
+				} else {
+					$('.sync_patients:checked').each(function(){
+						$(this).attr("checked", false);
+					});
+				}
+			});
+		});
+		
+		//ISPC - 2275
+		$('#unsync_patients_button').live('click', function(){
+			jConfirm('<?php echo $this->translate("confirm_unsync_patients"); ?>', '<?php echo $this->translate("confirmdeletetitle"); ?>', function(r) {
+				if(r){
+					var selected = [];
+					var unselected = [];
+					$('.unsync_patients').each(function() {
+					   if ($(this).is(':checked')) {
+					       selected.push($(this).val());
+					   } 
+					});
+					
+					$.ajax({
+						type: 'post',
+						url: 'sync/userpatientssynclist',
+						data: {
+							selected : selected,
+							action: 'unsync'
+						},
+						success: function() {
+							window.location.href = "<?php echo APP_BASE; ?>sync/userpatientssynclist";
+						}
+					});
+				} else {
+					$('.unsync_patients:checked').each(function(){
+						$(this).attr("checked", false);
+					});
+				}
+			});
+		});
+		
+		$('#select_all').live('click', function () {
+			$(".sync_patients").prop("checked", $('#select_all').prop("checked"));
+		})
+		
+		//ISPC - 2275
+		$(document).on('change', '#select_all_available', function () {
+			$(".unsync_patients").prop("checked", $('#select_all_available').prop("checked"));
+		});
+
+	});
+	function DoNav(theUrl){
+		$('.modal').live('click', function(){
+			var values = getQueryParams(theUrl);
+
+			$('#id').val(values['id']);
+			$('#activated').val(values['activate']);
+
+			centerPopup({sr:"inline",ht:400,wt:450});
+			loadPopup();
+		});
+	}
+	function getQueryParams( val ) {
+        //Use the window.location.search if we don't have a val.
+        var query = val || window.location.search;
+        query = query.split('?')[1]
+        var pairs = query.split('&');
+        var retval = {};
+        var check = [];
+        for( var i = 0; i < pairs.length; i++ ) {
+                check = pairs[i].split('=');
+                retval[decodeURIComponent(check[0])] = decodeURIComponent(check[1]);
+        }
+
+        return retval;
+}
+</script>
+
+<h1>Patienten <?=$this->sync_4_user_nice_info;?></h1>
+<div class="listfilters">
+<div id="patientlisttabs">
+	<ul>
+		<li><a href="javascript:void(0)" rel="1" class="tabs" id="tab-0" ><?php echo $this->translate('overallassignedpatients')?></a></li>
+		<li><a href="javascript:void(0)" rel="2" class="tabs" id="tab-1" ><?php echo $this->translate('activepatients')?></a></li>
+	</ul>
+		<form id="overalllist_form">
+		<input type="hidden" value="" name="f_status" id="f_status" />
+</form>
+<div id="overallpatientlist">
+<!-- content loaded by AJAX request -->
+</div>
+
+</div>
+
+</div>
+
+<fieldset>
+<legend><h1><? echo $this->translate("Sync patient list")?><br><?=$this->sync_4_user_nice_info;?></h1></legend>
+
+<table class="overalllistatable datatable"  cellpadding="0" cellspacing="0" border="0" style="width:100%;">
+		<tr>
+			<th  width="5%">
+				#
+			</th>
+			<th  class="col-12 columns" width="5%">
+				<input type="checkbox" name="select_all_available" id="select_all_available" />
+				<span>&nbsp;*</span>
+			</th>
+			<th  class="col-1 columns">
+				<span class="thtitle"><? echo $this->translate('ePid')?></span>
+			</th>
+			<th class="col-2 columns">
+				<span class="thtitle"><? echo $this->translate('lastname')?></span>
+			</th>
+			<th class="col-3 columns">
+				<span class="thtitle"><? echo $this->translate('firstname')?></span>
+			</th>
+		</tr>
+		<?php if(sizeof($this->sync_patientlist) > 0):?>
+
+	<?php
+	$i=1;
+	foreach($this->sync_patientlist as $patient_item):?>
+		<tr id="row-<?php echo $i; ?>">
+			<td class="col-0 columns"><?php echo ($i+(($this->current_page-1)*$this->limit)); ?></td>
+			<td class="col-12 columns">
+				<input type="checkbox" value="<?php echo $patient_item['enc_id']?>" class="unsync_patients" name="unsync_patients[]" rel="<?php echo $i; ?>" />
+			</td>
+			<td class="col-1 columns"><?php echo $patient_item['EpidIpidMapping']['epid']?></td>
+			<td class="col-2 columns"><?php echo $patient_item['last_name']?></td>
+			<td class="col-3 columns"><?php echo $patient_item['first_name']?></td>
+		</tr>
+	<?php
+	$i++;
+	endforeach;?>
+	<tr>
+		<td colspan="5">
+			<div id="unsync_patients_div">
+				<input name="unsync_patients" value="<?php echo $this->translate("remove selected from sync")?>" id="unsync_patients_button" type="button">
+			</div>
+		</td>
+	</tr>
+<?php else:?>
+	<tr>
+	<td colspan="5"><?php echo $this->translate('No patients available')?></td>
+	</tr>
+<?php endif;?>
+ 	
+	</table>
+	</fieldset>
+	
+<div> * - <?php echo $this->translate("select to remove from list")?></div>

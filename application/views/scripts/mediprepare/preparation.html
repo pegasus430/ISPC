@@ -1,0 +1,718 @@
+<?php
+//ISPC-2804,Elena,18.02.2021
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/data_tables/datatables.min.css');
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/data_tables/jquery.dataTables.js');
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/data_tables/fixedColumns.dataTables.min.css');
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/data_tables/dataTables.fixedColumns.min.js');
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/data_tables/mediscreen.css?' . date('Ymd'));
+
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/icon_patient_medication.css?' . date('Ymd'));
+
+$this->headScript()->appendFile(RES_FILE_PATH . '/javascript/pms/modalevents.js?' . date('Ymd'));
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/patienteventsmodal.css?' . date('Ymd'));
+
+// $this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/medicationnew.css');
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/page-css/patientmedication/style.css');
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/dateUtil.js');
+$this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/pagination_style.css?'.date('Ymd'));
+$this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/page-css/patientlists/patientoveralllist.css?'.date('Ymd'));
+$heute = date('d.m.Y');
+?>
+<script>
+    //@see https://stackoverflow.com/questions/6677035/jquery-scroll-to-element
+    function scrollTo(selector) {
+        document.querySelector(selector).scrollIntoView({behavior: 'smooth'})
+    }
+
+    function setPrepareDate(days) {
+        var dt1 = new Date();
+        var currentDate = dt1.getDate();
+        var dt = new Date();
+        dt.setDate(currentDate + days);
+        var day = dt.getDate();
+        var month = dt.getMonth();
+        month = month + 1;
+        if ((String(day)).length == 1)
+            day = '0' + day;
+        if ((String(month)).length == 1)
+            month = '0' + month;
+
+        var formattedPrepareDate = day + '.' + month + '.' + dt.getFullYear();
+        return formattedPrepareDate;
+    }
+
+    $(document).ready(function () {
+        $('#mediprep').tabs();
+
+        $('.datepicker').datepicker();
+        $('#for_today').on('click', function () {
+            $('#stellliste_date').val(setPrepareDate(0));
+        })
+        $('#for_tomorrow').on('click', function () {
+
+            $('#stellliste_date').val(setPrepareDate(1));
+        })
+
+        $('#after_tomorrow').on('click', function () {
+
+            $('#stellliste_date').val(setPrepareDate(2));
+        })
+
+        $('#for_pat_all').on('click', function () {
+            $('.choose_room_for_prepare').prop('checked', true);
+        })
+        $('#for_pat_selected').on('click', function () {
+            $('.choose_room_for_prepare').prop('checked', false);
+        })
+        //<!-- TODO-3949, Elena, 15.03.2021-->
+        $('#chk_all_patients').on('change', function(){
+            if($(this).is(':checked')){
+                $('.choose_room_for_prepare').prop('checked', true);
+            } else {
+                $('.choose_room_for_prepare').prop('checked', false);
+            }
+
+        })
+
+        $('.choose_room_for_prepare').on('change', function(){
+            if(!$(this).is(':checked')){
+                $('#chk_all_patients').prop('checked', false);
+            }
+
+        })
+
+        $('#create_list').on('click', function () {
+            console.log('click');
+            var patients_chosen = false;
+            $('.choose_room_for_prepare').each( function(ind){
+                console.log($(this));
+                if($(this).is(':checked')){
+                    patients_chosen = true;
+                }
+            })
+            if(!patients_chosen){
+                jAlert('Patienten müssen ausgewählt werden!');
+                return;
+            }
+            if($('#stellliste_date').val() == ''){
+                jAlert('Datum muss eingetragen werden!');
+                return;
+            }
+            $('#stelliste_set').html('');
+            $('#pdfcreate').val(0);
+            $('#to_save').val(0);
+            var selectedData = $('#rooms_patients_choice_form').serializeObject();
+            console.log(selectedData);
+            $.post(
+                appbase + 'mediprepare/mediplans',
+                //method: "POST",
+                //"async": false,
+                selectedData,
+                function (html) {
+                    //console.log(html);
+                    $('#stelliste_set').show();
+                    $('#stelliste_set').html(html);
+                    $('#rooms_patients_choice_cont').hide();
+                }
+            );
+        })
+
+        $('#back_to_choice').live('click', function () {
+            $('#stelliste_set').hide();
+            $('#rooms_patients_choice_cont').show();
+        })
+
+        $('.room_nav').live('click', function () {
+            var toGo = $(this).attr('data-goto');
+            scrollTo('#' + toGo);
+        })
+
+        $('.expand_details').live('click', function (e) {
+            e.preventDefault();
+            var med_id = $(this).data('expand_details_id');
+//	console.log(med_id );
+
+            if ($('.medication_row_' + med_id).hasClass('expanded')) {
+                $('.medication_row_' + med_id).removeClass('expanded')
+                $('.medication_details_row_' + med_id).hide();
+            } else {
+                $('.medication_row_' + med_id).addClass('expanded')
+                $('.medication_details_row_' + med_id).show();
+
+            }
+        });
+
+        $('#timerange_group').hide();
+        $('#timerange_filter').live('change', function () {
+            if ($(this).prop('checked')) {
+                $('#timerange_group').show();
+            } else {
+                $('#timerange_group').hide();
+            }
+        })
+        $('.gototop').live('click', function (e) {
+            e.stopPropagation();
+            $('html, body').animate({scrollTop: 0}, 'fast');
+
+        })
+
+        $('.btn_tool').live('click', function (e) {
+            e.stopPropagation();
+            var val = $(this).attr('data-value');
+            if (val == 'pdf') {
+                $('#pdfcreate').val(1);
+                $('#to_save').val(0);
+                $('#rooms_patients_choice_form').submit();
+
+            } else if (val == 'prepare') {
+                $('#pdfcreate').val(0);
+                $('#to_save').val(1);
+                console.log('to create');
+                var selectedData = $('#rooms_patients_choice_form').serializeObject();
+                console.log(selectedData);
+                $('#loader_group').show();
+                $.post(
+                    appbase + 'mediprepare/mediplans',
+                    //method: "POST",
+                    //"async": false,
+                    selectedData,
+                    function (data) {
+                        //console.log(html);
+                        console.log(data);
+                        $('#loader_group').hide();
+                        $('#preparesuccess').dialog('open');
+                    }
+                );
+            }
+
+
+        })
+        $('#preparesuccess').dialog(
+            {modal: true,
+            autoOpen : false,
+            resizable: false,
+            close: function(){
+                $('#back_to_choice').trigger('click');
+            }
+            }
+
+        )
+
+        $('#logwin').dialog({
+            width: 900,
+            height: 600,
+            modal: true,
+            autoOpen : false,
+            resizable: false,
+
+            title: "Stellliste Log",
+            open: function () {
+                $.ajax({
+                    url: appbase + 'mediprepare/log',
+                    method: "GET",
+
+                    "success": function (html) {
+                        $('#logcont').html(html);
+                    }
+                })
+
+            },
+            close: function () {
+                $('#logcont').html('');
+            }
+        });
+
+        $('#show_log').live('click', function(){
+            $('#logwin').dialog('open');
+        })
+
+
+        $.ajax({
+            url: appbase + 'mediprepare/givelist',
+            method: "GET",
+
+            "success": function (html) {
+                $('#gabeliste_content').html(html);
+            }
+        })
+
+        $('.to_pat_medi').live('click', function(e){
+            e.stopPropagation();
+            $('#medicont').html('');
+            var href= $(this).attr('data-href');
+            //ISPC-2804,Elena,19.03.2021
+            $('#medication_icon_block').load(href);
+            $('#medipat').dialog('open');
+            /*
+            //ISPC-2804,Elena,19.03.2021
+            $.ajax({
+                url: href,
+                method: "GET",
+
+                "success": function (html) {
+                    $('#medicont').html(html);
+                    $('#medipat').dialog('open');
+                }
+            })*/
+
+        })
+
+        $('#medipat').dialog({
+            width: 900,
+            height: 600,
+            modal: true,
+            autoOpen : false,
+            resizable: false,
+
+            title: "Medikation",
+            open: function () {
+
+
+            },
+            close: function () {
+               // $('#logcont').html('');
+            }
+        });
+
+        var langurl = appbase + 'javascript/data_tables/de_language.json';
+
+        $('#list_rooms_patients').DataTable( {
+            "language": {
+                "url": langurl
+            }
+        });
+
+
+
+
+    })
+</script>
+<style>
+    table.medikation > thead > tr > th.name {
+        width: 30%;
+    }
+
+    .chosen_rooms ul {
+        display: block;
+        margin-bottom: 20px;
+    }
+
+    .chosen_rooms ul li, .chosen_rooms_given ul li {
+        display: inline-block;
+
+        list-style-type: none;
+    }
+
+    .room_nav , .room_nav_given{
+        display: inline-block;
+        padding: 5px;
+        margin-right: 10px;
+        background-color: #00a2ff;
+        color: #ffffff;
+        cursor: pointer;
+        float: left;
+        border-radius: 3px;
+
+
+    }
+    .to_pat_medi{
+        display: inline-block;
+        padding: 3px;
+
+        background-color: #00a2ff;
+        color: #ffffff;
+        cursor: pointer;
+
+        border-radius: 3px;
+        margin:5px;
+
+    }
+
+    div.chosen_patients {
+        display: block;
+    }
+
+    div.patdata {
+        display: block;
+        clear: both;
+    }
+
+    .patdata_title {
+        display: block;
+        font-weight: bold;
+        font-size: 1.2em;
+    }
+
+    .patdata_title span {
+        display: inline-block;
+        padding: 5px;
+        margin-right: 10px;
+        background-color: #00a2ff;
+        color: #ffffff;
+        cursor: pointer;
+
+        border-radius: 3px;
+
+    }
+
+    .gototop {
+        float: right;
+        display: inline-block;
+        padding: 5px;
+        margin-right: 10px;
+        background-color: #00a2ff;
+        color: #ffffff;
+        cursor: pointer;
+
+        border-radius: 3px;
+    }
+
+    .btnBlue {
+
+
+        display: inline-block;
+        border-radius: 6px;
+        text-align: center;
+        background-color: #00a2ff;
+        color: #ffffff;
+
+        margin-right: 5px;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+    }
+    #loader_group{
+        position:absolute;
+        z-index: 10000;
+        margin:0px auto;
+        display:none;
+        text-align:center;
+        width:100%;
+        height:100%;
+        top: 0px;
+        /*opacity:0.5;
+        background-color:#cccccc;*/
+
+
+    }
+    #loader_group img{
+        margin:auto;
+        display:block;
+        padding-top: 200px;
+    }
+    .form_group{
+        padding:10px;
+    }
+    #optchoice{
+        display: flex;
+        justify-content: space-between;
+        width: 100%;
+        margin-bottom:15px;
+    }
+    #optschoicerow{
+        display: table-row;
+    }
+    .form-cell{
+        /*display: table-cell;*/
+        margin: 5px;
+        display: flex;
+        flex-direction: column;
+        align-items:center;
+        width:30%;
+        min-width: 180px;
+
+        border: 1px solid #ccc;
+        border-radius: 7px;
+
+    }
+
+/* TODO-3949, Elena, 15.03.2021*/
+    /* checkbox  */
+    .cb-green  {
+        margin:0 auto;
+        padding:0;
+        display:inline-table;
+        width:21px;
+        text-align:left;
+        margin-top:4px;
+    }
+    .cb-green input[type="checkbox"] {
+        position: absolute;
+        opacity: 0;
+        z-index: -1;
+    }
+    .cb-green label {
+        position: relative;
+        display: inline-block;
+        padding: 0;
+        height: 21px;
+        line-height: 1.5;
+        cursor: pointer;
+        font-size:15px;
+        line-height:21px;
+        font-size:18px;
+        color:#4b4b4b;
+        font-family: arial;
+
+    }
+    .cb-green label::before,
+    .cb-green label::after {
+        position: absolute;
+        top: 0;
+        left: 0;
+        display: block;
+        width: 21px;
+        height: 21px;
+    }
+    .cb-green label::before {
+        content: " ";
+        border: 2px solid #d4dce3;
+        border-radius: 20%;
+        box-sizing: border-box;
+        -moz-box-sizing: border-box;
+        -webkit-box-sizing: border-box;
+    }
+
+
+    /* Checkbox */
+    .cb-green input[type="checkbox"] + label::after {
+        background:url(<?php echo RES_FILE_PATH; ?>/css/page-css/patientlists/images/iconCheckmarkWhite.svg)  50% 50% no-repeat;
+        background-size: 13px auto;
+        color: #FFFFFF;
+        line-height: 29px;
+        text-align: center;
+        font-size:11px;
+        content:" ";
+    }
+
+    /* :checked */
+    .cb-green input[type="checkbox"]:checked + label::before {
+        border:0px solid transparent;
+        background-color:#79EB74;
+
+    }
+
+
+    .cb-green input[type="checkbox"] + label::after  {
+        -webkit-transform: scale(0);
+        -ms-transform: scale(0);
+        -o-transform: scale(0);
+        transform: scale(0);
+    }
+    .cb-green input[type="checkbox"]:checked + label::after {
+        -webkit-transform: scale(1);
+        -ms-transform: scale(1);
+        -o-transform: scale(1);
+        transform: scale(1);
+    }
+    /* Transition */
+    .cb-green label::before,
+    .cb-green label::after {
+        -webkit-transition: .25s all ease;
+        -o-transition: .25s all ease;
+        transition: .25s all ease;
+    }
+
+
+    .cb-green input[type="checkbox"]:checked + label {
+        font-weight:400;
+
+    }
+    /*disabled*/
+    .cb-green.disabled label::before {
+        border-color:#f0f0f0;
+    }
+
+    .cb-green.disabled input[type="checkbox"]:checked + label::before {
+        background: #f0f0f0;
+        border-color: #f0f0f0;
+    }
+
+/*
+.choose_room_for_prepare:checked{
+    background: #79EB74 url(<?php echo RES_FILE_PATH; ?>/css/page-css/patientlists/images/iconCheckmarkWhite.svg) 50% 50% no-repeat;
+    font-size: 0;
+    background-size: 12px auto;
+}
+/
+ */
+
+
+
+</style>
+<div id="mediprep" class="patientlisttabs">
+    <ul class="tabs-topnav">
+        <li><a href="#tabs-stelliste">Stellliste</a></li>
+        <li><a href="#tabs-gabeliste" id="a_gabeliste">Gabeliste</a></li>
+
+    </ul>
+    <div id="tabs-stelliste">
+        <div id="rooms_patients_choice_cont">
+
+            <div class="bp-container stationliste">
+                <form id="rooms_patients_choice_form" method="post" target="_blank"
+                      action="<?php echo APP_BASE .'mediprepare/mediplans'; ?>">
+                    <input type="hidden" name="pdf" id="pdfcreate" value="0">
+                    <input type="hidden" name="to_save" id="to_save" value="0">
+                    <div class="form_group">
+                        <h4>Stellliste</h4>
+                    </div>
+                    <div class="form_group" style="display:none;"><!-- TODO-3949, Elena, 15.03.2021-->
+
+                    <input type="radio" id="for_pat_all" name="stelliste_for" value="all"><label for="for_pat_all">alle
+                    Patienten</label>
+                    <input type="radio" id="for_pat_selected" name="stelliste_for" value="selected"><label
+                        for="for_pat_selected">ausgewählte Patienten</label>
+                    </div>
+                    <div id="optchoice">
+                    <!--<div id="optschoicerow"  >-->
+                    <div id="optsbar" class="form-cell">
+                        <div id="datecont" class="form_group">
+                            <div style="font-weight: bold;">Datum auswählen</div>
+                            <input type="text" class="datepicker" name="stellliste_date"
+                                                   id="stellliste_date" value="<?php echo $heute; ?>">
+                            <div class="prechoice_date">
+                                <input type="button" id="for_today" value="Heute">
+                                <input type="button" id="for_tomorrow" value="Morgen">
+                                <input type="button" id="after_tomorrow" value="Übermorgen">
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <div class="darreichungsform form_group form-cell">
+                        <label for="dosage_form" style="display:block;font-weight: bold;">Darreichungsform auswählen</label>
+                        <select name="dosage_form" id="dosage_form">
+                            <option value="0">Alle</option>
+                            <?php foreach($this->dosage_form as $key => $drfm): ?>
+                            <option value="<?php echo $key; ?>"><?php echo $drfm; ?></option>
+                            <?php endforeach; ?>
+                        </select>
+
+                    </div>
+
+                    <div class="timerange_container form_group form-cell">
+                        <div><label for="timerange_filter" style="font-weight: bold;">Uhrzeit berücksichtigen </label><input type="checkbox"
+                                                                                                  value="1"
+                                                                                                  id="timerange_filter"
+                                                                                                  name="timerange_filter">
+                        </div>
+                        <div id="timerange_group">
+                            <label for="time_from">Von:</label>
+                            <select name="time_from" id="time_from">
+                                <?php for($i=0;$i<24;$i++) : ?>
+                                <option value="<?php echo $i; ?>"><?php echo $i; ?>:00</option>
+                                <?php endfor; ?>
+                            </select>
+                            <label for="time_till">Bis:</label>
+                            <select name="time_till" id="time_till">
+                                <?php for($i=0;$i<24;$i++) : ?>
+                                <option value="<?php echo $i; ?>"><?php echo $i; ?>:00</option>
+                                <?php endfor; ?>
+                            </select>
+                        </div>
+                    </div>
+                   <!-- </div>--><!-- optschoicerow -->
+                    </div> <!-- optschoice -->
+                    <div class="roomsselect">
+                        <table id="list_rooms_patients" class="datatable">
+                            <thead>
+                            <tr>
+                                <!-- TODO-3949, Elena, 15.03.2021-->
+                                <th class="checkbox" style="width: 50px;">
+                                <div class="cb-green">
+                                    <input type="checkbox" name="aw" id="chk_all_patients"><label for="chk_all_patients"></label>
+                                </div>
+                            </th>
+                                <th>Zimmer</th>
+                                <th>Vorname</th>
+                                <th>Nachname</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+
+                            <?php foreach ($this->rooms as $room):?>
+                            <?php $ipid = false;
+                   $pat=false;
+                    ?>
+                            <?php if(array_key_exists($room['id'], $this->loc_to_ipid)):{
+                            $ipid = $this->loc_to_ipid[$room['id']];
+                            $pat=$this->patients[$ipid];
+                            } else:{
+                            $pat=$this->patients['NOTASSIGNED'];
+                            };?>
+                            <?php endif;?>
+
+
+                            <tr>
+                                <!-- TODO-3949, Elena, 15.03.2021-->
+                                <td class="room_choose"><div class="cb-green"><input type="checkbox" class="choose_room_for_prepare"
+                                                               name="chosen[]" value="<?php echo $pat['epid'] ?>" id="chk_<?php echo $pat['epid'] ?>_<?php echo $room['id']; ?>"><label for="chk_<?php echo $pat['epid'] ?>_<?php echo $room['id']; ?>"></label></div></td>
+                                <td class="room-name"
+                                    data-roomid="<?php echo $room['id'];?>"><?php echo $room['bed_name'];?></td>
+                                <td class="room-patient">
+                                    <?php if($pat['name'] == 'NOTASSIGNED'):?>
+                                    <div class="name">(frei)</div>
+                                    <?php else:?>
+                                    <div class="name"><a href="<?php echo APP_BASE . 'patientcourse/patientcourse'."?id=".$pat['epid'];?>"><b><?php echo $pat['vorname'];?></b><br></a>
+
+                                    </div>
+                                    <?php endif;?>
+                                </td>
+                                <td class="room-patient">
+                                    <?php if($pat['name'] == 'NOTASSIGNED'):?>
+                                    <div class="name"></div>
+                                    <?php else:?>
+                                    <div class="name"><a href="<?php echo APP_BASE . 'patientcourse/patientcourse'. "?id=".$pat['epid'];?>"><b><?php echo $pat['nachname'];?></b><br></a>
+
+                                    </div>
+                                    <?php endif;?>
+                                </td>
+                            </tr>
+
+
+                            <?php endforeach;?>
+                            </tbody>
+                        </table>
+                    </div> <!-- end <div class="rooms">-->
+
+                </form>
+            </div><!-- end bp-container stationliste"-->
+            <div id="printcreate"><input type="button" id="create_list" value="Drucken/Erstellen"></div>
+
+            <div id="showlog"><input type="button" id="show_log" value="Log anzeigen"></div>
+
+        </div>
+
+        <div id="stelliste_set"></div>
+
+
+    </div>
+    <div id="tabs-gabeliste">
+        <div id="gabeliste_content">
+        </div>
+    </div>
+    <div class="dialog" id="logwin">
+        <div id="logcont"></div>
+    </div>
+    <div class="dialog" id="medipat">
+        <div id="medipatname"></div>
+        <div id="medication_icon_block"></div><!-- //ISPC-2804,Elena,19.03.2021 -->
+
+    </div>
+    	<!-- TODO-4142 Ancuta 25.05.2021  -->
+	<div id="medication_dosage_interaction_modal" class="modal_events_dialog">
+		<div class="modal_loading_div"></div>
+		<!-- load form -->
+	</div>
+    <div id="medication_dosage_interaction_bulk_modal" class="modal_events_dialog">
+        <div class="modal_loading_div"></div>
+        <!-- load medication icon   -->
+
+    </div>
+    <div id="preparesuccess" title="Stellliste">
+        <p>Medikamente sind gestellt.</p>
+    </div>
+    <div id="loader_group">
+        <img src="<?php echo RES_FILE_PATH; ?>/images/ajax-loader.gif">
+    </div>
+</div>

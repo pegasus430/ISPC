@@ -1,0 +1,250 @@
+<?php
+
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/data_tables/jquery.dataTables.js?'.date('Ymd'));
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/data_tables/dataTables.jqueryui.js?'.date('Ymd'));
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/data_tables/dataTables.jqueryui.css?' . date('Ymd'));
+
+
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/page-css/xbdtactions.css?' . date('Ymd'));
+?>
+ 
+<script type="text/javascript">
+$(document).ready(function() { /*------ Start $(document).ready --------------------*/
+	
+	// DATATABLE
+	var table = $('#table').DataTable({
+		// ADD language
+		 "language": {
+                "url": "<?php echo RES_FILE_PATH.'/javascript/data_tables/de_language.json?'.date('Ymd')?>"
+         },
+ 
+		sDom: 
+			'<"fg-toolbar ui-toolbar ui-widget-header ui-helper-clearfix ui-corner-tl ui-corner-tr"lfr>'+
+			't'+
+			'<"fg-toolbar ui-toolbar ui-widget-header ui-helper-clearfix ui-corner-bl ui-corner-br"<"#bottom_export">ip>',
+		
+
+			
+		"lengthMenu": [[25, 50,100], [25, 50,100]],
+			
+		processing: true,
+
+		info: false,
+		filter: true,
+		paginate: true,
+
+		serverSide: true,
+		"autoWidth": false,
+		"stateSave": true,
+		"scrollX": false,
+		"scrollCollapse": true,
+		"stateLoadCallback": function (settings)
+		{
+			o = false;
+			
+			 $.ajax( {
+				 url: appbase+'user/loadtablepref',
+				method: "POST",
+			    "async": false,
+			    data: { page: "dosageformlist" },
+			    "dataType": "json",
+			    "success": function (json) {
+			        o = json;
+			    }
+			 });
+			 
+			 return o;
+		},
+		columns: [
+		          { data: "action_id", className: "","width": "10%"},
+		          { data: "name", className: "","width": "45%"},
+		          { data: "groupname", className: "","width": "30%"},
+		          { data: "available", className: "","width": "5%"},
+		          { data: "actions", className: " ","width": "10%" }
+			],
+			
+		columnDefs: [ 
+				       	{ "targets": -1, "searchable": false, "orderable": false }
+				],
+ 		order: [[ 0, "asc" ]],
+		
+ 		ajax: {
+			url:'xbdtnewactions/getactionlist',
+			type: 'POST'
+		}
+ 	
+	});
+ 
+	
+	// DELETE
+	$(".delete").live('click', function() {
+		$.confirmdeleteid = $(this).attr('rel');
+			jConfirm('<? echo $this->translate('confirmdeleterecord'); ?>', '<? echo $this->translate('confirmdeletetitle'); ?>', function(r) {
+			if(r)
+			{	
+				location.href = "<? echo APP_BASE ?>xbdtnewactions/delete?id="+ $.confirmdeleteid;
+			}
+		});
+	});
+	
+	$("select[name='table_length']").live('change', function() {
+		
+		if($(this).val())
+		{
+			$.ajax({
+				url : 'ajax/saveuserpageresults',
+				type : 'POST',
+				data : {
+					page: "xbdtnewactions",
+					results: $(this).val()
+				} 
+			});
+			
+			 $('#setlimit').val( $(this).val());
+		}
+		
+	});
+	
+	$('.copy_goaii_action').live('click',function(){
+		$('#goaii_actions').dialog('open');
+	});
+	
+	
+	$('#goaii_actions').dialog({
+	    autoOpen: false,
+	    modal: true,
+	    width: 850,
+	   	height: 600,
+	   	title:  "<?php echo $this->translate('Copy al goa actions here'); ?>",
+	   	open: function(){
+	   		//$('#action_name').val('');
+	   		//reset all values
+	   	},
+	    buttons:{
+		"<?php echo $this->translate('save'); ?>": function(){
+
+			$('.asubmitform').attr('disabled',true);
+			 $(".ui-button:first").attr("disabled", true)
+			 .addClass("ui-state-disabled").next("button").attr("disabled", true)
+			 .addClass("ui-state-disabled");
+
+
+			var error = 0;
+			var ajax_done = 0;
+
+				$.ajax({
+					type: 'POST',
+					url: 'xbdtnewactions/copyactions',
+					data: $("#copyactions").serialize(),
+
+					success:function(data){
+						var actionsdata = jQuery.parseJSON(data);
+						$('#goaii_actions').dialog('close');
+						   var url = '<?php  echo APP_BASE."xbdtnewactions/actionlist"; ?>';
+							   $(location).attr('href',url);
+					},
+					error:function(){
+						ajax_done = 1;
+					}
+				});
+
+		},
+		"<?php echo $this->translate('cancel'); ?>": function(){
+			$('#goaii_actions').dialog('close');
+		}
+	    },
+	    close:function () {
+	    	goaii_actions
+	    }
+	});
+
+});/*-- END  $(document).ready ----------- --*/
+
+</script>
+<br/>
+ <h1><? echo $this->translate('Xbdt actions list') ?></h1>
+<hr> 
+<div class="add_link" style="width: auto;">
+	<a href="xbdtnewactions/add"><? echo $this->translate('add') ?></a>
+</div>
+<?php if (sizeof($this->blocks_settings) > 0 ):?>
+<div style="display: block; float: right">
+		<button onclick="javascript:void(0)" id="copy_goaii_action" class="bigbutton ui-state-default ui-corner-all copy_goaii_action" name="copy_goaii_action" value="1" style="padding:5px 8px"><?php echo $this->translate('copy goaii actions')?></button>
+</div>
+<?php endif;?>
+<div style="clear:both;"></div>
+	
+<table id="table" class="table table-striped table-bordered table-hover table-condensed dataTable no-footer xbdt_action_list">
+ 	<thead>
+ 		<tr>
+ 			<th><?php echo $this->translate('xbdt action id');?></th>
+ 			<th><?php echo $this->translate('xbdt action name');?></th>
+ 			<th><?php echo $this->translate('xbdt action groupname');?></th>
+ 			<th><?php echo $this->translate('available in contact form');?></th>
+ 			<th><?php echo $this->translate('actions'); ?></th>
+ 		</tr>
+ 	</thead>
+ </table>
+ 
+ 
+<div id="goaii_actions">
+	<form name="copyactions" action="" method="post" id="copyactions">
+	<table class="goaii_options">
+		<tr>
+			<th>#</th>
+			<th><?php echo $this->translate('xbdt action id')?></th>
+			<th><?php echo $this->translate('xbdt action name')?></th>
+			<th><?php echo $this->translate('xbdt action groupname')?></th>
+			<th><?php echo $this->translate('available in contact form')?></th>
+			<th><?php echo $this->translate('contact form block')?></th>
+			<th><?php echo $this->translate('Aktiv?')?></th>
+		</tr>
+		
+		<?php foreach($this->blocks_settings as $k=>$act_data): ?>
+			<tr>
+				<td>
+					<input type="checkbox" value="1" name="actions[<?php echo $act_data['id'];?>][value]" id="action<?php echo $act_data['id'];?>"   checked="checked" />
+				</td>
+				<td>
+					<label for="action<?php echo $act_data['id'];?>"><?php echo $act_data['shortcut'];?></label>
+					<input type="hidden" name="actions[<?php echo $act_data['id'];?>][shortcut]" value="<?php echo $act_data['shortcut'];?>"/>
+				</td>
+				<td>
+					<label for="action<?php echo $act_data['id'];?>"><?php echo $act_data['option_name'];?></label>
+					<input type="hidden" name="actions[<?php echo $act_data['id'];?>][name]" value="<?php echo $act_data['option_name'];?>"/>
+				</td>
+				<td>
+					<input type="text" name="actions[<?php echo $act_data['id'];?>][group]" value="<?php echo $this->allowed_xbdt_groups[$act_data['block']]?>" 	style="width: 80px;"/>	
+				</td>
+
+				<td>
+					<select name="actions[<?php echo $act_data['id'];?>][available]">
+						<option value="0">Nein</option>
+						<option value="1" selected="selected">Ja</option>
+					</select>	
+					
+				</td>
+
+				<td>
+<!-- 					<select name="actions[<?php echo $act_data['id'];?>][contact_from_block]"> -->
+<!-- 						<option value="goaii">GOA</option> -->
+<!-- 						<option value="embii">EBM</option> -->
+<!-- 					</select> -->
+					
+					<?php echo $this->formSelect('actions['.$act_data['id'].'][contact_form_block]', $act_data['block'], null, $this->allowed_cf_blocks ) ?>
+						
+				</td>
+				
+				<td>
+					<?php if($act_data['active'] == "1"):?>
+						Aktiv
+					<? else:?>
+						Gesperrt
+					<?php endif;?>
+						
+				</td>
+			</tr>
+		<?php endforeach; ?>
+		</table>
+	</form> 
+</div>

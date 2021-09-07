@@ -1,0 +1,119 @@
+<gridrow>
+	<phpscript> 	
+		$count++; 
+		$logininfo= new Zend_Session_Namespace('Login_Info');
+		$delete = $view->translate('adduser');
+		$create_date = date('d.m.Y H:i',strtotime($create_date));
+		$filetypearray = array("zip"=>"zip.png","msword"=>"word.png","vnd.openxmlformats-officedocument.wordprocessingml.document"=>"word.png","docx"=>"word.png","excel"=>"excel.png","xls"=>"excel.png","XLSX"=>"excel.png","vnd.openxmlformats-officedocument.spreadsheetml.sheet"=>"excel.png","pdf"=>"pdf.png","txt"=>"text.png","text"=>"text.png","plain"=>"text.png","vnd.ms-powerpoint"=>"powerpoint.png","vnd.openxmlformats-officedocument.presentationml.presentation"=>"powerpoint.png","jpeg"=>"file-jpg.png","jpg"=>"file-jpg.png","gif"=>"file-gif.png");
+		$filetype = strtoupper($file_type);
+		$file_type = $filetypearray[$file_type];
+		$pid = $view->pid;
+		//ISPC-2831 Dragos 15.03.2021
+		$efa = $view->efa;
+		$elsa_files_module = $view->allow_tagbuttons;
+		$fall = $view->patient_falls_selectbox[$admission_id];
+		$userarr = Pms_CommonData::getUserData($create_user);
+		$username = $userarr[0]['user_title'] ." ". $userarr[0]['last_name'].", ".$userarr[0]['first_name'];
+		// -- //
+
+			if($source_id != 0){
+				$shared_class = 'shared_class';
+			}  else {
+				$shared_class = '';
+			}
+
+		if($system_generated == 1){
+			$file_prefix = "ISPC ";
+		} else{
+			$file_prefix = "";
+		}
+		
+		$files_tag = $view->files_tags;
+		
+		$tags_classes_str = 'tag_all';
+		if(count($files_tag[$id])>'0')
+		{
+			$tags_classes = array();
+			
+			$tags = implode(', ', $files_tag[$id]);
+			
+			$tags_classes[] = 'tag_all';
+			foreach($files_tag[$id] as $k_tag => $v_tag)
+			{
+				$tags_classes[] = "tag_".$k_tag;
+			}
+			
+			$tags_classes_str = implode(' ', $tags_classes);
+			
+			if(count($files_tag[$id]) == '1')
+			{
+				//$tag_text = 'tag';
+				$tag_text = 'etikette';
+			}
+			else
+			{
+				//$tag_text = 'tags';
+				$tag_text = 'etiketten';
+			}
+			
+			$tags_button = '<a href="javascript:void(0);" title="'.$tags.'" class="tags_info tags_editor" data-id="'.$id.'">'.count($files_tag[$id]).' '.$tag_text.'</a>';
+		}
+		else
+		{
+			$tags = $view->translate('file_without_tags');
+			$tags_button = '<a href="javascript:void(0);">'.$tags.'</a>';
+		}
+
+		if($isdeleted==1)
+		{
+			$titles = '<strike>'.$file_prefix.$title.'</strike> '.$view->translate("deleted");
+			$delete = "-";
+			$edit = "";//ISPC-2642 Ancuta 10-11.08.2020
+		}
+		else
+		{
+			//ISPC-2831 Dragos 15.03.2021 added i span to both $titles
+			if($logininfo->showinfo!='show')
+			{
+				$titles = '<a href="stats/patientfileupload?doc_id='.$id.'&id='.$pid.'"><span style="display: inline-table; width: 90%;">'.$file_prefix.$title.'</span>'.($elsa_files_module ? '<span style="display: inline-table;  width: 5%; text-align: right;"><img class="tags_info tags_editor" src="<?php echo RES_FILE_PATH; ?>/images/info_med.png" title="'.$view->translate('filetype').': '.$filetype.'<br>'.$view->translate('uploadby').': '.$username.'" /></span>':'').'<span style="display: inline-table;  width: 5%; text-align: right;"><img class="tags_info tags_editor" src="<?php echo RES_FILE_PATH; ?>/images/icon-tag.png" title="'.$tags.'" /></span></a>';
+			}
+			else
+			{
+				$titles = '<a href="stats/patientfileupload?doc_id='.$id.'&id='.$pid.'"><span style="display: inline-table; width: 90%;">'.$file_prefix.$title.'&emsp;</span>'.($elsa_files_module ? '<span style="display: inline-table;  width: 5%; text-align: right;"><img class="tags_info tags_editor" src="<?php echo RES_FILE_PATH; ?>/images/info_med.png" title="'.$view->translate('filetype').': '.$filetype.'<br>'.$view->translate('uploadby').': '.$username.'" /></span>':'').'<span style="display: inline-table;  width: 5%; text-align: right;"><img class="tags_info tags_editor" src="<?php echo RES_FILE_PATH; ?>/images/icon-tag.png" title="'.$tags.'" /></span></a>';
+			}
+			if (!$elsa_files_module) {
+		 		$additional_columns = '<td align="left" valign="top">'.$filetype.'</td>
+								<!-- <td align="left" valign="top">[[tags_button]]</td> -->
+								<td align="left" valign="top">'.$username.'</td>';
+			} else {
+				$additional_columns = '<td height="20" align="left" valign="top">'.$meta_name.'</td>
+								<td height="20" align="left" valign="top">'.$comment.'</td>
+								<td height="20" align="left" valign="top">'.$fall.'</td>';
+			}
+			// -- //
+			if($source_id != 0){
+				$delete = '';
+			} 
+			else
+			{
+			$delete = '<a id="pfileremove" href="javascript:void(0);" rel_pid='.$pid.' rel_id='.$id.'><img src="'.$res_file_path.'/images/action_delete.png" border="0" /></a>';
+			}
+			//ISPC-2642 Ancuta 10-11.08.2020
+			//ISPC-2831 Dragos 15.03.2021
+			if ($elsa_files_module) {
+				$edit = '<a class="pfileedit" href="javascript:void(0);" rel_pid='.$pid.' rel_id='.$id.' style="float: left;"><img src="'.$res_file_path.'/images/edit.png" border="0" /></a>';
+			} else {
+				$edit = '<a href="patient/patientfileupload?id='.$pid.'&act=edit&file_id='.$id.($efa ? '&efa=1' : '').'" rel_pid='.$pid.' rel_id='.$id.' style="float: left;"><img src="'.$res_file_path.'/images/edit.png" border="0" /></a>';
+			}
+		}
+		//ISPC-2831 moved these at the begining to have username available earlyer
+		//$userarr = Pms_CommonData::getUserData($create_user);
+		//$username = $userarr[0]['user_title'] ." ". $userarr[0]['last_name'].", ".$userarr[0]['first_name'];
+	</phpscript>
+	<tr class="row [[tags_classes_str]] [[shared_class]]">
+		<td height="20" align="left" valign="top">[[create_date]]</td>
+		<td height="20" align="left" valign="top">[[titles]]</td>
+		[[additional_columns]]
+		<td align="left" valign="top">[[edit]][[delete]]</td>
+	</tr>
+</gridrow>

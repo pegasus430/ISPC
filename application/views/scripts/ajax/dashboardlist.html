@@ -1,0 +1,123 @@
+<?php
+
+$action_label = $this->action_label;
+$todo_patients = $this->todo_patients;
+$group2users = $this->group2users;
+
+?>
+
+<form id="overalllist_form" name="overalllist_form" action="" method="post">
+<table width="100%">
+	<?php if(count($this->dasboard_events)>0):  ?>
+	<?php $i=1; foreach($this->dasboard_events as $dash_date => $dash_event): ?>
+	<?php foreach($dash_event as $k_event => $v_event): ?>
+	<tr class="dashboard_row" id="d_row_<?php echo $i;  ?>" rel="<?php echo $i;  ?>">
+		<td class="label_col">
+			<div id="preview-label" class="dashboard_label" style="background:<?php echo $action_label[$v_event['tabname']]['color']; ?>;">
+				<span style="width: 20px; float:left;">
+					<?php if($v_event['hide_checkbox'] == '1'):  ?>
+						<!-- 	do not show check box -->
+					<?php else:  ?>
+						<?php if($v_event['tabname'] == 'todo'):  ?>
+							<?php if($this->user_type == 'SA' || $this->user_type == 'CA' || $this->userid == $v_event['user_id'] || $this->groupid == $v_event['group_id'] || in_array($this->userid, $group2users[$this->groupid])):  ?>
+							<input type="checkbox" name="select_done" value="1" class="done_event" id="done_event_<?php echo $i; ?>" rel="<?php echo $i;  ?>" />
+							<?php endif;  ?>
+						<?php else:  ?>
+							<input type="checkbox" name="select_done" value="1" class="done_event" id="done_event_<?php echo $i; ?>" rel="<?php echo $i;  ?>" />
+						<?php endif;  ?>
+					<?php endif;  ?>
+
+					<input type="hidden" id="event_done_<?php echo $i;  ?>" value="<?php echo $v_event['event_id'];  ?>" />
+					<input type="hidden" id="tabname_<?php echo $i;  ?>" value="<?php echo $v_event['tabname'];  ?>" />
+					<input type="hidden" id="done_date_<?php echo $i;  ?>" value="<?php echo $v_event['due_date'];  ?>" />
+				</span>
+				<span id="preview-font" style="color: <?php echo $action_label[$v_event['tabname']]['font_color']; ?>;">
+						<?php echo $action_label[$v_event['tabname']]['name']; ?>
+				</span>
+			</div>
+			<div class="loading_div" id="loading_div_<?php echo $i;  ?>" style="display: none;"><?php echo $this->translate('loadingpleasewait'); ?></div>
+		</td>
+		<td colspan="2" class="desc_col">
+			<div class="done_container">
+				<?php echo date('d.m.Y', strtotime($v_event['due_date']));  ?>
+			</div>
+			<div class="description_container">
+				<?php if($v_event['triggered_by'] == 'system_medipumps' && $v_event['tabname'] == 'todo'):  ?>
+					<p>
+						<?php echo $todo_patients[$v_event['ipid']]['epid']. ' - '; ?><a href="<?php echo APP_BASE.'patientcourse/patientcourse?id='.$todo_patients[$v_event['ipid']]['enc_id']; ?>"><?php echo $todo_patients[$v_event['ipid']]['lastname'].', '.$todo_patients[$v_event['ipid']]['firstname'];  ?></a> - <?php echo $v_event['event_title'];  ?>
+					</p>
+				<?php elseif(strlen($v_event['triggered_by']) == 0  && $v_event['tabname'] == 'todo'):  ?>
+					<?php echo $todo_patients[$v_event['ipid']]['epid']. ' - '; ?><a href="<?php echo APP_BASE.'patientcourse/patientcourse?id='.$todo_patients[$v_event['ipid']]['enc_id']; ?>"><?php echo $todo_patients[$v_event['ipid']]['lastname'].', '.$todo_patients[$v_event['ipid']]['firstname'];  ?></a> - <?php echo $v_event['event_title'];  ?>
+					
+				<?php elseif(strlen($v_event['triggered_by']) == 0  && $v_event['triggered_by_info'] =="medacknowledge" && $v_event['tabname'] == 'todo'):  ?>
+					<?php echo $v_event['event_title'];  ?>
+				<?php elseif(strlen($v_event['triggered_by']) == 0  && ($v_event['tabname'] == 'team_events' || $v_event['tabname'] == 'custom_doctor_event' ||  $v_event['tabname'] == 'custom_team_event')):  ?>
+					<p><?php echo $v_event['event_type'].$v_event['event_title'];  ?> </p>
+				<?php elseif($v_event['triggered_by'] == 'teammeeting_completed' && $v_event['tabname'] == 'todo'):  ?>
+					<p>
+						<?php echo $todo_patients[$v_event['ipid']]['epid']. ' - '; ?><a href="<?php echo APP_BASE.'patientcourse/patientcourse?id='.$todo_patients[$v_event['ipid']]['enc_id']; ?>"><?php echo $todo_patients[$v_event['ipid']]['lastname'].', '.$todo_patients[$v_event['ipid']]['firstname'];  ?></a> 
+					</p>
+					<br />
+					<?php echo $v_event['event_title'];  ?>
+				<?php else:  ?>
+					<p><?php echo $v_event['event_title'];  ?></p>
+				<?php endif;  ?>
+			</div>
+			<br />
+
+			<div id="event_details">
+				<?php if(strlen($v_event['todo_user'])>0 && trim($v_event['todo_user']) != ','):  ?>
+					<i>Wer <?php echo $v_event['todo_user']; ?></i>
+				<?php elseif(strlen($v_event['event_patient'])>0):  ?>
+					<i><?php echo 'Patient: '.strtoupper($v_event['event_patient']); ?></i>
+				<?php elseif($this->userid != $v_event['todo_user']  && ($v_event['tabname'] == 'team_events' || $v_event['tabname'] == 'custom_doctor_event' ||  $v_event['tabname'] == 'custom_team_event')):  ?>
+				<?php endif;  ?>
+					
+				<?php if(($v_event['triggered_by'] == "newreceipt_1" || $v_event['triggered_by'] == 'newreceipt_2') && strlen(trim(rtrim($v_event['receipt_creator_user']))) > '0'): ?>
+					<br style="clear:both;"/>
+					<div class="width:100%;">
+						<i><?php echo $this->translate('who_todo_receipt'); ?> <?php echo $v_event['receipt_creator_user']; ?></i>
+					</div>
+				<?php endif; ?>
+				
+						<?php if(strlen($v_event['triggered_by']) != 0 && $v_event['triggered_by_info'] =="medacknowledge" && $v_event['tabname'] == 'todo'):  ?>
+							<?php if($v_event['medical_change'] == '1' && $this->approval_rights =="1"):  ?>
+							<br style="clear:both;"/>
+								<button class="med_approve_rights approvem" data-row_id="<?php echo $i;  ?>" data-todoid="<?php echo $v_event['event_id'];  ?>" data-action="approve" data-patid = "<?php echo $todo_patients[$v_event['ipid']]['enc_id'];?>" data-recordid="<?php echo $v_event['drugplan_id']?>" data-alt_id="<?php echo $v_event['alt_id']?>"><?php echo $this->translate("Approve")?></button>
+								<button class="med_approve_rights denym"   data-row_id="<?php echo $i;  ?>"   data-todoid="<?php echo $v_event['event_id'];  ?>" data-action="decline"  data-patid = "<?php echo $todo_patients[$v_event['ipid']]['enc_id'];?>" data-recordid="<?php echo $v_event['drugplan_id']?>" data-alt_id="<?php echo $v_event['alt_id']?>"><?php echo $this->translate("Decline")?></button>
+							<?php endif;  ?>
+						<?php endif;  ?>
+				
+						<?php if(strlen($v_event['triggered_by']) != 0 && $v_event['triggered_by_info'] =="pumpmedacknowledge" && $v_event['tabname'] == 'todo'):  ?>
+							<?php if($v_event['medical_change'] == '1' && $this->approval_rights =="1"):  ?>
+							<br style="clear:both;"/>
+								<button class="pump_med_approve_rights approvem" data-row_id="<?php echo $i;  ?>" data-todoid="<?php echo $v_event['event_id'];  ?>" data-action="approve" data-patid = "<?php echo $todo_patients[$v_event['ipid']]['enc_id'];?>" data-recordid="<?php echo $v_event['cocktail_id']?>" data-alt_id="<?php echo $v_event['alt_id']?>"><?php echo $this->translate("Approve")?></button>
+								<button class="pump_med_approve_rights denym"   data-row_id="<?php echo $i;  ?>"   data-todoid="<?php echo $v_event['event_id'];  ?>" data-action="decline"  data-patid = "<?php echo $todo_patients[$v_event['ipid']]['enc_id'];?>" data-recordid="<?php echo $v_event['cocktail_id']?>" data-alt_id="<?php echo $v_event['alt_id']?>"><?php echo $this->translate("Decline")?></button>
+							<?php endif;  ?>
+						<?php endif;  ?>
+				
+			</div>
+		</td>
+	</tr>
+	<?php $i++; endforeach;  ?>
+	<?php endforeach;  ?>
+	<?php else:  ?>
+	<tr>
+		<td colspan="2" style="text-align: center;font-size: 1.2em;font-weight: bolder;">
+			<?php echo $this->translate('dash_no_records'); ?>
+		</td>
+	</tr>
+	<?php endif;  ?>
+	<tr>
+		<td>
+			<button id="open_history"><?php echo $this->translate('open_history');  ?></button>
+
+		</td>
+		<td colspan="2" class="filters_dash">
+			<span style="float:left;"><button id="print_todos"><?php echo $this->translate('print_todos');  ?></button></span>
+			<span><?php echo $this->translate('filter_labels');  ?> :&nbsp;&nbsp;<?php echo $this->label_filter; ?></span>
+			<span><?php echo $this->translate('sort_due_date'); ?> :&nbsp;&nbsp;<?php echo $this->date_sort;  ?></span>
+		</td>
+	</tr>
+</table>
+</form>

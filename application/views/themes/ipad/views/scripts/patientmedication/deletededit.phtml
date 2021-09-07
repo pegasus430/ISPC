@@ -1,0 +1,330 @@
+
+<?php $this->headScript()->appendFile(RES_FILE_PATH.'/javascript/pharmaindex/medi_pharmaindex.js?'.date('Ymd'));?>
+<?php $this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/pharmaindex/medi_pharmaindex.css?'.date('Ymd'));?>
+
+<?php $this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/medicationnew_edit.css?' . date('Ymd')); ?>
+
+
+<?
+$allowed_medication_types = $this->medication_blocks; 
+$medication_array = $this->medication;
+$client_medication_extra = $this->client_medication_extra;
+$timed_scheduled_medications = $this->timed_scheduled_medications;
+?>
+<?php $allowed_medication_types = array('deleted')?>
+
+<?php foreach($allowed_medication_types as $k=>$medication_type):?>
+	<div class="medication_block  mk-container mk-edit">
+		<div class="med_block_header <?php echo $medication_type;?>_header mk-top mk-edit-title">
+			<h1 id="section_<?php echo $medication_type;?>"><?php echo $this->translate($medication_type." medication title")?></h1>
+			<input type="button" class="deleted_meds_state hidden" title="<?php echo $this->translate('Show_deleted_medications')?>" />
+		</div>
+		<table id="<?php echo $medication_type; ?>_med_table" class="medication_edit_table medikation deleted_medication_edit_table">
+			<thead>
+		 		<tr>
+		 			<th class="name sort"><?php echo $this->translate('medication_importance'); ?></th>
+		 			<th class="name"><?php echo $this->translate('medication_name');?> / <span><?php echo $this->translate('medication_drug'); ?></span></th>
+	 				<th><?php echo $this->translate('medication_concentration'); ?> / <?php echo $this->translate('medication_type'); ?></th>
+	 				<th><?php echo $this->translate('medication_unit'); ?>  / <?php echo $this->translate('medication_dosage_form'); ?></th>
+		 			<th><?php echo $this->translate('medication_dosage'); ?></th>
+		 			<th><?php echo $this->translate('medication_indication'); ?> /<br/><?php echo $this->translate('medication_comments'); ?></th>
+		 			<th><?php echo $this->translate('medication_renew'); ?></th>
+		 			<th><?php echo $this->translate('medication_prescribed_by'); ?> / <?php echo $this->translate('medication_change_date'); ?></th>
+		 		</tr>
+		 	</thead>
+		 	
+		 	<tbody>
+		 		<?php $cnt = 1; foreach($medication_array[$medication_type] as $k =>$med):?>
+					<tr id="tr<?php echo $medication_type;?><?php echo $cnt;?>"
+					   class="single
+					  <?php if($this->acknowledge  == "1" && !empty($med['on_hold_changes'][$med['id']])) :?> has_ack <?php endif; ?>">
+					
+						<td class="sortnum">
+						  <?php echo $med['importance'];?>
+						</td>
+						
+					
+						<!-- ############################## -->
+						<!-- TD  MEDICATION :: NAME  / DRUG  -->
+						<td>
+							<!-- MEDICATION NAME -->						
+							<label class="del_label"><?php echo $this->translate('medication_name');?></label>
+							<span class="del_span"><?php echo $med['medication'];?></span>
+							
+							<input name="medication_block[<?php echo $medication_type; ?>][hidd_medication][<?php echo $cnt; ?>]" value="<?php echo $med['medication_master_id'];?>" id="hidd_medication_<?php echo $medication_type; ?>_<?php echo $cnt; ?>" type="hidden">
+							<input type="hidden" id="drid_<?php echo $medication_type; ?>_[<?php echo $cnt; ?>]" name="medication_block[<?php echo $medication_type; ?>][drid][<?php echo $cnt;  ?>]" value="<?php echo $med['id'];?>" />
+						    <input type="hidden" id="edited_<?php echo $medication_type; ?>_<?php echo $cnt; ?>" name="medication_block[<?php echo $medication_type; ?>][edited][<?php echo $cnt; ?>]" value="0" />
+							<!-- MEDICATION DRUG -->
+							<label class="del_label"><?php echo $this->translate('medication_drug');?></label>
+							<span class="del_span"><?php echo $med['drug'];?>&nbsp;</span>
+							
+							<?php if ($med['medication_type'] == "isintubated"): ?>
+								<!-- MEDICATION PACKAGING -->
+								<label class="del_label"><?php echo $this->translate('medication_packaging');?></label>
+								<span class="del_span"><?php echo $med['packaging_name'];?>&nbsp;</span>
+							<?php endif; ?>
+							
+							
+						</td>
+								
+						<?php if ($this->show_new_fileds == "1"):?>
+							<!-- ############################## -->
+							<!-- TD  MEDICATION :: UNIT / TYPE  -->
+							<td >
+								
+								<!--  MEDICATION  CONCENTRATION  -->
+								<label class="del_label"><?php echo $this->translate('medication_concentration');?>:</label>
+								<span class="del_span"><?php echo $med['concentration'];?>&nbsp;</span>
+								
+								<!--  MEDICATION  TYPE  -->
+								<label class="del_label"><?php echo $this->translate('medication_type');?>:</label>
+								<span class="del_span"><?php echo $med['type'];?>&nbsp;</span>
+							</td>
+							
+							<!-- ############################## -->
+							<!-- TD  MEDICATION :: DOSAGE FORM / CONCENTRATION  -->
+							<td class="border_bottom_solid">
+								
+								<!--  MEDICATION  UNIT -->
+								<label class="del_label"><?php echo $this->translate('medication_unit');?>:</label>
+								<span class="del_span"><?php echo $med['unit'];?>&nbsp;</span>
+								
+								<!--  MEDICATION  DOSAGE FROM -->
+								<label class="del_label"><?php echo $this->translate('medication_dosage_form');?>:</label>
+								<span class="del_span"><?php echo $med['dosage_form'];?>&nbsp;</span>
+
+							</td>
+						<?php endif; ?>
+						<!-- ############################## -->
+						<!-- TD  MEDICATION :: DOSAGE INPUTS-->
+						<?php if($med['isschmerzpumpe'] == "1"):?>
+								<td class="border_bottom_solid" align="center" valign="top">
+									<label class="dosage_label del_label"><?php echo $this->translate('medication_dosage'); ?></label>
+									<span class="del_span"><?php echo $med['dosage'];?>&nbsp;</span>
+								</td>
+						<?php elseif( $med['treatment_care'] == "1"  ):?>
+								<td class="border_bottom_solid" align="center">
+								</td>
+						<?php else:?>
+							<?php if(in_array($med['medication_type'],$timed_scheduled_medications)): ?>
+							<td  class="border_bottom_solid" >
+								<table width="100%">
+									<tr>
+										<?php foreach($this->dosage_intervals[$med['medication_type']] as $k => $dosage_time):?>
+											<td align="center" valign="top" >  
+												<label class="dosage_label del_label"><?php echo $dosage_time;?></label>
+												<span class="del_span"><?php echo $med['dosage'][$dosage_time];?>&nbsp;</span>
+											</td>
+						 				<?php endforeach;?>
+					 				</tr>
+				 				</table>
+							</td>
+							<?php else:?>
+								<td class="border_bottom_solid" align="center" valign="top" >
+									<label class="dosage_label del_label"><?php echo $this->translate('medication_dosage'); ?></label>
+									<span class="del_span"><?php echo $med['dosage'];?>&nbsp;</span>
+								</td>
+							<?php endif;?>
+			 				
+						<?php endif;?>
+
+
+						<!-- ##################################### -->
+						<!-- TD MEDICATION :: INDICATION / COMMENTS-->
+						<td class="border_bottom_solid" valign="top" >
+							<!--  MEDICATION INDICATION -->						
+							<label class="del_label"><?php echo $this->translate('medication_indication');?>:</label>
+							<span class="del_span" <?php if(strlen($med['indication_id'])>0 && $med['indication_id'] != "0"):?> style="background: #<?php echo $client_medication_extra['indication'][$med['indication_id']]['color'];?>" <?php endif; ?> ><?php echo $med['indication'];?>&nbsp;</span>
+							<br/>
+							<?php if ($med['medication_type'] == "isintubated"): ?>
+								<!-- MEDICATION Kcal -->
+								<label class="del_label"><?php echo $this->translate('medication_kcal');?></label>
+								<span class="del_span"><?php echo $med['kcal'];?>&nbsp;</span>
+								<!-- MEDICATION volume -->
+								<label class="del_label"><?php echo $this->translate('medication_volume');?></label>
+								<span class="del_span"><?php echo $med['volume'];?>&nbsp;</span>
+							<?php endif; ?>
+							
+							
+							<!--  MEDICATION COMMENTS-->
+							<label class="del_label"><?php echo $this->translate('medication_comments');?>:</label>						
+							<textarea name="medication_block[<?php echo $medication_type; ?>][comments][<?php echo $cnt;?>]"  id="comments_<?php echo $medication_type; ?>_<?php echo $cnt;?>" data-medication_type="<?php echo $medication_type; ?>"  class="med_com_textarea referral  editcomment change_status" title="<?php echo $medication_type; ?>_<?php echo $cnt;?>" rows="" cols=""  rel="<?php echo $medication_type; ?>" ><?php echo $med['comments'];?></textarea>
+						</td>
+						
+						<!-- ##################################### -->
+						<!-- TD MEDICATION :: RENEW-->
+						<td class="border_bottom_solid" valign="top" >
+							<a class="renew_ajx" href="javascript:void(0)"  rel="<?php echo $med['id'];?>" data-medication_type="<?php echo $medication_type; ?>"  ><img width="13px" alt="delete" src="<?php echo RES_FILE_PATH?>/images/action_renew.png"></a>
+						</td>
+
+						<!-- ############################################# -->
+						<!-- TD  MEDICATION  VERORDNET VON  / DATUM / SORT -->
+						<td class="border_bottom_solid" valign="top" >
+							<!--  MEDICATION  VERORDNET VON -->
+							<label class="del_label"><?php echo $this->translate('medication_prescribed_by');?>:</label>
+							<span class="del_span"><?php echo $this->users[$med['verordnetvon']];?>&nbsp;</span>
+							<!--  MEDICATION DATUM  -->
+							<label class="del_label"><?php echo $this->translate('medication_change_date');?>:</label>						
+							<span class="del_span"><?php echo date('d.m.Y',strtotime($med['medication_change']));?>&nbsp;</span>
+							
+							<br/>
+							<!--  MEDICATION SORT -->
+							<label class="del_label"><?php echo $this->translate('medication_importance');?>:</label>						
+							<span class="del_span"><?php echo $med['importance'];?>&nbsp;</span>
+						</td>
+					</tr> 		
+						<?php if($this->acknowledge  == "1" && !empty($med['on_hold_changes'][$med['id']])) :?>
+				<?php 
+						$ack_referance_txt[$med['id']]="";
+						$ack_referance_del[$med['id']] = "";
+
+						if($med['on_hold_changes'][$med['id']]['status'] == "renew")
+						{
+							$ack_referance_txt[$med['id']] = '<span class="blue_text">'.$this->translate("Unapproved changes: ").'</span>';
+							$ack_referance_ren[$med['id']] = '<span class="green_text">'.$this->translate("Renew medication: ").'</span>'; 
+						} 
+						else
+						{
+							$ack_referance_txt[$med['id']] = '<span class="blue_text">'.$this->translate("Unapproved changes: ").'</span>'; 
+							$ack_referance_ren[$med['id']] = ''; 
+						}
+		 		 
+						if($this->approval_rights == "1")
+						{
+							$app_rights = '<button class="med_approve_rights approvem" data-action="approve" data-recordid="'.$med['id'].'" data-alt_id="'.$med['on_hold_changes'][$med['id']]['alt_id'].'">'.$this->translate("Approve").'</button><button class="med_approve_rights denym"   data-action="decline" data-recordid="'.$med['id'].'" data-alt_id="'.$med['on_hold_changes'][$med['id']]['alt_id'].'">'.$this->translate("Decline").'</button>';
+							$approve = '<button class="med_approve_rights approvem" data-action="approve" data-recordid="'.$med['id'].'" data-alt_id="'.$med['on_hold_changes'][$med['id']]['alt_id'].'">'.$this->translate("Approve").'</button>';
+							$deny = '<button class="med_approve_rights denym"   data-action="decline" data-recordid="'.$med['id'].'" data-alt_id="'.$med['on_hold_changes'][$med['id']]['alt_id'].'">'.$this->translate("Decline").'</button>';
+			 			} 
+						else
+						{
+							$app_rights = '';
+							$approve = '';
+							$deny = '';
+						}
+		 		?>
+		 		
+					<tr class="ack_info_tr single acknowlege_row edit_acknowlege_row extedned_ack " id="ack_<?php echo $med['id'];?>" >
+					    <td class="sortnum"> <?php echo $med['on_hold_changes'][$med['id']]['importance'];?> </td>
+						<!--  MEDICATION NAME -->
+						<td>
+						      <div class="ackn_ref">
+						      
+						      <?php if($medication_type == "actual"):?>					
+								<?php echo $ack_referance_txt[$med['id']]; ?>
+						<?php else:?>
+								<?php echo $ack_referance_txt[$med['id']]; ?>
+						        <?php echo $med['on_hold_changes'][$med['id']]['status'];?>
+						
+						<?php endif; ?>
+						      </div>
+						
+							<div class="mifo">
+								<span class="lb"><?php echo $ack_referance_ren[$med['id']]; ?><?php echo $this->translate('medication_name');?></span>
+								<span class="vl"><?php echo $med['on_hold_changes'][$med['id']]['name'];?></span>
+								<span class="lb"><?php echo $this->translate('medication_drug'); ?></span>
+								<span class="vl"><?php echo $med['on_hold_changes'][$med['id']]['drug'];?></span>
+							</div>
+						</td>
+						
+						
+						<?php if ($this->show_new_fileds == "1"):?>
+						
+						<!--  MEDICATION UNIT / TYPE -->
+						<td>
+							<div class="mifo">
+								<span class="lb"><?php echo $this->translate('medication_unit'); ?></span>
+								<span class="vl"><?php echo $med['on_hold_changes'][$med['id']]['unit'];?></span>
+								
+								<span class="lb"><?php echo $this->translate('medication_type'); ?></span>
+								<span class="vl"><?php echo $med['on_hold_changes'][$med['id']]['type'];?></span>
+							</div>
+						</td>
+						
+												
+						<!--  MEDICATION DOSAGE FORM / CONCENTRATION -->
+						<td>
+							<div class="mifo">
+								<span class="lb"><?php echo $this->translate('medication_dosageform'); ?></span>
+								<span class="vl"><?php echo $med['on_hold_changes'][$med['id']]['dosage_form'];?></span>
+								
+								<span class="lb"><?php echo $this->translate('medication_concentration'); ?></span>
+								<span class="vl"><?php echo $med['on_hold_changes'][$med['id']]['concentration'];?></span>
+							</div>
+						</td>
+						<?php endif;?>
+						
+						
+												
+						<!-- ############################## -->
+						<!-- TD  MEDICATION :: DOSAGE INPUTS-->
+						<?php if($med['on_hold_changes'][$med['id']]['isbedarfs'] == "1" || $med['on_hold_changes'][$med['id']]['isschmerzpumpe'] == "1" || $med['on_hold_changes'][$med['id']]['isnutrition'] == "1" ):?>
+								<td class="border_bottom_solid" align="center" valign="top">
+									<label class="dosage_label del_label"><?php echo $this->translate('medication_dosage'); ?></label>
+									<span class="del_span"><?php echo $med['on_hold_changes'][$med['id']]['dosage'];?>&nbsp;</span>
+								</td>
+						<?php elseif($med['on_hold_changes'][$med['id']]['treatment_care'] == "1"  ):?>
+								<td class="border_bottom_solid" align="center" >
+								</td>
+						<?php else:?>
+							<td class="border_bottom_solid" align="center" valign="top" >
+							<table><tr>  
+							<?php foreach($this->dosage_intervals[$med['medication_type']] as $k => $dosage_time):?>
+							     <td>
+									<label class="dosage_label del_label"><?php echo $dosage_time;?></label>
+									<span class="del_span"><?php echo $med['on_hold_changes'][$med['id']]['dosage'][$dosage_time];?>&nbsp;</span>
+								</td>	
+			 				<?php endforeach;?>
+			 				
+								</tr>
+								</table>
+						<?php endif;?>
+												
+												
+						<!--  MEDICATION INDICATION / COMMENTS-->
+						<td >
+							<div class="mifo">
+				 				<?php if(strlen($med['on_hold_changes'][$med['id']]['indication_color']) > 0):?>
+				 					<span class="lb"><?php echo $this->translate('medication_indication'); ?>:</span>
+									<span class="vl indication_span" style="background: #<?php echo $med['on_hold_changes'][$med['id']]['indication_color'];?>"><?php echo $med['on_hold_changes'][$med['id']]['indication'];?></span>
+								<?php else:?>
+									<span class="lb"><?php echo $this->translate('medication_indication'); ?>:</span>
+									<span class="vl"><?php echo $med['on_hold_changes'][$med['id']]['indication'];?></span> 
+								<?php endif;?>
+				 				<span class="lb"><?php echo $this->translate('medication_comments'); ?>:</span>
+								<span class="vl"><?php echo $med['on_hold_changes'][$med['id']]['comments'];?></span>
+							</div>
+						</td>
+						
+						
+						<td></td>
+						<td>
+						    <!--  MEDICATION CHANGE DATE d.m.Y FORMAT -->
+							<div class="mifo">
+								<span class="lb"><?php echo $this->translate('medication_change_date'); ?></span>
+								<span class="vl"><?php echo $med['on_hold_changes'][$med['id']]['medication_change_date'];?></span>
+							</div>
+							
+						    <!--  MEDICATION SORT / IMPORTANCE -->
+							<div class="mifo">
+								<span class="lb"><?php echo $this->translate('medication_importance'); ?></span>
+								<span class="vl"><?php echo $med['on_hold_changes'][$med['id']]['importance'];?> </span>
+							</div>
+							
+						    <!--  MEDICATION DELETE -->
+							<div class="mifo">
+								<span class="lb"><?php echo $this->translate('medication_delete_date'); ?></span>
+								<span class="vl"><?php echo $med['on_hold_changes'][$med['id']]['delete_date'];?> </span>
+							</div>
+						</td>
+					</tr>
+				<?php endif;?>
+					
+						
+			<tr class="separator">
+				<td colspan="8"> </td>
+			 </tr>
+					
+		 		<?php $cnt++; endforeach;?>
+		 </table>
+	</div>
+<?php  endforeach;?>

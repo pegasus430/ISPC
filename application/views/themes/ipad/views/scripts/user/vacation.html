@@ -1,0 +1,163 @@
+<script>
+var vacations_days = '<?php echo $this->json_vacation_days; ?>';
+var _temp_vacation_days = '0';
+
+$(document).ready(function() {
+	$( "#end_date" ).datepicker({
+		dateFormat: 'dd.mm.yy',
+		showOn: "both",
+		buttonImage: $('#calImg').attr('src'),
+		buttonImageOnly: true,
+		changeMonth: true,
+		changeYear: true,
+		beforeShowDay: check_vacations
+	});
+	
+	$( "#start_date" ).datepicker({
+		dateFormat: 'dd.mm.yy',
+		showOn: "both",
+		buttonImage: $('#calImg').attr('src'),
+		buttonImageOnly: true,
+		changeMonth: true,
+		changeYear: true,
+		onSelect: function(date){
+			if(vacations_days && date)
+			{
+				_temp_vacation_days = jQuery.parseJSON(vacations_days);
+				_temp_vacation_days.push(date);
+
+				$( "#end_date" ).datepicker( "option", "beforeShowDay", check_vacations);
+				$( "#end_date" ).datepicker( "option", "minDate", date);
+			}
+		},
+		beforeShowDay: check_vacations
+	});
+
+	$('#add_vacation').click(function(e){
+		e.preventDefault();
+
+		if($('#start_date').val() && $('#end_date').val()){
+			$('#add_vacations').submit();
+		} else {
+			alert('<?php echo $this->translate('empty_date_field'); ?>');
+		}
+
+	});
+
+	$('#del_vacations').live('click', function(){
+		$('#delid').val($(this).attr('rel'));
+		$('#delete_confirmation').dialog('open');
+	});
+
+	$('#delete_confirmation').dialog({
+		autoOpen: false,
+		modal: true,
+		title: '<?php echo $this->translate('delete_vacation_title'); ?>',
+		resizable: false,
+		draggable: false,
+		close: function(){
+			$('#delid').val('');
+		},
+		buttons: {
+			"<?php echo $this->translate('delete'); ?>": function() {
+				var vacation = $('#delid').val();
+				var del_dialog = $(this);
+
+				xhr = $.ajax({
+					url : '<?php echo APP_BASE . 'user/vacation?mode=del&v_id='; ?>'+vacation,
+					success : function(response) {
+						if(response == 'true'){
+							$('#row-'+vacation).remove();
+							del_dialog.dialog( "close" );
+						}
+					}
+				});
+
+				$( this ).dialog( "close" );
+			},
+			"<?php echo $this->translate('cancel'); ?>": function() {
+				$( this ).dialog( "close" );
+			}
+		}
+	});
+});
+
+//check if date is in vacation_days array.
+//used with datepicker beforeShowDay() callback to disable days where user has vacation
+function check_vacations(date)
+{
+	if(_temp_vacation_days != '0') {
+		var dateRange = _temp_vacation_days;
+	} else {
+		var dateRange = jQuery.parseJSON(vacations_days);
+	}
+
+	var dateString = jQuery.datepicker.formatDate('dd.mm.yy', date);
+
+	if(dateRange && dateString) {
+		//IE8 SUX .. no support of indexOf!
+//		return [dateRange.indexOf(dateString) == -1];
+		return [jQuery.inArray(dateString, dateRange) == -1];
+	} else {
+		return '1';
+	}
+}
+</script>
+
+<div style="display: none;"><img id="calImg" src="<? echo RES_FILE_PATH;  ?>/images/calendar.png" alt="Popup" class="trigger"></div>
+<h1>
+	<?php echo $this->translate('vacations');  ?>
+</h1>
+<form method="POST" name="add_vacations" id="add_vacations" action="">
+	<table border="0" width="100%" cellpadding="2" class="datatable">
+		<thead>
+			<tr>
+				<th colspan="4"><?php echo $this->translate('username'); ?>: <b><?php echo $this->current_username; ?></b></th>
+			</tr>
+			<tr>
+				<th>#</th>
+				<th><?php echo $this->translate('start_time');  ?></th>
+				<th><?php echo $this->translate('end_time');  ?></th>
+				<th style="width:200px;"><?php echo $this->translate('Actions');  ?></th>
+			</tr>
+		</thead>
+		<tbody>
+			<?php if($this->user_vacations): ?>
+				<?php $i = '1'; foreach($this->user_vacations as $k_vacation=>$v_vacation):  ?>
+				<tr id="row-<?php echo $v_vacation['id']; ?>">
+					<td><?php echo $i;  ?></td>
+					<td><?php echo date('d.m.Y', strtotime($v_vacation['start']));  ?></td>
+					<td><?php echo date('d.m.Y', strtotime($v_vacation['end']));  ?></td>
+					<td>
+						<span>
+							<a href="<?php echo APP_BASE;  ?>user/vacationreplacements?v_id=<?php echo $v_vacation['id']; ?>&u_id=<?php echo $v_vacation['userid']; ?>" class="vacation_edit" >
+								<img src="<?php echo RES_FILE_PATH.'/images/edit.png' ?>" /> <?php echo $this->translate('replacement_link');  ?>
+							</a>
+						</span>
+
+						<span>
+							<a href="javascript:void(0);" id="del_vacations" rel="<?php echo $v_vacation['id'];  ?>" class="vacation_delete">
+								<img src="<?php echo RES_FILE_PATH.'/images/action_delete.png' ?>" /> <?php echo $this->translate('delete');  ?>
+							</a>
+						</span>
+					</td>
+				</tr>
+				<?php $i++; endforeach;  ?>
+			<?php else:  ?>
+			<tr>
+				<td colspan="4"><?php echo $this->translate('no_vacations_found');  ?></td>
+			</tr>
+			<?php endif;  ?>
+			<tr>
+				<td></td>
+				<td><input type="text" id="start_date" name="start_date" class="datepicker" autocomplete="off" readonly="readonly" /></td>
+				<td><input type="text" id="end_date" name="end_date" class="datepicker" autocomplete="off" readonly="readonly" /></td>
+				<td><input type="submit" value="<?php echo $this->translate('add_vacation');  ?>" id="add_vacation" name="add_vacation" /></td>
+			</tr>
+		</tbody>
+	</table>
+</form>
+<div id="delete_confirmation">
+	<?php echo $this->translate('confirm_vacation_delete');  ?>
+	<input type="hidden" value="" id="delid" />
+</div>

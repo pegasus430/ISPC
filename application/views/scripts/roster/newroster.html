@@ -1,0 +1,809 @@
+<!-- Maria:: Migration ISPC to CISPC 08.08.2020 -->
+<script>
+var roster_page = '1';
+var national_holidays = '<?php echo $this->national_holidays_js; ?>';
+</script>
+<?php
+//css
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/fullcalendar_1.6/fullcalendar.css?' . date('Ymd'));
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/newroster.css?' . date('Ymd'));
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/javascript/jgrowl/filepatient.css?' . date('Ymd'));
+
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/qtip/jquery.qtip.min.css?' . date('Ymd'));
+
+
+//js
+$this->headScript()->appendFile(RES_FILE_PATH . '/javascript/jquery.blockUI.js?' . date('Ymd'));
+$this->headScript()->appendFile(RES_FILE_PATH . '/javascript/calendars.js?' . date('Ymd'));
+$this->headScript()->appendFile(RES_FILE_PATH . '/javascript/fullcalendar_1.6/fullcalendar.js?' . date('Ymd'));
+$this->headScript()->appendFile(RES_FILE_PATH . '/javascript/portamento.js?' . date('Ymd'));
+
+$this->headScript()->appendFile(RES_FILE_PATH . '/javascript/qtip/jquery.qtip.min.js?' . date('Ymd'));
+
+
+$users = $this->users;
+$client_shifts = $this->client_shifts;
+$client_shifts_min = $this->client_shifts_min;
+$month_days_array = $this->month_days;
+$roster_saved_data = $this->roster_saved_data;
+$national_holidays = $this->national_holidays;
+?>
+<script>
+	var submited = false;
+	var allow_selection = false;
+	var client_shifts = '<?php echo json_encode($client_shifts_min); ?>';
+	var shifts = jQuery.parseJSON('<?php echo json_encode($client_shifts_min); ?>');
+	var do_ajax_load = '1';
+	
+	$(document).ready(function() {
+		
+		
+		<?php
+			//ISPC-2159
+			if ($_POST['month'] || $_REQUEST['month']) {
+				if (strlen($_POST['month']) > 0) {
+					$month = $_POST['month'];
+				}
+				else if (strlen($_REQUEST['month']) > 0) {
+					$month = $_REQUEST['month'];
+				}
+
+				$ym_values	= explode('_', $month);
+				$startYear	= (int)$ym_values[0];
+				$startMonth	= (int)($ym_values[1] - 1);
+				$startDay	= 1 ;
+				
+			} else {
+				$startYear	= date('Y');
+				$startMonth	= date('m') - 1;
+				$startDay	= 1 ; 
+			}
+		?>
+		create_calendar_teamCalendar(<?=$startYear?>, <?=$startMonth?>, <?=$startDay?>);
+		
+		$('#shift_selector').on('change', function() {
+			if ($(this).val() != '') {
+				var color = shifts[$(this).val()]['color'];
+
+				$('#shift_color_preview').css('background-color', "#" + color);
+				allow_selection = true;
+			} else {
+				$('#shift_color_preview').css('background-color', "");
+				allow_selection = false;
+			}
+
+		});
+		
+		//add/remove selected classes where checkbox/table cell is clicked
+		$('.cell').live('click', function(e) {
+			var checkbox = $(this).find('input[type="checkbox"]');
+			var selected_shift_id = $('#shift_selector').val();
+			var curent_shift_id = checkbox.val();
+			var chk_id = checkbox.attr('id');
+			var checkbox_strtotime = checkbox.data("strtotime");
+			
+			
+			if (allow_selection === true && !$(this).parent().hasClass('control')) {
+					
+				if ( curent_shift_id != selected_shift_id
+						&& shifts[selected_shift_id].valid_till_date !== null 
+						&& shifts[selected_shift_id].valid_till_date < checkbox_strtotime
+				){
+					return false; //we are only allowed to disable this valid_till_shifts
+				}
+				
+				var shift_shortcut = shifts[selected_shift_id]['shortcut'];
+					//change checkbox value with the id of selected shift
+					checkbox.val(selected_shift_id);
+
+					//mark/unmark checkbox
+					checkbox.attr("checked", !checkbox.attr("checked"));
+					//get selected shift color
+					var color = shifts[checkbox.val()]['color'];
+
+					//change class of parent td
+					if (checkbox.is(':checked')) {
+						//change color of the parent td
+						$(this).css('background-color', "#" + color);
+
+						if ($(this).hasClass('weekend')) {
+							$(this).addClass('selected_cell_weekend manually_selected');
+						} else {
+							$(this).addClass('selected_cell manually_selected');
+						}
+						
+						$('#span_'+chk_id).html(shift_shortcut);
+					} else {
+						$(this).css('background-color', "");
+						checkbox.val('');
+						if ($(this).hasClass('weekend') || $(this).hasClass('selected_cell_weekend')) {
+							$(this).removeClass('selected_cell manually_selected selected_cell_weekend');
+						} else {
+							$(this).removeClass('selected_cell manually_selected');
+						}
+						$('#span_'+chk_id).html('');
+						$('#deleted_cells').val($('#deleted_cells').val() + ',' +chk_id); //add the cell to the deleted values
+					}
+				}
+			});
+
+			//allow submit without "leave page" alert
+			$('.save_roster').on('click', function() {
+				
+				setTimeout(function () {$('.save_roster').attr('disabled', true);}, 150);
+				setTimeout(function () {$('.save_roster').attr('disabled', false);}, 8000);
+				
+				$('input[name="submit_buton"]').val('1');
+				submited = true;
+				$('#new_dienstplan_form').submit();
+			});
+
+			//change month
+			$('#month').on('change', function() {
+				$('#new_dienstplan_form').submit();
+			});
+
+
+			
+<?php
+		//ISPC-2159
+		 //this was modified to query with params $_REQUEST['month'].... NOT fetch 2 months with gotoDate() !
+		/**
+if ($_POST['month'] || $_REQUEST['month'])
+{
+	if (strlen($_POST['month']) > 0)
+	{
+		$month = $_POST['month'];
+	}
+	else if (strlen($_REQUEST['month']) > 0)
+	{
+		$month = $_REQUEST['month'];
+	}
+
+	$ym_values = explode('_', $month);
+
+	//echo "$('#teamCalendar').fullCalendar('gotoDate', '" . $ym_values[0] . "', '" . ($ym_values[1] - 1) . "', '1');";
+
+}
+*/
+?>
+
+		$('.tab_container').append('<a onclick="printaction()"><img src="images/print.gif" /></a>');
+
+		$('#submit_files').bind('click', function() {
+			$('#saverosterfile').submit();
+		});
+	});
+
+	//IE8 live() bug in jq 1.3.2, functions required
+	function toggleTimePeriods(element) {
+		if (element.is(':checked')) {
+			$('#customShift-' + element.attr('id')).hide();
+		} else {
+			$('#customShift-' + element.attr('id')).show();
+		}
+	}
+	function toggleEventType(element) {
+		if ($('#' + element.attr('id') + ' option:selected').val() == 4) {
+			$('#endDateRow').hide();
+			$('#eventNameRow').hide();
+			$('#allDayRow').hide();
+
+		} else if ($('#' + element.attr('id') + ' option:selected').val() == 12) {
+
+			$('#startDateRow').show();
+			$('#endDateRow').show();
+
+			$('#eventNameRow').show();
+			$('#allDayRow').show();
+		}
+	}
+	function toggleEventAllDayT(element) {
+		if ($("input[name='" + element.attr('name') + "']:checked").val() == '1') {
+			//disable and hide time selects
+			$('#startDateTimeT').val(" ");
+			$('#startDateTimeT').hide();
+
+			$('#endDateTimeT').val(" ");
+			$('#endDateTimeT').hide();
+		} else {
+			//enable and show time selects
+			$('#startDateTimeT').val(" ");
+			$('#startDateTimeT').show();
+
+			$('#endDateTimeT').val(" ");
+			$('#endDateTimeT').show();
+		}
+	}
+	
+	function update_users_rows() {
+		//collect all users rows data
+		var data = $('.user_rows').serialize();
+
+		//send data to ajax controller
+		$.ajax({
+			url: "ajax/saverosteruserrows",
+			type: "POST",
+			data: {rows_data: data},
+			dataType: "json",
+			success: function(response){
+
+			}
+		});
+	}
+	
+	function update_actions(id, visible_elements)
+	{
+		if(visible_elements == '3') {
+			//hide add button
+			$('li.row_'+id+'.control div img.add').hide();
+			$('li.row_'+id+'.control div img.remove').show();
+		} else if(visible_elements == '1') {
+			//hide remove button
+			$('li.row_'+id+'.control div img.add').show();
+			$('li.row_'+id+'.control div img.remove').hide();
+		} else {
+			$('li.row_'+id+'.control div img.add').show();
+			$('li.row_'+id+'.control div img.remove').show();
+		}
+	}
+
+	function load_roster_data(roster_blocked_element, do_ajax_load, month) {
+		if(do_ajax_load == '1') {
+			$('#month option[value="'+month+'"]').prop('selected', true);
+			$.ajax({
+//				url: "<?php echo APP_BASE.'ajax/loadnewrosterdata?month='.$month; ?>",
+				url: "<?php echo APP_BASE.'ajax/loadnewrosterdata?month='; ?>"+month,
+				type: "POST",
+				dataType: "html",
+				success: function(response){
+					$('#navcontainer').html(response);
+					$('.user_info').qtip({
+						style: {
+							name: 'cream',
+							tip: true
+						},
+						position: {
+							my: 'center right',  // Position my top left...
+							at: 'center left' // at the bottom right of...
+						},
+						show: {
+							event: 'click mouseenter'
+						},
+						hide: {
+							event: 'click mouseout'
+						}
+					});
+					
+					do_ajax_load = '0';
+					
+					<?php if($this->groupUsers):?>
+					//floating header
+					try {
+						
+						$("li#header_row").contents().appendTo("#container .header_dates");
+						$('#container').portamento({
+							wrapper: $('#example_wrapper'),
+							gap: 20,
+						});
+					}
+					catch(e){console.log(e);}
+					<?php endif; ?>
+						
+					try{
+						var monthNames = ["Januar", "Februar", "März", "April", "Mai", "June", "Juli", "August", "September", "Oktober", "November", "December"];			
+						var datereceived = month.split("_",2); 
+						$("#header_row div:eq(0) span").html("<br>" + datereceived[0] + " "+ monthNames[datereceived[1] - 1] + "<br>");
+					}
+					catch(e){}
+					
+					<?php if($this->usertype == 'SA' || $this->usertype == 'CA'):?>
+					$(".sortable,.sortable2").sortable({
+						opacity: 0.5,
+						handle: '.dragger',
+						cursor: 'move',
+						update: function () {
+							var users_data = '';
+							var groups_data = $('.sortable').sortable('serialize');
+							var prefix = '';
+
+							$('.sortable2').each(function(i){
+								var parent_id = $(this).parent().attr('id');
+
+								if(i>0){ 
+									prefix = '&';
+								}
+								users_data = users_data + prefix  +  $(this).sortable('serialize'); //each sortable serialized
+							});
+
+							$.ajax({
+								url: "ajax/saverosterorder",
+								type: "POST",
+								data: {users_data: users_data, groups_data : groups_data},
+								dataType: "json",
+								success: function(response){
+
+								}
+							});
+						}
+					});
+					$( ".sortable,.sortable2" ).disableSelection();
+
+					//add/remove code
+					$('ul.sortable3').each(function(){
+						var id = $(this).attr('id').replace('grouped-row-users-data-row_', '');
+						var user_rows_amount = $('#user_rows_'+id).val();
+
+						update_actions(id, user_rows_amount);
+					});
+
+					$('.add').on('click', function() {
+						var id = $(this).attr('alt');
+						var user_rows_amount = $('#user_rows_'+id).val();
+						var visible_elements = $('li.row_'+id+':visible').not('.control').length; //get number of existing visible elements
+						var next_element = '';
+
+						//in add 
+						if(visible_elements < '3' && visible_elements >= '1') {
+							next_element = (visible_elements+1);
+						} else if(visible_elements == '3') {
+							next_element = false;
+						}
+
+						if(next_element) {
+							//increase user rows amount
+							user_rows_amount++;
+
+							//show element
+							$('#grouped-row-users-data-row_'+id+' li:nth-child('+next_element+')').show();
+
+							//update user rows amount
+							$('#user_rows_'+id).val(user_rows_amount);
+
+							//update via ajax users rows
+							update_users_rows();
+							//update control buttons
+							update_actions(id, user_rows_amount);
+						}
+					});
+
+					$('.remove').on('click', function() {
+						var id = $(this).attr('alt');
+						var user_rows_amount = $('#user_rows_'+id).val();
+						var visible_elements = $('li.row_'+id+':visible').not('.control').length; //get number of existing visible elements
+						var previous_element = '';
+						//in remove 
+						if(visible_elements <= '3' && visible_elements > '1') {
+							previous_element = visible_elements;
+						} else {
+							previous_element = 0;
+						}
+
+						if(previous_element) {
+							//decrement user rows amount
+							user_rows_amount--;
+							//hide element
+							$('#grouped-row-users-data-row_'+id+' li:nth-child('+previous_element+')').hide();
+
+							//update user rows amount
+							$('#user_rows_'+id).val(user_rows_amount);
+
+							//update via ajax users rows
+							update_users_rows();
+
+							//update control buttons
+							update_actions(id, user_rows_amount);
+						}
+					});
+					<?php endif; ?>
+						
+				
+					$(roster_blocked_element).unblock();
+					
+					validate_legend();
+				}
+			});
+		}
+	}
+	//weird "leave page" function
+	var dontLeave = function(e) {
+		var selected_cells = $('#navcontainer input[type=checkbox]:checked').not('.auto_selected').length;
+		if (selected_cells > '0' && submited === false) {
+			return "<?php echo $this->translate('no_save_leave_alert'); ?>";
+		}
+	}
+
+	window.onbeforeunload = dontLeave;
+	
+	function validate_legend()
+	{	
+		//remove shifts from legend
+		var selected_month = $("#month").val();
+		selected_month = selected_month.split("_");
+		var date = new Date();
+		date.setFullYear(Number(selected_month[0]),  Number(selected_month[1])-1, 1);		
+		date.setHours(0,0,0,0);
+		var selected_strtotime_comp = date.getTime() / 1000;
+		
+		var shifts_assigned = {};
+		$( "input.day_checkbox" , $('#navcontainer')).each(function(){
+			shifts_assigned[$(this).val()] = $(this).val();
+		});
+		 
+		$("#shift_substitution_legend > li").each(function(){
+			
+			var _id = $(this).data("id");
+			var _strtotime = $(this).data("strtotime");
+			
+			if ( _id in shifts_assigned ){
+				$(this).show();
+			}
+			else if (_strtotime != "") {
+				if (Number(selected_strtotime_comp) > Number(_strtotime)) {
+					//hide
+					$(this).hide();					
+				} else {
+					$(this).show();
+				}
+			}
+			
+		});
+	}
+</script>
+<h1><?php echo $this->translate('duty_roster_planning'); ?></h1>
+<br />
+	<?php if($_REQUEST['dbgza']):  ?>
+<!-- 		<label> select all </label><input type="checkbox" name="sel_all" value="1" id="sel_all" /> -->
+	<?php endif;  ?>
+<div style="display: none;"><img id="calImg" src="<?php echo RES_FILE_PATH; ?>/images/calendar.png" alt="Popup" class="trigger"></div>
+<form action="" name="new_dienstplan_form" id="new_dienstplan_form" method="POST">
+	
+	
+	
+	<div id="example_wrapper" style="position:fixed;"></div>
+	
+	<div id="container">
+		<div class="bar_left">
+			<table>
+				<tr>
+					<td style='vertical-align: middle;'>
+						<label for="month" id="month_select_label"><?php echo $this->translate('selectmonth'); ?></label>
+					</td>
+					<td>
+						<?php echo $this->formSelect('month', $this->curmonth, null, $this->options) ?>
+					</td>
+					<td></td>
+				</tr>
+			</table>
+		</div>
+		
+		<div class="bar_center">
+			<table>
+				<tr>
+					<td>
+						<input type="button" value="<?php echo $this->translate('save'); ?>" class="save_roster" />
+						<input type="hidden" name="submit_buton" value="" />
+					</td>
+				</tr>
+			</table>
+		</div>
+
+		<div class="bar_right">
+			<table>
+				<tr>
+					<td colspan="4" style="padding-bottom:10px;"><!--ISPC-2726,elena,21.01.2021 -->
+						<?php echo $this->translate('shift_selector_exp');  ?>
+					</td>
+				</tr>
+				<tr>
+					<td style="width:100px;">
+						&nbsp;
+					</td>
+					<td>
+						<label><?php echo $this->translate('selectshift'); ?></label>
+					</td>
+					<td>
+						<?php echo $this->formSelect('shift', null, array("id"=>"shift_selector"), $this->client_shifts_selectbox); ?>
+						<?php
+							//previous version of the selectbox, i've let it here for legacy support 
+							if ( ! 1) : 
+						?> 
+						<select name="shift" id="shift_selector" >
+							<option value=""><?php echo $this->translate('select_shift_option'); ?></option>
+							<?php foreach ($client_shifts as $k_c_shift => $v_c_shift): ?>
+								<?php if ($k_c_shift != '0'): ?>
+									<option value="<?php echo $k_c_shift; ?>"><?php echo $v_c_shift['name']; ?>(<?php echo $this->client_shifts_min[$k_c_shift]['shortcut']; ?>)</option>
+								<?php endif; ?>
+							<?php endforeach; ?>
+						</select>
+						<?php endif; ?>
+					</td>
+					<td style="vertical-align: middle;">
+						<div id="shift_color_preview">&nbsp;</div>
+					</td>
+					<td></td>
+				</tr>
+			</table>
+		</div>
+		
+		<div class="header_dates" style="clear:both;">
+		</div>
+	</div>
+	<!-- ISPC-2726,elena,21.01.2021 -->
+	<div id="navcontainer" style="margin-top:7px">
+		<ul class="">
+
+		</ul>
+	</div>
+	
+	
+
+	<input type="hidden" name="deleted_cells" id="deleted_cells" />
+	<div id="form_btn_container"><!-- ISPC-2726,elena,21.01.2021 -->
+	<input type="button" value="<?php echo $this->translate('save'); ?>" class="save_roster" />
+	<input type="submit" name="print_pdf_buton" value="<?php echo $this->translate('generatepdf'); ?>" id="print_pdf_roster" />
+	</div><!-- ISPC-2726,elena,21.01.2021 -->
+</form>
+
+<?php if($this->shift_substitution >0 ):?>
+	<ul class="shift_substitution" id="shift_substitution_legend">
+		<?php foreach ($client_shifts as $k_c_shift => $v_c_shift): ?>
+			<?php  if($k_c_shift != '0' || ($k_c_shift == '0' && in_array($k_c_shift,$this->used_shifts) )):?>
+				<li data-id="<?php echo $v_c_shift['id'];?>"  data-strtotime="<?php echo $this->client_shifts_min[$k_c_shift]['valid_till_date'];?>"><?php echo $this->client_shifts_min[$k_c_shift]['shortcut']; ?> = <?php echo $v_c_shift['name']; ?> <?php echo $v_c_shift['valid_till_date']; ?> </li>
+			<?php endif; ?>
+		<?php endforeach; ?>
+	</ul>
+<?php endif; ?>
+
+<!-- printroster -->
+<!-- TODO-3253 Ancuta 05.04.2021 :: Commented print button - Comment from 01.04.2021-->
+<!-- <a href="<?php echo APP_BASE; ?>roster/printroster?month=<?php echo $_REQUEST['month']?>"><img src="images/print.gif"></a> -->
+<!-- //--  -->
+
+
+
+<div id="tabs-3" class="tab_container calendarRoster">
+	<div id="teamCalendar" ></div>
+</div>
+<div id="editEventTeam" style="display:none">
+	<div id="contactArea" >
+		<table border="0" cellspacing="2" cellpadding="2" width="100%">
+			<tbody>
+				<tr id="nameRow">
+					<td style="width:200px;"><label>Name Termin: </label></td>
+					<td colspan="2">
+						<input type="text" name="eventTitleET" value="" id="eventTitleET" />
+						<input type="hidden" name="eventIdET" value="" id="eventIdET" />
+						<input type="hidden" name="eventTypeET" id="eventTypeET">
+					</td>
+				</tr>
+				<tr id="allDayET">
+					<td>ganztags: </td>
+					<td>
+						<label for="allDayOnET">Ja</label>
+						<input type="radio" name="allDayET" id="allDayOnET" value="1" onclick="toggleEventAllDayET($(this));" />
+						<label for="allDayOffET">Nein</label>
+						<input type="radio" name="allDayET" id="allDayOffET" value="0" onclick="toggleEventAllDayET($(this));" />
+					</td>
+					<td></td>
+				</tr>
+				<tr id="startDateRowET">
+					<td>Begin Datum: </td>
+					<td colspan="2" style="width:auto;">
+						<input type="text" name="startDateET" value="" id="startDateET" readonly="readonly"/>
+						<input type="text" name="startDateTimeET" value="" id="startDateTimeET" style="width: 50px;"/>
+					</td>
+				</tr>
+				<tr id="endDateRowET">
+					<td>Ende Datum: </td>
+					<td style="width:auto;">
+						<input type="text" name="endDateET" value="" id="endDateET" readonly="readonly"/>
+						<input type="text" name="endDateTimeET" value="" id="endDateTimeET" style="width: 50px;" />
+					</td>
+				</tr>
+				<tr id="dayplan_inform_Row">
+					<td><?php echo $this->translate('customevent_inform_dayplaning') ?>:</td>
+					<td>
+						<label for="dayplan_inform_on">Ja</label>
+						<input type="radio" name="dayplan_inform" id="dayplan_inform_on" value="1" />
+						<label for="dayplan_inform_off">Nein</label>
+						<input type="radio" name="dayplan_inform" id="dayplan_inform_off" value="0" />
+					</td>
+					<td></td>
+				</tr>
+			</tbody>
+		</table>
+        <?php echo $this->formTextarea('comments', '', array(
+                                'id'=>null, 
+                                'style'=>'width:550px; position:absolute;bottom:0;', 
+                                'rows'=>3, 
+                                'placeholder'=>$this->translate('comments')))
+        ?>
+	</div>
+</div>
+
+<div id="addneweventteam" style="display:none">
+	<div id="contactArea" >
+		<table border="0" cellspacing="2" cellpadding="2" width="100%">
+			<tbody>
+				<tr id="eventNameRow">
+					<td style="width:200px;">Name Termin: </td>
+					<td colspan="2"><input type="text" width="100%" name="eventTitleT" value="" id="eventTitleT" /></td>
+				</tr>
+				<tr id="allDayRow">
+					<td>ganztags: </td>
+					<td>
+						<label for="allDayOn">Ja</label>
+						<input type="radio" name="allDayT" id="allDayOnT" value="1" onclick="toggleEventAllDayT($(this));" />
+						<label for="allDayOff">Nein</label>
+						<input type="radio" name="allDayT" id="allDayOffT" value="0" onclick="toggleEventAllDayT($(this));" />
+					</td>
+					<td></td>
+				</tr>
+				<tr id="startDateRow">
+					<td>Begin Datum: </td>
+					<td colspan="2" style="width:auto;">
+						<input type="text" name="startDateT" value="" id="startDateT" readonly="readonly" style="width: 260px;"/>
+						<input type="text" name="startDateTimeT" value="" id="startDateTimeT" style="width: 50px;"/>
+					</td>
+				</tr>
+				<tr id="endDateRow">
+					<td>Ende Datum: </td>
+					<td style="width:auto;">
+						<input type="text" name="endDateT" value="" id="endDateT" readonly="readonly" style="width: 260px;"/>
+						<input type="text" name="endDateTimeT" value="" id="endDateTimeT" style="width: 50px;" />
+					</td>
+				</tr>
+				<tr>
+					<td>Art des Termin:</td>
+					<td>
+						<select name="eventTypeT" id="eventTypeT" onchange="toggleEventType($(this));">
+							<!--<option value="4">Dienstplan</option>-->
+							<option value="12">Ferien</option>
+							<option value="13">Team Sitzungen</option>
+							<option value="14">Fortbildung</option>
+							<option value="15">Supervision</option>
+							<option value="16">Kongress</option>
+							<option value="17">Rufbereitschaft</option>
+							<option value="20">Einsatzleitung</option>
+							<option value="21">Termin</option>
+							<option value="22">Freier Termin</option>
+						</select>
+					</td>
+					<td></td>
+				</tr>
+				<tr>
+					<td><?php echo $this->translate('customevent_inform_dayplaning') ?>:</td>
+					<td>
+						<label for="dayplan_inform_on">Ja</label>
+						<input type="radio" name="dayplan_inform" id="dayplan_inform_on" value="1" />
+						<label for="dayplan_inform_off">Nein</label>
+						<input type="radio" name="dayplan_inform" id="dayplan_inform_off" value="0" />
+					</td>
+					<td></td>
+				</tr>
+			</tbody>
+		</table>
+        <?php echo $this->formTextarea('comments', '', array(
+                                'id'=>null, 
+                                'style'=>'width:550px; position:absolute;bottom:0;', 
+                                'rows'=>3, 
+                                'placeholder'=>$this->translate('comments')))
+        ?>
+	</div>
+</div>
+<div id="delEventT" style="display:none">
+	<div id="contactArea" >
+		<input type="hidden" name="parentModalT" id="parentModalT" value="" />
+		<?php echo $this->translate('deleteCustomEvents') ?>
+	</div>
+</div>
+<form action="" method="post" name="calendarprint" id="calendarprint" autocomplete="off" >
+
+</form>
+<br /><br />
+<h1><?php echo $this->translate('rosterUploadedFiles') ?></h1>
+<table width="85%" border="0" align="left" cellpadding="0" cellspacing="0" class="datatable" id="listpatientfiles_contenttable">
+	<tr>
+		<th height="20" align="left" valign="top"><strong><?php echo $this->translate('date'); ?></strong></th>
+		<th height="20" align="left" valign="top"><strong><?php echo $this->translate('title'); ?></strong></th>
+		<th align="left" valign="top"><strong><?php echo $this->translate('filetype'); ?></strong></th>
+		<th align="left" valign="top"><strong><?php echo $this->translate('uploadby'); ?></strong></th>
+		<th align="left" valign="top"><strong><?php echo $this->translate('deletes'); ?></strong></th>
+	</tr>
+	<?php
+	$filetypearray = array("zip" => "zip.png", "msword" => "word.png", "vnd.openxmlformats-officedocument.wordprocessingml.document" => "word.png", "docx" => "word.png", "excel" => "excel.png", "xls" => "excel.png", "XLSX" => "excel.png", "vnd.openxmlformats-officedocument.spreadsheetml.sheet" => "excel.png", "pdf" => "pdf.png", "txt" => "text.png", "text" => "text.png", "plain" => "text.png", "vnd.ms-powerpoint" => "powerpoint.png", "vnd.openxmlformats-officedocument.presentationml.presentation" => "powerpoint.png", "jpeg" => "file-jpg.png", "jpg" => "file-jpg.png", "gif" => "file-gif.png");
+
+	foreach ($this->filesData as $keyf => $fileData)
+	{
+
+		$filetype = strtoupper($fileData['file_type']);
+		$file_type = $filetypearray[$fileData['file_type']];
+		$allUsers = $this->allusers;
+
+		if ($fileData['isdeleted'] == 1)
+		{
+			$title = "<strike>" . $fileData['title'] . "</strike>";
+			$delete = " - ";
+			$prefix = " - " . $this->translate('deleted');
+		}
+		else
+		{
+			$title = '<a href="roster/rosterfile?doc_id=' . $fileData[id] . '">' . $fileData['title'] . '</a>';
+			$delete = '<a href="roster/newroster?delid=' . $fileData[id] . '"><img src="' . RES_FILE_PATH . '/images/action_delete.png" border="0" /></a>';
+			$prefix = "";
+		}
+		echo '
+		<tr class="row">
+			<td height="20" align="left" valign="top">' . date("d.m.Y", strtotime($fileData['create_date'])) . '</td>
+			<td height="20" align="left" valign="top">' . $title . $prefix . '</td>
+			<td align="left" valign="top">' . $filetype . '</td>
+			<td align="left" valign="top">' . $allUsers[$fileData['create_user']] . '</td>
+			<td align="left" valign="top">' . $delete . '</td>
+		</tr>
+		';
+	}
+	?>
+</table>
+<br />
+<br />
+<h1 style="clear:both;"><?php echo $this->translate('rosterUploadFiles') ?></h1><!--ISPC-2726,elena,21.01.2021 -->
+<form action="" method="post" name="saverosterfile" id="saverosterfile" autocomplete="off">
+	<table width="100%" border="1" cellspacing="0" cellpadding="0">
+		<tr>
+			<td width="25%" height="28" align="left" valign="top"><?php echo $this->translate('file_upload_title') ?></td><!--ISPC-2726,elena,21.01.2021 -->
+			<td width="23%" height="28" align="left" valign="top"><label>
+					<input type="text" name="title" id="title" />
+
+					<input type="hidden" name="fileuploads" value="1" />
+				</label></td>
+			<td height="28" align="left" valign="top" class="err" colspan="2"><?php echo $this->error_title; ?></td>
+		</tr>
+		<tr>
+			<td height="28" align="left" valign="top"><?php echo $this->translate('uploadfile_user') ?>*</td>
+			<td height="28" align="left" valign="top">
+				<div id="file-uploader-demo1">
+					<noscript>
+					Please enable JavaScript to use file uploader.
+					</noscript>
+				</div>
+				(<?php echo $this->translate('maxfilesize'); ?>: <?php echo ini_get('upload_max_filesize'); ?>B)<!--ISPC-2726,elena,21.01.2021 -->
+
+				<script src="<?php echo RES_FILE_PATH; ?>/javascript/jgrowl/fileuploader.js" type="text/javascript"></script>
+
+				<script>
+					function createUploader() {
+						var uploader = new qq.FileUploader({
+							element: document.getElementById('file-uploader-demo1'),
+							action: appbase + 'roster/rosteruploadify',
+							allowedExtensions: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'odt', 'rtf', 'ods'],
+							onSubmit: function(id, fileName) {
+								$('#submit_files').attr("disabled", "true");
+							},
+							onComplete: function(id, fileName, responseJSON) {
+								$('#submit_files').removeAttr("disabled");
+							}
+						});
+					}
+
+					// in your app create uploader as soon as the DOM is ready
+					// don't wait for the window to load
+					window.onload = createUploader;
+				</script>
+			</td>
+			<td height="28" align="left" valign="top" colspan="2"></td>
+		</tr>
+		<tr><!--ISPC-2726,elena,21.01.2021 -->
+			<td height="16"> </td>
+		</tr>
+		<tr>
+			<td height="28" align="left" valign="top">&nbsp;</td>
+			<td height="28" align="left" valign="top"><label>
+					<input type="submit" name="btnsubmit" id="submit_files" value="<?php echo $this->translate('submit') ?>"  disabled="disabled" class="button">
+				</label></td>
+			<td height="28" align="left" valign="top">&nbsp;</td>
+			<td height="28" align="left" valign="top">&nbsp;</td>
+		</tr>
+
+	</table>
+</form>

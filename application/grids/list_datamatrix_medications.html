@@ -1,0 +1,165 @@
+<table class="datatable datamatrix_import" style="width:99%">
+<thead>
+	<tr>
+		<th width="20px" style="width:20px">
+			<input type="checkbox" id="select_all_dmx" class="select_all_dmx"/>
+		</th>	
+		<th>
+			Name / Wirkstoff
+		</th>
+		<th width="15%">
+			Type
+		</th>
+		<th width="640px">
+			Dosierung
+		</th>
+
+	</tr>
+</thead>
+<tbody>
+<gridrow>
+	<phpscript>
+		$id++; //this acts as identifier on the data
+		
+		//class for each row
+		if ($id % 2) {
+			$tr_class = "odd";
+		} else {
+			$tr_class = "even";
+		}	
+		
+		//type
+		$selectbox =  $view->formSelect("dm_medication[$id][group]", 
+			$group_owner,
+			array("onchange"=>"dm_group_change(this)" , "class"=>"dm_group"),
+			$this->medication_groups
+		);
+		
+		//4 dosage times
+		$Morning_selectbox_dosage_intervals =  $view->formSelect("dm_medication[$id][dosage_intervals][]", 
+			"",
+			array("class"=>"dosage_intervals", "data-min"=>"05:00", "data-max"=>"11:59"),
+			array()
+		);
+		$Lunch_selectbox_dosage_intervals =  $view->formSelect("dm_medication[$id][dosage_intervals][]", 
+			"",
+			array("class"=>"dosage_intervals", "data-min"=>"12:00", "data-max"=>"16:59"),
+			array()
+		);
+		$Evening_selectbox_dosage_intervals =  $view->formSelect("dm_medication[$id][dosage_intervals][]", 
+			"",
+			array("class"=>"dosage_intervals", "data-min"=>"17:00", "data-max"=>"21:59"),
+			array()
+		);
+		$Night_selectbox_dosage_intervals =  $view->formSelect("dm_medication[$id][dosage_intervals][]", 
+			"",
+			array("class"=>"dosage_intervals", "data-min"=>"22:00", "data-max"=>"04:59"),
+			array()
+		);
+		
+		//dosage times as a single input for 1-0-1-1-3
+		$input_dosage_intervals =  $view->formText("dm_medication[$id][dosage_intervals]", 
+			$tiFreeText,
+			array("class"=>"dosage_intervals", "style"=>"max-width:60px")
+		);
+		
+		$xml_dosaje_array = array();
+		$xml_dosaje_text = 'XML Dosierung: ';
+		
+		if ( ! empty ($tiFreeText) ) {
+			//dosage time as single input			
+			$Morning = 
+			$Lunch = 
+			$Evening = 
+			$Night = $view->formText("dm_medication[$id][dosage_qty][]", 
+				$tiFreeText,
+				array("class"=>"dosage_qty")
+			);
+			
+			$xml_dosaje_text .= $tiFreeText;
+			$xml_dosage = $tiFreeText;
+			$xml_dosaje_array = explode('-', $xml_dosage);
+
+						
+		} else {
+			//dosage time as 4 selects
+			$Morning = $view->formText("dm_medication[$id][dosage_qty][]", 
+				$tiMorning,
+				array("class"=>"dosage_qty")
+			);
+			$Lunch = $view->formText("dm_medication[$id][dosage_qty][]", 
+				$tiLunch,
+				array("class"=>"dosage_qty")
+			);
+			$Evening = $view->formText("dm_medication[$id][dosage_qty][]", 
+				$tiEvening,
+				array("class"=>"dosage_qty")
+			);
+			$Night = $view->formText("dm_medication[$id][dosage_qty][]", 
+				$tiNight,
+				array("class"=>"dosage_qty")
+			);
+			
+			$xml_dosaje_text .= "mogens: ".$tiMorning . "; mittags: ". $tiLunch . "; abends: ". $tiEvening. "; zur Nacht: ".$tiNight;
+
+ 
+ 
+ 
+ 
+ 
+ 
+			array_push($xml_dosaje_array, $tiMorning);
+			array_push($xml_dosaje_array, $tiLunch);
+			array_push($xml_dosaje_array, $tiEvening);
+			array_push($xml_dosaje_array, $tiNight);
+		}
+		
+		$xml_dosaje_json = json_encode($xml_dosaje_array);
+		
+
+		$medi_checkbox = '<input name="dm_selected[]" type="checkbox" class="dm_import_cb" value="'.$id.'" />';
+		$line_error='';
+		$error_class='';
+		if(!empty($pzn_error)){
+			$medi_checkbox='';
+			$error_class = ' dmx_error_class';
+			$line_error= '<tr class="'.$error_class.'"><td colspan="4" >'.$view->translate($pzn_error).'</td></tr>';
+		} 
+		
+	</phpscript>
+
+
+	<!-- ERROR -->
+	[[line_error]]
+	<tr class="[[tr_class]] [[error_class]]" data-dosage='[[xml_dosaje_json]]' data-dosage_original='[[xml_dosaje_text]]'>
+		<td>
+			[[medi_checkbox]]
+		</td>	
+		<td>
+			<!-- name -->
+			<input name="dm_medication[[[id]]][tradeName]" type="text" value="[[tradeName]]" />
+			<br/>
+			<!-- drug -->
+			<input name="dm_medication[[[id]]][substances]" type="text" value="[[substances]]" />
+		</td>
+		<td>
+			[[selectbox]]
+			<!-- hidden -->
+			<input name="dm_medication[[[id]]][pzn]" type="hidden" value="[[pzn]]" />
+			<input name="dm_medication[[[id]]][dbf_id]" type="hidden" value="[[dbf_id]]" />
+			<input name="dm_medication[[[id]]][concentration]" type="hidden" value="[[concentration]]" />
+			<input name="dm_medication[[[id]]][dosageForm]" type="hidden" value="[[dosageForm]]" />
+			<input name="dm_medication[[[id]]][ingestUnit]" type="hidden" value="[[ingestUnit]]" />
+			<input name="dm_medication[[[id]]][information]" type="hidden" value="[[information]]" />
+			<input name="dm_medication[[[id]]][reason]" type="hidden" value="[[reason]]" />
+		</td>
+		
+		<td class="xml_dosage">
+			XML Dosierung: [[xml_dosage]]
+		</td>
+
+	</tr>
+	
+</gridrow>
+</tbody>
+</table>

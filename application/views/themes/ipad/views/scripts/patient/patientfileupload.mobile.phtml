@@ -1,0 +1,149 @@
+<?php
+/*
+ * $this->clientModules is an array with all allowed modules...
+*/
+
+/*
+ * view available vars if you are in layout_new
+*
+* $this->ipid
+* $this->epid
+* $this->enc_id - encoded id of patient
+* $this->dec_id - decoded id of patient
+*
+* $this->patientMasterData - array;
+* $this->patientinfo - html for patient header
+* $this->tabmenus - html for patient navigation menu
+*/
+
+
+/*
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/qtip/jquery.qtip.min.css?' . date('Ymd'));
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/tags_editor/jquery.tag-editor.css?' . date('Ymd'));
+$this->headScript()->appendFile(RES_FILE_PATH . '/javascript/qtip/jquery.qtip.min.js?' . date('Ymd'));
+$this->headScript()->appendFile(RES_FILE_PATH . '/javascript/tags_editor/jquery.tag-editor.js?' . date('Ymd'));
+*/
+
+$client_tags = $this->client_tags;
+$system_tags = $this->system_tags;
+
+$restricted_tags = $this->restricted_tags;
+$all_tags = $this->all_tags;
+
+$patient_file_tag_rights_arr = explode(',', $this->patient_file_tag_rights);
+$patient_file_tag_rights_js = json_encode(explode(',', $this->patient_file_tag_rights));
+//dd($restricted_tags, $all_tags, $patient_file_tag_rights_arr, $patient_file_tag_rights_js);
+
+
+//add file uploader
+$this->headScript()->appendFile(APP_BASE.'/javascript/fine-uploader/fine-uploader.min.js');
+$this->headLink()->appendStylesheet(APP_BASE.'/javascript/fine-uploader/fine-uploader.css');
+
+
+
+//rendered-add the fine-uploader file-uploader template
+// $qqtemplate = Pms_Template::createTemplate(array(), 'templates/qq_fileupload_template_multiple_2018_11.mobile.phtml');
+$qqtemplate = $this->render('templates/qq_fileupload_template_multiple_2018_11.mobile.phtml');
+$this->headScript()->setAllowArbitraryAttributes(true)->appendScript($qqtemplate, 'text/template', array("id" => "qq-template", "noescape" => true));
+
+
+
+/**
+ * add here variables you need in /javascript/views/(controller)/(action)(.mobile.js && .js)
+ * prefix your specific vars with `controller_action_`, so we don't have colisions
+ */
+$patient_patientfileupload_createTagsRights = in_array('create', $patient_file_tag_rights_arr) ? true : false;
+$head_script = <<<EOT
+var patient_patientfileupload_createTagsRights = {$patient_patientfileupload_createTagsRights};
+EOT;
+
+$this->headScript()->appendScript($head_script, $type = 'text/javascript', $attrs = array());
+
+?>
+
+
+<div class="datein dokumente">
+    
+	<h1 class="mobile">Dokumente</h1>
+	<a href="#qq_file_uploader_placeholder" class="btnUpload"></a>
+
+	
+	<?php if ( ! empty($this->all_files_tags_filter)) : ?>
+    <div class="etagcontainer">
+        <div class="etiketenTags">
+            <a href="#" class="btnDropdown"></a>
+            <?php //$this->formSelect('fileFilterTags', null, ['multiple' => true, 'onChange' => 'dataTablePatientFilesSearch(this.value)'], $this->all_files_tags_filter)?>
+            <select id="fileFilterTags" multiple=true onChange="dataTablePatientFilesSearch(this.value, 'filter');">
+                <?php foreach ($this->all_files_tags_filter as $tag) :?>
+                <option data-1="<?=$this->escape($tag['name'])?>" data-2="<?= isset($this->system_tags[$tag['tag']]) ? 'system_tags' : 'client_tags'?>" data-3="<?="({$tag['count']})"?>" value="<?=$tag['tag']?>"><?="{$tag['name']} ({$tag['count']})"?></option>
+                <?php endforeach; ?>              
+            </select>
+        </div>
+        <div class="sorting_arrows">
+			<select id="fileSortingArrows" class="sorting_arrows" onChange="dataTablePatientFilesSearch(this.value, 'sort');">
+				<option value='ftype' data-order="asc" ><?=$this->translate('Sort by ftype')?></option>
+				<option value='ftype' data-order="desc" style="display:none" ><?=$this->translate('Sort by ftype')?></option>
+				<option value='title' data-order="asc" ><?=$this->translate('Sort by title asc')?></option>
+				<option value='title' data-order="desc" style="display:none"  ><?=$this->translate('Sort by title')?></option>
+				<option value='date'  data-order="asc" style="display:none"  selected="selected"><?=$this->translate('Sort by date')?></option>
+				<option value='date'  data-order="desc" class='selected' ><?=$this->translate('icon sort order asc')?> <?=$this->translate('Sorted by date')?></option>
+			</select>
+		</div>
+	</div>		
+    <?php endif; ?>
+
+
+    <table class="selector_allpatientfile_table patientfiles" border="0" cellspacing="0" cellpadding="0" >
+    </table>
+</div>
+
+
+<div class="datein uploadfiles">
+<form  action="<?=APP_BASE?>patient/patientfileupload?id=<?=$this->enc_id?>" method="post" name="frmuser" id="frmuser" autocomplete="off" >
+
+    <h1 class="mobile"><?=$this->translate('Neue Datei hochladen')?></h1>
+    <div id="qq_file_uploader_placeholder" class='qq_file_uploader_placeholder qq_file_uploader_multiple' data-parent='fieldset' data-action_name="upload_patient_files" data-tabname="0">
+        <noscript>
+            Please enable JavaScript to use file uploader.
+        </noscript>
+    </div>
+
+    <?php if (in_array('use', $patient_file_tag_rights_arr)) : ?>
+    <h3 class="tagsheader">Etiketten hinzufügen</h3>
+    <div class="datein dokumente">
+        <!-- <div class="etagcontainer"> -->
+            <div class="etiketenTags">
+                <a href="#" class="btnDropdown"></a>
+                <select name="tag_name[]" id="fileAddTags" multiple=true>
+                    <?php 
+                    if ( ! empty($this->client_tags)) :  
+                    ?>
+                    <optgroup id="fileAddTags-optgroup-client_tags" label="<?=$this->translate('client_tags_available'); ?>">
+                        <?php foreach ($this->client_tags as $tag) :?>
+                        <option data-1="<?=$this->escape($tag['tag'])?>" data-2="client_tags" data-3="<?=$tag['id']?>" value="<?=$tag['tag']?>"><?=$tag['tag']?></option>
+                        <?php endforeach; ?>
+                    </optgroup>
+                    <?php endif; ?>
+                    
+                    <?php 
+                    if ( ! empty($this->system_tags)) :  
+                    ?>
+                    <optgroup id="fileAddTags-optgroup-system_tags" label="<?=$this->translate('system_tags_available'); ?>">
+                        <?php foreach ($this->system_tags as $tag) :?>
+                        <option data-1="<?=$this->escape($tag['tag'])?>" data-2="system_tags" data-3="<?=$tag['id']?>" value="<?=$tag['tag']?>"><?=$tag['tag']?></option>
+                        <?php endforeach; ?>
+                    </optgroup>
+                    <?php endif; ?>
+                    
+                </select>
+            </div>
+         <!-- </div> -->
+    </div>
+    <?php endif; ?>
+
+    <?php //who has written this pat_files_tags_rights ?? .. take some lessons... ?>
+    <input type="hidden" name="pat_files_tags_rights" value="<?php echo $this->patient_file_tag_rights; ?>" />
+    <button class="speichern">Speichern</button>
+
+</form>
+</div>

@@ -1,0 +1,367 @@
+<?php 
+$medication_array = $this->medication_block;
+foreach($medication_array as $medication_type => $med_post):
+?>
+<?php if($medication_type != "deleted"):?>
+	<?php if($medication_type != "isschmerzpumpe"):?>	
+		<?php 
+			if( count($medication_array[$medication_type]) == 0 ) {
+				continue;
+			}
+		?>
+	<fieldset>
+		<legend><?=$this->translate($medication_type." medication title")?></legend>
+		<table class="medication_table table_<?=$medication_type;?>" border="1" style="border-collapse: collapse; border: 1px solid #666">
+		  
+			<?php if (in_array($medication_type, $this->timed_scheduled_medications)): ?>
+			<!-- PARENT LABEL -->
+			<!-- 
+			<tr>
+		      <td colspan=<?= 4+count($this->dosage_intervals[$medication_type]); ?>>
+		          <h3 class="h3_<?=$medication_type;?>"><?=$this->translate($medication_type." medication title")?></h3>
+		      </td>
+	        </tr>
+			 -->
+			<!--  DOSAGE TABLE HEADER PARENT-->
+			<tr>
+				<th rowspan=2><?=$this->translate('medication_name');?></th><!--  1 -->
+			 	<th colspan="<?=count($this->dosage_intervals[$medication_type]);?>"><?=$this->translate('medication_dosage'); ?></th> <!--  5 -->	
+			 	<th rowspan=2><?=$this->translate('medication_indication'); ?></th><!--  0 -->
+			 	<th rowspan=2><?=$this->translate('medication_comments'); ?></th><!--  0 -->
+			 	<th rowspan=2><?=$this->translate('date'); ?></th><!--  0 -->
+			 </tr>
+			<!--  DOSAGE TABLE HEADER KIDS-->
+	 		<tr>
+	 			<?php foreach($this->dosage_intervals[$medication_type] as $k => $di):?>
+		 			<th align="center" ><b><?=$di;?></b></th>
+	 			<?php endforeach;?>
+	 		</tr>
+	 		
+	 		
+			<?php else : ?>
+			<tr>
+		      <td colspan=<?=($medication_type != "treatment_care" ? 5 : 3); ?>>
+		          <h3 class="h3_<?=$medication_type;?>"><?=$this->translate($medication_type." medication title")?></h3>
+		      </td>
+	        </tr>
+			<tr>
+				<th><?=$this->translate('medication_name');?></th><!--  1 -->
+				<?php if($medication_type != "treatment_care" ):?>
+			 	<th><?=$this->translate('medication_dosage'); ?></th> <!--  5 -->
+			 	<th><?=$this->translate('medication_indication'); ?></th><!--  0 -->
+			 	<?php endif; ?>
+			 	<th><?=$this->translate('medication_comments'); ?></th><!--  0 -->
+			 	<th><?=$this->translate('date'); ?></th><!--  0 -->
+			 </tr>
+			<? endif;?>
+			
+			
+		
+			<?php foreach($med_post['medication'] as $med_line => $med) : ?>
+			<tr nobr="true">
+				<!--  MEDICATION NAME -->
+				<td><b><?=$med;?></b>
+					<?php if($medication_type != "treatment_care"): ?>
+						<br/>
+						<i><?=$this->translate('medication_drug'); ?>:</i> <?=$med_post['drug'][$med_line];?>
+					       <?php if($medication_type == "isintubated"): ?>
+						      <br/><i><?=$this->translate('medication_packaging'); ?>:</i> <?=html_entity_decode($this->packaging_array[$med_post['packaging'][$med_line]]);?>
+						      <br/><i><?=$this->translate('medication_kcal'); ?>:</i> <?=$med_post['kcal'][$med_line];?>
+						      <br/><i><?=$this->translate('medication_volume'); ?>:</i> <?=$med_post['volume'][$med_line];?>
+					       <?php endif;?>	
+						<br/>
+						
+						<?php if($this->show_new_fields == "1"):?>
+							<i><?=$this->translate('medication_unit'); ?>:</i> 
+							<?php if ( ! empty($med_post['unit'][$med_line]) && ! empty($this->client_medication_extra['unit'])) { 
+							    echo html_entity_decode($this->client_medication_extra['unit'][$med_post['unit'][$med_line]]); 
+							}?>
+							<br/>
+							
+							<i><?=$this->translate('medication_type'); ?>:</i> 
+							<?php if ( ! empty($this->client_medication_extra['type'])) { 
+							    echo $this->client_medication_extra['type'][$med_post['type'][$med_line]]; 
+							}?>
+							<br/>
+							
+							<i><?=$this->translate('medication_dosage_form'); ?>:</i>
+							<?php if(!empty($this->client_medication_extra['dosage_form'])) {
+							    echo $this->client_medication_extra['dosage_form'][$med_post['dosage_form'][$med_line]]; 
+							}?>
+							<br/>
+							
+							<?php 
+							$concentration_measures =" ";
+							if ( ! empty($med_post['unit'][$med_line]) && ! empty($this->client_medication_extra['unit'])) {
+								 $concentration_measures .= html_entity_decode($this->client_medication_extra['unit'][$med_post['unit'][$med_line]]); 
+							}
+							if ( ! empty($med_post['dosage_form'][$med_line]) && ! empty($this->client_medication_extra['dosage_form'])) { 
+								$concentration_measures .="/".$this->client_medication_extra['dosage_form'][$med_post['dosage_form'][$med_line]]; 
+							} 
+							?>
+							<i><?=$this->translate('medication_concentration'); ?>:</i> 
+							<?=trim($med_post['concentration'][$med_line].$concentration_measures); ?>
+							
+						<?php endif;?>
+					<?php endif;?>
+				</td>
+	
+				<!--  MEDICATION DOSAGE INPUTS-->
+				<?php if (in_array($medication_type,$this->timed_scheduled_medications)) : ?>
+					<?php foreach($med_post['dosage'][$med_line] as $k_time => $dosage_time) : ?>
+					<?php 
+							$dosage_concentration = ""; 
+
+							$dosage_form = ""; 
+							if ( ! empty($this->client_medication_extra['dosage_form'])) { 
+								$dosage_form = $this->client_medication_extra['dosage_form'][$med_post['dosage_form'][$med_line]]; 
+							}
+
+							$dosage_concentration = $med_post['dosage_concentration'][$med_line][$k_time]."".$dosage_form;
+					?>
+						<td align="center">
+							<?= $dosage_time;?>
+							<?php if ( ! empty($med_post['unit'][$med_line]) && ! empty($this->client_medication_extra['unit'])) {
+							    echo html_entity_decode($this->client_medication_extra['unit'][$med_post['unit'][$med_line]]); 
+							}?>
+							<?php if(strlen($dosage_concentration) > 0) {
+							    echo "<br/>". $dosage_concentration;
+							}?>
+						</td>
+					<?php endforeach;?>
+				<?php elseif($medication_type == 'isbedarfsXX' ) : ?>
+				    <td align="center">
+					   <?=$med_post['dosage'][$med_line];?> 
+					   <?php if ( ! empty($med_post['unit'][$med_line]) && ! empty($this->client_medication_extra['unit'])) {
+					       echo html_entity_decode($this->client_medication_extra['unit'][$med_post['unit'][$med_line]]); 
+					   }?>
+				    </td>
+				<?php elseif($medication_type != 'treatment_care' ) : ?>
+					<td align="center">
+    					<?php if ( ! is_array($med_post['dosage'][$med_line])) { 
+    					    echo $med_post['dosage'][$med_line]; 
+    					}?>
+					</td>
+				<?php else:?>
+				
+				<?php endif; ?>
+				 
+				<!--  MEDICATION INDICATION -->
+				<?php if ($medication_type != "treatment_care") : ?>
+					<?php if(!empty($this->client_medication_extra['type'])):?>
+					<td bgcolor="#<?=$this->client_medication_extra['indication'][trim($med_post['indication'][$med_line])]['color'];?>">
+						<?=$this->client_medication_extra['indication'][trim($med_post['indication'][$med_line])]['name'];?>
+					</td>
+					<?php else : ?>
+					<td></td>
+					<?php endif; ?>
+				<?php endif; ?>
+				<!--  MEDICATION Comment-->
+				<td>
+					<?=$med_post['comments'][$med_line]; //not-escaped?? ?>
+				</td>
+				
+				<!--  MEDICATION DATE-->
+				<?php if (strlen($med_post['medication_change'][$med_line]) > 0 ) : ?>
+				<td align="center">
+				    <?=date('d.m.Y',strtotime($med_post['medication_change'][$med_line]));?>
+			    </td>
+				<?php else: ?>
+				<td align="center">
+					<?=date('d.m.Y',time());?>
+				</td>
+				<?php endif;?>
+			</tr> 			
+			<?php endforeach;?>
+		</table>
+	</fieldset>
+	
+	<?php else : ?>
+			
+			<?php foreach($med_post as $pupme_nr =>$sch_med_post) : ?>
+				<?php $cocktail_details = $sch_med_post['cocktail'];?>
+			<fieldset>
+	            <legend><?=$this->translate($medication_type." medication title ".$cocktail_details['pumpe_type'])?></legend>
+				<!--  				
+				<table class='medication_table medication_pumpe' border=1 style="border-collapse: collapse; border: 1px solid #666">
+				<tr>
+					<td>
+						<h3 class="h3_<?=$medication_type;?>"><?=$this->translate($medication_type." medication title ".$cocktail_details['pumpe_type'])?></h3>
+					</td>
+				</tr>
+				<tr>
+					<td>
+				-->
+						<table class='medication_table medication_pumpe' cellpadding="0"  border="1" style="border-collapse: collapse; border: 1px solid #666">
+							<tr>
+								<th><?= $this->translate('medication_name');?></th><!--  1 -->
+						 		<th><?= $this->translate('medication_dosage_h'); ?></th> <!--  5 -->
+						 		<th><?= $this->translate('medication_dosage24h'); ?></th> <!--  5 -->
+							 	<th><?= $this->translate('medication_indication'); ?></th><!--  0 -->
+							 	<th><?= $this->translate('date'); ?></th><!--  0 -->
+							 </tr>
+						
+							<?php foreach($sch_med_post['medication'] as $med_line => $med) : ?>
+								<tr>
+									<!--  MEDICATION NAME -->
+									<td>
+									   <b><?= $med;?></b>
+									   <br/>
+									   <i><?= $this->translate('medication_drug'); ?>:</i>
+									   <?= $sch_med_post['drug'][$med_line];?>
+									   <br/>
+											
+									<?php if ($this->show_new_fields == "1") : ?>
+										<i><?= $this->translate('medication_unit'); ?>:</i> 
+										<?php if ( ! empty($sch_med_post['unit'][$med_line]) && ! empty($this->client_medication_extra['unit'])) {
+										    echo $this->client_medication_extra['unit'][$sch_med_post['unit'][$med_line]]; 
+										}?>
+										<br/>
+									
+										<i><?= $this->translate('medication_dosage_form'); ?>:</i> 
+										<?php if ( ! empty($this->client_medication_extra['dosage_form'])) {
+										    echo $this->client_medication_extra['dosage_form'][$sch_med_post['dosage_form'][$med_line]]; 
+										}?>
+										<br/>
+											
+        								<?php $concentration_measures =" ";
+        									if ( ! empty($sch_med_post['unit'][$med_line]) && !empty($this->client_medication_extra['unit'])) {
+        										 $concentration_measures .= html_entity_decode($this->client_medication_extra['unit'][$sch_med_post['unit'][$med_line]]); 
+        									}
+        									if ( ! empty($sch_med_post['dosage_form'][$med_line]) && !empty($this->client_medication_extra['dosage_form'])) { 
+        										$concentration_measures .="/".$this->client_medication_extra['dosage_form'][$sch_med_post['dosage_form'][$med_line]]; 
+        									} 
+        								?>	
+										<i><?= $this->translate('medication_concentration'); ?>:</i> 
+										<?= trim($sch_med_post['concentration'][$med_line].$concentration_measures);?>
+										
+									<?php endif; ?>
+									</td>
+						
+									<!--  MEDICATION DOSAGE INPUTS-->
+									<?php if (strlen($sch_med_post['concentration'][$med_line]) > 0 && $sch_med_post['concentration'][$med_line] != '0.00'): ?>
+										<?php 
+										$dosage_form = ""; 
+										if ( ! empty($this->client_medication_extra['dosage_form'])) {
+										    $dosage_form = $this->client_medication_extra['dosage_form'][$sch_med_post['dosage_form'][$med_line]]; 
+										}
+										
+										$dosage_value = "";
+        								$concentration_value = "";
+        								$dosage_concentration = "";
+        								$dosage_value = str_replace(",",".",$sch_med_post['dosage'][$med_line]);
+        								$concentration_value = str_replace(",",".",$sch_med_post['concentration'][$med_line]);
+        
+        								$dosage_concentration_result = $dosage_value / $concentration_value;
+        								  
+        								if ( ! is_int($dosage_concentration_result)) {
+        									$dosage_concentration_result = round($dosage_concentration_result,4);
+        									$dosage_concentration = number_format($dosage_concentration_result,3,",",".");
+        								} else {
+        									$dosage_concentration = $dosage_concentration_result;
+        								}
+          
+        								 $dosage_concentration = '('.$dosage_concentration."".$dosage_form.')';  
+        
+        							
+        								$dosage_24h_value = "";
+        								$concentration_24h_value = "";
+        								$dosage_24h_concentration = "";
+        								$dosage_24h_value = str_replace(",",".",$sch_med_post['dosage_24h'][$med_line]);
+        								$concentration_24h_value = str_replace(",",".",$sch_med_post['concentration'][$med_line]);
+        
+        								$dosage_24h_concentration_result = $dosage_24h_value / $concentration_24h_value;
+        								  
+        								if ( ! is_int($dosage_24h_concentration_result)) {
+        									$dosage_24h_concentration_result = round($dosage_24h_concentration_result,4);
+        									$dosage_24h_concentration = number_format($dosage_24h_concentration_result,3,",",".");
+        								} else {
+        									$dosage_24h_concentration = $dosage_24h_concentration_result;
+        								}
+          
+        								 $dosage_24h_concentration = '('.$dosage_24h_concentration."".$dosage_form.')';  
+    								    ?>
+    								    
+								<?php else: ?>
+									<?php 
+									$dosage_concentration = '';
+									$dosage_24h_concentration = '';  
+									?>
+								<?php endif;?>
+								    <td align="center">
+									   <?= $sch_med_post['dosage'][$med_line];?>
+									   <?php if ( ! empty($sch_med_post['unit'][$med_line]) && ! empty($this->client_medication_extra['unit'])) { 
+									       echo $this->client_medication_extra['unit'][$sch_med_post['unit'][$med_line]]; 
+									   }?> 
+									   <?= $dosage_concentration;?>
+								    </td>
+									<td align="center">
+									   <?= $sch_med_post['dosage_24h'][$med_line];?>
+									   <?php if ( ! empty($sch_med_post['unit'][$med_line]) && ! empty($this->client_medication_extra['unit'])) {
+									       echo $this->client_medication_extra['unit'][$sch_med_post['unit'][$med_line]]; 
+									   }?> 
+									   <?= $dosage_24h_concentration;?>
+								    </td>
+									 
+									<!--  MEDICATION INDICATION -->
+									<?php if ( ! empty($this->client_medication_extra['type'])) : ?>
+									<td bgcolor="#<?= $this->client_medication_extra['indication'][trim($sch_med_post['indication'][$med_line])]['color'];?>" >
+										<?= $this->client_medication_extra['indication'][trim($sch_med_post['indication'][$med_line])]['name'];?>
+									</td>
+									<?php else: ?>
+									<td></td>
+									<?php endif; ?>
+									
+									
+									<!--  MEDICATION DATE-->
+									<?php if (strlen($sch_med_post['medication_change'][$med_line]) > 0 ) : ?>
+										<td align="center"><?= date('d.m.Y',strtotime($sch_med_post['medication_change'][$med_line]));?></td>
+									<?php else : ?>
+										<td align="center"><?= date('d.m.Y',time());?></td>
+									<?php endif; ?>
+									
+								</tr> 			
+							<?php endforeach; ?>
+							
+							<tr>
+								<td><label><?= $this->translate("Kommentar")?>:</label></td>
+								<td colspan="4"><?= $cocktail_details['description']?></td>
+							</tr>		 
+							
+							<tr>
+								<td><label><?=$this->translate("medication_type")?>:</label></td>
+								<td colspan="4"><?= $cocktail_details['pumpe_medication_type']?></td>
+							</tr>		 
+							<tr>
+								<td><label><?= $this->translate("Flussrate")?>:</label></td>
+								<td colspan="4"><?= $cocktail_details['flussrate']?></td>
+							</tr>
+							
+							<tr>
+								<td><label><?= $this->translate("medication_carrier_solution")?>:</label></td>
+								<td colspan="4"><?= $cocktail_details['carrier_solution']?></td>
+							</tr>
+							 <?php if ($cocktail_details['pumpe_type'] == "pca") : ?>
+								<tr>
+									<td><label><?= $this->translate("Bolus")?>:</label></td>
+									<td colspan="4"><?= $cocktail_details['bolus']?></td>
+								</tr>		 
+								<tr>
+									<td><label><?= $this->translate("Sperrzeit")?>:</label></td>
+									<td colspan="4"><?= $cocktail_details['sperrzeit']?></td>
+								</tr>		 
+							<?php endif;?>
+						</table>
+						<!--  
+					</td>
+				</tr>
+				</table>
+						-->
+				
+			</fieldset>
+			<?php endforeach;?>
+	<?php endif;?>
+	
+	<?php endif;?>
+	<br/>
+<?php endforeach;?>

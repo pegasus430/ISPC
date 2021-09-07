@@ -1,0 +1,101 @@
+<?php
+
+	Doctrine_Manager::getInstance()->bindComponent('SymptomatologyMaster', 'SYSDAT');
+	Doctrine_Manager::getInstance()->bindComponent('SymptomatologyPermissions', 'SYSDAT');
+	Doctrine_Manager::getInstance()->bindComponent('SymptomatologyValues', 'SYSDAT');
+	Doctrine_Manager::getInstance()->bindComponent('SymptomatologySets', 'SYSDAT');
+	Doctrine_Manager::getInstance()->bindComponent('Symptomatology', 'MDAT');
+
+	class SymptomatologyMaster extends BaseSymptomatologyMaster {
+
+		public function getSymptpomatology($cid)
+		{
+			$cust = Doctrine_Query::create()
+				->select('*')
+				->from('SymptomatologyMaster')
+				->where('isdelete = 0')
+				->andWhere('clientid = "' . $cid . '"');
+			$track = $cust->execute();
+			
+			if($track)
+			{
+				$darray = $track->toArray();
+				return $darray;
+			}
+		}
+
+		public function checkSymptomatologySet($cid)
+		{
+			$q = Doctrine_Query::create()
+				->select('*, ss.name as set_name')
+				->from('SymptomatologyPermissions sp, SymptomatologySets ss')
+				->where('sp.clientid = "' . $cid . '"')
+				->andWhere('sp.setid = ss.id')
+				->andWhere('ss.isdelete = 0');
+			$r = $q->execute();
+			if($r)
+			{
+				$r_array = $r->toArray();
+				foreach($r_array as $res)
+				{
+					$res_f[$res['setid']] = $res;
+				}
+				return $res_f;
+			}
+		}
+
+		public function getSymptpomatologySetData($set_id, $patient_ipid, $field_id)
+		{
+			$q = Doctrine_Query::create()
+				->select('*')
+				->from('Symptomatology')
+				->where('setid = "' . $set_id . '"')
+				->andWhere('setid !=0')
+				->andWhere('ipid = "' . $patient_ipid . '"')
+				->andWhere('symptomid = "' . $field_id . '"');
+//			echo $q->getSqlQuery();
+			$r = $q->execute();
+			if($r)
+			{
+				$r_array = $r->toArray();
+				foreach($r_array as $res)
+				{
+					$res_f[$res['symptomid']] = $res;
+				}
+				return $res_f;
+			}
+		}
+
+		public function getSymptpomatologySetValues($set_id)
+		{
+			$q = Doctrine_Query::create()
+				->select('*')
+				->from('SymptomatologyValues')
+				->where('set = "' . $set_id . '"')
+				->andWhere('isdelete = 0')
+				->groupBy('id')
+				->orderBy('id');
+			$r = $q->execute();
+			if($r)
+			{
+				$r_array = $r->toArray();
+				foreach($r_array as $res)
+				{
+					$res_f[$res['id']] = $res;
+
+					if($res['custom'] == 1)
+					{
+						$res_f[$res['id']]['sym_description'] = utf8_encode($res['value']);
+					}
+					else
+					{
+						$res_f[$res['id']]['sym_description'] = utf8_encode($res['value']);
+					}
+				}
+				return $res_f;
+			}
+		}
+
+	}
+
+?>

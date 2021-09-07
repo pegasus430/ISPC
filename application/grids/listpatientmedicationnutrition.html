@@ -1,0 +1,143 @@
+<!-- PATIENTMEDPAGE -->
+<table width="85%" border="0" align="left" cellpadding="0" class="datatable" cellspacing="0" id="listpatientmedication_contenttabel">
+      <tr>
+        <th height="20" align="left" valign="top"><strong><? echo $this->translate('date');?></strong></th>
+
+        <th align="left" valign="top"><strong><? echo $this->translate('medication');?></strong></th>
+        <th align="left" valign="top"><strong><? echo $this->translate('dosage');?></strong></th>
+        <th align="left" valign="top"><strong><? echo $this->translate('information');?></strong></th>
+        <th align="left" valign="top"><strong><? echo $this->translate('deletemed');?></strong></th>
+        <th height="20" align="left" valign="top"><strong><? echo $this->translate('registeredby');?></strong></th>
+        <th height="20" align="left" valign="top"><strong><? echo $this->translate('prescribedby');?></strong></th>
+      </tr>
+  <gridrow>
+  <phpscript>
+  $count++;
+  $pid = $_GET['id'];
+  $username = $view->all_users[$create_user];
+
+  /*if($verordnetvon==-1)
+  {
+	$verordnetvon = "Anderer Arzt";
+  }
+  else if($verordnetvon == '-2')
+  {
+	$verordnetvon = "Hausarzt";
+  }
+  else
+  {
+      $verordnetvon = $view->all_users[$verordnetvon];
+   }
+*/
+$verordnetvon = $view->users[$verordnetvon];
+
+
+  $med = new Nutrition();
+  $medarr = $med->getMedicationNutritionById($medication_master_id);
+  $medication = htmlspecialchars($medarr[0]['name']);
+
+  if($isdelete==1)
+  {
+    $title = '<font color="#777777">'.$medication.'</font> '.$view->translate("discontinued");
+    $delete = "-";
+  }
+  else
+  {
+     $title = $medication;
+ //    $delete = '<a href="patient/patientmedication?mid='.$id.'&id='.$pid.'&act=del"><img src="'.$res_file_path.'/images/action_delete.png" border="0" /></a>';
+     $delete = '<a href="patient/patientmedicationchange?mid='.$id.'&id='.$pid.'&act=del"><img src="'.$res_file_path.'/images/action_delete.png" border="0" /></a>';
+  }
+
+
+
+  if($medication_change != "0000-00-00 00:00:00")
+  {
+	$date = date('d.m.Y',strtotime($medication_change));
+  }
+  elseif( $medication_change == "0000-00-00 00:00:00" && $change_date != "0000-00-00 00:00:00" )
+  { 
+	$date = date('d.m.Y',strtotime($change_date));
+  }
+  else 
+  {
+	$date = date('d.m.Y',strtotime($create_date));
+  }
+
+
+
+
+
+        $acknowledge  = $view->acknowledge; 
+		$approval_rights = $view->approval_rights;
+	    $non_approved_line="";
+		$red_back = " ";
+		$new_non_approved = "";			 
+		$app_rights = "";
+			 
+		if($acknowledge  == "1"){
+
+			if($approval_rights == "1"){
+				$app_rights = '<button class="med_approve_rights approvem" data-action="approve" data-recordid="'.$id.'" data-alt_id="'.$on_hold_changes[$id]['alt_id'].'">'.$view->translate("Approve").'</button><button class="med_approve_rights denym"   data-action="decline" data-recordid="'.$id.'" data-alt_id="'.$on_hold_changes[$id]['alt_id'].'">'.$view->translate("Decline").'</button>';
+			} else{
+				$app_rights = '';
+			}	
+
+			if(!empty($on_hold_changes[$id])){
+			  	$change_username[$id] = $view->all_users[$on_hold_changes[$id]['create_user']];
+			  	$change_prescribed[$id] = $view->all_users[$on_hold_changes[$id]['verordnetvon']];
+				$red_back = " red_back"; 
+				if($on_hold_changes[$id]['status'] == "delete")
+				{
+					$set_for_deletion = '<span class="red_text">'.$view->translate("Delete medication: ").'</span>'; 
+				} 
+				else
+				{
+					$set_for_deletion = '';
+					 
+				}
+				
+				if($on_hold_changes[$id]['status'] == "new")
+				{
+					$add_username[$id] = $view->all_users[$create_user];
+				  	$add_prescribed[$id] = $view->all_users[$verordnetvon];
+				  	
+					$red_back = " red_back"; 
+					$non_approved_line = '<tr class="red_back"><td colspan="6"><b>'.$view->translate("Unapproved newly added medication: ").'</b><br/>'.$on_hold_changes[$id]['medication_change_date'].' | '.$on_hold_changes[$id]['name'].' | '.$on_hold_changes[$id]['dosage'].' | '.$on_hold_changes[$id]['comments'].' | '.$add_username[$id].' | '.$add_prescribed[$id] .'</td><td>'.$app_rights.'</td></tr>';
+					$new_non_approved = '  ';
+				} else{
+					$non_approved_line = '<tr class="red_back"><td colspan="6"><b>'.$view->translate("Unapproved changes: ").'</b><br/>'.$set_for_deletion.' '.$on_hold_changes[$id]['medication_change_date'].' | '.$on_hold_changes[$id]['name'].' | '.$on_hold_changes[$id]['dosage'].' | '.$on_hold_changes[$id]['comments'].' | '.$change_username[$id].' | '.$change_prescribed[$id] .'</td><td>'.$app_rights.'</td></tr>';
+					$new_non_approved = "";
+				}
+			}
+			else
+			{
+				$non_approved_line = "";
+				$red_back = " ";
+				$new_non_approved = ""; 
+			}
+		} 
+		else
+		{
+			$non_approved_line = "";
+			$red_back = " "; 
+			$new_non_approved = "";
+		}
+
+
+
+
+
+  </phpscript>
+      <tr class="row [[red_back]]" [[new_non_approved]]>
+        <td height="20" align="left" valign="top">[[date]]</td>
+
+        <td align="left" valign="top">[[title]]</td>
+        <td align="left" valign="top">[[dosage]]</td>
+        <td align="left" valign="top">[[comments]]</td>
+        <td align="left" valign="top">[[delete]]</td>
+        <td height="20" align="left" valign="top">[[username]]</td>
+        <td height="20" align="left" valign="top">[[verordnetvon]]</td>
+      </tr>
+      [[non_approved_line]]
+    </gridrow>
+</table>

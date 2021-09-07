@@ -1,0 +1,177 @@
+<?php
+
+/**
+ * @file
+ * Convert a node to DOCX document.
+ */
+
+/**
+ * Implements hook_help().
+ */
+function node_to_docx_help($path, $arg) {
+    if ($path == 'admin/help#node_to_docx') {
+        $html = '<p>' . t('This module is used to export a node as DOCX using phpdocx. This module allows you to generate DOCX documents of any node:<p><strong> DOCX creation ( www.domain.com/node/nid/docx ) </strong></p><p> where nid is the node id of a particular node to render. </p>', array(
+            '!default_link' => l('PHPDocX', "http://www.phpdocx.com"),
+        )) . '</p>';
+        return $html;
+    }
+}
+
+/**
+ * Implements hook_permisson().
+ */
+function node_to_docx_permission() {
+    $permissions = array();
+
+    $permissions += array(
+        'generate docx using node to docx' => array(
+            'title'         => t('Global generate DOCX'),
+            'description'   => t('Generate DOCX for all content types'),
+        ),
+    );
+
+    // Generate override node permissions for all applicable node types.
+    foreach (node_permissions_get_configured_types() as $type) {
+        $permissions += node_to_docx_list_permissions($type);
+    }
+
+    return $permissions;
+}
+
+/**
+ * Helper function to generate permissions list for a given type.
+ */
+function node_to_docx_list_permissions($type) {
+    $name = node_type_get_name($type);
+    $type = check_plain($type);
+
+    return array(
+        'generate docx using node ' . $type . ' to docx' => array(
+            'title' => t('<strong>%type_name</strong>: generate DOCX', array('%type_name' => $name)),
+        ),
+    );
+}
+
+/**
+ * Implements hook_menu().
+ */
+function node_to_docx_menu() {
+    $items['node/%node/docx'] = array(
+        'title' => 'Generate DOCX',
+        'page callback' => 'node_to_docx_generate_docx',
+        'page arguments' => array(1),
+        'access callback' => '_node_to_docx_attributes_access',
+        'access arguments' => array(1),
+        'type' => MENU_LOCAL_TASK,
+        'context' => MENU_CONTEXT_PAGE|MENU_CONTEXT_INLINE,
+        'file' => 'node_to_docx.pages.inc',
+    );
+    return $items;
+}
+
+/**
+ * Check for generate DOCX permission.
+ *
+ * @param string $node
+ *
+ * @return bool
+ */
+function _node_to_docx_attributes_access($node) {
+    
+    if (user_access('generate docx using node to docx')) {
+        return TRUE;
+    }
+
+    if (user_access('generate docx using node ' . $node->type . ' to docx')) {
+        return TRUE;
+    }
+
+    return FALSE;
+}
+
+/**
+ * Generate the DOCX file.
+ *
+ * @param string $content
+ *   content to add to the new DOCX.
+ * @param string $filename
+ *   name of the new DOCX file.
+ */
+function _node_to_docx_generator($content, $filename = NULL) {
+
+    $root_path = drupal_get_path('module', 'node_to_docx');
+    $module_path = drupal_get_path('module', 'node_to_docx');
+
+    $docx = new CreateDocx();
+    $docx->embedHTML($content);
+
+    $filePath = drupal_realpath(file_default_scheme() . '://');
+    $docx->createDocx($filePath . '/' . $filename);
+    $buffer = file_get_contents($filePath . '/' . $filename . '.docx');
+    header('Content-Description: File Transfer');
+    header('Content-Transfer-Encoding: binary');
+    header('Cache-Control: public, must-revalidate, max-age=0');
+    header('Pragma: public');
+    header('Expires: Sat, 1 Jan 1970 01:00:00 GMT');
+    header('Last-Modified: ' . gmdate('D, d M Y H:i:s') . ' GMT');
+    header('Content-Type: application/force-download');
+    header('Content-Type: application/octet-stream', false);
+    header('Content-Type: application/download', false);
+    header('Content-Type: application/vnd.openxmlformats-officedocument.wordprocessingml.document', false);
+    if (!isset($_SERVER['HTTP_ACCEPT_ENCODING']) OR empty($_SERVER['HTTP_ACCEPT_ENCODING'])) {
+        header('Content-Length: ' . strlen($buffer));
+    }
+    header('Content-disposition: attachment; filename="' . $filename . '.docx"');
+    echo $buffer;
+
+    return true;
+}
+
+/**
+ * Function to check existence of PHPDocX library.
+ *
+ * @return bool
+ */
+function node_to_docx_library_exist() {
+    $tools = array();
+
+    if (file_exists(libraries_get_path('phpdocx') . '/classes/CreateDocx.php')) {
+        require_once libraries_get_path('phpdocx') . '/classes/CreateDocx.php';
+        return true;
+    } elseif (file_exists(drupal_get_path('module', 'node_to_docx') . '/phpdocx/classes/CreateDocx.php')) {
+        require_once drupal_get_path('module', 'node_to_docx') . '/phpdocx/classes/CreateDocx.php';
+        return true;
+    }
+
+    return false;
+}
+
+/**
+ * Implements hook_entity_info_alter().
+ */
+function node_to_docx_entity_info_alter(&$info) {
+    $info['node']['view modes'] += array(
+        'DOCX' => array(
+            'label' => 'Node to DOCX',
+            'custom settings' => FALSE,
+        ),
+    );
+}
+
+/**
+ * Implements hook_preprocess_node().
+ */
+function node_to_docx_preprocess_node(&$vars) {
+    if ($vars['view_mode'] == 'DOCX') {
+        $vars['theme_hook_suggestions'][] = 'node__' . $vars['type'] . '__docx';
+    }
+}
+
+/**
+ * Implements hook_node_view_alter().
+ */
+function node_to_docx_node_view_alter(&$build) {
+    if ($build['#view_mode'] == 'DOCX') {
+        unset($build['#contextual_links']);
+    }
+}

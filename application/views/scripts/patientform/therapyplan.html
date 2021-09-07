@@ -1,0 +1,226 @@
+<?php
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/page-css/therapyplan.css');
+$form_tabnames = $this->form_tabnames;
+$form_data = $this->form_data;
+$tabnames_qty = $this->tabnames_qty;
+?>
+
+<script>
+<?php foreach($form_tabnames as $k_sc_tab=>$v_sc_tab): ?>
+	<?php if($tabnames_qty[$v_sc_tab]>'0'): ?>
+		<?php echo 'var '.$v_sc_tab.' = "'.$tabnames_qty[$v_sc_tab].'"'; ?>;
+	<?php else: ?>
+		<?php echo 'var '.$v_sc_tab.' = "1"'; ?>;
+	<?php endif; ?>
+<?php endforeach; ?>
+
+var usr_str = '<?php echo $this->users_str; ?>';
+$(document).ready(function(){
+	$('.new_row').on('click', function(){
+		console.log('new_row for row :'+$(this).attr('rel'));
+		var section = $(this).attr('rel'); //aka tabname in php
+
+
+		var next_row_incr = (parseInt(window[section])+1);
+		var section_html_row = '';
+
+		section_html_row += '<tr class="'+section+'" id="'+section+'_'+next_row_incr+'">';
+		section_html_row += '<td class="grid_50">';
+		section_html_row += '<input type="text" name="user['+section+'][]" id="user-'+section+'_'+next_row_incr+'" class="user_livesearch grid_95" value="" rel="'+section+'_'+next_row_incr+'"> '; //users select
+		section_html_row += '<input type="hidden" name="userid['+section+'][]" id="userid_'+section+'_'+next_row_incr+'" value="" rel="'+section+'_'+next_row_incr+'"/>';
+		section_html_row += '</td>';
+		section_html_row += '<td class="grid_50">';
+		section_html_row += '<textarea name="comment['+section+'][]" id="comment_'+section+'_'+next_row_incr+'"></textarea>';
+		section_html_row += '</td>';
+		section_html_row += '<td>';
+		section_html_row += '<a href="javascript:void(0);" class="del_row" rel="'+section+'-'+next_row_incr+'" >';
+		section_html_row += '<img src="<?php echo RES_FILE_PATH.'/'; ?>images/action_delete.png" />';
+		section_html_row += '</a>';
+		section_html_row += '</td>';
+		section_html_row += '</tr>';
+
+		//increment global row values
+		window[section]++;
+
+		$('#'+section+'_main_table').append(section_html_row);
+
+		$('#user-'+section+'_'+next_row_incr).on('change', function() {
+			var rel = $(this).attr('rel');
+			$('#userid_'+rel).val('');
+		}).liveSearch({
+			url: 'ajax/clientusers?row_id=&string=',
+			id: 'livesearch_clientusers',
+			noResultsDelay: '900',
+			typeDelay: '900',
+			returnRowId: function (input) {return $(input).attr('id');}
+		});
+	});
+
+	$('.del_row').live('click', function(){
+		var section_row_str = $(this).attr('rel');
+		var section_parts = $(this).attr('rel').split('-');
+		var section = section_parts[0];
+		var row_id = section_parts[1];
+
+		var counted_rows = $('tr.'+section+'').length;
+
+//		console.log((counted_rows-1));
+
+		if((counted_rows-1) > '0')
+		{
+//			console.log('del_procedure for:'+section_row_str);
+			$('#'+section+'_'+row_id).remove();
+		}
+	});
+
+	$('.user_livesearch').on('change', function() {
+		var rel = $(this).attr('rel');
+		$('#userid_'+rel).val('');
+	}).liveSearch({
+		url: 'ajax/clientusers?row_id=&string=',
+		id: 'livesearch_clientusers',
+		noResultsDelay: '900',
+		typeDelay: '900',
+		returnRowId: function (input) {return $(input).attr('id');}
+	});
+});
+
+function selectUser(userid, rowid)
+{
+	var input_text = '';
+
+	if($('#user_fn_'+userid).val().length > 0 && $('#user_ln_'+userid).val().length > 0){
+		input_text = $('#user_ln_'+userid).val() +', '+ $('#user_fn_'+userid).val()
+	} else if($('#user_ln_'+userid).length > 0) {
+		input_text = $('#user_ln_'+userid).val();
+	} else if($('#user_fn_'+userid).length > 0) {
+		input_text = $('#user_fn_'+userid).val();
+	}
+
+	$('#'+rowid).val(input_text);
+	$('#userid_'+$('#'+rowid).attr('rel')).val($('#user_id_'+userid).val());
+}
+
+</script>
+<form method="POST" id="therapyplan" name="therapyplan" action="">
+	<?php echo $this->patientinfo ?>
+	<?php echo $this->tabmenus ?>
+	<div class="clearer"> </div>
+	<table class="grid_100" border="0">
+		<tr>
+			<td>
+				<b>Therapieplan <?php echo $this->last_name; ?>,	<?php echo $this->first_name; ?> (<?php echo $this->birthd; ?>)</b>
+			</td>
+		<tr>
+	</table>
+	<table class="datatable grid_100" cellpadding="2" id="therapyplan_table">
+		<thead>
+			<tr>
+				<th class="grid_40">Was?</th>
+				<th class="grid_30">Wer?</th>
+				<th class="grid_30">Kommentar</th>
+			</tr>
+		</thead>
+		<tbody>
+			<?php foreach($form_tabnames as $k_tabname => $v_tabname): ?>
+			<tr>
+				<th>
+					<?php echo $this->translate($v_tabname.'_text'); ?>
+				</th>
+				<td id="<?php echo $v_tabname; ?>_main_row" colspan="2" class="reset_cell">
+					<table class="grid_100" id="<?php echo $v_tabname; ?>_main_table">
+						<?php if(count($form_data[$v_tabname])>'0'): ?>
+						<?php if($v_tabname == 'medication'): ?>
+						<tr>
+							<td>
+								&nbsp;
+							</td>
+							<td>
+								<input type="text" name="special_field" id="special_field" value="<?php echo $this->special_field; ?>"  class="grid_95"/>
+							</td>
+						</tr>
+						<?php endif; ?>
+
+							<?php foreach($form_data[$v_tabname] as $k_row => $v_data): ?>
+							
+							<tr class="<?php echo $v_tabname; ?>" id="<?php echo $v_tabname; ?>_<?php echo $k_row; ?>">
+								<td class="grid_50">
+									<input type="text" name="user[<?php echo $v_tabname; ?>][]" id="user_<?php echo $v_tabname; ?>_<?php echo $k_row; ?>" class="user_livesearch grid_95" value="<?php echo $v_data['full_name']; ?>" rel="<?php echo $v_tabname; ?>_1" />
+									<input type="hidden" name="userid[<?php echo $v_tabname; ?>][]" id="userid_<?php echo $v_tabname; ?>_<?php echo $k_row; ?>" value="<?php echo $v_data['user_id']; ?>" rel="<?php echo $v_tabname; ?>_<?php echo $k_row; ?>" />
+								</td>
+								<td class="grid_50">
+									<textarea name="comment[<?php echo $v_tabname; ?>][]" id="comment_<?php echo $v_tabname; ?>_<?php echo $k_row; ?>"><?php echo $v_data['comment'] ?></textarea>
+								</td>
+								<td>
+									<a href="javascript:void(0);" class="del_row" rel="<?php echo $v_tabname; ?>-<?php echo $k_row; ?>">
+										<img src="<?php echo RES_FILE_PATH.'/'; ?>images/action_delete.png" />
+									</a>
+								</td>
+							</tr>
+							<?php endforeach; ?>
+						<?php else: ?>
+							<?php if($v_tabname == 'medication'): ?>
+							<tr>
+								<td>
+									&nbsp;
+								</td>
+								<td>
+									<input type="text" name="special_field" id="special_field" value=""  class="grid_95"/>
+								</td>
+							</tr>
+							<?php endif; ?>
+							<tr class="<?php echo $v_tabname; ?>" id="<?php echo $v_tabname; ?>_1">
+								<td class="grid_50">
+									<input type="text" name="user[<?php echo $v_tabname; ?>][]" id="user_<?php echo $v_tabname; ?>_1" class="user_livesearch grid_95" value="" rel="<?php echo $v_tabname; ?>_1" />
+									<input type="hidden" name="userid[<?php echo $v_tabname; ?>][]" id="userid_<?php echo $v_tabname; ?>_1" value="" rel="<?php echo $v_tabname; ?>_1" />
+								</td>
+								<td class="grid_50">
+									<textarea name="comment[<?php echo $v_tabname; ?>][]" id="comment_<?php echo $v_tabname; ?>_1"></textarea>
+								</td>
+								<td>
+									<a href="javascript:void(0);" class="del_row" rel="<?php echo $v_tabname; ?>_1">
+										<img src="<?php echo RES_FILE_PATH.'/'; ?>images/action_delete.png" />
+									</a>
+								</td>
+							</tr>
+						<?php endif; ?>
+					</table>
+					<a href="javascript:void(0);" class="new_row" rel="<?php echo $v_tabname; ?>" >
+						<img src="<?php echo RES_FILE_PATH.'/'; ?>images/edit_add.png"  width="20"/><?php echo $this->translate('new_row_therapyplan'); ?>
+					</a>
+				</td>
+			</tr>
+			<?php endforeach; ?>
+		</tbody>
+	</table>
+	<input type="submit" name="save" id="save" value="<?php echo $this->translate('save'); ?>"  class="btnsubmit_usersessions"/>
+	<input type="submit" name="pdf" id="pdf" value="<?php echo $this->translate('generatepdf'); ?>"  class="btnsubmit_usersessions"/>
+</form>
+
+<?php if( count($this->form_files) >0):?>
+	<br style="clear: both;"/>
+	<div class="history">
+	<div class="history_block" style="display: block;">
+	<?php if(!empty($this->form_files)):?>
+	<h2 class="history_title">  <?php echo $this->translate('file_history'); ?></h2>
+				<table class="datatable">
+					<tr>
+						<th>#</th>
+						<th><?php echo $this->translate('title'); ?></th>
+						<th><?php echo $this->translate('user'); ?></th>
+						<th style="width:80px;"><?php echo $this->translate('date'); ?></th>
+					</tr>
+					<?php $i = 1;
+					foreach ($this->form_files as $k_contact_file => $v_contact_file): ?>
+						<tr>
+							<td><a href="<?php echo APP_BASE . 'stats/patientfileupload?doc_id='.$v_contact_file['id'].'&id='.$_REQUEST['id'];?>"><?php echo $i; ?></a></td>
+							<td><a href="<?php echo APP_BASE . 'stats/patientfileupload?doc_id='.$v_contact_file['id'].'&id='.$_REQUEST['id'];?>"><?php echo $v_contact_file['title']; ?></a></td>
+							<td><a href="<?php echo APP_BASE . 'stats/patientfileupload?doc_id='.$v_contact_file['id'].'&id='.$_REQUEST['id'];?>"><?php echo $this->users_data[$v_contact_file['create_user']]['last_name'].', '.$this->users_data[$v_contact_file['create_user']]['first_name']; ?></a></td>
+							<td><a href="<?php echo APP_BASE . 'stats/patientfileupload?doc_id='.$v_contact_file['id'].'&id='.$_REQUEST['id'];?>"><?php echo date('d.m.Y', strtotime($v_contact_file['create_date'])); ?></a></td>
+						</tr>
+					<?php $i++; endforeach; ?>
+				</table>
+	<?php endif;?>
+	</div>
+	</div>
+<?php endif;?>

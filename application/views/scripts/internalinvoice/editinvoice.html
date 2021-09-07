@@ -1,0 +1,642 @@
+<!-- Maria:: Migration ISPC to CISPC 08.08.2020 -->
+<?php
+	$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/tinymce3/jscripts/tiny_mce/tiny_mce.js');
+	$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/invoice_sapv.js');
+	$this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/page-css/invoice/internal_invoice_style.css');
+
+$patient_details = $this->patient_details;
+$invoice_data = $this->invoice_data;
+$invoice_items = $invoice_data['items'];
+$client_details = $this->client_details;
+?>
+<script>
+	var hide_patient_tab = 1;
+	var res_file_path = '<?php echo RES_FILE_PATH; ?>';
+	var min_number = '0'; //to avoid NaN
+	
+	$(function() {
+		update_total();
+		
+		$('.save_btn_invoice').click(function(e){
+			e.preventDefault();
+			var valid = validate_datepickers();
+			
+			if(valid) {
+				if($(this).attr('name') == 'completed_btn') {
+					$('#completed').val('1');
+					$('#edit_invoice').val('');
+				} else if($(this).attr('name') == 'edit_invoice_btn') {
+					$('#completed').val('');
+					$('#edit_invoice').val('1');
+				}
+				
+				$('#edit_internal_invoice').submit();
+			} else {
+				$('#completed').val('');
+				$('#edit_invoice').val('');
+
+				alert('<?php echo $this->translate('empty_date_field'); ?>');
+			}
+		});
+		
+		$('#completed_date').datepicker({
+			dateFormat: 'dd.mm.yy',
+			showOn: "both",
+			buttonImage: $('#calImg').attr('src'),
+			buttonImageOnly: true,
+			changeMonth: true,
+			changeYear: true,
+			nextText: '',
+			prevText: ''
+		});
+		
+		$( ".inv_it_date" ).datepicker({
+			dateFormat: 'dd.mm.yy',			
+			showOn: "both",
+			buttonImage: $('#calImg').attr('src'),
+			buttonImageOnly: true,
+			changeMonth: true,
+			changeYear: true,
+			nextText: '',
+			prevText: ''
+		});
+		//define alternate field and format for all loaded datepickers
+		$('.inv_it_date').datepicker().each(function(){
+			$(this).datepicker("option", "altField", "#" + $(this).next().next().attr('id'));
+			$(this).datepicker("option", "altFormat", "dd.mm.yy");
+		})
+		
+		$('#storno').click(function(event){					
+			$('#storno_dialog').dialog('open');
+		});
+
+		$('#storno_dialog').dialog({
+			autoOpen:false,
+			modal:true,
+			draggable: false,
+			resizable: false,
+			buttons: {
+				"<?php echo $this->translate('yesconfirm'); ?>": function() {
+					set_storno('<?php echo $_REQUEST['invoiceid']; ?>');
+					$( this ).dialog( "close" );
+				},
+				"<?php echo $this->translate('noconfirm'); ?>": function() {
+					$( this ).dialog("close");
+				}
+			},
+			open: function(){
+				$( "#storno_dialog" ).dialog( "option", "title", "<?php echo $this->translate('storno_invoice_no'); ?> "+$('input[name="invoice[prefix]"]').val()+$('input[name="invoice[invoice_number]"]').val());
+			}			
+		});
+		$('#confirmDelete').dialog({
+			autoOpen:false,
+			resize:false,
+			draggable:false,
+			width:300,
+			height:200,
+			title: '<?php echo $this->translate('confirmdeletetitle'); ?>',
+			buttons: {
+			<?php echo $this->translate('delete'); ?>: function() {
+
+					$('#edit_internal_invoice').submit();
+			},
+			<?php echo $this->translate('cancelModalRechnung'); ?>: function(){
+						$('input[name=deletemore]').val("");
+						$( this ).dialog( "close" );
+			}
+		}});
+
+		$('.delete').live('click',function(event){
+			event.preventDefault();
+			$('#deletemore').val("1");
+			$('#confirmDelete').dialog('open');
+		});
+		
+		//edit and add/remove invoice elements
+				
+		//remove custom items
+		$('.remove_item_custom').live('click', function(){
+			$(this).parent().parent().hide('slow').remove();
+			update_total();
+		});
+		
+		//remove system specific product items
+		$('.remove_item_sp').live('click', function(){
+			var removed_elem_id = $(this).parent().parent().attr('id');
+
+			$(this).parent().parent().hide('slow').remove();
+
+			if($('.'+removed_elem_id))
+			{
+				$('.'+removed_elem_id + '_data').hide('slow').remove();
+			}
+
+			if($('#excluded_sp_items').val().length == '0') {
+				$('#excluded_sp_items').val($(this).attr('id'));
+			} else {
+				$('#excluded_sp_items').val($('#excluded_sp_items').val()+', '+$(this).attr('id'));
+			}
+		
+			update_total();
+		});
+		
+		//remove system specific visit items
+		$('.remove_item_sv').live('click', function(){
+			var removed_elem_id = $(this).parent().parent().attr('id');
+
+			$(this).parent().parent().hide('slow').remove();
+
+			if($('.'+removed_elem_id))
+			{
+				$('.'+removed_elem_id + '_data').hide('slow').remove();
+			}
+
+			if($('#excluded_sv_items').val().length == '0') {
+				$('#excluded_sv_items').val($(this).attr('id'));
+			} else {
+				$('#excluded_sv_items').val($('#excluded_sv_items').val()+', '+$(this).attr('id'));
+			}
+		
+			update_total();
+		});
+		
+		//remove system day product items
+		$('.remove_item_dp').live('click', function(){
+			var removed_elem_id = $(this).parent().parent().attr('id');
+
+			$(this).parent().parent().hide('slow').remove();
+
+			if($('.'+removed_elem_id))
+			{
+				$('.'+removed_elem_id + '_data').hide('slow').remove();
+			}
+
+			if($('#excluded_dp_items').val().length == '0') {
+				$('#excluded_dp_items').val($(this).attr('id'));
+			} else {
+				$('#excluded_dp_items').val($('#excluded_dp_items').val()+', '+$(this).attr('id'));
+			}
+		
+			update_total();
+		});
+		
+		//remove grouped day product items
+		$('.remove_item_gr').live('click', function(){
+			var removed_elem_id = $(this).parent().parent().attr('id');
+
+			$(this).parent().parent().hide('slow').remove();
+
+			if($('.'+removed_elem_id))
+			{
+				$('.'+removed_elem_id + '_data').hide('slow').remove();
+			}
+
+			if($('#excluded_gr_items').val().length == '0') {
+				$('#excluded_gr_items').val($(this).attr('id'));
+			} else {
+				$('#excluded_gr_items').val($('#excluded_gr_items').val()+', '+$(this).attr('id'));
+			}
+		
+			update_total();
+		});
+		
+		//amount and price
+		$('.inv_it_qty').live('keyup change ', function(){
+			$(this).val($(this).val().replace(/[^0-9\.]/g,''));
+			
+			var row_id = $(this).attr('id').substr(('invoice_item_qty_').length);
+			
+			if($.isNumeric($(this).val()))
+			{
+				if($('#invoice_item_price_'+row_id).val().length != '0' && $('#invoice_item_price_'+row_id).val() != '' && $(this).val().length != '0'){
+					$('#invoice_item_total_' + row_id).val(parseFloat(parseFloat($(this).val())*parseFloat($('#invoice_item_price_'+row_id).val())).toFixed(2));
+				} else if($(this).val().length == '0' || $('#invoice_item_price_'+row_id).val().length) {
+					$('#invoice_item_total_' + row_id).val('0,00');
+				}
+				update_total();
+			}
+			else
+			{
+				$('#invoice_item_total_' + row_id).val('0,00');
+				update_total();
+			}
+		});
+
+		$('.inv_it_price').live('keyup change ', function() {
+			$(this).val($(this).val().replace(/[^0-9\.-]/g,''));
+			
+			var row_id = $(this).attr('id').substr(('invoice_item_price_').length);
+			
+			if($.isNumeric($(this).val()))
+			{
+				if ($('#invoice_item_qty_' + row_id).val().length != '0' && $('#invoice_item_qty_' + row_id).val() != '' && $(this).val().length != '0') {
+					$('#invoice_item_total_' + row_id).val(parseFloat(parseFloat($(this).val())*parseFloat($('#invoice_item_qty_'+row_id).val())).toFixed(2));
+				} else if($(this).val().length == '0' || $('#invoice_item_qty_'+row_id).val().length) {
+					$('#invoice_item_total_' + row_id).val('0,00');
+				}
+
+				update_total();
+			}
+			else
+			{
+				$('#invoice_item_total_' + row_id).val('0,00');
+				update_total();
+			}
+		});		
+	});
+	
+	function set_storno(invoice_id) {
+		var url = '<?php echo APP_BASE; ?>internalinvoice/invoices';
+		window.location = url + '?' + 'mode=setstorno&inv_id='+invoice_id;
+	}
+	
+	//edit and add/remove invoice elements
+	function update_total()
+	{
+		var custom_total = 0;
+		$('.total').each(function(){
+			if($(this).val() != '')
+			{
+				$(this).val(parseFloat($(this).val()).toFixed(2))
+				custom_total += parseFloat($(this).val());
+			}
+			else
+			{
+				$(this).val('0.00');
+			}
+		});
+
+		var grand_total = parseFloat(parseFloat(custom_total) + parseFloat(min_number)).toFixed(2);
+		$('#grand_total').val(grand_total);
+		$('#grand_total_cell').html(german_format(parseFloat(grand_total)) + ' &euro;');
+	}
+	
+	function german_format(number) {
+		var postComma, preComma, stringReverse, _ref;
+		stringReverse = function(str) {
+			return str.split('').reverse().join('');
+		};
+
+		_ref = number.toFixed(2).split('.'), preComma = _ref[0], postComma = _ref[1];
+
+		//handle - sign
+		var modified_preComma = String(Number(preComma)*(-1)).length;
+
+		var minus_sign = '';
+		if(preComma.length > modified_preComma) {
+			minus_sign = '-';
+			preComma = String(Number(preComma)*(-1));
+		} else {
+			minus_sign = '';
+		}
+
+		preComma = stringReverse(stringReverse(preComma).match(/.{1,3}/g).join('.'));
+
+		return minus_sign + preComma + "," + postComma;
+	}
+	
+	function createnewitem()
+	{
+		var itemcount = $('#counter').val();
+	
+		var trInnerHtml = '<tr id="invoice_item_row_'+itemcount+'">';
+		trInnerHtml += '<td>';
+			trInnerHtml += '<!-- TYPE & DATE -->';
+			trInnerHtml += '<input type="hidden" name="invoice_items[type]['+itemcount+']" value="cu" id="invoice_item_type_'+itemcount+'" />';
+			trInnerHtml +='<input type="text" name="preview_dates[]" value="" id="preview_date_'+itemcount+'" class="inv_it_date"/>';
+			trInnerHtml +='<input type="hidden" name="invoice_items[dates]['+itemcount+'][]" value="" id="invoice_item_dates_'+itemcount+'" class="inv_it_date"/>';
+		trInnerHtml +='</td>';
+		
+		trInnerHtml +='<td>';
+			trInnerHtml +='<!-- CODE -->';
+			trInnerHtml +='<input type="text" name="invoice_items[code]['+itemcount+']" value="" id="invoice_item_code_'+itemcount+'" class="inv_it_code" />';
+			trInnerHtml +='';
+		trInnerHtml +='</td>';
+		
+		trInnerHtml +='<td>';
+			trInnerHtml +='<!-- NAME -->';
+			trInnerHtml +='<input type="text" name="invoice_items[name]['+itemcount+']" value="" id="invoice_item_name_'+itemcount+'" class="inv_it_name"/>';
+			trInnerHtml +='';
+		trInnerHtml +='</td>';
+		
+		trInnerHtml +='<td id="item_amount_cell_'+itemcount+'">';
+			trInnerHtml +='<!--QTY-->';
+			trInnerHtml +='<input type="text" name="invoice_items[qty]['+itemcount+']" value="" id="invoice_item_qty_'+itemcount+'" class="inv_it_qty"/>';
+		trInnerHtml +='</td>';
+		
+		trInnerHtml +='<td>';
+			trInnerHtml +='<!--PRICE-->';
+			trInnerHtml +='<input type="text" name="invoice_items[price]['+itemcount+']" value="" id="invoice_item_price_'+itemcount+'" class="inv_it_price" /> &euro;';
+		trInnerHtml +='</td>';
+		
+		trInnerHtml +='<td>';
+			trInnerHtml +='<!--ITEM TOTAL-->';
+			trInnerHtml +='<input type="text" name="invoice_items[total]['+itemcount+']" value="" id="invoice_item_total_'+itemcount+'" class="inv_it_total total" readonly="readonly" /> &euro;';
+		trInnerHtml +='</td>';
+		
+		trInnerHtml +='<td>';
+			trInnerHtml +='';
+			trInnerHtml +='<a href="javascript:void(0)" class="remove_item_custom" id="del_'+itemcount+'"><img src="<?php echo RES_FILE_PATH; ?>/images/action_delete.png" border="0"></a>';
+			trInnerHtml +='';
+		trInnerHtml +='</td>';
+		
+		trInnerHtml +='</tr>';		
+			
+		$('#new_item_action').before(trInnerHtml);
+		
+		//initialize chained datepicker
+		$( "#preview_date_"+itemcount ).datepicker({
+			dateFormat: 'dd.mm.yy',			
+			showOn: "both",
+			buttonImage: $('#calImg').attr('src'),
+			buttonImageOnly: true,
+			altField: "#invoice_item_dates_"+itemcount,
+			altFormat: "dd.mm.yy",
+			changeMonth: true,
+			changeYear: true,
+			nextText: '',
+			prevText: ''
+		});
+
+		itemcount++;
+		$('#counter').val(itemcount);
+		update_total();
+	}
+	
+	function validate_datepickers()
+	{
+		var valid = true;
+		$('.inv_it_date').each(function(){
+			if($(this).val() == '')
+			{
+				valid = false;
+			}
+		});
+		
+		return valid;
+	}
+</script>
+<input type="hidden" value="99999" id="counter" />
+<div style="display: none;"><img id="calImg" src="<?php echo RES_FILE_PATH;  ?>/images/calendar.png" alt="Popup" class="trigger"></div>
+
+<form name="edit_internal_invoice"  id="edit_internal_invoice" method="POST" action="">
+	<table class="table" id="health_insurance_invoice_table" cellspacing="2" cellpadding="2" width="100%">
+		<tr class="rowa">
+			<td class="col1 cell"></td>
+			<td class="col2 cell"></td>
+			<td class="col3 cell"></td>
+		</tr>
+		<tr class="rowb">
+			<td class="col1 cell" style="width: 635px;height: 50px;">
+				<textarea name="invoice[address]" id="invoice_address" cols="37" rows="7" class="textareawhitehalf"><?php   echo $invoice_data['address']; ?></textarea>
+			</td>
+			<td class="cell" colspan="2" style="vertical-align: top;">
+				<div style="width:100%;height: 100%;">
+					<?php echo $this->user_details; ?>
+			
+					<?php if(strlen($this->control_number)>'0'): ?>
+						<?php echo $this->translate('label_control_number'); ?> <?php echo $this->control_number; ?>
+					<?php endif; ?>
+				</div>
+			</td>
+		</tr>
+
+		<tr class="rowa">
+			<td class="col2 cell" style="text-align: left;" colspan="2"></td>
+			<td class="col1 cell"></td>
+		</tr>
+
+		<tr class="rowb">
+			<td class="col1 cell" colspan="3">
+				&nbsp;
+			</td>
+		</tr>
+
+
+		<tr class="rowb">			
+			<td class="col2 cell" style="text-align: left; font-size:14px;" colspan="2"></td>
+			<td class="col1 cell" style="text-align: right; width: 400px;">
+				<?php if($invoice_data['completed_date_sort'] != '0000-00-00 00:00:00' && date('Y', strtotime($invoice_data['completed_date_sort'])) != "1970"): ?> 
+					<?php echo strftime('%A, %d. %B %Y', strtotime($invoice_data['completed_date_sort']));  ?>
+				<?php endif; ?>
+				<br />
+				<?php if($invoice_data['status'] > '1'):  ?>
+					<?php echo $this->translate('complete_date'); ?>
+					<input type="text" id="completed_date" value="<?php if($invoice_data['completed_date'] == '0000-00-00 00:00:00'): echo date('d.m.Y', strtotime($invoice_data['create_date'])); else: echo date('d.m.Y', strtotime($invoice_data['completed_date'])); endif;  ?>" name="completed_date" />
+				<?php else:  ?>
+					<input type="hidden" value="<?php echo date('d.m.Y', time()); ?>" name="completed_date" />
+				<?php endif;  ?>
+			</td>
+		</tr>
+ 
+		<tr class="rowb">
+			<td class="col2 cell" style="text-align: left; font-size:14px;" colspan="2"><b>Rechnung Nr.: &nbsp;<?php echo $invoice_data['prefix'].$invoice_data['invoice_number']; ?></b><br/>
+			<b>für Patient: <?php echo $patient_details['last_name']?>, <?php echo $patient_details['first_name']?></b> 
+			</td>
+			<td class="col1 cell" style="text-align: right; width: 380px;">
+ 
+			</td>
+		</tr>
+ 
+		<tr class="rowb">
+			<td class="col1 cell" colspan="3">
+				&nbsp;
+			</td>
+		</tr>
+		<tr class="rowb">
+			<td class="col1 cell" colspan="3">
+				<input type="hidden" name="excluded_sp_items" id="excluded_sp_items" value="" />
+				<input type="hidden" name="excluded_sv_items" id="excluded_sv_items" value="" />
+				<input type="hidden" name="excluded_dp_items" id="excluded_dp_items" value="" />
+				<input type="hidden" name="excluded_gr_items" id="excluded_gr_items" value="" />
+				<table class="invoice_items" width="100%">
+
+					<tr class="tr_invoice_th">
+						<th><? echo $this->translate('item_date')?></th>
+						<th><? echo $this->translate('item_shortcut')?></th>
+						<th><? echo $this->translate('item_name')?></th>
+						<th><? echo $this->translate('item_ammount')?></th>
+						<th><? echo $this->translate('item_price')?></th>
+						<th><? echo $this->translate('item_total')?></th>
+						<th></th>
+					</tr>
+					<?php // print_R($invoice_data);exit; ?>
+					<?php foreach($invoice_data['items'] as $k_item => $v_item):  ?>
+					<?php if($v_item['type'] == 'cu'): ?>
+						<tr id="invoice_item_row_<?php echo $v_item['id']; ?>">
+							<!-- TYPE & DATE -->
+							<td style="text-align: left;">
+								<input type="hidden" name="invoice_items[type][<?php echo $v_item['id']; ?>]" value="<?php echo $v_item['type']; ?>" id="invoice_item_type_<?php echo $v_item['id']; ?>" />
+								<?php foreach($v_item['periods']['from_date'] as $k_start => $v_start): ?>
+									<?php if($v_start != '0000-00-00 00:00:00'): ?>
+										<input type="text" name="preview_dates[]" value="<?php echo date('d.m.Y', strtotime($v_start));?>" id="preview_date_<?php echo $v_item['id']; ?>" <?php if($this->read_only_items == '0'):  ?>class="inv_it_date"<?php endif; ?> <?php if($this->read_only_items == '1'): ?>readonly="readonly"<?php endif; ?> />
+										<input type="hidden" name="invoice_items[dates][<?php echo $v_item['id']; ?>][]" value="<?php echo date('d.m.Y', strtotime($v_start));?>" id="invoice_item_dates_<?php echo $v_item['id']; ?>" class=""/>
+									<?php endif; ?>
+									<?php if($v_item['periods']['till_date'][$k_start] != '0000-00-00 00:00:00' && date('Y-m-d', strtotime($v_item['periods']['till_date'][$k_start])) != '1970-01-01' ): ?>
+										- <?php echo strftime("%a,", strtotime($v_item['periods']['till_date'][$k_start])).' '.date('d.m.Y', strtotime($v_item['periods']['till_date'][$k_start]));?>
+									<?php endif; ?>							
+									<br />
+								<?php endforeach; ?>
+							</td>
+
+							<!-- CODE -->
+							<td style="text-align: left;">
+								<input type="text" name="invoice_items[code][<?php echo $v_item['id']; ?>]" value="<?php echo $v_item['shortcut'];  ?>" id="invoice_item_code_<?php echo $v_item['id']; ?>" class="inv_it_code" <?php if($this->read_only_items == '1'):  ?>readonly="readonly"<?php endif;  ?> />
+							</td>
+
+							<!-- NAME -->
+							<td align="right">
+								<input type="text" name="invoice_items[name][<?php echo $v_item['id']; ?>]" value="<?php echo $v_item['name'];  ?>" id="invoice_item_name_<?php echo $v_item['id']; ?>" class="inv_it_name" <?php if($this->read_only_items == '1'):  ?>readonly="readonly"<?php endif;  ?> />
+							</td>
+
+							<!--QTY-->
+							<td align="right">
+								<input type="text" name="invoice_items[qty][<?php echo $v_item['id']; ?>]" value="<?php echo $v_item['qty'];  ?>" id="invoice_item_qty_<?php echo $v_item['id']; ?>" class="inv_it_qty" <?php if($this->read_only_items == '1'):  ?>readonly="readonly"<?php endif;  ?> />
+							</td>
+
+							<!--PRICE-->
+							<td align="right">
+								<input type="text" name="invoice_items[price][<?php echo $v_item['id']; ?>]" value="<?php echo $v_item['price'];  ?>" id="invoice_item_price_<?php echo $v_item['id']; ?>" class="inv_it_price" <?php if($this->read_only_items == '1'):  ?>readonly="readonly"<?php endif;  ?> /> &euro;
+							</td>
+
+							<!--ITEM TOTAL-->
+							<td align="right">
+<!-- 								<input type="text" name="invoice_items[total][<?php echo $v_item['id']; ?>]" value="<?php echo number_format(($v_item['qty']*$v_item['price']), '2', '.', '');  ?>" id="invoice_item_total_<?php echo $v_item['id']; ?>" class="inv_it_total total" readonly="readonly" /> &euro; -->
+								<input type="text" name="invoice_items[total][<?php echo $v_item['id']; ?>]" value="<?php echo ($v_item['qty']*$v_item['price']);  ?>" id="invoice_item_total_<?php echo $v_item['id']; ?>" class="inv_it_total total" readonly="readonly" /> &euro;
+							</td>
+							<td>
+								<?php if($this->read_only_items == '0'):  ?>
+								<a href="javascript:void(0)" class="remove_item_custom" id="del_<?php echo $v_item['id']; ?>"><img src="<?php echo RES_FILE_PATH; ?>/images/action_delete.png" border="0"></a>
+								<?php endif; ?>
+							</td>
+						</tr>
+					
+					<?php else: ?>
+					
+						<tr>
+							<td style="text-align: left;">
+							
+							<input type="hidden" name="invoice_items[type][<?php echo $v_item['id']; ?>]" value="<?php echo $v_item['type']; ?>" id="invoice_item_type_<?php echo $v_item['id']; ?>" />
+								<?php foreach($v_item['periods']['from_date'] as $k_start => $v_start): ?>
+									<?php if($v_start != '0000-00-00 00:00:00'): ?>
+										<?php echo strftime("%a,", strtotime($v_start)).' '.date('d.m.Y', strtotime($v_start));?>
+									<?php endif ?>
+									<?php if($v_item['periods']['till_date'][$k_start] != '0000-00-00 00:00:00' && date('Y-m-d', strtotime($v_item['periods']['till_date'][$k_start])) != '1970-01-01' ): ?>
+										- <?php echo strftime("%a,", strtotime($v_item['periods']['till_date'][$k_start])).' '.date('d.m.Y', strtotime($v_item['periods']['till_date'][$k_start]));?>
+									<?php endif ?>							
+									<br />
+								<?php endforeach; ?>
+									
+								<?php // print_r($v_item); ?>
+								<?php if(!empty($v_item['start_hours'])): ?>
+									<?php foreach($v_item['start_hours'] as $k_st => $v_st): ?>
+									<?php  if($v_item['type'] == 'le'): //TODO-3012 Ancuta 20-23.03.2020?>
+										<?php echo date('H:i', strtotime($v_st)); ?> <?php echo $this->translate('hours_label'); ?><br />
+									<?php else: ?>
+										<?php echo date('H:i', strtotime($v_st)).' - '.date('H:i', strtotime($v_item['end_hours'][$k_st])); ?> <?php echo $this->translate('hours_label'); ?><br />
+									<?php endif; ?>
+									<?php endforeach; ?>
+								<?php endif; ?>
+							</td>
+							<td style="text-align: left;"> <?php echo $v_item['shortcut'];  ?></td>
+							<td align="right"> <?php echo $v_item['name'];  ?></td>
+							<td align="right"> <?php echo $v_item['qty'];  ?></td>
+							<td align="right"> <?php echo $v_item['price'];  ?> &euro;</td>
+							<td align="right"> 
+								<?php echo number_format(($v_item['qty']*$v_item['price']), '2', ',', '.');  ?> &euro;
+								<input type="hidden" value="<?php echo number_format(($v_item['qty']*$v_item['price']), '2', '.', ''); ?>" name="item_total[]" id="item_total_<?php echo $v_item['id']; ?>"  class="total"/>
+							</td>
+							<td>
+								<?php if($this->read_only_items == '0'):  ?>
+									<?php if($v_item['type'] == 'sp'): ?>
+										<a href="javascript:void(0)" class="remove_item_sp" id="del_<?php echo $v_item['id']; ?>"><img src="<?php echo RES_FILE_PATH; ?>/images/action_delete.png" border="0"></a>
+									<?php elseif($v_item['type'] == 'sv'): ?>
+										<a href="javascript:void(0)" class="remove_item_sv" id="del_<?php echo $v_item['id']; ?>"><img src="<?php echo RES_FILE_PATH; ?>/images/action_delete.png" border="0"></a>
+									<?php elseif($v_item['type'] == 'dp'): ?>
+										<a href="javascript:void(0)" class="remove_item_dp" id="del_<?php echo $v_item['id']; ?>"><img src="<?php echo RES_FILE_PATH; ?>/images/action_delete.png" border="0"></a>
+									<?php elseif($v_item['type'] == 'gr'): ?>
+										<a href="javascript:void(0)" class="remove_item_gr" id="del_<?php echo $v_item['id']; ?>"><img src="<?php echo RES_FILE_PATH; ?>/images/action_delete.png" border="0"></a>
+									<?php endif; ?>
+								<?php endif; ?>
+							</td>
+						</tr>
+					<?php endif; ?>
+					<?php endforeach;  ?>
+					<tr id="new_item_action">
+						<td colspan="6">
+							<?php if($this->read_only_items == '0'):  ?>
+							<div class="add_new_item">
+								<a href="javascript:createnewitem()">
+									<img src="<?php echo RES_FILE_PATH; ?>/images/edit_add.png" width="20" height="20" />
+									<?php echo $this->translate('add_new_item'); ?>
+								</a>
+							</div>
+							<?php endif; ?>
+						</td>
+					</tr>
+ 					<tr class="tr_invoice_tr_total">
+						<td colspan="5" style="text-align: right;"><b><? echo $this->translate('item_overall_sume')?>:</b>&nbsp;&nbsp;&nbsp;</td>
+						<td style="text-align: right;font-weight: bold;" id="grand_total_cell">
+							<?php echo number_format($invoice_data['invoice_total'], '2', ',', '.');  ?>
+						</td>
+						<td>
+							<input type="hidden" name="grand_total" value="<?php echo number_format($invoice_data['invoice_total'], '2', ',', '.'); ?>" id="grand_total" />
+						</td>
+					</tr>
+				</table>
+			</td>
+		</tr>
+		<tr class="rowb">
+			<td class="col1 cell" colspan="3">
+				&nbsp;
+			</td>
+		</tr>
+		<tr class="rowb">
+			<td class="col1 cell" colspan="3">
+				<textarea name="footer" id="sapv_footer" cols="" rows="10" style="width: 100%;"  ><?php echo $invoice_data['footer']; ?></textarea>
+			</td>
+		</tr>
+		<tr class="rowa">
+			<td class="col1 cell" colspan="3">&nbsp;</td>
+		</tr>
+
+	</table>
+
+	<div class="buttonsBar">
+		<input type="hidden" name="deletemore" value="" id="deletemore"/>
+		<input type="hidden" value="" name="completed" id="completed" />
+		<input type="hidden" value="" name="edit_invoice" id="edit_invoice" />
+		<?php if($invoice_data['status'] >= '2'):  ?>
+			<!--Save when completed-->
+			<input type="submit" value="<?php echo $this->translate('save'); ?>" name="completed_btn" id="invoice_save" class="bigbutton ui-state-default ui-corner-all submit save_btn_invoice" />
+		<?php endif;  ?>
+			
+		<?php if($invoice_data['status'] == '1'):  ?>			
+			<!--Save when in draft-->
+			<input type="submit" value="<?php echo $this->translate('save'); ?>" name="edit_invoice_btn" id="invoice_save_draft" class="bigbutton ui-state-default ui-corner-all submit save_btn_invoice" />
+		<?php endif;  ?>
+		
+		<?php if($invoice_data['status'] == '1'):  ?>
+			<!--Complete when in draft-->
+			<input type="submit" value="<?php echo $this->translate('Fertigstellen'); ?>" name="completed_btn" id="invoice_draft_complete" class="bigbutton ui-state-default ui-corner-all submit save_btn_invoice" />
+		<?php endif;  ?>
+		&nbsp;&nbsp;&nbsp;
+			
+		
+		<?php if($invoice_data['status'] == '1' || $invoice_data['status'] == '2'  ): ?>
+			<input type="submit" value="<?php echo $this->translate('Löschen'); ?>" name="deleted" class="bigbutton ui-state-default ui-corner-all submit delete" />		
+		<?php endif; ?>
+		<input type="submit" value="<?php echo $this->translate('Pdf'); ?>" name="pdf" class="bigbutton ui-state-default ui-corner-all submit" />
+		<?php if($invoice_data['status'] > '1' && $this->has_storno == "0"): ?>
+		<input type="button"  id="storno"  value="<?php echo $this->translate('storno_button'); ?>" name="storno" class="bigbutton ui-state-default ui-corner-all submit" />
+		<?php endif; ?>
+	</div>
+
+</form>
+<div id="storno_dialog">
+	<p>
+		<?php echo $this->translate('storno_dialog_text');  ?>
+	</p>
+
+</div>
+<div id="confirmDelete"><?php echo $this->translate('confirm_invoice_delete'); ?></div>

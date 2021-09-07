@@ -1,0 +1,862 @@
+<!--  Maria:: Migration CISPC to ISPC 22.07.2020 -->
+<?php
+//$this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/page-css/kvno_assessment_style.css');
+
+$this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/page-css/contact_form_style.css');
+//$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/autogrow/jquery.elastic.js');
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/autogrow/jquery.elastic.source_new.js');
+$this->headScript()->appendFile(RES_FILE_PATH . '/javascript/dragdiv/dragdivpatient.js');
+//$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/jquery.blockUI.js');
+
+
+
+
+
+$this->headScript()
+->appendFile(RES_FILE_PATH . '/javascript/inputmask-3.x/dist/jquery.inputmask.bundle.js')
+->appendFile(RES_FILE_PATH . '/javascript/pms/jquery.sum.js')
+->appendFile(RES_FILE_PATH . '/javascript/dateUtil.js');
+
+
+
+$contact_form_lang = $this->translate('contact_form_lang');
+
+
+$allowed_blocks = $this->allowed_blocks;
+$opened_blocks = $this->opened_blocks;
+
+?>
+
+<style>
+
+</style>
+<script>
+    var detailscookies = <?php echo $this->detailscookies; ?>;
+    function calcBMI(length_val, weight_val){
+        console.log('calc');
+        var length_quadrat = length_val * length_val;
+        var retVal = (weight_val/length_quadrat).toFixed(2);
+        console.log(retVal);
+        return retVal;
+    }
+    function isNumber(n) { return !isNaN(parseFloat(n)) && !isNaN(n - 0) }
+    function prepareWeightOrLength(weightOrLength){
+        var prepared = weightOrLength.replace(',', '.');
+        //console.log(prepared);
+        if(isNumber(prepared)){
+            return prepared;
+        }else{
+            return false;
+        }
+    }
+    var bmi_errors = true;
+    var  error_druck = true
+    var error_sauer = true;
+    var error_herz = true;
+    var error_puls = true;
+
+    var druckInfo = 'Die Blutdruckwerte über- oder unterschreiten Werte die eine Information des Hausarztes notwendig erscheinen lassen.';
+
+    $(document).ready(function(){
+        $('.datepicker').datepicker();
+        $('.conditional_show').hide();
+        checkFormErrors = function(){
+            if(error_druck || error_herz || error_sauer || error_puls){
+                $('#error_vital').html('Bitte überprüfen Sie Eingabe der Vitalparameter');
+            }else{
+                $('#error_vital').html('');
+            }
+            if(!error_druck && !error_herz && !error_sauer && !error_puls && !bmi_errors){
+                $('#form_error').html('');
+            }else{
+                $('#form_error').html('Bitte überprüfen Sie Ihre Daten');
+            }
+
+        }
+
+        //textfields depend of radiobuttons
+        $('input:radio[name="therapiesteuerung[gewicht_erhoeht]"]').change(function() {
+            var gewicht_val = $('input:radio[name="therapiesteuerung[gewicht_erhoeht]"]:checked').val();
+            if(gewicht_val == '1'){
+                $('#wieviel_gewicht').show();
+            }else{
+                $('#wieviel_gewicht').hide();
+            }
+        });
+        $('input:radio[name="therapiesteuerung[trinken_mehr]"]').change(function() {
+            var gewicht_val = $('input:radio[name="therapiesteuerung[trinken_mehr]"]:checked').val();
+            if(gewicht_val == '1'){
+                $('#wieviel_trinken_mehr').show();
+            }else{
+                $('#wieviel_trinken_mehr').hide();
+            }
+        });
+
+        $('input:radio[name="therapiesteuerung[trinken_weniger]"]').change(function() {
+            var gewicht_val = $('input:radio[name="therapiesteuerung[trinken_weniger]"]:checked').val();
+            if(gewicht_val == '1'){
+                $('#wieviel_trinken_weniger').show();
+            }else{
+                $('#wieviel_trinken_weniger').hide();
+            }
+        });
+
+          $('input:radio[name="therapiesteuerung[medikamente_frei]"]').change(function() {
+            var test_val = $('input:radio[name="therapiesteuerung[medikamente_frei]"]:checked').val();
+            if(test_val == '1'){
+                $('#welche_medikamente').show();
+            }else{
+                $('#welche_medikamente').hide();
+            }
+        });
+
+
+          $('input:radio[name="therapiesteuerung[dev_termin]"]').change(function() {
+            var test_val = $('input:radio[name="therapiesteuerung[dev_termin]"]:checked').val();
+            if(test_val == '1'){
+                $('#dev_termin_date').show();
+            }else{
+                $('#dev_termin_date').hide();
+            }
+        });
+        $('input:radio[name="therapiesteuerung[sauerstoff_termin]"]').change(function() {
+            var test_val = $('input:radio[name="therapiesteuerung[sauerstoff_termin]"]:checked').val();
+            if(test_val == '1'){
+                $('#sauerstoff_termin_date').show();
+            }else{
+                $('#sauerstoff_termin_date').hide();
+            }
+        });
+
+        $('input:radio[name="therapiesteuerung[facharzt_termin]"]').change(function() {
+            var test_val = $('input:radio[name="therapiesteuerung[facharzt_termin]"]:checked').val();
+            console.log(test_val);
+            if(test_val == '1'){
+                $('#facharzt_termin_date').show();
+            }else{
+                $('#facharzt_termin_date').hide();
+            }
+        });
+          $('input:radio[name="therapiesteuerung[pneumo_termin]"]').change(function() {
+            var test_val = $('input:radio[name="therapiesteuerung[pneumo_termin]"]:checked').val();
+            if(test_val == '1'){
+                $('#pneumo_termin_date').show();
+            }else{
+                $('#pneumo_termin_date').hide();
+            }
+        });
+
+        //end textfield depend on radiobuttons
+
+
+
+        $('#length').live('blur', function () {
+            console.log('blur');
+            var length = $('#length').val();
+            var weight = $('#weight').val();
+            checkAndCalculate(length, weight);
+        });
+        $('#weight').live('blur', function () {
+            console.log('blur');
+            var length = $('#length').val();
+            var weight = $('#weight').val();
+            checkAndCalculate(length, weight);
+        });
+
+        checkAndCalculate = function(length_val, weight_val){
+            if(length_val.trim() === '' || weight_val.trim() === '' ){
+                $('#error_bmi').html('Bitte tragen Sie Körpergröße und Gewicht ein');
+                return;
+            }
+            var length = prepareWeightOrLength(length_val);
+            var weight = prepareWeightOrLength(weight_val);
+
+            if(!length || !weight || length == 0 || weight == 0){
+                bmi_errors = true;
+                $('#error_bmi').html('Körpergröße und Gewicht müssen numerisch und mehr als 0 sein');
+                checkFormErrors();
+                return;
+            }
+            $('#error_bmi').html('');
+            bmi_errors = false;
+            checkFormErrors();
+            $('#bmi').val(calcBMI(length, weight));
+
+        }
+        $('#druck_syst').live('change', function(){
+            var druck_syst = $('#druck_syst').val();
+            var druck_diast = $('#druck_diast').val();
+            if(isNumber(druck_syst) && druck_syst > 0 && druck_syst < 300 && isNumber(druck_diast)){
+                $('#error_druck').html('');
+                checkDruck(druck_syst, druck_diast);
+                error_druck = false;
+            }else{
+                $('#error_druck').html('Blutdruckwerte müssen numerisch sein und Blutdruck systolisch zwischen  0-300 mmHg');
+                error_druck = true;
+            }
+            checkFormErrors();
+
+
+        })
+        $('#druck_diast').live('change', function(){
+            var druck_syst = $('#druck_syst').val();
+            var druck_diast = $('#druck_diast').val();
+            if(isNumber(druck_syst) && druck_syst > 0 && druck_syst < 300 && isNumber(druck_diast)){
+                $('#error_druck').html('');
+                checkDruck(druck_syst, druck_diast);
+                error_druck = false;
+            }else{
+                $('#error_druck').html('Blutdruckwerte müssen numerisch sein und Blutdruck systolisch zwischen  0-300 mmHg');
+                error_druck = true;
+            }
+            checkFormErrors();
+
+        })
+
+        checkDruck = function(druck_syst, druck_diast){
+            if(druck_syst < 85 || druck_syst > 140 || druck_diast > 90){
+                $('#druck_diast').css('color', '#ff0000');
+                $('#druck_syst').css('color', '#ff0000');
+                $('#druck_info').html(druckInfo);
+            }else{
+                $('#druck_diast').css('color', '#000');
+                $('#druck_syst').css('color', '#000');
+                $('#druck_info').html('');
+            }
+        }
+
+         $('#puls').live('change', function(){
+            var puls = $('#puls').val();
+            console.log('puls change');
+
+            if(isNumber(puls) && puls > 0 && puls < 220 ){
+                $('#puls_error').html('');
+                error_puls = false;
+            }else{
+                $('#puls_error').html('Puls muss numerisch und zwischen  0-220 sein');
+                error_puls = true;
+            }
+            checkFormErrors();
+
+        })
+
+          $('#herzrhythmus').live('change', function(){
+            var herzrhythmus = $('#herzrhythmus').val();
+
+            if(isNumber(herzrhythmus) && herzrhythmus > 0 && herzrhythmus < 220 ){
+                $('#herzrhythmus_error').html('');
+                error_herz = false;
+            }else{
+                $('#herzrhythmus_error').html('Herzrhythmus muss numerisch und zwischen  0-220 sein');
+                error_herz = true;
+            }
+              checkFormErrors();
+
+        })
+          $('#sauerstoffssaettigung').live('change', function(){
+            var sauerstoffssaettigung = $('#sauerstoffssaettigung').val();
+            console.log(sauerstoffssaettigung);
+
+            if(isNumber(sauerstoffssaettigung) && sauerstoffssaettigung > 0 && sauerstoffssaettigung  <= 100 ){
+                $('#sauerstoff_error').html('');
+                error_sauer= false;
+            }else{
+                $('#sauerstoff_error').html('Sauerstoffsättigung muss numerisch und zwischen  0-100 sein');
+                error_sauer = true;
+            }
+
+              checkFormErrors();
+
+
+        })
+
+        $('#save_form').live('click', function(){
+            var length = $('#length').val();
+            var weight = $('#weight').val();
+            var puls = $('#puls').val();
+            var sauerstoffssaettigung = $('#sauerstoffssaettigung').val();
+            checkAndCalculate(length, weight);
+            if(error_druck || error_herz || error_sauer || error_puls){
+                $('#error_vital').html('Bitte überprüfen Sie Eingabe der Vitalparamater');
+            }else{
+                $('#error_vital').html('');
+            }
+            if(!error_druck && !error_herz && !error_sauer && !error_puls && !bmi_errors){
+                $('#form_error').html('');
+                $('#therapiesteuerung_form').submit();
+            }else{
+                $('#form_error').html('Bitte überprüfen Sie Ihre Daten');
+            }
+
+
+        })
+
+    });
+</script>
+<div class="clear"></div>
+
+<div style="display: none;"> <img id="calImg" src="<?php echo RES_FILE_PATH;  ?>/images/calendar.png" alt="Popup" class="trigger" /> </div>
+<?php echo $this->patientinfo ?>
+<?php echo $this->tabmenus ?>
+<form id="therapiesteuerung_form" name="therapiesteuerung_form" method="post">
+    <div id="therapiesteuerung">
+        <div class="therapiesteuerung-caption"><h1>Therapiesteuerung</h1></div>
+        <div><span id="form_error" style="color:red;"></span></div>
+        <table class="therapiesteuerung_table datatable">
+            <tr>
+                <td colspan="4"><h4>Einhaltung des Gewichtes</h4></td>
+            </tr>
+            <tr>
+                <td>
+                    1.  Hat sich Ihr Gewicht um mehr als 2 kg innerhalb von 2-3 Tagen oder um 5 kg kontinuierlich innerhalb 1 Woche erhöht?
+
+                </td>
+                <td>
+                    <input type="radio" name="therapiesteuerung[gewicht_erhoeht]" value="1" /> Ja
+                </td>
+                <td>
+                    <input type="radio" name="therapiesteuerung[gewicht_erhoeht]" value="0" /> Nein
+                </td>
+                <td><span id="wieviel_gewicht" class="conditional_show">Wenn ja: um wieviel kg? <input type="text" name="therapiesteuerung[gewicht_erhoehung]" /></span>
+
+
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    2.  Haben Sie Appetitlosigkeit?
+                </td>
+                <td>
+                    <input type="radio" name="therapiesteuerung[appetitlos]" value="1" /> Ja
+                </td>
+                <td>
+                    <input type="radio" name="therapiesteuerung[appetitlos]" value="0" /> Nein
+                </td>
+                <td>
+
+                </td>
+
+            </tr>
+            <tr>
+                <td colspan="4"><strong>BMI-Rechner</strong></td>
+
+            </tr>
+            <tr>
+                <td colspan="4">
+                    <table width="100%">
+                        <tr>
+                            <th>
+                                Körpergröße<br>
+                                (in Meter - also bspw. '1,82' angeben)
+
+                            </th>
+                            <th>Körpergewicht<br>
+                                (in KG - also bspw '75,1' angeben)
+                            </th>
+                            <th>Ergebnis</th>
+
+                        </tr>
+                        <tr>
+                            <td colspan="3"><span style="color:red;" id="error_bmi"></span></td>
+                        </tr>
+                        <tr>
+                            <td><input type="text" name="therapiesteuerung[length]" id="length"></td>
+                            <td><input type="text" name="therapiesteuerung[weight]" id="weight"></td>
+                            <td><input type="text" id="bmi" name="therapiesteuerung[bmi]" readonly /></td>
+                        </tr>
+
+                    </table>
+
+                </td>
+
+            </tr>
+            <tr>
+                <td colspan="4"><h4>Flüssigkeitsretention</h4></td>
+
+            </tr>
+            <tr>
+                <td>
+                    1. Haben Sie geschwollene Füße, Knöchel oder Beine?
+
+                </td>
+                <td>
+                    <input type="radio" name="therapiesteuerung[geschwollen]" value="1" /> Ja
+                </td>
+                <td>
+                    <input type="radio" name="therapiesteuerung[geschwollen]" value="0" /> Nein
+                </td>
+                <td>
+
+
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    2. Haben Sie Wassereinlagerung im Bauch (bettlägrigen Patienten)
+
+                </td>
+                <td>
+                    <input type="radio" name="therapiesteuerung[wasser_bauch]" value="1" /> Ja
+                </td>
+                <td>
+                    <input type="radio" name="therapiesteuerung[wasser_bauch]" value="0" /> Nein
+                </td>
+                <td>
+
+
+                </td>
+             </tr>
+            <tr>
+                <td>
+                    3. Müssen Sie mehr als 2x nachts Wasser lassen?
+
+                </td>
+                <td>
+                    <input type="radio" name="therapiesteuerung[oefter_wasser_lassen]" value="1" /> Ja
+                </td>
+                <td>
+                    <input type="radio" name="therapiesteuerung[oefter_wasser_lassen]" value="0" /> Nein
+                </td>
+                <td>
+
+
+                </td>
+            </tr>
+
+            <tr>
+                <td>
+                    4. Trinken Sie mehr als 1,5-2L pro Tag oder
+
+                </td>
+                <td>
+                    <input type="radio" name="therapiesteuerung[trinken_mehr]" value="1" /> Ja
+                </td>
+                <td>
+                    <input type="radio" name="therapiesteuerung[trinken_mehr]" value="0" /> Nein
+                </td>
+                <td><span class="conditional_show" id="wieviel_trinken_mehr">Wenn ja: wieviel (l))? <input type="text" name="therapiesteuerung[trinken_mehr_wieviel" /></span>
+
+
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    5. Trinken Sie weniger als 1,5-2L pro Tag oder
+
+                </td>
+                <td>
+                    <input type="radio" name="therapiesteuerung[trinken_weniger]" value="1" /> Ja
+                </td>
+                <td>
+                    <input type="radio" name="therapiesteuerung[trinken_weniger]" value="0" /> Nein
+                </td>
+                <td><span id="wieviel_trinken_weniger" class="conditional_show" >Wenn ja: wieviel (l))? <input type="text" name="therapiesteuerung[trinken_weniger_wieviel]" /></span>
+
+
+                </td>
+            </tr>
+            <tr>
+                <td>Sonstiger Freitext</td>
+                <td colspan="3"><textarea name="therapiesteuerung[freitext_trinken]"></textarea></td>
+            </tr>
+            <tr>
+                <td colspan="4"><h4>Medikations-Adhärenz</h4></td>
+
+            </tr>
+            <tr>
+                <td>
+                    1. Nehmen Sie Ihre Medikamente regelmäßig ein?
+
+                </td>
+                <td>
+                    <input type="radio" name="therapiesteuerung[medikamente_regelmaessig]" value="1" /> Ja
+                </td>
+                <td>
+                    <input type="radio" name="therapiesteuerung[medikamente_regelmaessig]" value="0" /> Nein
+                </td>
+                <td>
+
+
+                </td>
+            </tr>
+
+            <tr>
+                <td>
+                    2. Nehmen Sie alle Medikamente ein, die Ihnen verodnet wurden?
+
+                </td>
+                <td>
+                    <input type="radio" name="therapiesteuerung[medikamente_alle]" value="1" /> Ja
+                </td>
+                <td>
+                    <input type="radio" name="therapiesteuerung[medikamente_alle]" value="0" /> Nein
+                </td>
+                <td>
+
+
+                </td>
+            </tr>
+
+
+            <tr>
+                <td>
+                    3. Nehmen Sie die Medikamente in der verordneten Dosierung ein?
+
+                </td>
+                <td>
+                    <input type="radio" name="therapiesteuerung[medikamente_dosierung]" value="1" /> Ja
+                </td>
+                <td>
+                    <input type="radio" name="therapiesteuerung[medikamente_dosierung]" value="0" /> Nein
+                </td>
+                <td>
+
+
+                </td>
+            </tr>
+
+            <tr>
+                <td>
+                    4. Nehmen Sie freiverkäufliche Medikamente ein?
+
+                </td>
+                <td>
+                    <input type="radio" name="therapiesteuerung[medikamente_frei]" value="1" /> Ja
+                </td>
+                <td>
+                    <input type="radio" name="therapiesteuerung[medikamente_frei]" value="0" /> Nein
+                </td>
+                <td>
+                    <span id="welche_medikamente" class="conditional_show">wenn ja, welche? <br>
+                        <textarea name="therapiesteuerung[medikamente_frei_text]"></textarea></span>
+
+
+                </td>
+            </tr>
+
+ <tr>
+                <td>
+                    5. Nutzen Sie Ihre Bedarfsmedikation häufiger als sonst?
+
+                </td>
+                <td>
+                    <input type="radio" name="therapiesteuerung[medikamente_bedarf_oefter]" value="1" /> Ja
+                </td>
+                <td>
+                    <input type="radio" name="therapiesteuerung[medikamente_bedarf_oefter]" value="0" /> Nein
+                </td>
+                <td>
+
+                </td>
+            </tr>
+
+<tr>
+                <td>
+                    6. Lassen Sie manche Medikamente auch mal weg?
+
+                </td>
+                <td>
+                    <input type="radio" name="therapiesteuerung[medikamente_weglassen]" value="1" /> Ja
+                </td>
+                <td>
+                    <input type="radio" name="therapiesteuerung[medikamente_weglassen]" value="0" /> Nein
+                </td>
+                <td>
+
+                </td>
+            </tr>
+            <tr>
+                <td>Sonstiger Freitext</td>
+                <td colspan="3"><textarea name="therapiesteuerung[freitext_medikamente]"></textarea></td>
+            </tr>
+            <tr>
+                <td colspan="4"><h4>Symptome COPD / HI</h4></td>
+
+            </tr>
+            <tr>
+                <td>Husten</td>
+                <td colspan="3">
+                    <table>
+                        <tr>
+                            <td><input type="radio" name="therapiesteuerung[husten]" value="0" /> keine</td>
+                            <td><input type="radio" name="therapiesteuerung[husten]" value="1" /> wenig</td>
+                            <td><input type="radio" name="therapiesteuerung[husten]" value="2" /> stark</td>
+                        </tr>
+                    </table>
+                </td>
+
+            </tr>
+            <tr>
+                <td>Atemnot</td>
+                <td colspan="3">
+                    <table>
+                        <tr>
+                            <td><input type="radio" name="therapiesteuerung[atemnot]" value="0" /> keine</td>
+                            <td><input type="radio" name="therapiesteuerung[atemnot]" value="1" /> wenig</td>
+                            <td><input type="radio" name="therapiesteuerung[atemnot]" value="2" /> stark</td>
+                        </tr>
+                    </table>
+                </td>
+
+            </tr>
+
+            <tr>
+                <td>Auswurf</td>
+                <td colspan="3">
+                    <table>
+                        <tr>
+                            <td><input type="radio" name="therapiesteuerung[auswurf]" value="0" /> keine</td>
+                            <td><input type="radio" name="therapiesteuerung[auswurf]" value="1" /> wenig</td>
+                            <td><input type="radio" name="therapiesteuerung[auswurf]" value="2" /> stark</td>
+                        </tr>
+                    </table>
+                </td>
+
+            </tr>
+            <tr>
+                <td colspan="4"><h4>kontinuierliche Erfassung wichtger Vitalparameter </h4></td>
+
+            </tr>
+            <tr><td colspan="4"><span style="color:red;" id="error_vital"></span></td></tr>
+            <tr>
+                <td>
+                    1. Blutdruck* RR  syst. >140 oder diast. >90 mmHg: Arzt informieren
+                </td>
+                <td colspan="3">
+                    <table>
+                        <tr><td colspan="2"><span style="color:red;" id="error_druck"></span></td></tr>
+                        <tr>
+                            <th>Systolisch</th>
+                            <th>Diastolisch</th>
+                        </tr>
+
+                        <tr>
+                            <td><input type="text" name="therapiesteuerung[druck_syst]" id="druck_syst"></td>
+                            <td><input type="text" name="therapiesteuerung[druck_diast]" id="druck_diast"></td>
+                        </tr>
+                        <tr>
+                            <td colspan="2" style="color:red;" id="druck_info"></td>
+                        </tr>
+                        <tr><td colspan="2">* Achtung: Messung erst nach einer Ruhephase von 5 Minuten durchführen </td></tr>
+                    </table>
+                </td>
+            </tr>
+            <tr><td colspan="4"><span style="color:red;" id="puls_error"></span></td></tr>
+            <tr>
+                <td>2. Puls</td>
+                <td colspan="3"><input type="text" name="therapiesteuerung[puls]" id="puls"/></td>
+            </tr>
+
+            <tr><td colspan="4"><span style="color:red;" id="herzrhythmus_error"></span></td></tr>
+            <tr>
+                <td>3. Herzrhythmus</td>
+                <td colspan="3"><input type="text" name="therapiesteuerung[herzrhythmus]" id="herzrhythmus" /></td>
+            </tr>
+            <tr><td colspan="4"><span style="color:red;" id="sauerstoff_error"></span></td></tr>
+<tr>
+                <td>4. Sauerstoffsättigung</td>
+                <td colspan="3"><input type="text" name="therapiesteuerung[sauerstoffssaettigung]" id="sauerstoffssaettigung"/></td>
+            </tr>
+            <tr>
+                <td colspan="4"><h4>Erfassung Kontrollparameter </h4></td>
+
+            </tr>
+            <tr>
+                <td>
+                    1. Herzkatheter
+
+                </td>
+                <td>
+                    <input type="radio" name="therapiesteuerung[herzkatheter]" value="1" /> Ja
+                </td>
+                <td>
+                    <input type="radio" name="therapiesteuerung[herzkatheter]" value="0" /> Nein
+                </td>
+                <td>
+
+                </td>
+            </tr>
+<tr>
+                <td>
+                    2. Schrittmacher
+
+                </td>
+                <td>
+                    <input type="radio" name="therapiesteuerung[schrittmacher]" value="1" /> Ja
+                </td>
+                <td>
+                    <input type="radio" name="therapiesteuerung[schrittmacher]" value="0" /> Nein
+                </td>
+                <td>
+
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    3. Defibrilator
+
+                </td>
+                <td>
+                    <input type="radio" name="therapiesteuerung[defibrilator]" value="1" /> Ja
+                </td>
+                <td>
+                    <input type="radio" name="therapiesteuerung[defibrilator]" value="0" /> Nein
+                </td>
+                <td>
+
+                </td>
+            </tr>
+
+            <tr>
+                <td>
+                    4. Sauerstoff
+
+                </td>
+                <td>
+                    <input type="radio" name="therapiesteuerung[sauerstoff]" value="1" /> Ja
+                </td>
+                <td>
+                    <input type="radio" name="therapiesteuerung[sauerstoff]" value="0" /> Nein
+                </td>
+                <td>
+
+                </td>
+            </tr>
+
+            <tr>
+                <td>
+                    5. Stent(s)
+
+                </td>
+                <td>
+                    <input type="radio" name="therapiesteuerung[stent]" value="1" /> Ja
+                </td>
+                <td>
+                    <input type="radio" name="therapiesteuerung[stent]" value="0" /> Nein
+                </td>
+                <td>
+
+                </td>
+            </tr>
+
+            <tr>
+                <td>
+                    6. Wann ist Ihr nächster Geräte-Kontrolltermin? (implantierte Geräte)
+
+                </td>
+                <td>
+                    <input type="radio" name="therapiesteuerung[dev_termin]" value="1" /> Ja
+                </td>
+                <td>
+                    <input type="radio" name="therapiesteuerung[dev_termin]" value="0" /> Nein
+                </td>
+                <td>
+                  <span class="conditional_show" id="dev_termin_date"> Datum:  <input class=" datepicker" name="therapiesteuerung[dev_termin_date]" /></span>
+
+                </td>
+            </tr>
+
+            <tr>
+                <td>
+                    7. Teilnahme DMP KHK
+
+                </td>
+                <td>
+                    <input type="radio" name="therapiesteuerung[dmp_khk]" value="1" /> Ja
+                </td>
+                <td>
+                    <input type="radio" name="therapiesteuerung[dmp_khk]" value="0" /> Nein
+                </td>
+                <td>
+
+                </td>
+            </tr>
+
+<tr>
+                <td>
+                    8. Teilnahme DMP COPD
+
+                </td>
+                <td>
+                    <input type="radio" name="therapiesteuerung[dmp_copd]" value="1" /> Ja
+                </td>
+                <td>
+                    <input type="radio" name="therapiesteuerung[dmp_copd]" value="0" /> Nein
+                </td>
+                <td>
+
+                </td>
+            </tr>
+
+<tr>
+                <td>
+                    9. Wann ist Ihr nächster Facharzt-Termin
+
+                </td>
+                <td>
+                    <input type="radio" name="therapiesteuerung[facharzt_termin]" value="1" /> Ja
+                </td>
+                <td>
+                    <input type="radio" name="therapiesteuerung[facharzt_termin]" value="0" /> Nein
+                </td>
+                <td>
+                  <span class="conditional_show" id="facharzt_termin_date" >Datum:  <input class=" datepicker" name="therapiesteuerung[facharzt_termin_date]" /></span>
+                </td>
+            </tr>
+
+<tr>
+                <td>
+                    10. Verwendung Tagebuch regelmäßig?
+
+                </td>
+                <td>
+                    <input type="radio" name="therapiesteuerung[tagebuch_regelmaessig]" value="1" /> Ja
+                </td>
+                <td>
+                    <input type="radio" name="therapiesteuerung[tagebuch_regelmaessig]" value="0" /> Nein
+                </td>
+                <td>
+
+                </td>
+            </tr>
+
+<tr>
+                <td>
+                    11. Wann ist Ihr nächster Termin zur Sauerstoffgerätkontrolle?
+
+                </td>
+                <td>
+                    <input type="radio" name="therapiesteuerung[sauerstoff_termin]" value="1" /> Ja
+                </td>
+                <td>
+                    <input type="radio" name="therapiesteuerung[sauerstoff_termin]" value="0" /> Nein
+                </td>
+                <td>
+                    <span class="conditional_show" id="sauerstoff_termin_date">
+                    Datum:  <input class=" datepicker" name="therapiesteuerung[sauerstoff_termin_date]" />
+                        </span>
+                </td>
+            </tr>
+
+<tr>
+                <td>
+                    12. Wann war Ihr letzter pneumologischer Praxisbesuch?
+
+                </td>
+                <td>
+                    <input type="radio" name="therapiesteuerung[pneumo_termin]" value="1" /> Ja
+                </td>
+                <td>
+                    <input type="radio" name="therapiesteuerung[pneumo_termin]" value="0" /> Nein
+                </td>
+                <td>
+                    <span class="conditional_show" id="pneumo_termin_date">Datum:  <input class=" datepicker" name="therapiesteuerung[pneumo_termin_date]" /></span>
+                </td>
+            </tr>
+
+
+        </table>
+        <input type="button" value="Speichern" id="save_form" />
+
+    </div>
+</form>

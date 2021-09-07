@@ -1,0 +1,90 @@
+
+
+<div>
+
+
+    <script>
+        $(document).on('click','.systemssync_transmit_button', function(){
+            $('#systemssync_transmitdlg').empty();
+            $('#systemssync_transmitdlg').dialog('open');
+            $('#systemssync_transmitdlg').append('<img src="<?php echo RES_FILE_PATH;?>/images/loading1.gif">')
+            var form=$(this).parents('form');
+            var table=$(this).parents('table');
+            $.post('Systemssync/index', $(form).serialize(), function(data){
+                $('#systemssync_transmitdlg').empty();
+                $('#systemssync_transmitdlg').append(data);
+                if(data=="Die Übertragung war erfolgreich."){
+                    var x=$(table).find('pattransmit_lastsent');
+                    $(x[2]).html('eben gesendet');
+                }
+            })
+        });
+        $(document).ready(function(){
+            $('#systemssync_transmitdlg').dialog({
+                autoOpen: false,
+                modal: true,
+                title: 'Daten übertragen',
+            });
+        });
+
+    </script>
+    <div id="systemssync_transmitdlg" style="text-align:center; padding:10px;">
+
+    </div>
+
+    <?php foreach ($this->connection_names as $conn):?>
+
+        <div style="margin-bottom:8px;">
+            <div style="font-weight:bold;text-decoration:underline;"><?php echo $conn->name;?></div>
+
+            <?php
+            $last_received="";
+            $last_sent="";
+            $patid="";
+            foreach ($this->patconnections as $pconn){
+                if($pconn['connection']==$conn->id){
+                    $last_received=$pconn['last_received'];
+                    $last_sent=$pconn['last_sent'];
+                    break;
+                }
+            }
+
+            ?>
+
+            <table>
+                <tr>
+                    <td>
+                        Letzte Empfangene:
+                    </td>
+                    <td>
+                        <?php echo ($last_received > 0 ?  date('d.m.Y H:i',strtotime($last_received)) :  '-')?>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        Letzte Gesendete:
+                    </td>
+                    <td class="pattransmit_lastsent">
+                        <?php echo ($last_sent > 0 ? date('d.m.Y H:i',strtotime($last_sent)) :  '-')?>
+
+                    </td>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td>
+                        <form method="post">
+                            <input type="hidden" name="versorger_or_stammdaten" value="<?php isset($_REQUEST['versorger_or_stammdaten']) ? $_REQUEST['versorger_or_stammdaten'] : '';?>">
+                            <input type="hidden" name="conn_id" value="<?php echo $conn->id;?>">
+                            <input type="hidden" name="pid" value="<?php echo $this->pid;?>">
+                            <input type="hidden" name="transmit_patient" value="1">
+                            <input type="button" class="systemssync_transmit_button" value="jetzt übertragen">
+                        </form>
+                    </td>
+                </tr>
+            </table>
+
+
+
+        </div>
+    <?php endforeach;?>
+</div>

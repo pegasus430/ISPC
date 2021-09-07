@@ -1,0 +1,748 @@
+<?php
+$this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/color_picker/colorpicker.css');
+$this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/color_picker/layout.css');
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/colorpicker/colorpicker.js');
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/colorpicker/eye.js');
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/colorpicker/utils.js');
+?>
+<script type="text/javascript">
+	$(document).ready(function() {
+		$('#colorSelectorvisit').ColorPicker({
+			color: '#<?php echo $this->user_settings['calendar_visit_color']; ?>',
+
+			onShow: function (colpkr) {
+				$(colpkr).fadeIn(500);
+				return false;
+			},
+			onHide: function (colpkr) {
+				$(colpkr).fadeOut(500);
+				return false;
+			},
+			onChange: function (hsb, hex, rgb) {
+
+				$('#calendar_visit_color').val(hex);
+				$('#colorSelectorvisit div').css('backgroundColor', '#' + hex);
+			}
+		});
+
+		$('#colorSelectorvisit div').css('backgroundColor', '#<?php echo $this->user_settings['calendar_visit_color']; ?>');
+			
+		$('#colorSelectorvisittext').ColorPicker({
+			color: '#<?php echo $this->user_settings['calendar_visit_text_color']; ?>',
+
+			onShow: function (colpkr) {
+				$(colpkr).fadeIn(500);
+				return false;
+			},
+			onHide: function (colpkr) {
+				$(colpkr).fadeOut(500);
+				return false;
+			},
+			onChange: function (hsb, hex, rgb) {
+
+					$('#calendar_visit_text_color').val(hex);
+					$('#colorSelectorvisittext div').css('backgroundColor', '#' + hex);
+				}
+			});
+
+			$('#colorSelectorvisittext div').css('backgroundColor', '#<?php echo $this->user_settings['calendar_visit_text_color']; ?>');
+		
+		if($('#verlauf_newest_top:checked').val() == "t"){
+			$('.fload_div').show('slow');
+		} else if($('#verlauf_newest_bottom:checked').val() == "b"){
+			$('.fload_div').hide('slow');
+		}
+
+		$("input[name=verlauf_newest]").bind('click',function() {
+			if($(this).val() == "t"){
+				$('.fload_div').show('slow');
+			} else {
+				$('#verlauf_fload_no').attr('checked', true);
+				$('.fload_div').hide('slow');
+				$('.facebook_load_settings').hide('slow');
+			}
+		});
+
+		if($('#verlauf_fload_yes').is(':checked')){
+			$('.facebook_load_settings').show('slow');
+		} else {
+			$('.facebook_load_settings').hide('slow');
+		}
+
+		$('input[name="verlauf_fload"]').live('change', function(){
+			if($('#verlauf_fload_yes').is(':checked')){
+				$('.facebook_load_settings').show('slow');
+			} else {
+				$('.facebook_load_settings').hide('slow');
+			}
+		});
+	
+		var associated_user = "<?php echo $this->associated_user ?>";
+		if(associated_user == 0){
+			$("#invoice_settings").show();
+			$("#has_invoice_number").val(1);
+		}else{
+			$("#invoice_settings").hide();
+			$("#has_invoice_number").val(0);
+		}
+			
+			
+		$('#user_association').live('change', function(){
+			if($(this).val() != 0){
+				$("#invoice_settings").hide();
+				$("#has_invoice_number").val(0);
+			}else{
+				$("#invoice_settings").show();
+				$("#has_invoice_number").val(1);
+			}
+		});
+
+		
+		$('#stampusers').live('change', function() {
+//				$('#user_stamp_block span').replaceWith('');
+			$('#user_stamp_block textarea').replaceWith('');
+
+			$.get(appbase + 'ajax/userstampinfo?stamp-info=' + $(this).val(), function(result) {
+
+				if (result != 0) {
+					var resultx = jQuery.parseJSON(result);
+					
+					var user_lanr = resultx.lanr;
+					var user_bsnr = resultx.bsnr;
+
+					$('#Veror63_NameBetrinInpt').val(user_bsnr);
+					$('#Veror63_NamearztnInpt').val(user_lanr);
+
+					$('#user_stamp_block span').replaceWith('');
+					$('#user_stamp_block textarea').replaceWith('');
+					
+					var row1 = (resultx.row1 ? resultx.row1 : '');
+					var row2 = (resultx.row2 ? resultx.row2 : '');
+					var row3 = (resultx.row3 ? resultx.row3 : '');
+					var row4 = (resultx.row4 ? resultx.row4 : '');
+					var row5 = (resultx.row5 ? resultx.row5 : '');
+					var row6 = (resultx.row6 ? resultx.row6 : '');
+					var row7 = (resultx.row7 ? resultx.row7 : '');
+
+					var all_strings = row1+row2+row3+row4+row5+row6+row7;
+					if(all_strings.length > '0')
+					{
+						var user_stamp = '<span>' + row1 + '<br/>' + row2 + '<br/>' + row3 + '<br/>' + row4 + '<br/>' + row5 + '<br/>' + row6 + '<br/>' + row7 + '</span>';
+						var user_stamp_textarea = '<textarea name="stamp_block" id="stamp_textarea">' + row1 + '\r\n' + row2 + '\r\n' + row3 + '\r\n' + row4 + '\r\n' + row5 + '\r\n' + row6 + '\r\n' + row7 + '</textarea>';
+
+// 						$('#user_stamp_block').append(user_stamp + user_stamp_hidden);
+						$('#user_stamp_block').append(user_stamp_textarea);
+					}
+					else
+					{
+						$('.stamp_alert').show('fast').delay(1000).hide('slow');
+						
+						var user_stamp_textarea = '<textarea name="stamp_block" id="stamp_textarea"></textarea>';
+						$('#user_stamp_block').append(user_stamp_textarea);
+					}
+					
+					
+
+				} else {
+					//$('.stamp_alert').show('fast').delay(1000).hide('slow');
+					
+					//Changed 16.09.2014 (edit lanr & bsnr only if multi stamp module is active)
+					<?php if($this->multiplestamps_option): ?>
+					$('#Veror63_NameBetrinInpt').val("");
+					$('#Veror63_NamearztnInpt').val("");
+					<?php endif; ?>
+					$('.stamp_alert').show('fast').delay(1000).hide('slow');
+					var user_stamp_textarea = '<textarea name="stamp_block" id="stamp_textarea"></textarea>';
+					$('#user_stamp_block').append(user_stamp_textarea);
+					
+					
+				}
+
+			});
+			return false;
+		});
+		
+	});
+	
+	function checkedall(_this) {
+	    var _cb = $(_this).parents('table.sys_icons_list').find("input:checkbox").attr("checked", _this.checked);
+	}
+</script>
+<form action="<?php echo $this->act ?>" method="post" name="frmuser" id="frmuser" >
+<fieldset>
+    <legend><?php echo $this->translate('editprofile') ?></legend>
+    
+	<div class="err"><?php echo $this->error_message ?></div>
+   	<?php echo $this->inputbox ?>
+   	<div class="error"> <?php echo $this->error_client_name ?></div>
+	
+	<div class="prof_row">
+		<div class="dlabel"><label for="username"><?php echo $this->translate('username') ?></label></div>
+		<div class="dinput" id="settings_username"><?php echo $this->userinput ?></div>
+		<div id="username_error" class="error"><?php echo $this->error_username ?></div>
+	</div>
+
+	<div class="prof_row">
+	  	<div class="dlabel"><label for="title"><?php echo $this->translate('salutation')?> </label></div>
+	 	<div class="dselect"><?php echo $this->formSelect('title', $this->title, NULL, $this->titlearray);?></div>
+  	</div>
+
+	<div class="prof_row">
+	    <div class="dlabel"><label for="settings_user_title"><?php echo $this->translate('title') ?></label></div>
+	    <div class="dinput"><input type="text" name="user_title"  id="settings_user_title" value="<?php echo $this->user_title ?>" ></div>
+	    <div id="user_title_error" class="error"> <?php echo $this->error_user_title ?></div>
+	</div>
+
+	<div class="prof_row">
+	    <div class="dlabel"><label for="settings_first_name"><?php echo $this->translate('firstname') ?></label></div>
+	    <div class="dinput"><input type="text" name="first_name"  id="settings_first_name" value="<?php echo $this->first_name ?>" ></div>
+	    <div id="first_name_error" class="error"> <?php echo $this->error_first_name ?></div>
+	</div>
+
+
+	<div class="prof_row">
+		<div class="dlabel"><label for="settings_last_name"><?php echo $this->translate('lastname') ?></label></div>
+    	<div class="dinput"><input type="text" name="last_name"    id="settings_last_name" value="<?php echo $this->last_name ?>" ></div>
+    	<div id="last_name_error" class="error"><?php echo $this->error_last_name ?></div>
+	</div>
+	
+	
+	<div class="prof_row">
+	    <div class="dlabel"><label  for="settings_emailid"><?php echo $this->translate('emailid') ?></label></div>
+	    <div class="dinput"><input type="text" name="emailid"    id="settings_emailid" value="<?php echo $this->emailid ?>" ></div>
+	    <div id="emailid_error" class="error"><?php echo $this->error_emailid ?></div>
+	</div>
+
+
+	<div class="prof_row">
+    	<div class="dlabel"><label for="settings_fax"><?php echo $this->translate('fax') ?></label></div>
+    	<div class="dinput"><input type="text" name="fax"  value="<?php echo $this->fax ?>" ></div>
+    	<div id="fax_error" class="error"><?php echo $this->error_fax ?></div>
+	</div>
+	
+	
+	<div class="prof_row">
+	    <div class="dlabel"><label for="street1"><?php echo $this->translate('street1') ?></label></div>
+	    <div class="dinput"><input type="text" name="street1" value="<?php echo $this->street1 ?>" ></div>
+	    <div id="street1_error" class="error"><?php echo $this->error_street1 ?></div>
+	</div>
+	
+	
+	<div class="prof_row">
+    	<div class="dlabel"><label  for="zip"><?php echo $this->translate('zip') ?></label></div>
+    	<div class="dinput"><input type="text" name="zip"  value="<?php echo $this->zip ?>" ></div>
+    	<div id="zip_error" class="error"><?php echo $this->error_zip ?></div>
+	</div>
+
+	<div class="prof_row">
+    	<div class="dlabel"><label for="city"><?php echo $this->translate('city') ?></label></div>
+    	<div class="dinput"><input type="text" name="city" value="<?php echo $this->city ?>" ></div>
+    	<div id="city_error" class="error"><?php echo $this->error_city ?></div>
+	</div>
+
+
+	<div class="prof_row">
+		<div class="dlabel"><label for="settings_mobile"><?php echo $this->translate('mobile') ?></label></div>
+    	<div class="dinput"><input type="text" name="mobile" value="<?php echo $this->mobile ?>" ></div>
+    	<div id="mobile_error" class="error"><?php echo $this->error_mobile ?></div>
+	</div>
+
+	<div  class="prof_row">		
+	   <div class="dlabel"><label  for="settings_phone"><?php echo $this->translate('phone') ?></label></div>
+	   <div class="dinput"><input type="text" name="phone"   value="<?php echo $this->phone ?>" ></div>
+	   <div id="phone_error" class="error"> <?php echo $this->error_phone ?></div>
+	</div>
+
+	<div  class="prof_row">
+		<div class="dlabel"><label for="settings_private_phone"><?php echo $this->translate('private_phone') ?></label></div>
+		<div class="dinput"><input type="text" name="private_phone" value="<?php echo $this->private_phone ?>" ></div>
+		<div id="private_phone_error" class="error"> <?php echo $this->error_private_phone ?></div>
+	</div>
+
+	<div  class="prof_row">
+		<div class="dlabel"><label for="settings_betriebsstattennummer"><?php echo $this->translate('Betriebsstattennummer') ?></label></div>
+		<div class="dinput"><input type="text" name="betriebsstattennummer" value="<?php echo $this->betriebsstattennummer ?>" ></div>
+	</div>
+	
+	
+	<div  class="prof_row">
+		<div class="dlabel"><label for="settings_LANR"><?php echo $this->translate('LANR') ?></label></div>
+		<div class="dinput"><input type="text" name="LANR" value="<?php echo $this->LANR ?>" ></div>
+	</div>
+
+	<div  class="prof_row">
+		<div class="dlabel"><label for="settings_shtname"><?php echo $this->translate('ShortName') ?></label></div>
+		<div class="dinput"><input type="text" name="shortname" value="<?php echo $this->shortname ?>" ></div>
+	</div>
+
+	<div  class="prof_row">
+		<div class="dlabel"><label  for="users_show_assigned_patients"><?php echo $this->translate('calendar showonlyactiv') ?></label></div>
+		<div class="dcheckbox"><input type="checkbox" name="onlyAssignedPatients" value="1" <?php if ($this->onlyAssignedPatients == 1) { echo 'checked="checked"'; } else { echo ''; } ?>></div>
+	</div>
+	
+	
+
+	<div  class="prof_row">
+		<div  class="dlabel"><label for="user_status"><?php echo $this->translate('user_status')?></label></div>
+		<div  class="dselect">
+			<select name="user_status" id="user_status">
+			<option value="g" <?php if($this->user_status== 'g'){ echo 'selected="selected"';} ?>><?php echo $this->translate('green')?></option>
+			<option value="y" <?php if($this->user_status== 'y'){ echo 'selected="selected"';} ?>><?php echo $this->translate('yellow')?></option>
+			<option value="r" <?php if($this->user_status== 'r'){ echo 'selected="selected"';} ?>><?php echo $this->translate('red')?></option>
+			</select>
+		</div>
+	</div>	
+
+	<div  class="prof_row">
+		<?php echo $this->groupbox ?>
+	</div>
+	
+
+	<div  class="prof_row">
+		<div  class="dlabel"><label for="settings_iknfield"><?php echo $this->translate('IK User') ?></label></div>
+		<div class="dinput"><input type="text" name="ikusernumber"  value="<?php echo $this->ikusernumber ?>" ></div>
+	</div>
+	
+	
+	<div  class="prof_row">		
+		<div class="dlabel" ><label for="control_number"><?php echo $this->translate('label_control_number'); ?></label></div>
+		<div class="dinput" ><input type="text" name="control_number"   value="<?php echo $this->control_number; ?>" ></div>
+	</div>
+	
+	<div  class="prof_row">
+		<div class="dlabel"><label  for="users_no10contactsbox"><?php echo $this->translate('no10contactsbox') ?></label></div>
+		<div class="dcheckbox"><input type="checkbox" name="no10contactsbox" value="1" <?php if ($this->no10contactsbox == 1) { echo 'checked="checked"'; } else { echo ''; } ?>></div>
+	</div>	
+	
+	<div  class="prof_row">
+		<div class="dlabel"><label  for="calendar_visit_color"><?php echo $this->translate('select calendar color:');?></label></div>
+		<div class="dcheckbox" style="float: left;">
+		<input type="hidden" name="user_settings[id]" value="<?php if(strlen($this->user_settings['id'])> 0 ): echo  $this->user_settings['id']; else:  echo ''; endif; ?>" />
+		#<input name="user_settings[calendar_visit_color]" id="calendar_visit_color" type="text" value="<?php if(strlen($this->user_settings['calendar_visit_color'])> 0 ): echo  $this->user_settings['calendar_visit_color']; else:  echo 'FFD700'; endif; ?>" />
+		<div id="colorSelectorvisit"><div style="background-color: <?php if(strlen($this->user_settings['calendar_visit_color'])> 0 ): echo  '#'.$this->user_settings['calendar_visit_color']; else:  echo '#FFD700'; endif; ?>"></div></div>
+		</div>
+	</div>
+	
+	<div  class="prof_row">
+		<div class="dlabel"><label  for="calendar_visit_text_color"><?php echo $this->translate('select calendar textcolor:');?></label></div>
+		<div class="dcheckbox" style="float: left;">
+		#<input name="user_settings[calendar_visit_text_color]" id="calendar_visit_text_color" type="text" value="<?php if(strlen($this->user_settings['calendar_visit_text_color'])> 0 ): echo  $this->user_settings['calendar_visit_text_color']; else:  echo '000000'; endif; ?>" />
+		<div id="colorSelectorvisittext"><div style="background-color: <?php if(strlen($this->user_settings['calendar_visit_text_color'])> 0 ): echo  '#'.$this->user_settings['calendar_visit_text_color']; else:  echo '#000000'; endif; ?>"></div></div>
+		</div>
+	</div>
+
+
+	<!-- ISPC-2513 Lore 13.04.2020 -->
+    <div class="prof_row">
+        <div class="dlabel"> 
+            <label for="header_type" ><?php echo $this->translate('header_type') ?></label>
+        </div>
+        <div class="dinput">
+                <label for="default_ispc_header" style="float:left"><?php echo $this->translate('default_ispc_header');?>
+                    <input type="radio" id="default_ispc_header" name="header_type" value="default_ispc_header" style="width:auto" <?php if ($this->header_type == 'default_ispc_header') echo 'checked="checked"'?> >
+                </label>
+                <label for="type_2_header" style="float:left; margin-left:5px"><?php echo $this->translate('type_2_header');?>
+                    <input type="radio" id="type_2_header" name="header_type" value="type_2_header" style="width:auto" <?php if ($this->header_type == 'type_2_header') echo 'checked="checked"'?>>
+                </label>
+        </div>
+    </div>
+	
+	
+	<div class="clearer"></div><br/>
+	<!-- 	###################################### -->
+	<h5 class="LineHeading"><?php echo $this->translate('Bank details');?></h5>
+	<div class="bank_settings_row_ed prof_row" >
+	   	<div class="dlabel"><label class="settings_row_ed_master" for="bank_name"><?php echo $this->translate('Bank Name') ?></label></div>
+		<div class="dinput"><input type="text" name="bank_name" id="bank_name" value="<?php echo $this->bank_name;  ?>" /></div>
+	</div>
+
+	<div class="bank_settings_row_ed prof_row">
+		<div class="dlabel"><label class="settings_row_ed_master" for="bank_account_number"><?php echo $this->translate('Bank account number'); ?></label></div>
+		<div class="dinput"><input type="text" name="bank_account_number" value="<?php echo $this->bank_account_number;  ?>" id="bank_account_number"  /></div>
+	</div>
+
+	<div class="bank_settings_row_ed prof_row">
+		<div class="dlabel"><label class="settings_row_ed_master" for="bank_number"><?php echo $this->translate('Bank number')?></label></div>
+		<div class="dinput"><input type="text" name="bank_number" id="bank_number" value="<?php echo $this->bank_number;  ?>" /></div>
+	</div>
+	<div class="bank_settings_row_ed prof_row">
+		<div class="dlabel"><label class="settings_row_ed_master" for="iban"><?php echo $this->translate('IBAN')?></label></div>
+		<div class="dinput"><input type="text" name="iban" id="iban" value="<?php echo $this->iban;  ?>" /></div>
+	</div>
+
+	<div class="bank_settings_row_ed prof_row">
+		<div class="dlabel"><label class="settings_row_ed_master" for="bic"><?php echo $this->translate('BIC')?></label></div>
+		<div class="dinput"><input type="text" name="bic" id="bic" value="<?php echo $this->bic;  ?>" /></div>
+	</div>
+
+
+	<div class="clearer"></div><br/>
+	<!-- 	###################################### -->
+	<h5 class="LineHeading"><?php echo $this->translate('Verlauf settings')?></h5>
+	<div class="settings_row_ed prof_row">
+	   	<div class="dlabel"><label class="settings_row_ed_master"><?php echo $this->translate('Sort verlauf - verlauf entries are sorted by the newest at : ') ?></label></div>
+		<div class="dradios">
+			<input type="radio" name="verlauf_newest" value="t" id="verlauf_newest_top" <?php if ($this->verlauf_newest == 't') { echo 'checked="checked"'; } else { echo ''; } ?> />
+			<label for="verlauf_newest_top"><?php echo $this->translate('top')?></label>
+			<input type="radio" name="verlauf_newest" value="b" id="verlauf_newest_bottom" <?php if ($this->verlauf_newest == 'b') { echo 'checked="checked"'; } else { echo ''; } ?> />
+			<label for="verlauf_newest_bottom"><?php echo $this->translate('bottom')?></label>
+		</div>
+	</div>
+	
+	<div class="fload_div settings_row_ed prof_row" >
+	   	
+	   	<div class="dlabel"><label class="settings_row_ed_master"><?php echo $this->translate('Sort verlauf - facebook load: ') ?></label></div>
+		<div class="dradios">
+			<input type="radio" name="verlauf_fload" value="y" id="verlauf_fload_yes" <?php if ($this->verlauf_fload == 'y') { echo 'checked="checked"'; } else { echo ''; } ?> />
+			<label for="verlauf_fload_yes"><?php echo $this->translate('Ja')?></label>
+			<input type="radio" name="verlauf_fload" value="n" id="verlauf_fload_no" <?php if ($this->verlauf_fload == 'n') { echo 'checked="checked"'; } else { echo ''; } ?> />
+			<label for="verlauf_fload_no"><?php echo $this->translate('Nein')?></label>
+		</div>
+	</div>
+	
+	<div class="settings_row_ed facebook_load_settings prof_row" style="line-height: 150%; display:none;">
+	   		<div class="dlabel"><label class="settings_row_ed_master" style="line-height: 25px;"><?php echo $this->translate('facebook_load_entries') ?></label></div>
+			<div class="dinput"><input type="text" name="verlauf_entries" id="verlauf_entries" value="<?php echo $this->verlauf_entries; ?>"/></div>
+			<div style="font-size: 0.8em;float: left; padding-left: 5px;" class="redtext"><?php echo $this->translate('zero_is_unlimited');  ?></div>
+	</div>
+	
+	
+	
+	<div class="settings_row_ed prof_row">
+	   	<div class="dlabel"><label  class="settings_row_ed_master"><?php echo $this->translate('Sort verlauf -  verlauf entries are sorted by: ') ?></label></div>
+	   	<div class="dradios">
+			<input type="radio" name="verlauf_action" value="a" id="verlauf_action_added" <?php if ($this->verlauf_action == 'a') { echo 'checked="checked"'; } else { echo ''; } ?> />
+			<label for="verlauf_action_added"><?php echo $this->translate('added')?></label>
+			<input type="radio" name="verlauf_action" value="d" id="verlauf_action_done" <?php if ($this->verlauf_action == 'd') { echo 'checked="checked"'; } else { echo ''; } ?> />
+			<label for="verlauf_action_done"><?php echo $this->translate('done')?></label>
+		</div>
+	</div>
+	
+	<div class="clearer"></div><br/>
+	<!-- 	###################################### -->
+
+	<h5 class="LineHeading"><?php echo $this->translate('user_dash_settings')?></h5>
+	<div class="settings_row_dash prof_row">
+			<div class="dlabel"><label class="settings_row_ed_master" for="dashboard_limit"><?php echo $this->translate('dashboard_limit');?></label></div>
+			<div class="dinput"><input type="text" name="dashboard_limit" id="dashboard_limit" value="<?php echo $this->dashboard_limit;  ?>" /></div>
+	</div>
+	<div class="settings_row_dash prof_row">
+			<div class="dlabel"><label class="settings_row_ed_master" for="show_custom_events"><?php echo $this->translate('show_custom_events');?></label></div>
+			<div class="dcheckbox"><input type="checkbox" name="show_custom_events" id="show_custom_events" value="1" <?php if($this->show_custom_events == '1'): echo 'checked="checked"'; endif; ?> /></div>
+	</div>
+ 
+
+
+
+	<div class="clearer"></div><br/>
+	<!-- 	###################################### -->
+
+	<h5 class="LineHeading"><?php echo $this->translate('user_own_list_settings')?></h5>
+	<div class="settings_row_ed prof_row">
+		<div class="dlabel"><label class="settings_row_ed_master">
+			<?php echo $this->translate('allow_user_patient_list_discharge_not_dead_patients');  ?>
+		</label></div>
+
+		<div class="dradios">
+			<input type="radio" name="allow_own_list_discharged" id="allow_own_list_discharged" value="1" <?php if($this->allow_own_list_discharged == '1'): echo 'checked="checked"'; endif;  ?>/>
+			<label for="allow_own_list_discharged"><?php echo $this->translate('yesconfirm');?></label>
+			<input type="radio" name="allow_own_list_discharged" id="disallow_own_list_discharged" value="0" <?php if($this->allow_own_list_discharged == '0'): echo 'checked="checked"'; endif;  ?>/>
+			<label for="disallow_own_list_discharged"><?php echo $this->translate('noconfirm');?></label>
+		</div>
+	</div>
+
+	<div class="settings_row_ed prof_row">
+	   <div class="dlabel"><label  class="settings_row_ed_master"><?php echo $this->translate('show_standby_patients'); ?></label></div>
+	   <div class="dradios">
+			<input type="radio" name="assigned_standby" value="1" id="assigned_standby_yes" <?php if ($this->assigned_standby == '1') { echo 'checked="checked"'; } else { echo ''; } ?> />
+			<label for="assigned_standby_yes"><?php echo $this->translate('yesconfirm')?></label>
+			<input type="radio" name="assigned_standby" value="0" id="assigned_standby_no" <?php if ($this->assigned_standby == '0') { echo 'checked="checked"'; } else { echo ''; } ?> />
+			<label for="assigned_standby_no"><?php echo $this->translate('noconfirm')?></label>
+		</div>
+	</div>
+
+
+	<div class="clearer"></div><br/>
+	<!-- 	###################################### -->
+	<h5 class="LineHeading"><?php echo $this->translate('km_calculation_settings')?></h5>
+	
+	<div class="settings_row_ed prof_row">
+	   	<div class="dlabel"><label  class="settings_row_ed_master"><?php echo $this->translate('km_calculation_own_settings') ?></label></div>
+	   	<div class="dradios">
+			<input type="radio" name="km_calculation_settings" value="user" id="km_calculation_settings_user" <?php if ($this->km_calculation_settings == 'user') { echo 'checked="checked"'; } else { echo ''; } ?> />
+			<label for="km_calculation_settings_user" class="km_settings_yes"><?php echo $this->translate('yesconfirm')?></label>
+			<input type="radio" name="km_calculation_settings" value="client" id="km_calculation_settings_client" <?php if ($this->km_calculation_settings == 'client') { echo 'checked="checked"'; } else { echo ''; } ?> />
+			<label for="km_calculation_settings_client"  class="km_settings_no"><?php echo $this->translate('noconfirm')?></label>
+	
+			<input type="radio" name="km_calculation_settings" value="disabled" id="km_calculation_settings_disabled" <?php if ($this->km_calculation_settings == 'disabled') { echo 'checked="checked"'; } else { echo ''; } ?> />
+			<label for="km_calculation_settings_disabled"  class="km_settings_disabled"><?php echo $this->translate('KM_DISABLED')?></label>
+		</div>
+	</div>
+	
+	<div class="clearer"></div><br/>
+	<!-- 	###################################### -->
+	<h5 class="LineHeading"><?php echo $this->translate('internal_invoice_settings')?></h5>
+		<div class="settings_row_ed prof_row">
+		   	<div class="dlabel"><label  class="settings_row_ed_master"><?php echo $this->translate('user_association') ?> </label></div>
+	   		<div class="dselect"><br/><br/>
+	   				<select name="associated_user" class="big_sel" id="user_association">
+			  		<option value="0"><?php echo $this->translate('select')?></option>
+			  			<?php foreach($this->client_user_array as $user_id =>$u_name):?>
+			  				<option value="<?php echo $user_id; ?>" <?php if($this->associated_user == $user_id):?>  selected="selected" <?php endif; ?>>  <?php echo $u_name;?> </option>
+			  			<?php endforeach;?>
+			  		</select>
+	   		</div>
+	   	</div>
+	   	<br/>&nbsp;
+	   	<br/>
+	   	
+	   	
+		<div class="settings_row_ed invoice_ed_sett prof_row" id="invoice_settings">
+	   		<div class="dlabel"><label  class="settings_row_ed_master"><?php echo $this->translate('personal_invoice_number') ?></label></div>
+	   		<div class="doptions">
+		   		<div class="settings_prefix_nr"><label  ><?php echo $this->translate('prefix') ?></label><input type="text" name="invoice_prefix" value="<?php echo $this->invoice_prefix;  ?>" /></div> 
+				<div class="settings_prefix_nr"><label class="alr" ><?php echo $this->translate('start_number') ?></label><input type="text" name="invoice_start" value="<?php echo $this->invoice_start;  ?>" /></div>
+	 			<input type="hidden" name="has_invoice_number" id="has_invoice_number" value="0" />
+ 			</div>	   		
+	   	</div>
+		
+
+		<div class="settings_row_ed prof_row">
+			<div class="dlabel"><label class="settings_row_ed_master"><?php echo $this->translate('internal_invoice_pay_days'); ?> </label></div>
+			<div class="settings_prefix_nr">
+				<input type="text" name="invoice_pay_days" value="<?php echo $this->invoice_pay_days; ?>" id="invoice_pay_days" />
+			</div>
+	   	</div>
+	<br/>
+	<br/>
+	<br/>
+	<h5 class="LineHeading"><?php echo $this->translate('teammeeting_settings')?></h5>
+	<div class="settings_row_ed prof_row">
+		<div class="dlabel"><label class="settings_row_ed_master" for="meeting_attendee"><?php echo $this->translate('allow_user_attend') ?></label></div>
+		<div class="settings_prefix_nr">
+			<input type="checkbox" name="meeting_attendee" id="meeting_attendee" value="1"<?php if($this->meeting_attendee == '1'): ?>checked="checked"<?php endif; ?> />
+		</div>
+	</div>
+	<br/>
+	<br/>
+	<h5 class="LineHeading"><?php echo $this->translate('dutyroster')?></h5>
+	<div class="settings_row_ed prof_row">
+		<div class="dlabel"><label class="settings_row_ed_master" ><?php echo $this->translate('roster_shortcuts') ?></label></div>
+		<div class="settings_prefix_nr">
+			<input type="text" name="roster_shortcut" id="roster_shortcut" value="<?php echo $this->roster_shortcut; ?>" />
+		</div>
+	</div>
+	<h5 class="LineHeading"><?php echo $this->translate('receipt_header')?></h5>
+	<div class="settings_row_ed prof_row">
+		<div class="dlabel"><label class="settings_row_ed_master" ><?php echo $this->translate('Arztstempel') ?></label></div>
+		<div class="stempel" style="display:inline">
+		
+			<div class="stamp_user_select1">
+	 					<?php if ($this->showselect == 1): ?>
+							<?php if($this->multiplestamps_option === true): ?>
+								<div class="userstamps1">
+							
+									<select id="stampusers" name="stampusers" style="width:100%">
+									<option value=""><?php echo $this->translate('selectuserstamp')?> </option>
+									<?php foreach($this->users_mstamps as $user=>$stamp):?>
+									 <optgroup label="<?php echo $stamp['user_name'];?>" value="<?php echo $stamp['user_id'];?>">
+									 	<?php foreach( $stamp['user_stamps'] as $stamp_id => $stamp_name):?>
+									 	<?php $stemp= $stamp['user_id'].'-'.$stamp_id?>
+									 	<?php  ?>
+									 		<option value="<?php echo $stemp ?>" <?php if($stemp == $this->default_stampusers.'-'.$this->default_stampid): ?>selected="selected"<?php endif;  ?>> <?php echo $stamp_name;?></option>
+									 		
+									 	<?php endforeach;?>
+									 </optgroup>
+									<?php endforeach;?>
+									</select>
+								</div>
+							<?php else: ?>
+								<div class="userstamps1">
+								<select id="stampusers" name="stampusers" style="width:100%">
+								<option value=""><?php echo $this->translate('selectuserstamp')?> </option>
+									 	<?php foreach( $this->stamp_data as $stamp_user => $stamp):?>
+									 	<?php if($stamp['id']):?>
+									 	<?php $stemp= $stamp_user.'-'.$stamp['id']?>
+									 	<? else: ?>
+									 	<?php $stemp= $stamp_user.'-0'?>
+									 	<?php endif;?>
+									 	<?php  ?>
+									 		<option value="<?php echo $stemp ?>" <?php if($stemp == $this->default_stampusers.'-'.$this->default_stampid): ?>selected="selected"<?php endif;  ?>> <?php echo $stamp['username'];?></option>
+									 		
+									 	<?php endforeach;?>
+								</select>
+								
+								
+									<?php// echo $this->formSelect('stampusers', $this->default_stampusers, null, $this->users); ?>
+								</div>
+							<?php endif; ?>
+						<?php endif; ?> 					
+ 				</div>
+			
+ 				<div class="stamp_user_area1" >
+ 					<div class="stamp_alert" style="display: none;"><?php echo $this->translate("no stamp information")?></div>
+	 					<div id="user_stamp_block"> 
+		 					   <textarea id="stamp_textarea" rows="" cols=""><?php echo $this->stamp_form1; ?></textarea>
+	 					</div>
+ 					</div>	
+		</div>
+	</div>
+	
+	<!---START MMI License-->
+    <div class="clearer"></div>
+    <br/>
+<!--    <h5 class="LineHeading">MMI Pharmaindex</h5>
+    <div class="">
+      <label class="settings_row_ed_master" for="mmi_n"><? echo $this->translate('Lizenzname'); ?></label>
+      <input type="text" name="mmi_n" value="<?php echo $this->mmi_n;  ?>" id="mmi_n"  />
+      <br/>
+      <br/>
+      <br/>
+      <label class="settings_row_ed_master" for="mmi_k"><? echo $this->translate('Lizenzschlüssel'); ?></label>
+      <input type="text" name="mmi_k" value="<?php echo $this->mmi_k;  ?>" id="mmi_k"  />
+    </div>-->
+    <!---END MMI License-->
+    
+    
+    
+        
+    <?php 
+        // user setting for what patient icons he wants to hide
+        // SA bypasses this
+        $logininfo = new Zend_Session_Namespace('Login_Info');
+        if ($logininfo && $logininfo->usertype != 'SA') :
+    ?>
+    
+    <!-- START visible patient icons  -->
+    <h5 class="LineHeading"><?php echo $this->translate('Visible Patient Icons')?></h5>
+    <div class="settings_row_ed prof_row sys_icons_list" >
+    <!--  
+    <input type="hidden" name="user_settings[userid]" value="<?=$this->user_settings['userid']?>" />
+    -->
+    
+    <!--SYSTEM ICON TABLE-->
+    <?php $icon_type = 'system'; ?>
+    <table id="sys_icons_list" class="datatable sys_icons_list">
+        <thead>
+            <tr>
+                <th class="incr"><?php echo $this->translate('nr'); ?></th>
+                <th class="icon_col"><?php echo $this->translate('icon'); ?></th>
+                <th ><?php echo $this->translate('icon_name'); ?></th>
+                <th class="action_col">
+                    <input type="checkbox" onChange="checkedall(this)" />
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+        <?php if (! empty($this->group_allowed_icons[$icon_type])) : $cnt = 1; ?>
+        <?php foreach($this->group_allowed_icons[$icon_type] as $v_icon) :?>
+            <tr>
+                <td>
+                    <?php echo $cnt++; ?>
+                    <input type="hidden" value="<?php echo $v_icon['id']; ?>" />
+                </td>
+                
+                <td class="icon_col">
+                    <div style="background: #<?php echo $v_icon['color']; ?>;" class="icon_color_placeholder_2">
+                        <?php if(strlen(trim(rtrim($v_icon['image']))) >'0' && is_file(APPLICATION_PATH . '/../public/icons_system/' . $v_icon['image'])): ?>
+                            <img src="<?php echo APP_BASE . 'icons_system/' . $v_icon['image']; ?>" class="icon_image_2" />
+                        <?php else: ?>
+                            <span> - </span>
+                        <?php endif; ?>
+                    </div> 
+                </td>
+                
+                <td><?php echo $this->translate($v_icon['name']); ?></td>
+                
+                <td class="action_col">
+                    <?php
+                    $neddle_checked =  null;
+                    if ( ! in_array($v_icon['id'], $this->user_settings['hidden_patient_icons'][$icon_type])) {
+                        $neddle_checked = array($v_icon['id']);
+                    }
+                    echo $this->formCheckbox('user_settings[hidden_patient_icons]['.$icon_type.'][]', $v_icon['id'] , null, $neddle_checked );
+                    ?>
+                </td>
+            
+            </tr>
+        <?php endforeach;?>
+        <?php else: ?>
+            <tr>
+                <td colspan="4" id="noresults"><?php echo $this->translate('icons_no_results'); ?></td>
+            </tr>
+        <?php endif; ?>
+    
+        </tbody>
+    </table>
+
+
+    <!--CUSTOM ICON TABLE-->
+    <?php $icon_type = 'custom'; ?>
+    <table  id="sys_icons_list"  class="datatable sys_icons_list">
+        <thead>
+            <tr>
+                <th class="incr"><?php echo $this->translate('nr'); ?></th>
+                <th class="icon_col"><?php echo $this->translate('icon'); ?></th>
+                <th ><?php echo $this->translate('icon_name'); ?></th>
+                <th class="action_col">
+                    <input type="checkbox" onChange="checkedall(this)" />
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+        <?php if (! empty($this->group_allowed_icons[$icon_type])) : $cnt = 1; ?>
+        <?php foreach($this->group_allowed_icons[$icon_type] as $v_icon) :?>
+            <tr>
+                <td>
+                    <?php echo $cnt++; ?>
+                    <input type="hidden" value="<?php echo $v_icon['id']; ?>" />
+                </td>
+                
+                <td class="icon_col">
+                    <div style="background: #<?php echo $v_icon['color']; ?>;" class="icon_color_placeholder_2">
+                        <?php if(strlen(trim(rtrim($v_icon['image']))) >'0' && is_file(APPLICATION_PATH . '/../public/icons_system/' . $v_icon['image'])): ?>
+                            <img src="<?php echo APP_BASE . 'icons_system/' . $v_icon['image']; ?>" class="icon_image_2" />
+                        <?php else: ?>
+                            <span> - </span>
+                        <?php endif; ?>
+                    </div> 
+                </td>
+                
+                <td><?php echo $this->escape($v_icon['name']); ?></td>
+                
+                <td class="action_col">
+                    <?php
+                    $neddle_checked =  null;
+                    if ( ! in_array($v_icon['id'], $this->user_settings['hidden_patient_icons'][$icon_type])) {
+                        $neddle_checked = array($v_icon['id']);
+                    }
+                    echo $this->formCheckbox('user_settings[hidden_patient_icons]['.$icon_type.'][]', $v_icon['id'] , null, $neddle_checked );
+                    ?>
+                </td>
+            
+            </tr>
+        <?php endforeach;?>
+        <?php else: ?>
+            <tr>
+                <td colspan="4" id="noresults"><?php echo $this->translate('icons_no_results'); ?></td>
+            </tr>
+        <?php endif; ?>
+    
+        </tbody>
+    </table>
+    
+       
+    </div>
+    <br/>
+    <!-- END  visible patient icons -->
+    
+    <?php endif; ?>
+    
+    
+    
+	<br/>
+	<div class="clearer"></div>
+	<input type="submit" name="btnsubmit" class="button" value="<?php echo $this->translate('submit') ?>" />
+	<input type="hidden" name="edit_type" value="editprofile" />
+ </fieldset>
+</form>

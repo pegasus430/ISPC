@@ -1,0 +1,284 @@
+<!-- 	 	ISPC-2589 Ancuta 28.05.2020 [migration from clinic CISPC] -->
+<script language=="JavaScript" type="text/javascript">
+
+    $(document).ready(function () {
+
+        medmising();
+        checkedmed();
+        $('#haftung').hide();
+        $('.amts-check').hide();
+        $('#printarea').hide();
+        $('.CONTRAINDICATION .aufgrundvon').show();
+        $('.INTERACTION .aufgrundvon').show();
+
+
+        $('.btnmodule').each(function () {
+
+            var id = $(this).attr('id');
+            if( $('.' + id ).length > 0 ){
+                $(this).addClass('modulchecked');
+            }else {
+                $(this).addClass('deaktivieren');
+            }
+        });
+        /* first it will be just shown which modules are called because of the rrequest-xml
+        all other information will be hide
+         */
+
+        $(document).on('click', '.btnmodule', function (e) {
+
+            $('.amts-check').hide();
+
+            if ($(this).hasClass('deaktivieren')) {
+                $('#printarea').hide();
+            } else {
+                $('#printarea').show();
+            };
+            var id = $(this).attr('id');
+            $('.' + id ).show();
+            $('.amts-check').find('.modul').hide();
+            $('.amts-check').find('.beschreibung').hide();
+            $('.amts-check').find('.referenz').hide();
+            $('.amts-check').find('.schweregrad').hide();
+            $('.amts-check').find('.wahrscheinlichkeit').hide();
+            $('.amts-check').find('.hinweis').hide();
+
+
+
+
+        });
+
+        $(document).on('click', '.chnewcheck', function (e) {
+
+            var id = $(this).attr('id');
+
+          //  alert(id);
+            //   $('#medisync_drop').load('<?php echo APP_BASE;?>ontodrug/patientonto?id='+idpd, {medi: medis,bedarf:bedarfsmed,notfall: notfallmed,ivmed: isivmed,pump: pumpenmed,intervall: intervallmed};
+
+        });
+
+        /* on click to the reason of an warning all details will be toggled */
+
+        $(".aufgrundvon").click(function(e){
+
+            var rueckm = $(this).closest('.rueckmeldung');
+            var last = $(this).closest('.warningdet');
+            $(last).toggleClass('opened');
+
+            var des =  $(last).find('.beschreibung');
+            var ref= $(last).find('.referenz');
+
+            var mod = $(rueckm).find('.modul');
+            var hinw = $(last).find('.hinweis');
+            var sev= $(last).find('.schweregrad');
+            var likelihood = $(last).find('.wahrscheinlichkeit');
+
+
+            $(des).toggle(); // mittels toggle werden Elemente beim Klick auf den Button ein- und ausgeblendet
+            $(ref).toggle();
+
+            if(mod.text() == "INTERACTION"){ // Schweregrad & Wahrscheinlichkeit sollen  nur bei Interaktionen angezeigt werden
+                $(sev).toggle();
+                $(likelihood).toggle();
+                $(hinw).toggle();
+
+            }
+
+        });
+
+
+        $(".aufgrund").click(function(e){
+
+
+            var last = $(this).closest('.rueckmeldung');
+            var mod = $(last).find('.modul');
+            if(mod.text() == "INTERACTION" || mod.text() == "CONTRAINDICATION"){
+                return;
+            }
+            var warn =  $(last).find('.warningdet2');
+            var des =  $(warn).find('.beschreibung');
+            var ref= $(warn).find('.referenz');
+
+
+            $(des).toggle(); // mittels toggle werden Elemente beim Klick auf den Button ein- und ausgeblendet
+            $(ref).toggle();
+
+        });
+
+
+        $('.haftungstext').hide();
+
+
+        $('.btnhaftung').click(function(event){
+            show_haftung_dialog();
+        });
+
+    });
+
+
+
+    function show_haftung_dialog(){
+
+        $('#haftung').dialog();
+
+    };
+
+    $(document).on('click', '#ist_schwanger', function () {
+
+       if (this.checked == false) {
+            $('#et').hide();
+        } else {
+            $('#et').show();
+        };
+    })
+
+    $(document).on('click', '#all', function () {
+
+        if(this.checked == false) {
+            $('.chnewcheck').prop('checked', false);
+        }else {
+            $('.chnewcheck').prop('checked', true);
+        }
+    })
+
+   function checkedmed(){ // diese Methode soll dafür sorgen, dass die ausgewählten checkboxen auch nach dem Button-Klick bleiben
+
+
+    var checkm = <?=json_encode($this->checkedmedis);?>;
+       if(checkm == null)
+           return;
+       checkm.forEach(function(checkedElement) {
+           $('.chnewcheck[value=' + checkedElement + ']').prop("checked", true);
+        });
+
+
+    };
+
+
+    function medmising(){
+
+        var missing = <?=json_encode($this->mednopzn);?>;
+
+        if(missing.length<1){
+            $('.tooltip').hide();
+            $('.tooltiptext').hide();
+        }};
+
+
+
+</script>
+
+
+
+<form  method="post">
+
+<div id="haftung" title="Haftungsausschluss">
+
+    <p> <B>Haftungsausschluss OntoDrug® AMTS</B><br><br>
+        Die Angaben in den Meldungen von OntoDrug® AMTS sind als Arbeitshilfe gedacht. Sie werden aufgrund von Literaturangaben (wissenschaftlichen Veröffentlichungen und Fachinformationen) erzeugt. Die Referenzen sind jeweils angegeben. Für die Richtigkeit und Vollständigkeit der Quellen wird keine Gewähr übernommen.<br><br>
+        Wir weisen ausdrücklich darauf hin, dass die den Arzneimitteln beiliegenden Gebrauchsinformationen (Beipackzettel) in jedem Fall beachtet werden müssen. Bei Abweichungen der Angaben in den Meldungen von OntoDrug® AMTS von den Gebrauchsinformationen sind allein diese maßgeblich. Alle Ansprüche auf Ersatz unmittelbaren oder mittelbaren Schadens sind ausgeschlossen.
+    </p>
+
+</div>
+
+<div id="ontodrug">
+
+
+    Bitte beachte Sie unseren
+    <button id="btnhaft" class="btnhaftung" type="button">Haftungsausschluss</button>!
+
+    <br><br>
+
+    <B><U>AMTS-Check für: </U></B><?php echo htmlspecialchars($this->patient['vorname']);?> <?php echo htmlspecialchars($this->patient['nachname']);?> <br><br>
+
+    <label for="allergien"><U>Allergien: </U><?php echo htmlspecialchars($this->patient['allergies']);?> <br><br></label>
+
+    <label for="diagnosen"><U>Diagnosen:</U>
+        <?php echo implode(', ', $this->patient[diagnoses] );?>
+        <br><br></label>
+
+
+    <div class="tooltip"><U>Achtung, folgende Medikamente werden beim Check nicht berücksichtigt, da diese nicht über das MMI-Fenster eingefügt wurden:</U>
+        <span class="tooltiptext">Die AMTS-Prüfung erfolgt lediglich mit Medikamenten, die über das MMI-Fenster eingefügt wurden</span>
+    </div>
+
+    <br>
+
+        <?php
+        foreach($this->mednopzn as $test)
+        {
+            echo $test[0].'<br>';
+
+        }?>
+        <br></label>
+
+    <fieldset>
+        <div class="ontodrug-risk-cols-container">
+            <legend>Risikogruppe</legend>
+            <label for="chemo"><input type="checkbox" name="chemo" id="ch" class="riskgroup">Chemotherapie</label>
+            <label for="dialys"><input type="checkbox" name="dia" id="dia" class="riskgroup">Dialyse</label>
+        </div>
+    </fieldset>
+
+    <fieldset>
+        <legend>Berücksichtigte Medikamente:</legend>
+        <div class="ontodrug-meds-cols-container">
+
+            <div class="ontodrug-meds-col-left">
+                <label for="medi"><input type="checkbox" checked="checked" name="medi" value="medi" id="med" class="chnewcheck" >Medikation</label>
+                <label for="bedarf"><input type="checkbox" name="bedarf" id="bed" value="bedarf" class="chnewcheck" >Bedarfs Medikation</label>
+                <label for="krise"><input type="checkbox" name="krise" id="kr" value="notfall" class="chnewcheck">Krisen-/ Notfallmedikation</label>
+            </div>
+            <div class="ontodrug-meds-col-right">
+                <label for="ivsc"><input type="checkbox" name="ivsc" id="iv" value="ivmed" class="chnewcheck">I.v. / s.c. Medikation</label>
+                <label for="pum"><input type="checkbox" name="pum" id="pu" value="pump" class="chnewcheck">Pumpe</label>
+                <label for="inter"><input type="checkbox" name="inter" id="int" value="intervall" class="chnewcheck">Intervall Medis</label>
+            </div>
+            <div class="ontodrug-meds-end-right">
+                <label for="alle"><input type="checkbox" name="alle" id="all" value="all" class="all">ALLE Medikamente</label>
+
+            </div>
+        </div>
+    </fieldset>
+
+    <div class="amts-buttons">
+    <ul id="buttons">
+        <button id="CONTRAINDICATION" class="btnmodule" type="button">KONTRA INDIKATION</button>
+        <button id="INTERACTION" class="btnmodule" type="button">INTERAKTION</button>
+        <button id="DOUBLEMEDICATION" class="btnmodule" type="button">DOPPEL MEDIKATION</button>
+        <button id="RENALFAILURE" class="btnmodule" type="button">DOSIS ANPASSUNG</button>
+        <button id="SIDEEFFECTS" class="btnmodule" type="button">NEBEN WIRKUNG</button>
+        <button id="DRIVEABILITY" class="btnmodule" type="button">VERKEHRS TÜCHTIGKEIT</button>
+        <button id="PRISCUS" class="btnmodule" type="button">PRISCUS LISTE</button>
+    </ul>
+    </div>
+
+    <div id="printarea">
+
+        <?php foreach ($this->return as $erg):?>
+
+            <div  class="amts-check <?php echo $erg['Modul'];?>">
+                <ul class ="rueckmeldung">
+                    <li class="modul"><?php echo $erg['Modul'];?></li>
+                    <li><button class="aufgrund" type="button"><b><font color ="#ff4500"><?php echo $erg['Titel'];?></font></b></button></li><br>
+                    <?php foreach ($erg["warningdetails"] as $detail):?>
+                    <?php $aClass = ($erg['Modul']=="INTERACTION" ||$erg['Modul']=="CONTRAINDICATION") ? "warningdet" : "warningdet2";?>
+                    <div class=<?php echo $aClass;?>>
+                        <li><button class="aufgrundvon" type="button" style="display: none" &#9654;> Aufgrund von: <?php echo $detail['Titel'];?></button></li><br>
+                        <div class="det">
+                            <li class="hinweis"><b><u>Hinweis: </u></b><?php echo $detail['Hinweis'];?></li><br>
+                            <li class="schweregrad"><b><u>Schweregrad: </u></b><?php echo $detail['Schweregrad'];?></li>
+                            <li class="wahrscheinlichkeit"><br><b><u>Wahrscheinlichkeit: </u></b><?php echo $detail['Wahrscheinlichkeit'];?></li><br>
+                            <li class="beschreibung"><?php echo $detail['Beschreibung'];?></li>
+                             <li class="referenz"><br><b><u>Referenz: </u></b><?php echo $detail['Refname'];?></li><br>
+                        </div>
+                    </div>
+                    <?php endforeach;?>
+                  </ul>
+              </div>
+          <?php endforeach;?>
+
+      </div>
+
+</div>
+</form>

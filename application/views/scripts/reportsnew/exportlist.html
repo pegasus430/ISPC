@@ -1,0 +1,1262 @@
+<!-- Maria:: Migration ISPC to CISPC 08.08.2020 -->
+<link rel='stylesheet' type='text/css' href='<?php echo RES_FILE_PATH;  ?>/css/reportsnew.css?<?php echo date('Ymd', time()); ?>' />
+<script type="text/javascript">
+function isNumeric(value) {
+	if (value != null && !value.toString().match(/^[0-9]*$/)) return false;
+	return true;
+}
+function showHide(val){
+	if(val == 0){
+		$('.periodfilter').show();
+	} else {
+		$('.periodfilter').hide();
+	}
+}
+$(function() {
+	$('.report_user_info_special_note').hide();
+	$('.raportcheckradio_special').hide();
+	$('.mradios').hide();
+	$('.qradios').hide();
+	$('.yradios').hide();
+	
+	$('#alter').hide();
+	
+	$('#doctorname').show(); 
+	
+	$('#user_or_group').hide(); // This is used only for report 137 + 214 + 221	+ 209 // TODO-3714 Ancuta 11.01.2021 - Added 209
+	$('#doctornameDisabled').hide(); //Used in  Rep 117 //TODO-3398
+	
+	
+	$('.raportcheckradio').show();
+	
+	$('#location_select_div').hide();
+	
+	$('.a_reportbox').live('click', function(e){
+		var report_id = $(this).attr('rel');
+
+		if(!report_id){
+			window.location = '<?php echo APP_BASE; ?>'+$(this).attr('href');
+			return false;
+		}
+		else
+		{
+			e.preventDefault();
+		}
+                $('#reporttype').val($(this).attr('rel'));
+                $('#reporttypedoc').val($(this).attr('rel'));
+
+		$( "#firststep" )
+			.data('details',$('#reportdetails_'+report_id).val())
+			.data('title',$('#reporttitle_'+report_id).val())
+			.data('description',$('#reportdescription_'+report_id).val())
+			.data('columns',$('#reportcolumns_'+report_id).val())
+			.dialog( "open" );
+
+
+
+		$('#ui-dialog-title-firststep').html($('#reporttitle_'+report_id).val());
+		$('#ui-dialog-title-secondstep').html($('#reporttitle_'+report_id).val());
+
+		$.getJSON("reportsnew/fetchreportsettings?reportid="+report_id,
+			function(datas){
+				var settings = [];
+				var col_select = "";
+				$.each(datas, function(key, settings) {
+
+				col_select = '<select id="sortselect" name="columnname">';
+				col_select += '<option value=""> </option>'
+				col_select += settings.columns;
+				col_select += "</select>";
+
+				if($('#sort').html() != ""){
+					$('#sortselect').remove();
+				}
+				$('#sort').append(col_select);
+					//	select date for
+					if(settings.select_date_for == "1"){
+						$('#select_date_for').show();
+						$('#select_date_for :input').attr('checked', false);
+						$('#select_date_for :input').attr('disabled', false);
+
+					} else {
+						$('#select_date_for').hide();
+						$('#select_date_for :input').attr('checked', false); //uncheck them all
+						$('#select_date_for :input').attr('disabled', true); //disable them all so we dont have them in post
+
+					}
+
+					// show/hide nowactive check
+					if(settings.nowactiv_timefilter == 1){
+						$('.onlyactive').show();
+						$('.onlyactive :input').attr('checked', false);
+						$('.onlyactive :input').attr('disabled', false);
+
+					} else {
+						$('.onlyactive').hide();
+						$('.onlyactive :input').attr('checked', false);
+						$('.onlyactive :input').attr('disabled', true);
+					}
+					
+					//ISPC-2531 Lore 12.02.2020
+					if(report_id == '221') {
+						$('#sh_ver').show();
+						$('#sh_ver :input').attr('checked', false);
+						$('#sh_ver :input').attr('disabled', false);						
+					}else{
+						$('#sh_ver').hide();
+						$('#sh_ver :input').attr('checked', false);
+						$('#sh_ver :input').attr('disabled', false);
+					}
+
+					//TODO-3215 -Lore 17.08.2020
+					if(report_id == '224'){
+						$('.specialrep224').show();
+						$('.normal_user_select').hide();
+					}
+					
+					//	show/hide timefilter
+					if(settings.show_timefilter == 1){
+						
+						$('.time_filter').show();
+						$('.time_filter :input').attr('checked', false);
+						$('.time_filter :input').attr('disabled', false);
+	
+	                    if(report_id != '45') {
+	                        $('.monthfilter').show();
+	                        $('.monthfilter :input').attr('checked', false);
+	                        $('.monthfilter :input').attr('disabled', false);
+	
+	                        $('.quartfilter').show();
+	                        $('.quartfilter :input').attr('checked', false);
+	                        $('.quartfilter :input').attr('disabled', false);
+	
+	                        $('.yearfilter').show();
+	                        $('.yearfilter :input').attr('checked', false);
+	                        $('.yearfilter :input').attr('disabled', false);
+	                    }
+						$('.masterfiltertitle').show();
+
+					} else {
+	
+						$('.time_filter').hide();
+						$('.time_filter :input').attr('checked', false);
+						$('.time_filter :input').attr('disabled', true);
+	
+						$('.monthfilter').hide();
+						$('.monthfilter :input').attr('checked', false);
+						$('.monthfilter :input').attr('disabled', true);
+	
+						$('.quartfilter').hide();
+						$('.quartfilter :input').attr('checked', false);
+						$('.quartfilter :input').attr('disabled', true);
+	
+						$('.yearfilter').hide();
+						$('.yearfilter :input').attr('checked', false);
+						$('.ycheckss').each(function(){
+							$(this).attr('disabled', true);
+						});
+	
+						$('.masterfiltertitle').hide();
+					}
+
+				//	include patient status
+				if(settings.include_active == 1){
+					$('.include_active').show();
+					$('.include_active :input').attr('checked', false);
+					$('.include_active :input').attr('disabled', false);
+				} else {
+					$('.include_active').hide();
+					$('.include_active :input').attr('checked', false);
+					$('.include_active :input').attr('disabled', true);
+				}
+
+				if(settings.include_standby == 1){
+					$('.include_standby').show();
+					$('.include_standby :input').attr('checked', false);
+					$('.include_standby :input').attr('disabled', false);
+				} else {
+					$('.include_standby').hide();
+					$('.include_standby :input').attr('checked', false);
+					$('.include_standby :input').attr('disabled', true);
+
+				}
+
+				if(settings.include_dead == 1){
+					$('.include_dead').show();
+					$('.include_dead :input').attr('checked', false);
+					$('.include_dead :input').attr('disabled', false);
+
+				} else {
+					$('.include_dead').hide();
+					$('.include_dead :input').attr('checked', false);
+					$('.include_dead :input').attr('disabled', true);
+				}
+
+				if(settings.include_active == 0 && settings.include_dead == 0 && settings.include_standby == 0){
+					$('#include_status').hide();
+					$('#include_status :input').attr('checked', false);
+					$('#include_status :input').attr('disabled', true);
+				} else {
+					$('#include_status').show();
+					$('#include_status :input').attr('checked', false);
+					$('#include_status :input').attr('disabled', true);
+				}
+
+				if(settings.include_active == 0 && settings.include_dead == 0 && settings.include_standby == 0 && settings.show_timefilter == 0 && settings.nowactiv_timefilter == 0 && settings.select_date_for==0){
+					$('.periodfilter').hide();
+					$('.periodfilter :input').attr('checked', false);
+					$('.periodfilter :input').attr('disabled', true);
+				} else {
+					$('.periodfilter').hide();
+					$('.periodfilter :input').attr('checked', false);
+					$('.periodfilter :input').attr('disabled', false);
+					var currentYear = (new Date).getFullYear();
+					$('#year'+currentYear).attr('checked', true);
+				}
+
+				
+				$('#alter').hide();
+				
+				if(settings.show_extrafields == 1){
+					
+					// for all
+					$('#alter').hide();
+					$('#alter :input').attr('checked', false);
+					$('#alter :input').attr('disabled', true);
+
+					$('#alter-4').hide();
+					$('#daysinperiod').attr('checked', false);
+					$('#daysinperiod').attr('disabled', true);
+
+					$('#alter-5').hide();
+					$('#alter-5 :input').attr('checked', false);
+					$('#alter-5 :input').attr('disabled', true);
+
+					$('#select_patients').hide();
+					$('#patient_select').attr('disabled', true);
+					
+					$('#location_select_div').hide();
+					$('#location_select').attr('disabled', true);
+					
+					$('#discharged_method_select_div').hide();
+					$('#discharged_method_select_div :input').attr('checked', false);
+                    $('#discharged_method_select_div :input').attr('disabled', true);
+                    
+                    $('#vw_p_actions').hide();
+					$('#vw_p_actions :input').attr('checked', false);
+                    $('#vw_p_actions :input').attr('disabled', true);
+					
+					if(settings.id == 5){
+						$('#alter-5').show();
+						$('#alter-5 :input').attr('checked', false);
+						$('#alter-5 :input').attr('disabled', false);
+
+					} else if(settings.id == 4){
+						$('#alter-4').show();
+						$('#daysinperiod').attr('checked', false);
+						$('#daysinperiod').attr('disabled', false);
+
+					} else if(settings.id == 87){
+						$('.raportcheckradio').show();
+						$('#select_patients').show();
+						
+					} else if(settings.id == 159){
+						$('#location_select_div').show();
+						$('#location_select').attr('disabled', false);
+						
+					}  else if(settings.id == 177){
+						$('#discharged_method_select_div').show();
+						$('#discharged_method_select_div  :input').attr('checked', false);
+                        $('#discharged_method_select_div  :input').attr('disabled', false);
+					}
+					else if(settings.id == 178){
+						$('#discharged_method_select_div').show();
+						$('#discharged_method_select_div :input').attr('checked', false);
+                        $('#discharged_method_select_div :input').attr('disabled', false);
+					}
+					else if(settings.id == 188){
+						$('#vw_p_actions').show();
+						$('#vw_p_actions :input').attr('checked', false);
+                        $('#vw_p_actions :input').attr('disabled', false);
+					}
+					else if(settings.id == 1000){ //ISPC-2857
+						$('#discharged_method_select_div').show();
+						$('#discharged_method_select_div  :input').attr('checked', false);
+						$('#discharged_method_select_div  :input').attr('disabled', false);
+					}
+
+					else 
+					{
+					
+						$('#alter').hide();
+						$('#alter :input').attr('checked', false);
+						$('#alter :input').attr('disabled', false);
+
+						$('#alter-4').hide();
+						$('#daysinperiod').attr('checked', false);
+						$('#daysinperiod').attr('disabled', true);
+
+						$('#alter-5').hide();
+						$('#alter-5 :input').attr('checked', false);
+						$('#alter-5 :input').attr('disabled', true);
+
+						$('#select_patients').hide();
+						$('#patient_select').attr('disabled', true);
+						
+						$('#location_select_div').hide();
+						$('#location_select').attr('disabled', true);
+						
+						$('#discharged_method_select_div').hide();
+						$('#discharged_method_select_div :input').attr('checked', false);
+                        $('#discharged_method_select_div :input').attr('disabled', true);
+                        
+                        $('#vw_p_actions').hide();
+						$('#vw_p_actions :input').attr('checked', false);
+                        $('#vw_p_actions :input').attr('disabled', true);
+
+					}
+				} else {
+
+					$('.alter').hide();
+					$('.alter :input').attr('checked', false);
+					$('.alter :input').attr('disabled', true);
+
+					
+				       
+                    $('#vw_p_actions').hide();
+					$('#vw_p_actions :input').attr('checked', false);
+                    $('#vw_p_actions :input').attr('disabled', true);
+					
+
+				}
+
+				$("input[name=onlyactive]").live('change', function(){
+					if($(this).val() == "0" && (report_id == "4" || report_id == "143")){
+						$('#alter-4').show();
+						$('#daysinperiod').attr('disabled', false);
+					} else {
+						$('#alter-4').hide();
+						$('#daysinperiod').attr('disabled', true);
+					}
+				});
+			});
+		});
+	});
+
+	$( "#firststep" ).dialog({
+		autoOpen: false,
+		resizable: false,
+		dialogClass: 'reports_dialog',
+		height: 375,
+		width: 690,
+		modal: true,
+		buttons: {
+			"Berichtszeitraum auswahlen": function() {
+
+					$( "#secondstep" ).dialog( "open" );
+					$( this ).dialog( "close" );
+			}
+		},
+		close: function() {
+			$('#doctorname').val("");
+			$('#doctornameDisabled').val("");//TODO-3398 Ancuta 09.09.2020
+			$('#user_or_group').val("");
+			$('#sortselect').val("");
+
+		},
+		open: function() {
+			$('#reporttitle_modal').html($(this).data('title'));
+			$('#reportdescription_modal').html($(this).data('description'));
+			$('#reportcolumns_modal').html($(this).data('columns'));
+
+
+		}
+	});
+
+	$( "#secondstep" ).dialog({
+		autoOpen: false,
+		resizable: false,
+		dialogClass: 'reports_dialog',
+		height:600,
+		width: 750,
+		modal: true,
+		buttons: {
+//			"Abschicken": function() {
+			"Speichern": function() {
+				
+				//TODO-3398 Ancuta 09.09.2020
+				if($('#reporttype').val()  == 117){
+					$('#doctorname').val($('#doctornameDisabled').val());
+				}
+				//--
+				
+				//tags checker
+				if($('#olaktv').attr('disabled') && $('.yearfilter :input').attr('disabled') && !$('#tdays').attr('disabled')){
+
+				} else if($('#olaktv').attr('disabled') && $('.ychecks :input').attr('disabled') && $('#tdays').attr('disabled')){
+					if($('#reporttype').val()  == 86){
+						$('#frmsecondreport').attr('action', $('#report_but_86').attr('href')).submit();
+					} else {
+						$('#frmsecondreport').attr('action','').submit();
+					}
+
+
+				}
+
+				//get only active value
+				if(!$('#olaktv').attr('disabled') || !$('.yearfilter :input').attr('disabled')){
+
+					if($('#olaktv').is(':checked')){
+						if($('#reporttype').val()  == 5 ){
+							if($('#tdays').val() == 0 || $('#tdays').val() == "") {
+
+								jAlert("<?php echo $this->translate('pleaseinsertdays'); ?>");
+								return false;
+							} else {
+								if(isNumeric($('#tdays').val())){
+									$('#frmsecondreport').submit();
+								} else {
+
+									jAlert("<?php echo $this->translate('pleaseinsertnumericvalue'); ?>");
+									return false;
+								}
+
+							}
+						}
+						$('#frmsecondreport').submit();
+					} else {
+
+						if(!$('.ychecks :input').attr('disabled')){
+							var year_sel = 0;
+							$.each($("input[name='year[]']:checked"), function() {
+								if($(this).val() > 0){
+									year_sel = 1;
+								}
+							});
+							if(year_sel == 0) {
+								jAlert("<?php echo $this->translate('pleaseselectyear'); ?>");
+								return false;
+							} else {$
+								if($('#reporttype').val()  == 5 ){
+									if($('#tdays').val() == 0 || $('#tdays').val() == "") {
+
+										jAlert("<?php echo $this->translate('pleaseinsertdays'); ?>");
+										return false;
+									} else {
+										if(isNumeric($('#tdays').val())){
+										} else {
+
+											jAlert("<?php echo $this->translate('pleaseinsertnumericvalue'); ?>");
+											return false;
+										}
+
+									}
+									}
+
+								$('#frmsecondreport').submit();
+							}
+						}
+					}
+				}
+			}
+		},
+		close: function() {
+			$('.periodfilter_bottommargin').addClass('periodfilter').removeClass('periodfilter_bottommargin');
+			$('#olaktv-2').attr('checked', false);
+			$('.periodfilter').hide();
+
+			$('#frmsecondreport').attr('action','');
+
+			$('#tdays').val("");
+
+			$('.report_user_info_note').show();
+
+			$('.raportcheckradio').show();
+			$('.raportcheckradio_special').hide();
+
+			$('#secondstep').removeClass('smallset');
+			$('.contactArea_second').removeClass('smallset');
+			$('.periodfilter_bottommargin').removeClass('smallset');
+			$('.ui-dialog').removeClass('smallset');
+			
+
+			$('#secondstep').removeClass('mediumset');
+			$('.contactArea_second').removeClass('mediumset');
+			$('.periodfilter_bottommargin').removeClass('mediumset');
+			$('.ui-dialog').removeClass('mediumset');
+			
+			$('.raportcheckradio').show();
+			
+			$('.mradios').hide();
+			$('.yradios').hide();
+			$('.qradios').hide();
+			
+			// additions for report 137 + 214 + 221 + 209 // TODO-3714 Ancuta 11.01.2021 - Added 209
+			$('#doctorname').val("");
+			$('#user_or_group').val("");
+			$('#user_or_group').hide();
+			$('#doctorname').show();
+			
+			$('#doctornameDisabled').val("");//TODO-3398 Ancuta 09.09.2020
+			$('#doctornameDisabled').hide();//TODO-3398 Ancuta 09.09.2020
+			
+			
+			// ISPC-2108
+			$('#vw_p_actions').hide();
+			
+		},
+		open: function() {
+			
+		
+		$('.mradios').hide();
+		$('.yradios').hide();
+		$('.qradios').hide();
+		$('.raportcheckradio_special').hide();
+		$('.custom_filters').show();
+		$('.no_custom_filters').hide();
+		
+		if($('#reporttypedoc').val()  == '45' ){
+			$('#olaktv-2').attr('checked', true);
+			$('.periodfilter').show();
+
+			var d = new Date();
+			var month = d.getMonth();
+			var quarter = Math.round((++month)/3);
+			var year = d.getFullYear();
+
+			$('#yearr'+year).attr('checked', true);
+				$('#quarter-r'+quarter).attr('checked',true);
+
+			$('.monthfilter').hide();
+			$('input[name="month[]"]').attr('disabled', true);
+
+			$('.qchecks input[type="checkbox"]').attr('disabled', true);
+			$('.qradios input[type="radio"]').attr('disabled', false);
+
+			$('.qchecks').hide();
+			$('.qradios').show();
+
+			$('.ychecks input[type="checkbox"]').attr('disabled', true);
+			$('.yradios input[type="radio"]').attr('disabled', false);
+
+			$('.ychecks').hide();
+			$('.yradios').show();
+			$('.report_user_info_special_note').hide();
+
+		}
+		else if($('#reporttypedoc').val()  == '86') //big report case
+		{
+			$('#olaktv-2').attr('checked', true);
+			$('.periodfilter').removeClass('periodfilter').addClass('periodfilter_bottommargin').show();
+
+			
+			$('#secondstep').removeClass('mediumset');
+			$('.contactArea_second').removeClass('mediumset');
+			$('.periodfilter_bottommargin').removeClass('mediumset');
+			$('.ui-dialog').removeClass('mediumset');
+			
+
+			$('#secondstep').addClass('smallset') ;
+			$('.contactArea_second').addClass('smallset') ;
+			$('.periodfilter_bottommargin').addClass('smallset') ;
+			$('.ui-dialog').addClass('smallset') ;
+
+
+			$('.raportcheckradio').hide();
+
+
+			$('.custom_filters').hide();
+			$('.report_user_info_note').hide();
+			$('.no_custom_filters').show();
+
+			var d = new Date();
+			var current_month = d.getMonth();
+			var current_quarter = Math.round((++current_month)/3);
+			var current_year = d.getFullYear();
+
+
+			$('#yearr'+current_year).attr('checked', true);
+			$('#quarter-r'+current_quarter).attr('checked',true);
+
+			$('.monthfilter').hide();
+			$('input[name="month[]"]').attr('disabled', true);
+
+			$('.qchecks input[type="checkbox"]').attr('disabled', true);
+			$('.qradios input[type="radio"]').attr('disabled', false);
+
+			$('.qchecks').hide();
+			$('.qradios').show();
+
+			$('.ychecks input[type="checkbox"]').attr('disabled', true);
+			$('.yradios input[type="radio"]').attr('disabled', false);
+
+			$('.ychecks').hide();
+			$('.yradios').show();
+			
+			$('.report_user_info_special_note').hide();
+
+		}
+		else if($('#reporttypedoc').val()  == '87') //user visits case
+		{
+			$('#olaktv-2').attr('checked', true);
+			$('.periodfilter').show();
+
+			var d = new Date();
+			var month = d.getMonth();
+			var quarter = Math.round((++month)/3);
+			var year = d.getFullYear();
+
+			$('#year'+year).attr('checked', true);
+			$('.qradios').hide();
+			$('.yradios').hide();
+			$('.report_user_info_special_note').hide();
+			$('.raportcheckradio_special').hide();
+		}
+		else if($('#reporttypedoc').val()  == '127' ) //user visits case
+		{
+			$('.report_user_info_special_note').show();
+			$('.report_user_info_note').hide();			
+			$('.raportcheckradio').show();			
+			$('.mradios').hide();
+			$('.qradios').hide();		
+			$('.yradios').hide();		
+						
+		}
+		else if($('#reporttypedoc').val()  == '137' || $('#reporttypedoc').val()  == '209' ) //user visits case // TODO-3714 Ancuta 11.01.2021 - Added 209
+		{
+			$('#user_or_group').show();
+			$('#doctorname').hide();			
+			
+			
+			$('.report_user_info_special_note').show();
+			$('.report_user_info_note').hide();			
+			$('.raportcheckradio').show();			
+			$('.mradios').hide();
+			$('.qradios').hide();		
+			$('.yradios').hide();		
+						
+		}
+		else if($('#reporttypedoc').val()  == '214' ) //user visits case // ISPC-2486  Arbeitszeit RLP
+		{
+			$('#user_or_group').show();
+			$('#doctorname').hide();			
+			
+			
+			$('.report_user_info_special_note').show();
+			$('.report_user_info_note').hide();			
+			$('.raportcheckradio').show();			
+			$('.mradios').hide();
+			$('.qradios').hide();		
+			$('.yradios').hide();		
+						
+		}
+		else if($('#reporttypedoc').val()  == '221' ) // ISPC-2531 Lore 12.02.2020 Arbeitszeit variabel
+		{
+			$('#user_or_group').show();
+			$('#doctorname').hide();			
+			
+			
+			$('.report_user_info_special_note').show();
+			$('.report_user_info_note').hide();			
+			$('.raportcheckradio').show();			
+			$('.mradios').hide();
+			$('.qradios').hide();		
+			$('.yradios').hide();		
+						
+		}
+		else if($('#reporttypedoc').val()  == '224' ) //ISPC-2427 pct.1 Lore 25.05.2020
+		{
+			$('#user_or_group').show();
+			$('#doctorname').hide();			
+			
+			
+			$('.report_user_info_special_note').show();
+			$('.report_user_info_note').hide();			
+			$('.raportcheckradio').show();			
+			$('.mradios').hide();
+			$('.qradios').hide();		
+			$('.yradios').hide();		
+						
+		}
+		//ISPC-2137 Lore
+		else if($('#reporttypedoc').val()  == '38' ) //user visits case
+		{
+			$('#user_or_group').show();
+			$('#doctorname').hide();			
+			
+			
+			$('.report_user_info_special_note').show();
+			$('.report_user_info_note').hide();			
+			$('.raportcheckradio').show();			
+			$('.mradios').hide();
+			$('.qradios').hide();		
+			$('.yradios').hide();		
+						
+		}
+		else if($('#reporttypedoc').val()  == '149') // sh internal report
+		{
+		
+			$('#screen-s').attr('checked', true);
+			$('#olaktv-2').attr('checked', true);
+			$('.periodfilter').removeClass('periodfilter').addClass('periodfilter_bottommargin').show();
+
+			$('.time_filter').hide();
+			$('.masterfiltertitle').hide();
+			$('.onlyactive').hide();
+			$('.qchecks').hide();
+
+			$('.mcheckes').hide();
+			$('.mradios').show();
+			
+			$('.ychecks').hide();
+			$('.yradios').show();
+			
+			
+			$('#secondstep').addClass('mediumset') ;
+			$('.contactArea_second').addClass('mediumset') ;
+			$('.periodfilter_bottommargin').addClass('mediumset') ;
+			$('.ui-dialog').addClass('mediumset') ;
+
+
+			$('.custom_filters').hide();
+			$('.report_user_info_note').hide();
+			$('.no_custom_filters').show();
+
+			var d = new Date();
+			var current_month = d.getMonth();
+			var current_quarter = Math.round((++current_month)/3);
+			var current_year = d.getFullYear();
+
+			$('.raportcheckradio').hide();
+			$('.raportcheckradio_special').show();
+
+
+			$('#yearr'+current_year).attr('checked', true);
+			$('#month-r'+current_month).attr('checked', true);
+			$('#quarter-r'+current_quarter).attr('checked',true);
+
+		 
+			$('input[name="quarter[]"]').attr('disabled', true);
+
+			$('.mchecks input[type="checkbox"]').attr('disabled', true);
+			$('.mradios input[type="radio"]').attr('disabled', false);
+
+
+			$('.ychecks input[type="checkbox"]').attr('disabled', true);
+			$('.yradios input[type="radio"]').attr('disabled', false);
+
+
+			$('.report_user_info_special_note').hide();
+
+		}
+		else if($('#reporttypedoc').val()  == '177') // $39 anlage 6 bayern
+		{
+			//$('#docx').closest('tr').show();
+			$('#docx_2a').closest('tr').show();
+			$('#docx_2b').closest('tr').show();
+			if(!$('#docx').closest('tr').is(":hidden"))
+			{
+				$('#docx').closest('tr').hide();
+			}
+		}else if($('#reporttypedoc').val()  == '1000') // $39 anlage 3 berlin ISPC-2857
+		{
+			//$('#docx').closest('tr').show();
+
+			$('#docx_2b').closest('tr').show();
+			//$('#docx_2a').closest('tr').show();
+			/*
+			$('#docx_2b').closest('tr').show();
+			if(!$('#docx').closest('tr').is(":hidden"))
+			{
+				$('#docx').closest('tr').hide();
+			}*/
+		}
+		else if($('#reporttypedoc').val()  == '152') //TODO-2933 Carmen 22.04.2020 $39 kinder
+		{
+			$('#docx').closest('tr').show();
+			$('#docx_2a').closest('tr').show();
+			$('#docx_2b').closest('tr').show();
+			if(!$('#docx').closest('tr').is(":hidden"))
+			{
+				$('#docx').closest('tr').hide();
+			}
+		}
+		else if($('#reporttypedoc').val()  == '210') // Pflegeheimbericht
+		{
+			$('#docx').closest('tr').show();
+			if(!$('#docx_2a').closest('tr').is(":hidden"))
+			{
+				$('#docx_2a').closest('tr').hide();
+			}
+			if(!$('#docx_2b').closest('tr').is(":hidden"))
+			{
+				$('#docx_2b').closest('tr').hide();
+			}
+		}
+		//TODO-3398 Ancuta 09.09.2020
+		else if($('#reporttypedoc').val()  == '117') // SAPV TAGE II
+		{
+			
+			$('#doctorname').hide();
+			$('#doctornameDisabled').show(); //Used in  Rep 117 //TODO-3398 Ancuta 09.09.2020
+		}
+		//--
+		else
+		{
+			$('#screen').attr('checked', true);
+			
+			$('.mradios').hide();
+			$('.qradios').hide();
+			$('.yradios').hide();		
+			 
+			$('.custom_filters').show();
+			$('.no_custom_filters').hide();
+			$('.periodfilter_bottommargin').addClass('periodfilter').removeClass('periodfilter_bottommargin');
+
+			$('#secondstep').removeClass('smallset');
+			$('.contactArea_second').removeClass('smallset');
+			$('.periodfilter_bottommargin').removeClass('smallset');
+			$('.ui-dialog').removeClass('smallset');
+			
+			$('#secondstep').removeClass('mediumset');
+			$('.contactArea_second').removeClass('mediumset');
+			$('.periodfilter_bottommargin').removeClass('mediumset');
+			$('.ui-dialog').removeClass('mediumset');
+			
+			$('.raportcheckradio').show();
+			$('.raportcheckradio_special').hide();
+
+			$('.report_user_info_note').show();
+			$('.qradios input[type="radio"]').attr('disabled', true);
+
+			$('.yradios input[type="radio"]').attr('disabled', true);
+
+			
+			$('.report_user_info_special_note').hide();
+			if(!$('#docx').closest('tr').is(":hidden"))
+			{
+				$('#docx').closest('tr').hide();
+			}
+			if(!$('#docx_2a').closest('tr').is(":hidden"))
+			{
+				$('#docx_2a').closest('tr').hide();
+			}
+			if(!$('#docx_2b').closest('tr').is(":hidden"))
+			{
+				$('#docx_2b').closest('tr').hide();
+			}
+		}
+			$('.olaktvcls').live('change', function() {
+				if($(this).val() == 0){
+					$('.periodfilter').show();
+				} else {
+					$('.periodfilter').hide();
+				}
+			});
+		}
+	});
+	
+	});
+</script>
+<form action="" method="post" name="frmreport" id="frmreport" target="_blank">
+	<input type="hidden" id="only_now" name="only_now" value="0" />
+	<fieldset>
+		<legend><?php echo $this->translate('lists')?></legend>
+		<p>
+			<?php echo $this->translate('lists_desc'); ?>
+		</p>
+		<p>
+			<?php echo $this->translate('lists_desc2'); ?>
+		</p>
+		<div id="PatientsError" class="err">    <?php echo $this->error_message ?></div>
+		<br />
+		<font color="#FF0000"><?php echo $this->error_clientid ?></font><br />
+		<div class="reportsblock" style="display: block;float: left;">
+			<?php foreach ($this->allreports as $value):?>
+			
+			<?php if($value['id'] != 42 && $value['id'] != 66 && $value['id'] != 86 && $value['id'] != 110) :?>
+				
+				<?php $lenght  = strlen($this->translate($value['report']));?>
+				<?php $style = ''?>
+				<?php if($lenght > '33' || $lenght == '29' || $value['id'] == '114' || $value['id'] == '157' || $value['id'] == '158' || $value['id'] == '198' || $value['id'] == '208'|| $value['id'] == '215'):?>
+					<?php $style = 'style="padding-top:15px; height: 40px"'?>
+				<?php else :?>
+					<?php $style = 'style="line-height: 53px;"'?>
+				<?php endif;?>
+				<a href="javascript:void(0)" class="a_reportbox"  rel="<?php  echo $value['id']; ?>" <?php echo $style;?> >
+					<span><?php echo $this->translate($value['report']); ?> </span>
+				</a>
+				
+			<?php  elseif($value['id'] == '86'): ?>
+				<a href="reportsnew/networkstatisticsajax" class="a_reportbox" id="report_but_<?php  echo $value['id']; ?>" style=" line-height: 53px" rel="<?php  echo $value['id']; ?>" ><?php echo $this->translate('big_network_statistics');?></a>
+			<?php  elseif($value['id'] == 66): ?>
+				<a href="patient/reportanlage4a2new" class="a_reportbox" style=" line-height: 53px" >Anlage 4a II WL 2012</a>
+			<?php  elseif($value['id'] == 42): ?>
+				<a href="patient/reportanlage4a2" class="a_reportbox" style=" line-height: 53px" >Anlage 4a II WL</a>
+			<?php  elseif($value['id'] == 110): ?>
+				<a href="patient/reportanlage4b" class="a_reportbox" style=" line-height: 53px" >Anlage 4b</a>
+			<?php endif;?>
+
+				<!--  Detali report -->
+				<input type="hidden"  id="reportdetails_<?php echo $value['id']; ?>" value="<?php echo $value['id']; ?>"/>
+				<input type="hidden"  id="reporttitle_<?php echo $value['id']; ?>" value="<?php echo $this->translate($value['report']); ?>"/>
+				<input type="hidden"  id="reportdescription_<?php echo $value['id']; ?>" value="<?php echo $value['description']; ?>"/>
+				<input type="hidden"  id="reportcolumns_<?php echo $value['id']; ?>" value="<?php echo $value['columns']; ?>"/>
+				<input type="hidden" name="XDEBUG_PROFILE" value="1" />
+
+
+				<?php endforeach;?>
+		</div>
+
+	</fieldset>
+</form><?php echo $this->str; ?>
+<script type="text/javascript">
+
+	var column_js = '<?php echo $this->columnarray; ?>';
+	function columnSort(val)
+	{
+		var column = '';
+		for(i in column_js[val.value])
+		{
+			column += '<option value="'+i+'">'+column_js[val.value][i]+'</option>';
+		}
+		$('#columname').html(column);
+	}
+
+
+</script>
+<div id="firststep" >
+	<div id="contactArea" >
+		<div class="reporttitle" ><div style="float:left;">Name des Bericht: &nbsp;&nbsp;</div><div id="reporttitle_modal" class="float:left;">1</div></div>
+		<div class="reportdetails" id="reportdescription_modal">2</div>
+		<br/><br/>
+		<div class="reportcolums" id="reportcolumns_modal">3</div>
+
+	</div>
+
+</div>
+	<input type="hidden" name="reporttypedoc" id="reporttypedoc" value=""/>
+<div id="secondstep" style="width:690px; height: 520px; padding: 0px; border:0;">
+
+	<div id="contactArea"  style="  height: 430px;" class="contactArea_second">
+		<form id="frmsecondreport"	name="frmsecondreport" method="post" action="" target="_blank">
+		<input type="hidden" name="reporttype" id="reporttype" value=""/>
+		<?php if($_REQUEST['dbg'] == 1):?>
+			<input type="hidden" name="dbg" value="1"/>
+		<?php endif;?>
+		<div>
+			<div class="onlyactive">
+				<input class="olaktvcls" type="radio" name="onlyactive" id="olaktv" value="1" onClick="showHide($(this).val());"/><label for="olaktv">Nur aktive Patienten</label><br/>
+			</div>
+	
+			<div class="time_filter onlyactive-second">
+				<input class="olaktvcls" type="radio" name="onlyactive" id="olaktv-2" value="0" onClick="showHide($(this).val());" /><label for="olaktv-2">Zeitrahmen wählen</label>
+			</div>
+		</div>
+		<div class="periodfilter" style="float: left; display: none; width:670px;">
+			<span class="masterfiltertitle">alle Pat. aus folgendem Zeitraum</span>
+				<div class="monthfilter mcheckes">
+					<span>Monat</span>
+					<table width="100%" cellspacing="2" cellpadding="1">
+						<tr>
+							<td><input type="checkbox" name="month[]" id="month-1" value="1"/><label for="month-1">1</label></td>
+							<td><input type="checkbox" name="month[]" id="month-2" value="2"/><label for="month-2">2</label></td>
+							<td><input type="checkbox" name="month[]" id="month-3"value="3"/><label for="month-3">3</label></td>
+							<td><input type="checkbox" name="month[]" id="month-4" value="4"/><label for="month-4">4</label></td>
+						</tr>
+						<tr>
+							<td><input type="checkbox" name="month[]" id="month-5" value="5"/><label for="month-5">5</label></td>
+							<td><input type="checkbox" name="month[]" id="month-6" value="6"/><label for="month-6">6</label></td>
+							<td><input type="checkbox" name="month[]" id="month-7" value="7"/><label for="month-7">7</label></td>
+							<td><input type="checkbox" name="month[]" id="month-8" value="8"/><label for="month-8">8</label></td>
+						</tr>
+						<tr>
+							<td><input type="checkbox" name="month[]" id="month-9" value="9"/><label for="month-9">9</label></td>
+							<td><input type="checkbox" name="month[]" id="month-10" value="10"/><label for="month-10">10</label></td>
+							<td><input type="checkbox" name="month[]" id="month-11" value="11"/><label for="month-11">11</label></td>
+							<td><input type="checkbox" name="month[]" id="month-12" value="12"/><label for="month-12">12</label></td>
+						</tr>
+					</table>
+				</div>
+				<div class="monthfilter_radios mradios" style="display:none;">
+					<span>Monat</span>
+					<table width="100%" cellspacing="2" cellpadding="1">
+						<tr>
+							<td><input type="radio" name="month[]" id="month-r1" value="1"/><label for="month-r1">1</label></td>
+							<td><input type="radio" name="month[]" id="month-r2" value="2"/><label for="month-r2">2</label></td>
+							<td><input type="radio" name="month[]" id="month-r3"value="3"/><label for="month-r3">3</label></td>
+							<td><input type="radio" name="month[]" id="month-r4" value="4"/><label for="month-r4">4</label></td>
+						</tr>
+						<tr>
+							<td><input type="radio" name="month[]" id="month-r5" value="5"/><label for="month-r5">5</label></td>
+							<td><input type="radio" name="month[]" id="month-r6" value="6"/><label for="month-r6">6</label></td>
+							<td><input type="radio" name="month[]" id="month-r7" value="7"/><label for="month-r7">7</label></td>
+							<td><input type="radio" name="month[]" id="month-r8" value="8"/><label for="month-r8">8</label></td>
+						</tr>
+						<tr>
+							<td><input type="radio" name="month[]" id="month-r9" value="9"/><label for="month-r9">9</label></td>
+							<td><input type="radio" name="month[]" id="month-r10" value="10"/><label for="month-r10">10</label></td>
+							<td><input type="radio" name="month[]" id="month-r11" value="11"/><label for="month-r11">11</label></td>
+							<td><input type="radio" name="month[]" id="month-r12" value="12"/><label for="month-r12">12</label></td>
+						</tr>
+					</table>
+				</div>
+				<div class="quartfilter qchecks">
+					<span>Quartal</span>
+					<table width="100%" cellspacing="2" cellpadding="5">
+						<tr>
+							<td><input type="checkbox" name="quarter[]" id="quarter-1" value="1"/><label for="quarter-1">1</label></td>
+							<td><input type="checkbox" name="quarter[]" id="quarter-2" value="2"/><label for="quarter-2">2</label></td>
+						</tr>
+						<tr>
+							<td><input type="checkbox" name="quarter[]" id="quarter-3" value="3"/><label for="quarter-3">3</label></td>
+							<td><input type="checkbox" name="quarter[]" id="quarter-4" value="4"/><label for="quarter-4">4</label></td>
+
+						</tr>
+
+					</table>
+				</div>
+				<div class="quartfilter_radios qradios" style="display:none;">
+					<span>Quartal</span>
+					<table width="100%" cellspacing="2" cellpadding="5">
+						<tr>
+							<td><input type="radio" name="quarter[]" id="quarter-r1" value="1"/><label for="quarter-r1">1</label></td>
+							<td><input type="radio" name="quarter[]" id="quarter-r2" value="2"/><label for="quarter-r2">2</label></td>
+						</tr>
+						<tr>
+							<td><input type="radio" name="quarter[]" id="quarter-r3" value="3"/><label for="quarter-r3">3</label></td>
+							<td><input type="radio" name="quarter[]" id="quarter-r4" value="4"/><label for="quarter-r4">4</label></td>
+
+						</tr>
+
+					</table>
+				</div>
+				<div class="yearfilter ychecks">
+					<span>Jahr</span>
+					<table width="100%" cellspacing="2" cellpadding="5">
+						<tr>
+						<?php for($y=2008;$y <= date('Y');$y++):
+
+						?>
+
+							<td><input type="checkbox" name="year[]" class="ycheckss" id="year<?php echo $y; ?>" value="<?php echo $y?>" <?php echo $ckd; ?> /><label for="year<?php echo $y; ?>"><?php echo $y?></label></td>
+							<?php if(is_int($y/3)) echo '</tr><tr>';?>
+						<?php endfor;?>
+						</tr>
+					</table>
+				</div>
+				<div class="yearfilter_radios yradios"  style="float:right; display:none;">
+					<span>Jahr</span>
+					<table width="100%" cellspacing="2" cellpadding="5">
+						<tr>
+						<?php for($y=2008;$y <= date('Y');$y++):
+
+						?>
+
+							<td><input type="radio" name="year[]" id="yearr<?php echo $y?>" value="<?php echo $y?>" <?php echo $ckd; ?> /><label for="yearr<?php echo $y?>"><?php echo $y?></label></td>
+							<?php if(is_int($y/3)) echo '</tr><tr>';?>
+						<?php endfor;?>
+						</tr>
+					</table>
+				</div>
+
+
+
+			<table class="patientakstde" width="100%">
+				<tr id="select_date_for">
+					<td width="168px" align="center"><span>Date: </span></td>
+					<td class="wh35"><input type="radio" name="activeday" value="1" /> </td><td width="130px"><label>active day</label></td>
+					<td class="wh35"><input type="radio" name="admissionday" value="1" /></td><td width="130px"> <label>admision date</label></td>
+					<td class="wh35"> &nbsp;</td><td width="130px">&nbsp; </td>
+				</tr>
+				<tr id="include_status">
+					<td width="164px" align="center"><span>Patenten: </span></td>
+					<td class="wh35 include_active"><input type="checkbox" name="include[active]" value="1" /> </td>
+					<td width="133px" class="include_active"><label>active</label></td>
+					<td class="wh35 include_dead"><input type="checkbox" name="include[dead]" value="1"class="dead_check" /></td>
+					<td width="133px" class="include_dead"> <label>dead</label></td>
+					<td class="wh35 include_standby"><input type="checkbox" name="include[standby]" value="1" class="standby_check"/> </td>
+					<td width="130px" class="include_standby"><label>standby</label></td>
+				</tr>
+			</table>
+		</div>
+
+		<!-- ISPC-2531 Lore 12.02.2020 -->
+		<div style="font-weight: bold;">
+			<div class="verlauffilter" id="sh_ver" style="float: left; display: none; width:670px;">
+	             <br><span>Verlaufskürzel:</span>
+	             <table width="100%" cellspacing="2" cellpadding="1">
+	                 <tr>
+	                 <?php $count_sh = 0;  ?>
+						<?php foreach($this->client_verlauf_shortcuts  as $shortcut_id => $shortcut_val):  ?>
+						    <td><input type="checkbox" name="sh_ver[<?php echo $shortcut_id;  ?>]" id="sh_ver<?php echo $shortcut_id;  ?>" value="<?php echo $shortcut_id;  ?>"  /><label for="sh_ver<?php echo $shortcut_id;  ?>"><?php echo ' '.$shortcut_val;  ?></label></td>
+							<?php if(is_int(($count_sh +1)/4)) echo '</tr><tr>';?>
+						<?php $count_sh ++;  ?>	
+						<?php endforeach;  ?>
+	                 </tr>
+	             </table>
+	        </div>
+        </div>
+		<!-- .... -->
+
+		<div class="alter" id="alter-5" style="display:none;"><label>Verweildauer länger als... (Tage) :</label> <input type="text" name="tdays" id="tdays" /></div>
+		<div class="alter"  id="alter" style="display:none;"><label>Im Alter zwischen :</label> <input type="text"  /> und <input type="text"    /></div>
+		<div class="alter"  id="alter-4" style="display:none;"><label>NUR Tage aus Berichtszeitraum mit einbeziehen</label> <input type="checkbox" name="daysinperiod" id="daysinperiod"  value="1"/></div>
+		<div class="alter"  id="select_patients" style=""><label><?php echo $this->translate('select_patient');  ?></label>
+			<select id="patient_select" name="patient_select">
+				<option value=""><?php echo $this->translate('select_patient');  ?></option>
+				<?php foreach($this->client_patients_select as $id_patient=>$patient_details):  ?>
+					<option value="<?php echo Pms_Uuid::encrypt($id_patient);  ?>"><?php echo $patient_details;  ?></option>
+				<?php endforeach;  ?>
+			</select>
+		</div>
+		
+		<div class="alter"  id="location_select_div" style=""><label><?php echo $this->translate('location');?>:</label>
+			<select id="location_select" name="location_select">
+				<option value="0"><?php echo $this->translate('select');  ?></option>
+				<?php foreach($this->client_locations  as $loc_id => $location_name):  ?>
+					<option value="<?php echo $loc_id;  ?>"><?php echo $location_name;  ?></option>
+				<?php endforeach;  ?>
+			</select>
+		</div>
+
+		
+		<div class="alter"  id="discharged_method_select_div" style="display:none;">
+					<span><?php echo $this->translate('discharge_methode');?></span>
+					<table width="100%" cellspacing="2" cellpadding="1">
+					<tr>
+						<?php 
+							$i = 1;
+
+							foreach($this->client_discharged_methodes  as $dm_id => $dm_name): ?>								
+								<td><input type="checkbox" class="dmetcheck" name="discharged_method[]" id="discharged_method<?php echo $dm_id; ?>" value="<?php echo $dm_id; ?>" /><label for="discharged_method<?php echo $dm_id; ?>"><?php echo $dm_name; ?></label></td>
+							
+						<?php 
+							if($i%2 == 0) {
+								echo '</tr><tr>';
+							}
+							$i++;
+							endforeach;  ?>
+						</tr>						
+					</table>
+		</div>
+
+ 
+		<div class="vw_p_actions"  id="vw_p_actions" style="display:none;">
+			<span><?php echo $this->translate('vw_patient_actions');?></span>
+			<div class="actions_block">
+				<?php echo $this->formMultiCheckbox('vw_actions[]', '', array (), $this->grundarray, ''); ?>
+			</div>
+		</div>
+
+
+		<table class="raportcheckradio"  style="float: right; display: block; " >
+			<tr class="custom_filters">
+				<td><label>Sortierspalte</label> &nbsp;</td>
+				<td id="sort"></td>
+				<td>&nbsp; &nbsp;</td>
+				<td><label>Benutzer <sup class="user_info">*</sup> &nbsp; </label></td>
+					
+					<!-- TODO-3215 -Lore 17.08.2020 -->			
+					<td class="specialrep224" style="display:none">
+						<?php echo $this->formSelect('user_or_group_inv', $this->user_or_group_inv, NULL, $this->groups_and_users_inv) ?>
+					</td>
+				
+					<td class="normal_user_select">
+						<?php echo $this->formSelect('doctorname', $this->doctorname, NULL, $this->doctorarray) ?>
+						<!--TODO-3398 Ancuta 09.09.2020 - add array with disabled users  -->
+						<?php echo $this->formSelect('doctornameDisabled', $this->doctorname, array("disable" => $this->disabled_users), $this->doctorarray) ?>
+						<!-- //-- -->
+						<?php echo $this->formSelect('user_or_group', $this->user_or_group, NULL, $this->groups_and_users) ?>
+					</td>
+				
+				<td>&nbsp;</td>
+				<td><span> &nbsp;Ausgabe</span></td>
+				<td>&nbsp;</td>
+				<td><input type="radio" name="radio[]" value="excel" id="excel" /> <label for="excel">Excel</label></td>
+			</tr>
+			<tr class="no_custom_filters" style="display:none;">
+				<td colspan="6" width="400px"></td>
+				<td><span> &nbsp;Ausgabe</span></td>
+				<td>&nbsp;</td>
+				<td><input type="radio" name="radio[]" value="excel" id="excel" /> <label for="excel">Excel</label></td>
+			</tr>
+			<tr>
+				<td colspan="8">
+				<div class="report_user_info_note"><sup class="user_info">*</sup> <?php echo $this->translate('filters_by_assigned_patients'); ?></div>
+				<div class="report_user_info_special_note"><sup class="user_info">*</sup> <?php echo $this->translate('filters_by_user_action'); ?></div>
+				</td>
+				<td><input type="radio" name="radio[]" value="screen" checked="checked" id="screen"/> <label for="screen">Bildschirm</label></td>
+			</tr>
+			<tr>
+				<td>&nbsp;</td>
+				<td>&nbsp;</td>
+				<td>&nbsp;</td>
+				<td>&nbsp;</td>
+				<td>&nbsp;</td>
+				<td>&nbsp;</td>
+				<td>&nbsp;</td>
+				<td>&nbsp;</td>
+				<td><input type="radio" name="radio[]" value="printing" id="printing" /> <label for="printing">Ausdruck</label></td>
+			</tr>
+			<tr style="display: none;">
+				<td>&nbsp;</td>
+				<td>&nbsp;</td>
+				<td>&nbsp;</td>
+				<td>&nbsp;</td>
+				<td>&nbsp;</td>
+				<td>&nbsp;</td>
+				<td>&nbsp;</td>
+				<td>&nbsp;</td>
+				<td><input type="radio" name="radio[]" value="docx" id="docx" /> <label for="docx">Docx</label></td>
+			</tr>
+			<tr style="display: none;">
+				<td>&nbsp;</td>
+				<td>&nbsp;</td>
+				<td>&nbsp;</td>
+				<td>&nbsp;</td>
+				<td>&nbsp;</td>
+				<td>&nbsp;</td>
+				<td>&nbsp;</td>
+				<td>&nbsp;</td>
+				<td><input type="radio" name="radio[]" value="docx_2a" id="docx_2a" /> <label for="docx_2a"><?php echo $this->translate('Docx 2a - anlage6'); ?></label></td>
+			</tr>
+			<tr style="display: none;">
+				<td>&nbsp;</td>
+				<td>&nbsp;</td>
+				<td>&nbsp;</td>
+				<td>&nbsp;</td>
+				<td>&nbsp;</td>
+				<td>&nbsp;</td>
+				<td>&nbsp;</td>
+				<td>&nbsp;</td>
+				<td><input type="radio" name="radio[]" value="docx_2b" id="docx_2b" /> <label for="docx_2b"><?php echo $this->translate('Docx 2b - anlage6'); ?></label></td>
+			</tr>
+		</table>
+		
+		<table class="raportcheckradio_special"  style="float: right; display: block;">
+			<tr>
+				<td><span> &nbsp;Ausgabe:</span></td>
+				<td>&nbsp;</td>
+				<td ><input type="radio" name="radio[]" value="excel" id="excel-s" /><label for="excel-s">Excel</label></td>
+				</tr>
+								
+				<tr>
+				<td></td>
+				<td></td>
+				<td><input type="radio" name="radio[]" value="screen" checked="checked" id="screen-s"/><label for="screen-s">Bildschirm</label></td>
+				</tr>
+				
+				
+				<tr>
+				<td></td>
+				<td></td>
+				<td><input type="radio" name="radio[]" value="printing"  id="printing-s"/> <label for="printing-s">Ausdruck</label></td>
+				
+			</tr>
+		</table>
+	</form>
+	</div>
+	<br/><br/>
+</div>
+</div>

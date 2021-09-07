@@ -1,0 +1,1340 @@
+<div class="tab_container">
+
+<br />
+<div id="MainContent">
+<div id="ListBox" class="clearer"  style="display:<?php echo $this->style ?>">
+<?php
+    $blockcounter = '1';
+?>
+<?php if(count($this->course_data) > '0'):  ?>
+
+<?php foreach($this->course_data as $k_course => $v_course):
+
+
+$wrongfilterclass = "";
+$greyclass = "";
+
+$remoteclass = "";
+
+$enc_course = end ( $v_course ['summary'] );
+if (is_array ( $enc_course ) && $enc_course ['alien']=="1") {
+	$remoteclass = "source_entry";
+}
+
+
+if ($v_course['wrong'] == 1)
+{
+        $wrongfilterclass = "wrongfilter";
+        $greyclass = "greyclass";
+}
+
+if (!empty($v_course['source_ipid']))
+{
+        $has_source = 'source_entry';
+        $hide_wrong = '1';
+}
+else
+{
+        $has_source = '';
+	$hide_wrong = '0';
+}
+
+ //fix for ajax loader delete (appending page number in block id so we obtain unique id in page)
+    $page = $_REQUEST['page'];
+    $blockcounter_real = $blockcounter;
+    $blockcounter = $page.'_'.$blockcounter_real;
+?>
+	<div class="row clearer parentdiv iefirst master_row <?php echo $wrongfilterclass; ?> <?php echo $greyclass; ?> <?php echo $has_source; ?> " id="maindiv_<?php echo $blockcounter; ?>" style="width:100%;">
+		<div class="colLeft iesecond ">
+			<?php if($this->verlauf_action == 'a'):  ?>
+				<?php echo $v_course['date_dt']  ?>, <br /><?php echo $v_course['date_hm']  ?> <!-- create_date -->
+				<br />
+		<?php elseif($this->verlauf_action == 'd'):  ?>
+
+			<?php $done_date = strtotime($v_course['date_dt'].' '.$v_course['date_hm'].':00')  ?>
+			<?php $entry_date = strtotime($v_course['c_date_dt'].' '.$v_course['c_date_hm'].':00')  ?>
+			<?php if( $done_date != $entry_date ):?>
+			<div>
+				<span class="done_date_block"  title="<?php echo $this->translate('done_date_label');?>" ><?php echo $v_course['date_dt']  ?>, <?php echo $v_course['date_hm']  ?> </span> <!-- done_date -->
+				<span class="entry_date_block" title="<?php echo $this->translate('entry_date_label');?>" ><?php echo $v_course['c_date_dt']  ?>, <?php echo $v_course['c_date_hm']  ?></span>   <!-- create_date -->
+
+			</div>
+			<?php else:?>
+				<span class="done_date_block"  title="<?php echo $this->translate('done_date_label');?>" ><?php echo $v_course['date_dt']  ?>, <?php echo $v_course['date_hm']  ?> </span> <!-- done_date -->
+			<?php endif;  ?>
+
+			<?php endif;  ?>
+				<span class="course_user_block" > <?php echo $v_course['user_lname']  ?>&nbsp;<?php echo $v_course['user_fname']  ?></span>
+				<br />
+		</div>
+		<div class="colRight iethird">
+			<div class="PatDisBlkleft">
+			<?php if($this->userid == $v_course['user'] || $this->usertype == "SA"): ?>
+				<?php if($hide_wrong == '0'  && !$v_course['main_tabname']):  ?> <!-- ISPC-2691 Carmen 04.11.2020 -->
+				<?php echo $this->formCheckbox('wrongmain', $v_course['wrong'], array("onclick" => "openPopup(this, '$blockcounter')", "id" => "$blockcounter", "class" => "divcheckbox"), array('1')); ?>
+			<?php endif;  ?>
+			<?php endif;  ?>
+			</div>
+			<div class="PatDisBlkRight">
+<?php if(!empty($v_course['summary'])):  ?>
+<?php foreach($v_course['summary'] as $k_summary => $v_summary):
+    $blockcounter = $page.'_'.$blockcounter_real;
+?>
+<?php
+	if ($v_summary['isserialized'] != 1) :
+		 $v_summary['course_title'] = stripslashes(nl2br(str_replace(">", "&gt;", str_replace("<", "&lt;", $v_summary['course_title']))));
+	endif;
+
+	if ($v_summary['isbold'] == 1):
+		$v_summary['isbold'] = "bold";
+	endif;
+	if ($v_summary['isitalic'] == 1):
+		$v_summary['isitalic'] = "italic";
+	endif;
+
+	if ($v_summary['isunderline'] == 1):
+		$v_summary['isunderline'] = "underline";
+	endif;
+
+	if (empty($v_summary['source_ipid'])):
+		$letterclass = $v_summary['course_type'] . " _owned ";
+		$shared = false;
+	else:
+		$letterclass = "_shared";
+		$shared = true;
+	endif;
+
+
+	if ($v_summary['course_type'] == "W")
+	{
+		$clientusers_old = $this->users_todo;
+		//$clientusers_new = $this->usersnewtodos;
+		$clientusers_new = $this->usersnewtodos_flat;
+
+	 	$course = explode("|---------|", $v_summary['course_title']);
+
+	 	if (count($course) <= 1)
+	    {
+			$course = explode("|", $v_summary['course_title']);
+	 	}
+
+		$courseusr = trim($course[1]);
+		if ($courseusr != '0')
+	 	{
+			if(is_numeric($courseusr))
+			{
+		    	$course_user = $clientusers_old[trim($course[1])];
+			}
+			else
+			{
+				$courseusrs = explode(",", $courseusr);
+			
+				if(count($courseusrs) > 1)
+				{
+					$courseusrsname = array();
+					foreach($courseusrs as $idcourseseusr)
+					{
+						$courseusrsname[] = $clientusers_new[$idcourseseusr];
+					}
+					$course_user = implode('; ', $courseusrsname);
+				}
+				else
+				{	
+					$course_user = $clientusers_new[trim($course[1])];
+				}
+	         }
+		}
+		else
+		{		
+			$course_user = '-';
+		}
+		if(count($course)>4)
+		{
+			$supltext = "";
+			for($nrelem=4; $nrelem<count($course); $nrelem++)
+			{
+				$coursetext = explode(',',$course[$nrelem]);
+				$supltext .= "<br />&nbsp; ".$coursetext[1];
+			}
+				$v_summary['course_title'] = "&nbsp; geplante Maßnahme: " . $course[0] . " | " . $course_user . " | " . $course[2].$supltext;
+		}
+		else
+		{
+			$v_summary['course_title'] = "&nbsp; geplante Maßnahme: " . $course[0] . " | " . $course_user . " | " . $course[2];
+		}
+	}
+	elseif ($v_summary['course_type'] == "D" || $v_summary['course_type'] == "H" || $v_summary['course_type'] == "HS")
+	{
+	       $course = explode("|", $v_summary['course_title']);
+
+
+	       if (count($course) == 3)
+	       {
+		       $icd = $course[1];
+		       $diagnosis_name = $course[2];
+
+		       $v_summary['course_title'] = $icd . ' | ' . $diagnosis_name;
+	       }
+	}
+	elseif ($v_summary['course_type'] == "SB")
+	{
+	       $client_sb_users = $this->sb_users;
+
+	       $course = explode("|__|", $v_summary['course_title']);
+
+	       $course_sb_usr = trim($course[0]);
+
+	       if ($course_sb_usr > 0 && is_numeric($course_sb_usr))
+	       {
+		       $course_user = $client_sb_users[trim($course[0])];
+		       $v_summary['course_title'] = "Sanitätshausbestellung an: " . $course_user . " <br/> " . $course[1];
+	       }
+	}
+	elseif ($v_summary['course_type'] == "M" || $v_summary['course_type'] == "I" || $v_summary['course_type'] == "N" || $v_summary['course_type'] == "Q" || $v_summary['course_type'] == "P")
+	{
+		if(strpos($v_summary['course_title'], 'Änderung:') !== false || strpos($v_summary['course_title'], 'Ein Medikationseintrag wurde editiert:') !== false)
+		{
+			$separator = htmlentities('->');
+			$tmp_arr = explode($separator, $v_summary['course_title']);
+
+			if(count($tmp_arr) == '2')
+			{
+				// first remove <b></b> which where saved in db
+				$tmp_arr[1] = strip_tags(html_entity_decode($tmp_arr[1]));
+				
+				
+				$tmp_arr[1] = '<b>'.$tmp_arr[1].'</b>';
+				$v_summary['course_title'] = implode($separator, $tmp_arr);
+			}
+		}
+	}
+	elseif ($v_summary['course_type'] == "LE" && $this->module_le == "1")
+	{
+	       $course = explode("|____|", $v_summary['course_title']);
+
+	       if (count($course) == 5)
+	       {
+		       $action_id = $course[1];
+		       $action_name = $course[2];
+		       $action_user = $this->users_le[trim($course[3])];
+		       $action_datetime = $course[4];
+
+		       $v_summary['course_title'] = $action_id . ' | ' . $action_name. ' | ' . $action_user. ' | ' . $action_datetime;
+	       }
+	}
+
+	if ($v_summary['tabname'] == "discharge")
+	{
+		$v_summary['course_title'] = '<span style="background:#FC7272;">' . $v_summary['course_title'] . '</span>';
+	}
+
+	if ($v_summary['tabname'] == "deleted_discharge")
+	{
+		$v_summary['course_title'] = '<span style="background:#FC7272;"><strike>' . $v_summary['course_title'] . '</strike></span>';
+	}
+
+
+	if ($v_summary['tabname'] == "receiptupload_deleted")
+	{
+		$v_summary['course_title'] = '<span style="color:#FF0000;">' . $v_summary['course_title'] . '</span>';
+	}
+
+
+	$wrongcheck = "";
+	if ($v_summary['wrong']!= 1)
+	{	$course_type = $v_summary['course_type'];
+		$v_summary['course_type'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . $v_summary['course_type'] . '</font>';
+
+		$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . $v_summary['course_title'] . '</font>';
+		$wrongfilterclass = "";
+	}
+
+	$wrongcheck = "";
+	if ($v_summary['wrong'] == 1)
+	{
+		$wrongcheck = 'checked=checked';
+	}
+
+
+	$pid = $this->pid;
+
+	if ($v_summary['tabname'] == "fileupload")
+	{
+		if(!in_array($v_summary['recordid'],$this->delids_array))
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">Datei ' . '<a href="stats/patientfileupload?doc_id=' . $v_summary['recordid'] . '&id=' . $pid . '">' . $v_summary['course_title'] . '</a>' . ' wurde angeh&auml;ngt</font>';
+		}
+		else
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">Datei ' . $v_summary['course_title'] . ' wurde angeh&auml;ngt</font>';
+		}
+	}
+	if ($v_summary['tabname'] == "receiptupload")
+	{
+		if(!in_array($v_summary['recordid'],$this->delids_array))
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="stats/patientfileupload?doc_id=' . $v_summary['recordid'] . '&id=' . $pid . '">' . $v_summary['course_title'] . '</a>' . ' </font>';
+		}
+		else
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . $v_summary['course_title'] .' </font>';
+		}
+	}
+
+
+
+	if ($v_summary['tabname'] == "discharge_planning")
+	{
+		$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="patientform/dischargeplanning?id=' . $pid . '">Entlassungsplanung hinzugefügt.</a>' . '</font>';
+	}
+
+	if ($v_summary['tabname'] == "kvno_doctor_form")
+	{
+		$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="patientform/kvnodoctorform?kvno_doc_id=' . $v_summary['recordid'] . '&id=' . $pid . '">Besuchsbogen Arzt hinzugefügt.</a>' . '</font>';
+	}
+
+	if ($v_summary['tabname'] == "lvn_doctor_form")
+	{
+		$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="patientform/leverkusendoctorform?kvno_doc_id=' . $v_summary['recordid'] . '&id=' . $pid . '">Besuchsbogen Arzt hinzugefügt.</a>' . '</font>';
+	}
+
+	if ($v_summary['tabname'] == "bayern_doctorvisit")
+	{
+		$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="patientform/bayerndoctorvisit?bayern_doc_id=' . $v_summary['recordid'] . '&id=' . $pid . '">Besuchsformular Bayern hinzugefügt.</a>' . '</font>';
+	}
+
+	if ($v_summary['tabname'] == "sakvno_doctor_form")
+	{
+		$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="patientform/sakvnodoctorform?kvno_doc_id=' . $v_summary['recordid'] . '&id=' . $pid . '">Besuchsbogen Arzt hinzugefügt.</a>' . '</font>';
+	}
+
+	if ($v_summary['tabname'] == "wl_doctor_form")
+	{
+		$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="patientform/wldoctorform?kvno_doc_id=' . $v_summary['recordid'] . '&id=' . $pid . '">Besuchsbogen Arzt hinzugefügt.</a>' . '</font>';
+	}
+
+
+    if ($this->clientModules[173]) 
+    {
+        if ($v_summary['tabname'] == "contact_form")
+        {
+            $__course_title_bottom_cf = isset($v_summary['__course_title_bottom_cf']) ?  '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . $v_summary['__course_title_bottom_cf'] . '</font>' : "";
+            //$__course_title_form_type_name = isset($v_summary['__form_type_name']) ?  '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . $v_summary['__form_type_name'] . '</font><br/>' : "";
+
+            $v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' 
+                . '<a href="patientform/contactform?cid=' . $v_summary['recordid'] . '&id=' . $pid . '">' 
+                //. $__course_title_form_type_name
+                . $v_summary['course_title']
+                . $__course_title_bottom_cf 
+                . ' . </a>' 
+                . '</font>';
+
+            if (isset($v_summary['__pdf']) && ! empty($v_summary['__pdf'])) {
+                $__pdf = reset($v_summary['__pdf']);
+                if ( ! empty($__pdf['recordid']) && ! in_array($__pdf['recordid'], $this->delids_array)) {
+                    $v_summary['course_title'] .= '<a class="verlauf_contactform_download_pdf" href="stats/patientfileupload?doc_id=' . $__pdf['recordid'] . '&id=' . $pid . '" title="'.$__pdf['course_title'].'"></a>';
+                }
+            }
+ 
+        } 
+        elseif ($v_summary['tabname'] == "contact_form_no_link") 
+        {
+            $__course_title_bottom_cf = isset($v_summary['__course_title_bottom_cf']) ? $v_summary['__course_title_bottom_cf'] : "";
+            $v_summary['course_title'] .= $__course_title_bottom_cf;
+
+            if (isset($v_summary['__pdf']) && ! empty($v_summary['__pdf']) ) {
+                $__pdf = reset($v_summary['__pdf']);
+                if ( ! empty($__pdf['recordid']) && ! in_array($__pdf['recordid'], $this->delids_array)) {
+                    $v_summary['course_title'] .= '<a class="verlauf_contactform_download_pdf" href="stats/patientfileupload?doc_id=' . $__pdf['recordid'] . '&id=' . $pid . '" title="'.$__pdf['course_title'].'"></a>';
+                }
+            }
+        } elseif ($v_summary['tabname'] == "contact_form_nosave_pdf_print") {
+            if ( ! empty($v_summary['recordid']) && ! in_array($v_summary['recordid'], $this->delids_array)) {
+                $v_summary['course_title'] .= '<a class="verlauf_contactform_download_pdf" href="stats/patientfileupload?doc_id=' . $v_summary['recordid'] . '&id=' . $pid . '" title=""></a>';
+            }
+        }
+    } else {
+	if ($v_summary['tabname'] == "contact_form")
+	{
+		$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="patientform/contactform?cid=' . $v_summary['recordid'] . '&id=' . $pid . '">'.$v_summary['course_title'].'.</a>' . '</font>';
+	}
+    }
+
+	if ($v_summary['tabname'] == "contact_form_moved_to_date")
+	{
+		if ($v_summary['isserialized'] == 0 ) {
+			$v_summary['course_title'] .= $v_summary['recorddata'];
+		} else {
+			//if you want a better scroll, change the save to a isserialized, and save ids and extra stuff, and on view unserialize and scrollTo using js
+		}
+	}
+
+    if ($v_summary['tabname'] == "contact_form_save")
+    {
+        if(!in_array($v_summary['recordid'],$this->delids_array))
+        {
+            $v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="stats/patientfileupload?doc_id=' . $v_summary['recordid'] . '&id=' . $pid . '">' . $v_summary['course_title'] . '.</a>' . '</font>';
+        }
+        else
+        {
+            $v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . $v_summary['course_title'] . '</font>';
+        }
+    }
+
+
+	if (($v_summary['tabname'] == "kvno_assesment" && stripos($v_summary['course_title'], 'angelegt') !== false) || $v_summary['tabname'] == 'new_kvno_assesment')
+	{
+		$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="patientform/kvnoassessment?id=' . $pid . '">' . $v_summary['course_title'] . '.</a>' . '</font>';
+	}
+
+
+	if ($v_summary['tabname'] == "kvno_assesment_new")
+	{
+		if(!in_array($v_summary['recordid'],$this->delids_array))
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="stats/patientfileupload?doc_id=' . $v_summary['recordid'] . '&id=' . $pid . '">' . $v_summary['course_title'] . '.</a>' . '</font>';
+		}
+		else
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . $v_summary['course_title'] . '</font>';
+		}
+	}
+
+	if ($v_summary['tabname'] == "entrance_assesment_new")
+	{
+		if(!in_array($v_summary['recordid'],$this->delids_array))
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="stats/patientfileupload?doc_id=' . $v_summary['recordid'] . '&id=' . $pid . '">' . $v_summary['course_title'] . '.</a>' . '</font>';
+		}
+		else
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . $v_summary['course_title'] . '</font>';
+		}
+	}
+
+	if ($v_summary['tabname'] == "entrance_assessment_from")
+	{
+		$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="patientform/entranceassessment?id=' . $pid . '">' . $v_summary['course_title'] . '.</a>' . '</font>';
+	}
+
+	if ($v_summary['tabname'] == "rp_assessment")
+	{
+		if(!in_array($v_summary['recordid'],$this->delids_array))
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="stats/patientfileupload?doc_id=' . $v_summary['recordid'] . '&id=' . $pid . '">' . $v_summary['course_title'] . '.</a>' . '</font>';
+		}
+		else
+		
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . $v_summary['course_title'] . '</font>';
+		}
+ 	}
+
+
+
+	if ($v_summary['tabname'] == "recording_assesment")
+	{
+		$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . $v_summary['course_title'] . '.</a>' . '</font>';
+	}
+
+	if ($v_summary['tabname'] == "reassesment")
+	{
+		if(!in_array($v_summary['recordid'],$this->delids_array))
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="stats/patientfileupload?doc_id=' . $v_summary['recordid'] . '&id=' . $pid . '">' . $v_summary['course_title'] . '.</a>' . '</font>';
+		}
+		else
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . $v_summary['course_title'] . '</font>';
+		}
+	}
+
+
+	if ($v_summary['tabname'] == "kvno_nurse_form")
+	{
+		$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="patientform/kvnonurseform?kvno_nurse_id=' . $v_summary['recordid'] . '&id=' . $pid . '">Besuchsbogen Pflege hinzugefügt.</a>' . '</font>';
+	}
+
+
+	if ($v_summary['tabname'] == "lvn_nurse_form")
+	{
+		$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="patientform/leverkusennurseform?kvno_nurse_id=' . $v_summary['recordid'] . '&id=' . $pid . '">Besuchsbogen Pflege hinzugefügt.</a>' . '</font>';
+	}
+
+
+	if ($v_summary['tabname'] == "visit_koordination_form")
+	{
+		$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="patientform/visitkoordinationform?koordination_id=' . $v_summary['recordid'] . '&id=' . $pid . '">Besuchsformular Koordination hinzugefügt.</a>' . '</font>';
+	}
+
+
+	if ($v_summary['tabname'] == "wl_nurse_form")
+	{
+		$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="patientform/wlnurseform?kvno_nurse_id=' . $v_summary['recordid'] . '&id=' . $pid . '">Besuchsbogen Pflege hinzugefügt.</a>' . '</font>';
+	}
+
+
+	if ($v_summary['tabname'] == "sakvno_nurse_form")
+	{
+		$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="patientform/sakvnonurseform?kvno_nurse_id=' . $v_summary['recordid'] . '&id=' . $pid . '">Besuchsbogen Pflege hinzugefügt.</a>' . '</font>';
+	}
+
+
+
+
+
+	if ($v_summary['tabname'] == "kvnoanlage7form")
+	{
+		$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="patientform/kvnoanlage7form?kvno_anlage_id=' . $v_summary['recordid'] . '&id=' . $pid . '">Besuchsbogen KVNO Anlage 7  hinzugefügt.</a>' . '</font>';
+	}
+
+	if ($v_summary['tabname'] == "dgpanlage7form")
+	{
+		$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="patientform/dgpanlage7form?kvno_anlage_id=' . $v_summary['recordid'] . '&id=' . $pid . '">DGP-Kerndatensatz - Besuchsbogen Anlage 7  hinzugefügt.</a>' . '</font>';
+	}
+
+	if ($v_summary['tabname'] == "dgpkernform")
+	{
+		$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="patientform/dgpkernform?dgp_kern_id=' . $v_summary['recordid'] . '&id=' . $pid . '">DGP-Kerndatensatz  - Kerndatensatz für Palliativpatienten  hinzugefügt.</a>' . '</font>';
+	}
+
+	if ($v_summary['tabname'] == "dgpsapvform")
+	{
+		$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="patientform/dgpsapvform?dgp_sapv_id=' . $v_summary['recordid'] . '&id=' . $pid . '">DGP-Kerndatensatz  - SAPV-Struktur-Modul  hinzugefügt.</a>' . '</font>';
+	}
+
+	if ($v_summary['tabname'] == "ruhen")
+	{
+		$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="patientform/saruhenform?ruhen_id=' . $v_summary['recordid'] . '&id=' . $pid . '">Ruhen der Teilnahme hinzugefügt.</a>' . '</font>';
+	}
+
+	if ($v_summary['tabname'] == "feststellung")
+	{
+		$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="patientform/safeststellung?feststellung_id=' . $v_summary['recordid'] . '&id=' . $pid . '">Feststellung des Nichtvorliegens der Teilnahmevorraussetzung  hinzugefügt.</a>' . '</font>';
+	}
+
+	if ($v_summary['tabname'] == "genehmigungs")
+	{
+		$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="patientform/sagenehmig?genehmig_id=' . $v_summary['recordid'] . '&id=' . $pid . '">Genehmigungsformular hinzugefügt.</a>' . '</font>';
+	}
+
+	if ($v_summary['tabname'] == "anlage4awl")
+	{
+		if(!$v_summary['recordid'])
+		{	
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="patient/anlage4awl?id=' . $pid . '">Anlage 4a wurde erstellt</a>' . '</font>
+				<input type="hidden" name="type" id="type_[[id]]" class="anlage" value="anlage" />';
+		}
+		else
+		{
+			if(!in_array($v_summary['recordid'],$this->delids_array))
+			{
+				$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="stats/patientfileupload?doc_id=' . $v_summary['recordid'] . '&id=' . $pid . '">Anlage 4a wurde erstellt</a>' . '</font>
+				<input type="hidden" name="type" id="type_[[id]]" class="anlage" value="anlage" />';
+			}else
+			{
+				$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . 'Anlage 4a wurde erstellt' . '</font>
+				<input type="hidden" name="type" id="type_[[id]]" class="anlage" value="anlage" />';
+			}
+		}
+	}
+
+
+	if ($v_summary['tabname'] == "anlage4wl")
+	{
+		if(!$v_summary['recordid'])
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="patient/anlage4wl?id=' . $pid . '">Anlage 4 wurde erstellt</a>' . '</font>
+			<input type="hidden" name="type" id="type_[[id]]" class="anlage" value="anlage"/>';
+		}
+		else
+		{
+			if(!in_array($v_summary['recordid'],$this->delids_array))
+			{
+				$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="stats/patientfileupload?doc_id=' . $v_summary['recordid'] . '&id=' . $pid . '">Anlage 4 wurde erstellt</a>' . '</font>
+				<input type="hidden" name="type" id="type_[[id]]" class="anlage" value="anlage"/>';
+			}else
+			{
+				$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . 'Anlage 4 wurde erstellt' . '</font>
+				<input type="hidden" name="type" id="type_[[id]]" class="anlage" value="anlage"/>';
+			}
+		}
+	}
+	if ($v_summary['tabname'] == "kvnoanlage3a")
+	{
+		if(!$v_summary['recordid'])
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="patient/kvnoanlage3a?id=' . $pid . '">Anlage 3a wurde erstellt</a>' . '</font>
+			<input type="hidden" name="type" id="type_[[id]]" class="anlage" value="kvnoanlage3a"/>';
+		}
+		else
+		{
+			if(!in_array($v_summary['recordid'],$this->delids_array))
+			{
+				$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="stats/patientfileupload?doc_id=' . $v_summary['recordid'] . '&id=' . $pid . '">Anlage 3a wurde erstellt</a>' . '</font>
+				<input type="hidden" name="type" id="type_[[id]]" class="anlage" value="kvnoanlage3a"/>';
+			}
+			else
+			{
+				$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . 'Anlage 3a wurde erstellt' . '</font>
+				<input type="hidden" name="type" id="type_[[id]]" class="anlage" value="kvnoanlage3a"/>';
+			}
+		}
+	}
+	if ($v_summary['tabname'] == "kvnoanlage3b")
+	{
+		if(!$v_summary['recordid'])
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="patient/kvnoanlage3b?id=' . $pid . '">Anlage 3b wurde erstellt</a>' . '</font>
+			<input type="hidden" name="type" id="type_[[id]]" class="anlage" value="kvnoanlage3b"/>';
+		}
+		else
+		{
+			if(!in_array($v_summary['recordid'],$this->delids_array))
+			{
+
+				$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="stats/patientfileupload?doc_id=' . $v_summary['recordid'] . '&id=' . $pid . '">Anlage 3b wurde erstellt</a>' . '</font>
+				<input type="hidden" name="type" id="type_[[id]]" class="anlage" value="kvnoanlage3b"/>';
+			}
+			else
+			{
+				$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . 'Anlage 3b wurde erstellt' . '</font>
+				<input type="hidden" name="type" id="type_[[id]]" class="anlage" value="kvnoanlage3b"/>';
+			}
+		}
+	}
+
+
+	if ($v_summary['tabname'] == "drletter")
+	{
+		if(!in_array($v_summary['recordid'],$this->delids_array))
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . 'Ein <a href="patient/doctorletter?id=' . $pid . '&lid=' . $v_summary['recordid'] . '&pdf=1">Brief</a> wurde erstellt' . '</font>';
+		}
+		else
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . 'Ein Brief wurde erstellt' . '</font>';
+		}
+	}
+
+	if ($v_summary['tabname'] == "drletterfaxvor")
+	{
+		if(!in_array($v_summary['recordid'],$this->delids_array))
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . 'Ein <a href="patient/doctorletter?id=' . $pid . '&lid=' . $v_summary['recordid'] . '&type=4&pdf=1">Brief</a> wurde erstellt' . '</font>';
+		}
+		else
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . 'Ein Brief wurde erstellt' . '</font>';
+		}
+	}
+
+	if ($v_summary['tabname'] == "drlettertodes")
+	{
+		if(!in_array($v_summary['recordid'],$this->delids_array))
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . 'Ein <a href="patient/doctorletter?id=' . $pid . '&lid=' . $v_summary['recordid'] . '&type=7&pdf=1">Brief</a> wurde erstellt' . '</font>';
+		}
+		else
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . 'Ein Brief wurde erstellt' . '</font>';
+		}
+	}
+
+	if ($v_summary['tabname'] == "drletter_erstverordnung_zapv")
+	{
+		if(!in_array($v_summary['recordid'],$this->delids_array))
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . 'Ein <a href="patient/doctorletter?id=' . $pid . '&lid=' . $v_summary['recordid'] . '&type=23&pdf=1">Brief</a> wurde erstellt' . '</font>';
+		}
+		else
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . 'Ein Brief wurde erstellt' . '</font>';
+		}
+	}	
+	
+	if ($v_summary['tabname'] == "drletter_folgeverordnung_zapv")
+	{
+		if(!in_array($v_summary['recordid'],$this->delids_array))
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . 'Ein <a href="patient/doctorletter?id=' . $pid . '&lid=' . $v_summary['recordid'] . '&type=24&pdf=1">Brief</a> wurde erstellt' . '</font>';
+		}
+		else
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . 'Ein Brief wurde erstellt' . '</font>';
+		}
+	}
+
+
+	if ($v_summary['tabname'] == "wl_doctor_letter")
+	{
+		if(!in_array($v_summary['recordid'],$this->delids_array))
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . 'Ein <a href="stats/patientfileupload?doc_id=' . $v_summary['recordid'] . '&id=' . $pid . '">Brief</a> wurde erstellt' . '</font>';
+		}
+		else
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . 'Ein Brief wurde erstellt' . '</font>';
+		}
+	}
+	if ($v_summary['tabname'] == "MdkSchne")
+	{
+		if(!$v_summary['recordid'])
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="patientform/mdkschneform?id=' . $pid . '">MDK Schnellbegutachtungsbogen</a> wurde erstellt' . '</font>';
+		}
+		else
+		{
+			if(!in_array($v_summary['recordid'],$this->delids_array))
+			{
+				$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="stats/patientfileupload?doc_id=' . $v_summary['recordid'] . '&id=' . $pid . '">MDK Schnellbegutachtungsbogen</a> wurde erstellt' . '</font>';
+			}
+			else
+			{
+				$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . 'MDK Schnellbegutachtungsbogen wurde erstellt' . '</font>';
+			}
+		}
+	}
+
+	if ($v_summary['tabname'] == "MdkSchne_form")
+	{
+		$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="patientform/mdkschneform?id=' . $pid . '">' . $v_summary['course_title'] . '.</a>' . '</font>';
+	}
+
+	if ($v_summary['tabname'] == "FinalDocumentation_form")
+	{
+		$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="patient/formfive?id=' . $pid . '">' . $v_summary['course_title'] . '.</a>' . '</font>';
+	}
+
+
+	if ($v_summary['tabname'] == "Stammblattsapv")
+	{
+		if(!$v_summary['recordid'] )
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="patientform/stammblattsapv?id=' . $pid . '">Stammblatt</a> wurde erstellt' . '</font>';
+		}
+		else
+		{
+		 if(!in_array($v_summary['recordid'],$this->delids_array))
+		 {
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="stats/patientfileupload?doc_id=' . $v_summary['recordid'] . '&id=' . $pid . '">Stammblatt</a> wurde erstellt' . '</font>';
+		 }
+		 else
+		 {
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . 'Stammblatt wurde erstellt' . '</font>';
+		 }
+		}
+	}
+
+	if ($v_summary['tabname'] == "Stammblatt4")
+	{
+		if(!$v_summary['recordid'])
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="patientform/stammblatt4?id=' . $pid . '">Stammblatt IV</a> wurde erstellt' . '</font>';
+		}
+		else
+		{
+		 if(!in_array($v_summary['recordid'],$this->delids_array))
+			{
+				$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="stats/patientfileupload?doc_id=' . $v_summary['recordid'] . '&id=' . $pid . '">Stammblatt IV</a> wurde erstellt' . '</font>';
+			}
+		else
+			{	
+				$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . 'Stammblatt IV wurde erstellt' . '</font>';
+			}
+		}
+	}
+
+	if ($v_summary['tabname'] == "Stammblatt7")
+	{
+		if(!$v_summary['recordid'])
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="patientformnew/stammblatt7?id=' . $pid . '">Stammblatt VII</a> wurde erstellt' . '</font>';
+		}
+		else
+		{
+		 if(!in_array($v_summary['recordid'],$this->delids_array))
+			{
+				$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="stats/patientfileupload?doc_id=' . $v_summary['recordid'] . '&id=' . $pid . '">Stammblatt VII</a> wurde erstellt' . '</font>';
+			}
+		else
+			{	
+				$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . 'Stammblatt VII wurde erstellt' . '</font>';
+			}
+		}
+	}
+
+	
+	if ($v_summary['tabname'] == "PatientStammblattsapv")
+	{
+		if(!$v_summary['recordid'])
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="patientform/patientstammblattsapv?id=' . $pid . '">Patientenstammblatt </a> wurde erstellt' . '</font>';
+		}
+		else
+		{
+		if(!in_array($v_summary['recordid'],$this->delids_array))
+			{
+				$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="stats/patientfileupload?doc_id=' . $v_summary['recordid'] . '&id=' . $pid . '">Patientenstammblatt </a> wurde erstellt' . '</font>';
+			}
+		else
+			{
+				$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . 'Patientenstammblatt wurde erstellt' . '</font>';
+			}
+		}
+	}
+
+	if ($v_summary['tabname'] == "patient_death")
+	{
+		$course_title = '<span  style="background: none repeat scroll 0 0 #FC7272;" > ' . $course_title . ' </span>';
+	}
+
+	if ($v_summary['tabname'] == "formone")
+	{
+		$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . 'Formular <a href="patient/formone?id=' . $pid . '">SAPV-Einzelfallevaluation</a> wurde erstellt.' . '</font>';
+	}
+
+	if ($v_summary['tabname'] == "bre_recording_report")
+	{
+		$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="patientform/recordingreport?id=' . $pid . '&fid='.$v_summary['recordid'].'">' . $v_summary['course_title'] . '.</a>' . '</font>';
+	}
+	
+	if ($v_summary['tabname'] == "nie_recording_report")
+	{
+		$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="patientform/nierecordingform?id=' . $pid . '&fid='.$v_summary['recordid'].'">' . $v_summary['course_title'] . '.</a>' . '</font>';
+	}
+
+	if ($v_summary['tabname'] == "sapv_questionnaire")
+	{
+		$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="patientform/sapvquestionnaire?id=' . $pid . '&qid='.$v_summary['recordid'].'">' . $v_summary['course_title'] . '.</a>' . '</font>';
+	}
+
+	if ($v_summary['tabname'] == "hospiz_questionnaire")
+	{
+		$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="patientform/hospizquestionnaire?id=' . $pid . '&qid='.$v_summary['recordid'].'">' . $v_summary['course_title'] . '.</a>' . '</font>';
+	}
+	//ISPC-2647 Lore 05.08.2020
+	if ($v_summary['tabname'] == "hospiz_questionnaire_nord")
+	{
+		$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="patientform/hospizquestionnairenord?id=' . $pid . '&qid='.$v_summary['recordid'].'">' . $v_summary['course_title'] . '.</a>' . '</font>';
+	}
+	//.
+	
+	if ($v_summary['tabname'] == "mdk_schne_instance")
+	{
+		if(!in_array($v_summary['recordid'],$this->delids_array))
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="stats/patientfileupload?doc_id=' . $v_summary['recordid'] . '&id=' . $pid . '">' . $v_summary['course_title'] . '.</a>' . '</font>';
+		}
+		else
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . $v_summary['course_title'] . '</font>';
+		}
+	}
+
+	if ($v_summary['tabname'] == "FinalDocumentation_instance")
+	{
+		if(!in_array($v_summary['recordid'],$this->delids_array))
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="stats/patientfileupload?doc_id=' . $v_summary['recordid'] . '&id=' . $pid . '">' . $v_summary['course_title'] . '.</a>' . '</font>';
+		}
+		else
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' .  $v_summary['course_title'] . '</font>';
+		}
+	}	
+
+	if ($v_summary['tabname'] == "barthelscorepdf")
+	{	
+		if(!in_array($v_summary['recordid'],$this->delids_array))
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="stats/patientfileupload?doc_id=' . $v_summary['recordid'] . '&id=' . $pid . '">' . $v_summary['course_title'] . '.</a>' . '</font>';
+		}
+		else
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . $v_summary['course_title'] . '</font>';
+		}
+	}
+	
+	if ($v_summary['tabname'] == "barthelscore_form_save")
+	{
+		$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="patientform/barthelscore?&id=' . $pid . '&fid='.$v_summary['recordid'].'">' . $v_summary['course_title'] . '.</a>' . '</font>';
+	}
+
+	if ($v_summary['tabname'] == "zapv_assessment_admission")
+	{
+		$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="patientform/zapvassessment?form_id=' . $v_summary['recordid'] . '&id=' . $pid . '">' . $v_summary['course_title'] . '</a>' . '</font>';
+	}
+	if ($v_summary['tabname'] == "zapv_assessment_ii_admission")
+	{
+		$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="patientformnew/zapvassessment?form_id=' . $v_summary['recordid'] . '&id=' . $pid . '">' . $v_summary['course_title'] . '</a>' . '</font>';
+	}
+	if ($v_summary['tabname'] == "save_zapv_assessment_ii_admission")
+	{
+		$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="stats/patientfileupload?doc_id=' . $v_summary['recordid'] . '&id=' . $pid . '">' . $v_summary['course_title'] . '</a>' . '</font>';
+	}
+	
+	if ($v_summary['tabname'] == "zapv_assessment_consulting")
+	{
+		$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="patientform/zapvberatungassessment?form_id=' . $v_summary['recordid'] . '&id=' . $pid . '">' . $v_summary['course_title'] . '</a>' . '</font>';
+	}
+	if ($v_summary['tabname'] == "zapv_assessment_ii_consulting")
+	{
+		$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="patientformnew/zapvberatungassessment?form_id=' . $v_summary['recordid'] . '&id=' . $pid . '">' . $v_summary['course_title'] . '</a>' . '</font>';
+	}
+	if ($v_summary['tabname'] == "save_zapv_assessment_ii_consulting")
+	{
+		$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="stats/patientfileupload?doc_id=' . $v_summary['recordid'] . '&id=' . $pid . '">' . $v_summary['course_title'] . '</a>' . '</font>';
+	}
+
+
+	if ($v_summary['tabname'] == "zapv_assessment_end")
+	{
+		$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="patientform/zapvendeassessment?form_id=' . $v_summary['recordid'] . '&id=' . $pid . '">' . $v_summary['course_title'] . '</a>' . '</font>';
+	}
+
+
+	if ($v_summary['tabname'] == "wl_anlage7")
+	{
+		$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="patient/palliativversorgunga7?id=' . $pid . '">Formular Anlage 7 hinzugefügt.</a>' . '</font>';
+	}
+
+	if ($v_summary['tabname'] == "questionnaireb")
+	{
+		$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="patientform/questionnaireb?id=' . $pid . '">' . $v_summary['course_title'] . '.</a>' . '</font>';
+	}
+	
+	if ($v_summary['tabname'] == "questionnairec")
+	{
+		$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="patientform/questionnairec?id=' . $pid . '">' . $v_summary['course_title'] . '.</a>' . '</font>';
+	}
+
+	if ($v_summary['tabname'] == "wound_documentation")
+	{
+		$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="patientform/wounddocumentation?id=' . $pid . '&fid=' . $v_summary['recordid'] . '  ">'.$v_summary['course_title'].'.</a>' . '</font>';
+	}
+
+	if ($v_summary['tabname'] == "Anlage5Nie_form")
+	{
+		$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="patientformnew/anlage5?id=' . $pid . '">'.$v_summary['course_title'].'.</a>' . '</font>';
+	}
+
+	if ($v_summary['tabname'] == "muster13upload")
+	{
+		if(!in_array($v_summary['recordid'],$this->delids_array))
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="stats/patientfileupload?doc_id=' . $v_summary['recordid'] . '&id=' . $pid . '">' . $v_summary['course_title'] . '.</a>' . '</font>';
+		}
+		else
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . $v_summary['course_title']  . '</font>';
+		}
+
+	}
+	/*if ($v_summary['tabname'] == "muster13")
+	{
+		if(!in_array($v_summary['recordid'],$this->delids_array))
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="stats/patientfileupload?doc_id=' . $v_summary['recordid'] . '&id=' . $pid . '">' . $v_summary['course_title'] . '.</a>' . '</font>';
+		}
+		else
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . $v_summary['course_title']  . '</font>';
+		}
+	}
+
+	if ($v_summary['tabname'] == "muster13_pre")
+	{
+		if(!in_array($v_summary['recordid'],$this->delids_array))
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="stats/patientfileupload?doc_id=' . $v_summary['recordid'] . '&id=' . $pid . '">' . $v_summary['course_title'] . '.</a>' . '</font>';
+		}
+		else
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . $v_summary['course_title'] . '</font>';
+		}
+	}*/
+	if ($v_summary['tabname'] == "muster4")
+	{
+		if(!in_array($v_summary['recordid'],$this->delids_array))
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="stats/patientfileupload?doc_id=' . $v_summary['recordid'] . '&id=' . $pid . '">' . $v_summary['course_title'] . '.</a>' . '</font>';
+		}
+		else
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . $v_summary['course_title'] . '</font>';
+		}
+	}
+	if ($v_summary['tabname'] == "muster4_pre")
+	{
+		if(!in_array($v_summary['recordid'],$this->delids_array))
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="stats/patientfileupload?doc_id=' . $v_summary['recordid'] . '&id=' . $pid . '">' . $v_summary['course_title'] . '.</a>' . '</font>';
+		}
+		else
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . $v_summary['course_title'] . '</font>';
+		}
+	}
+
+
+	if ($v_summary['tabname'] == "painquestionnaire_form")
+	{
+		$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="patientformnew/painquestionnaire?id=' . $pid . '&formid=' . $v_summary['recordid'] . '">' . $v_summary['course_title'] . '</a>' . '</font>';
+	}
+
+	if ($v_summary['tabname'] == "painquestionnaire_save")
+	{
+		if(!in_array($v_summary['recordid'],$this->delids_array))
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="stats/patientfileupload?doc_id=' . $v_summary['recordid'] . '&id=' . $pid . '">' . $v_summary['course_title'] . '</a>' . '</font>';
+		}
+		else
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . $v_summary['course_title'] . '</font>';
+		}
+	}
+
+
+   if ($v_summary['tabname'] == "painquestionnaire_save")
+	{
+		if(!in_array($v_summary['recordid'],$this->delids_array))
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="stats/patientfileupload?doc_id=' . $v_summary['recordid'] . '&id=' . $pid . '">' . $v_summary['course_title'] . '</a>' . '</font>';
+		}
+		else
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . $v_summary['course_title'] . '</font>';
+		}
+	}
+    if ($v_summary['tabname'] == "fallprotocolform_save")
+	{
+		if(!in_array($v_summary['recordid'],$this->delids_array))
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="stats/patientfileupload?doc_id=' . $v_summary['recordid'] . '&id=' . $pid . '">' . $v_summary['course_title'] . '</a>' . '</font>';
+		}
+		else
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . $v_summary['course_title'] . '</font>';
+		}
+	}
+
+	
+	if ($v_summary['tabname'] == "daystructure_form")
+	{
+		$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="patientformnew/daystructure?id=' . $pid . '">' . $v_summary['course_title'] . '</a>' . '</font>';
+	}
+
+	if ($v_summary['tabname'] == "daystructure_save")
+	{
+		if(!in_array($v_summary['recordid'],$this->delids_array))
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="stats/patientfileupload?doc_id=' . $v_summary['recordid'] . '&id=' . $pid . '">' . $v_summary['course_title'] . '</a>' . '</font>';
+		}
+		else
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . $v_summary['course_title'] .  '</font>';
+		}
+	}
+	if ($v_summary['tabname'] == "careservices_save")
+	{
+		if(!in_array($v_summary['recordid'],$this->delids_array))
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="stats/patientfileupload?doc_id=' . $v_summary['recordid'] . '&id=' . $pid . '">' . $v_summary['course_title'] . '</a>' . '</font>';
+		}
+		else
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . $v_summary['course_title'] .  '</font>';
+		}
+	}
+
+
+	if ($v_summary['tabname'] == "muster_63_form")
+	{
+		$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="patient/verordnungtp?id=' . $pid . '">' . $v_summary['course_title'] . '</a>' . '</font>';
+	}
+
+	if ($v_summary['tabname'] == "muster_63_instance")
+	{
+		if(!in_array($v_summary['recordid'],$this->delids_array))
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="stats/patientfileupload?doc_id=' . $v_summary['recordid'] . '&id=' . $pid . '">' . $v_summary['course_title'] . '</a>' . '</font>';
+		}
+		else
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . $v_summary['course_title'] .  '</font>';
+		}
+	}
+
+	if ($v_summary['tabname'] == "anlage2_form")
+	{
+		$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="patientformnew/anlage2?fid=' . $v_summary['recordid'] . '&id=' . $pid . '">' . $v_summary['course_title'] . '</a>' . '</font>';
+	}
+	if ($v_summary['tabname'] == "anlage2_save")
+	{
+		$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="stats/patientfileupload?doc_id=' . $v_summary['recordid'] . '&id=' . $pid . '">' . $v_summary['course_title'] . '.</a>' . '</font>';
+	}
+	if ($v_summary['tabname'] == "anlage2_pdf")
+	{
+		if(!in_array($v_summary['recordid'],$this->delids_array))
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="stats/patientfileupload?doc_id=' . $v_summary['recordid'] . '&id=' . $pid . '">' . $v_summary['course_title'] . '.</a>' . '</font>';
+		}
+		else
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . $v_summary['course_title'] . '</font>';
+		}
+	}
+
+	if ($v_summary['tabname'] == "anlage3nordrhein_form")
+	{
+		$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="patientformnew/anlage3nordrhein?fid=' . $v_summary['recordid'] . '&id=' . $pid . '">' . $v_summary['course_title'] . '</a>' . '</font>';
+	}
+	if ($v_summary['tabname'] == "anlage3nordrhein_save")
+	{
+		$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="stats/patientfileupload?doc_id=' . $v_summary['recordid'] . '&id=' . $pid . '">' . $v_summary['course_title'] . '.</a>' . '</font>';
+	}
+	if ($v_summary['tabname'] == "anlage3nordrhein_pdf")
+	{
+		if(!in_array($v_summary['recordid'],$this->delids_array))
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="stats/patientfileupload?doc_id=' . $v_summary['recordid'] . '&id=' . $pid . '">' . $v_summary['course_title'] . '.</a>' . '</font>';
+		}
+		else
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . $v_summary['course_title']  . '</font>';
+		}
+	}
+	if ($v_summary['tabname'] == "anlage3nordrhein_save")
+	{
+		$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="stats/patientfileupload?doc_id=' . $v_summary['recordid'] . '&id=' . $pid . '">' . $v_summary['course_title'] . '.</a>' . '</font>';
+	}
+
+	if ($v_summary['tabname'] == "lmu_pmba_psysoz")
+	{
+		$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . html_entity_decode($v_summary['course_title']). '</font>';
+	}
+
+	if ($v_summary['tabname'] == "muster_63kinder_form")
+	{
+		$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="patientformnew/verordnungtpkinder?id=' . $pid . '">' . $v_summary['course_title'] . '</a>' . '</font>';
+	}
+
+	if ($v_summary['tabname'] == "muster_63kinder_instance")
+	{
+		if(!in_array($v_summary['recordid'],$this->delids_array))
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="stats/patientfileupload?doc_id=' . $v_summary['recordid'] . '&id=' . $pid . '">' . $v_summary['course_title'] . '</a>' . '</font>';
+		}
+		else
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . $v_summary['course_title'] .  '</font>';
+		}
+	}
+
+
+	if ($v_summary['tabname'] == "emergencyplansapv24")
+	{
+		if(!in_array($v_summary['recordid'],$this->delids_array))
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="stats/patientfileupload?doc_id=' . $v_summary['recordid'] . '&id=' . $pid . '">' . $v_summary['course_title'] . '.</a>' . '</font>';
+		}
+		else
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . $v_summary['course_title'] . '</font>';
+		}
+	}
+	if ($v_summary['tabname'] == "emergency_plan_sapv24")
+	{
+		$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="patientformnew/emergencyplansapv24?id=' . $pid . '">' . $v_summary['course_title'] . '</a>' . '</font>';
+	}
+
+	/*ISPC-2736 Lore 12.11.2020*/
+	if ($v_summary['tabname'] == "emergencyplansapvii")
+	{
+		if(!in_array($v_summary['recordid'],$this->delids_array))
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="stats/patientfileupload?doc_id=' . $v_summary['recordid'] . '&id=' . $pid . '">' . $v_summary['course_title'] . '.</a>' . '</font>';
+		}
+		else
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . $v_summary['course_title'] . '</font>';
+		}
+	}
+	if ($v_summary['tabname'] == "emergency_plan_sapv_ii")
+	{
+		$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="patientformnew/emergencyplansapvii?id=' . $pid . '">' . $v_summary['course_title'] . '</a>' . '</font>';
+	}
+
+	if ($v_summary['tabname'] == SisStationary::PATIENT_COURSE_TABNAME_SAVE)
+	{
+		if(!in_array($v_summary['recordid'],$this->delids_array))
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="patientformnew/sisstationary?form_id=' . $v_summary['recordid'] . '&id=' . $pid . '">' . $v_summary['course_title'] . '.</a>' . '</font>';
+		}
+		else
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . $v_summary['course_title'] . '</font>';
+		}
+	}
+
+	if ($v_summary['tabname'] == SisStationary::PATIENT_FILE_TABNAME)
+	{
+		if(!in_array($v_summary['recordid'],$this->delids_array))
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="stats/patientfileupload?doc_id=' . $v_summary['recordid'] . '&id=' . $pid . '">' . $v_summary['course_title'] . '.</a>' . '</font>';
+		}
+		else
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . $v_summary['course_title'] . '</font>';
+		}
+	}
+
+	if ($v_summary['tabname'] == "besd_survey_save")
+	{	
+		if(!in_array($v_summary['recordid'],$this->delids_array))
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="stats/patientfileupload?doc_id=' . $v_summary['recordid'] . '&id=' . $pid . '">' . $v_summary['course_title'] . '.</a>' . '</font>';
+		}
+		else
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . $v_summary['course_title'] . '</font>';
+		}
+	}
+	if ($v_summary['tabname'] == "besd_survey")
+	{
+		$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="patientformnew/besdsurvey?id=' . $pid . '&bsid='.$v_summary['recordid'].'">' . $v_summary['course_title'] . '.</a>' . '</font>';
+	}
+
+	if ($v_summary['tabname'] == PatientNutritionalStatus::PATIENT_COURSE_TABNAME_SAVE)
+	{	
+		if(!in_array($v_summary['recordid'],$this->delids_array))
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="stats/patientfileupload?doc_id=' . $v_summary['recordid'] . '&id=' . $pid . '">' . $v_summary['course_title'] . '.</a>' . '</font>';
+		}
+		else
+		{
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . $v_summary['course_title'] . '</font>';
+		}
+	}
+	if ($v_summary['tabname'] == PatientNutritionalStatus::PATIENT_COURSE_TABNAME)
+	{
+		$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="patientformnew/must?id=' . $pid . '&msid='.$v_summary['recordid'].'">' . $v_summary['course_title'] . '.</a>' . '</font>';
+	}
+ 
+
+
+   //ispc-2291
+    switch ($v_summary['tabname']) {
+
+        case FormBlockPuncture::PATIENT_COURSE_TABNAME:
+        case FormBlockInfusion::PATIENT_COURSE_TABNAME:
+        case FormBlockInfusiontimes::PATIENT_COURSE_TABNAME:
+        case FormBlockAdverseevents::PATIENT_COURSE_TABNAME:
+            $v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' .  $v_summary['course_title'] .  '</font>';
+            break;
+
+		case 'patient_rubin_iadl_saved':
+		case 'patient_rubin_mna_saved':
+		case 'patient_rubin_mmst_saved':
+		case 'patient_rubin_tug_saved':
+		case 'patient_rubin_demtect_saved':
+		case 'patient_rubin_whoqol_saved':
+			if(!in_array($v_summary['recordid'],$this->delids_array))
+			{
+				$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="stats/patientfileupload?doc_id=' . $v_summary['recordid'] . '&id=' . $pid . '">' . $v_summary['course_title'] . '.</a>' . '</font>';
+			}
+			else
+			{
+				$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . $v_summary['course_title'] . '</font>';
+			}
+            break;
+
+		/*
+		 * No edit is needed for existing forms	(Ancuta 12.07.2019 )
+		case 'patient_rubin_mmst':
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="rubin/mmst?id=' . $pid . '&form_id='.$v_summary['recordid'].'">' . $v_summary['course_title'] . '</a>' . '</font>';
+            break;
+
+		case 'patient_rubin_iadl':
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="rubin/iadl?id=' . $pid . '&form_id='.$v_summary['recordid'].'">' . $v_summary['course_title'] . '</a>' . '</font>';
+            break;
+		case 'patient_rubin_whoqol':
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="rubin/whoqol?id=' . $pid . '&form_id='.$v_summary['recordid'].'">' . $v_summary['course_title'] . '</a>' . '</font>';
+            break;
+
+		case 'patient_rubin_tug':
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="rubin/tug?id=' . $pid . '&form_id='.$v_summary['recordid'].'">' . $v_summary['course_title'] . '</a>' . '</font>';
+            break;
+
+		case 'patient_rubin_demtect':
+			$v_summary['course_title'] = '<font color="#' . $v_summary['font_color'] . '" style="font-style:' . $v_summary['isitalic'] . ';font-weight:' . $v_summary['isbold'] . ';text-decoration:' . $v_summary['isunderline'] . ';">' . '<a href="rubin/demtect?id=' . $pid . '&form_id='.$v_summary['recordid'].'">' . $v_summary['course_title'] . '</a>' . '</font>';
+            break;
+		*/
+
+    }
+
+
+
+	if ($v_summary['alien'] == "1" && $v_summary['isserialized'] == 0 &&  !empty($v_summary['recorddata'])) {
+		$v_summary['course_title'] .='<br/>'.$v_summary['recorddata']; 
+	}
+
+ 
+	if($remoteclass  || $v_summary['alien'] == "1"){
+		$v_summary ['course_title'] = SystemsSync::removeCourseLinks ( $v_summary ['course_title']);
+	}
+
+	if($shared){
+		$v_summary ['course_title'] = PatientCourse::remove_course_links ( $v_summary ['course_title']);
+	}
+
+
+
+
+?>
+					<div class="iefourth row clearer ListOuter <?php echo $letterclass; ?>">
+						<div>
+							<div class="colleft2_inpwid " style="display:none;">
+								<input type="checkbox" name="wrong[<?php echo $v_summary['id']; ?>]" class="block_<?php echo $blockcounter; ?>" id="<?php echo $v_summary['id']; ?>" value="1" <?php echo $wrongcheck; ?> />
+								<input type="hidden" value="<?php echo $course_type;  ?>" id="course_type_<?php echo $v_summary['id']; ?>" name="courses_types[]" class="courses_types_<?php echo $blockcounter; ?>" rel="<?php echo $v_summary['recordid']; ?>"/> &nbsp;
+							</div>
+							<div class="LeftChar greyfontclass wrc_<?php echo $blockcounter; ?>" id="wrc_<?php echo $v_summary['id'];  ?>"    <?php if(strlen($v_summary['font_color']) > 0 && $v_summary['font_color'] != "ffffff"):?> style="background: #<?php echo $v_summary['font_color'];  ?>;" <?php endif; ?>><?php echo $v_summary['course_type'];  ?></div>
+							<div class="iesix colRight2 greyfontclass wrt_<?php echo $blockcounter; ?>" id="wrt_<?php echo $v_summary['id'];  ?>" ><?php echo $v_summary['course_title'];  ?></div>
+							<div class="clearer"></div>
+
+							<input type="hidden" name="oldcolor" id="old_<?php echo $v_summary['id'];  ?>" value="<?php echo $v_summary['font_color'];  ?>" />
+						</div>
+					</div>
+					<?php endforeach;  ?>
+				<?php endif;  ?>
+				<div class="clearer"></div>
+				<div class="ListCourseSumm" id="wrongcomment_<?php echo $blockcounter; ?>"><?php echo $this->escape($v_course['wrongcomment']);  ?></div>
+			</div>
+			<div class="clearer"></div>
+		</div>
+	</div>
+<?php $blockcounter = $blockcounter_real; $blockcounter++;  ?>
+<?php endforeach;  ?>
+<?php else:  ?>
+<div class="row clearer parentdiv iefirst master_row" id="maindiv_no_more_results" style="width:100%;text-align:center;">
+	<?php echo $this->translate('fb_verlauf_no_more');  ?>
+</div>
+<?php endif;  ?>
+</div>
+<?php
+	if( ! empty($this->course_data) || ($this->verlauf_facebook_load == 'y' && $_REQUEST['page'] < $this->max_pages && $_REQUEST['page'] != '0')):
+		if(empty($_REQUEST['page'])){
+			$page = '1';
+		}
+		else
+		{
+			$_REQUEST['page']++;
+			$page = $_REQUEST['page'];
+		}
+?>
+		<div class="navigation"><a href="patientcourse/patientcourse?id=<?php echo $_REQUEST['id']; ?>&page=<?php echo $page; ?>&mod=minimal" class="next_link_button" ></a></div>
+<?php endif;  ?>
+		<div class="ClrBoth"></div>
+	</div>
+</div>

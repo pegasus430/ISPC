@@ -1,0 +1,273 @@
+<script type="text/javascript">
+	var isdischarged = '<?php echo $this->isdischarged ?>';
+
+	function isInteger(k, edit)
+	{
+		var box = '';
+		if (edit == 1) {
+			box = 'edit_value';
+		} else {
+			box = 'input_value';
+		}
+
+		var s = document.getElementById(box + k).value;
+		var chars = "0123456789";
+
+		if (s > 10)
+		{
+			document.getElementById(box + k).value = "";
+			return false;
+		}
+
+		var i;
+		s = s.toString();
+		for (i = 0; i < s.length; i++)
+		{
+			var c = s.charAt(i);
+			//if (isNaN(c))
+			if (chars.indexOf(c) == -1)
+			{
+				document.getElementById(box + k).value = "";
+				return false;
+			}
+		}
+		return true;
+
+
+	}
+
+
+	function checksubmit(t)
+	{
+		$(document).userSession().checksession('abort', function(result) { // new function
+			if(result === false) {
+				event.stopImmediatePropagation(); //stop going forward
+			} else {
+		
+				var checkentr = 0;
+		
+				setTimeout(function() {
+					$('#' + 'frmlocation-tab' + t + ' input[type=button]').attr('disabled', true);
+				}, 150);
+				setTimeout(function() {
+					$('#' + 'frmlocation-tab' + t + ' input[type=button]').attr('disabled', false);
+				}, 11000);
+		
+		
+				$('#frmlocation-tab' + t).children().find('.symp_input').each(function() {
+					if (this.value != '') {
+						checkentr++;
+					}
+				});
+				if (checkentr == 0)
+				{
+					jAlert('Fields are empty');
+					setTimeout(function() {
+						$('#' + 'frmlocation-tab' + t + ' input[type=button]').attr('disabled', false);
+					}, 10);
+				}
+				else
+				{
+					checkdischarged('frmlocation-tab' + t);
+				}
+			}
+		});
+	}
+
+	function getheight(t)
+	{
+		var midheight = $('.TblGridNewText' + t).height();
+		midheight = midheight - 25;
+		$("#middlediv" + t).css({height: midheight + 'px'});
+	}
+
+	function checkdischarged(formname)
+	{
+		if (isdischarged == 1)
+		{
+
+			jConfirm('<?php echo $this->translate('dischargealert'); ?>', '', function(r) {
+				if (r)
+				{
+					var submitstr = "document.getElementById('" + formname + "').submit()";
+					eval(submitstr);
+				} else {
+					setTimeout(function() {
+						$('#' + formname + ' input[type=button]').attr('disabled', false);
+					}, 10);
+				}
+			});
+
+			return false;
+		}
+		else
+		{
+			var submitstr = "document.getElementById('" + formname + "').submit()";
+			eval(submitstr);
+		}
+	}
+
+
+
+
+	$(function() {
+		//update symptomatics date
+		
+		$('.updateTimeLink_full').datepicker({
+			dateFormat: 'dd.mm.yy',
+			changeMonth: true,
+			changeYear: true,
+			nextText: '',
+			prevText: '',
+			altField: $(this).parent().find('input:first'),
+			altFormat: 'dd.mm',
+			onSelect: function(selDate, date_sel) {
+				var curent_id = $(this).attr('id');
+				var id_parts = curent_id.split('_'); //updateSymDate_1267688039_1395041639_alt				
+				var shown_elem_id = id_parts[0]+'_'+id_parts[1]+'_'+id_parts[2];
+				
+				date_obj = new Date(date_sel['selectedYear'], date_sel['selectedMonth'], date_sel['selectedDay']);
+
+				var day_month = $.datepicker.formatDate("dd.mm", date_obj);
+				
+				$('#'+shown_elem_id).val(day_month);
+				
+				
+				//update value in db
+				var d = date_sel['selectedYear'] + '-' + (date_sel['selectedMonth'] + 1) + '-' + date_sel['selectedDay'];
+				var extracted_dates = $('#'+shown_elem_id).attr('id').substr(('updateSymDate_').length);
+				var dates = extracted_dates.split('_');
+
+				$.getJSON(appbase + 'ajax/updatesymptomatology?id=<?php echo $_REQUEST['id']; ?>&dt=' + encodeURIComponent(d) + '&entry_date=' + encodeURIComponent(dates[0]) + '&create_date=' + encodeURIComponent(dates[1]), function(response, status) {
+					window.location.href = appbase + 'patient/patientsymptomatology?id=<?php echo $_REQUEST['id']; ?>';
+				});
+			}
+		});
+		$('.updateTimeLink').live('click', function(){
+			$('#'+$(this).attr('id')+'_alt.updateTimeLink_full').datepicker('show');
+		}).focus(function() {
+			$('#hourscontainer').remove();
+		});
+		
+//		$('.updateTimeLink').datepicker({
+//			dateFormat: 'dd.mm',
+//			changeMonth: true,
+//			changeYear: true,
+//			nextText: '',
+//			prevText: '',
+//			beforeShow: function (input_elem, obj){
+//				var current_value = $(this).val();
+//				var elem_id = $(this).attr('id'); //updateSymDate_1330670562_1395038562
+//				var extracted_id_data = elem_id.split('_');				
+//				var full_date = new Date(extracted_id_data[1] * 1000);
+//			},
+//			onSelect: function(selDate, date_sel) {
+////				console.log(date_sel);
+////				var d = $.datepicker.formatDate('yyyy-mm-dd', date_sel[0], {})
+//				var d = date_sel['selectedYear'] + '-' + (date_sel['selectedMonth'] + 1) + '-' + date_sel['selectedDay'];
+//
+//				var self = this;
+//				var extracted_dates = $(this).attr('id').substr(('updateSymDate_').length);
+//				var dates = extracted_dates.split('_');
+//
+//				$.getJSON(appbase + 'ajax/updatesymptomatology?id=<?php echo $_REQUEST['id']; ?>&dt=' + encodeURIComponent(d) + '&entry_date=' + encodeURIComponent(dates[0]) + '&create_date=' + encodeURIComponent(dates[1]), function(response, status) {
+//					window.location.href = appbase + 'patient/patientsymptomatology?id=<?php echo $_REQUEST['id']; ?>';
+//				});
+//			}
+//		}).focus(function() {
+//			$('#hourscontainer').remove();
+//		});
+		//update symptomatics time
+		$('.updateHoursLink').bind('click', function() {
+			var hours = '';
+			var minutes = '';
+			var self = this;
+			var id = $(this).attr('id');
+			var splt = $(this).html().split(":");
+			var offset = $(this).offset();
+
+			for ($h = 00; $h < 24; $h++)
+			{
+				if ($h < 10)
+				{
+					$hr = '0' + $h;
+				} else {
+					$hr = $h;
+				}
+				hours += '<option value="' + $hr + '" label="' + $hr + '">' + $hr + '</option>';
+			}
+
+			for ($m = 00; $m < 60; $m++)
+			{
+				if ($m < 10)
+				{
+					$mr = '0' + $m;
+				} else {
+					$mr = $m;
+				}
+				minutes += '<option value="' + $mr + '" label="' + $mr + '">' + $mr + '</option>';
+			}
+
+			var hourstr = '<div id="hourscontainer" class="hourstable"><table width="100%" border="0" cellspacing="0" cellpadding="0"><tr><td>&nbsp;<?php echo $this->translate("hours"); ?></td><td>&nbsp;</td><td>&nbsp;<?php echo $this->translate("minutes"); ?></td></tr><tr><td>&nbsp;<select name="hours" id="mkhours">' + hours + '</select></td><td>&nbsp;</td><td>&nbsp;<select name="minutes" id="mkminutes">' + minutes + '</select></td></tr><tr><td colspan="3">&nbsp;</td></tr><tr><td colspan="3" style="text-align:right;"><input name="btnhours" id="mkbtnupdate" type="button" rel="b_' + id + '" value="<?php echo $this->translate("update"); ?>"> &nbsp; <input name="btncancel" id="mkbtncancel" type="button" value="<?php echo $this->translate("cancel"); ?>"></td></tr></table></div>';
+
+//			//set left margin
+			if (!$(this).parent().find('div').hasClass('hourstable')) {
+				$('.hourstable').remove(); //remove all other instances when opening another
+				$(this).parent().append(hourstr);
+			}
+			$('#mkhours').val(splt[0].trim());
+			$('#mkminutes').val(splt[1]);
+		})
+
+		$('#mkbtnupdate').live('click', function() {
+			var time = $('#mkhours').val() + ':' + $('#mkminutes').val();
+			var extracted_dates = $(this).attr('rel').substr(('b_updateSymTime_').length);
+			var dates = extracted_dates.split('_');
+
+			$.getJSON('ajax/updatesymptomatology?id=<?php echo $_REQUEST['id']; ?>&tt=' + encodeURIComponent(time) + '&entry_date=' + encodeURIComponent(dates[0]) + '&create_date=' + encodeURIComponent(dates[1]), function(response, status) {
+				$('#hourscontainer').remove();
+				window.location.href = appbase + 'patient/patientsymptomatology?id=<?php echo $_REQUEST['id']; ?>';
+			});
+
+		});
+		//cancel button
+		$('#mkbtncancel').live('click', function() {
+			$('#hourscontainer').remove();
+		});
+
+		//hide date container if user clicks outside container
+		$(document).mouseup(function(e)
+		{
+			var container = $("#hourscontainer");
+			if (container.has(e.target).length === 0) {
+				container.remove();
+			}
+		});
+	});
+</script>
+
+<?php echo $this->patientinfo; ?>
+<?php echo $this->tabmenus; ?>
+
+<!-- start symp block to cycle -->
+<?php if(!empty($this->symsets)) :?>
+	<ul class="tabs">
+		<?php $i=1;foreach($this->symsets as $set):?>
+			 <li><a href="#tab<?php echo $i;?>"><?php echo $set['set_name']?></a></li>
+		<?php $js .= 'getheight('.$i.');';$i++;endforeach;?>
+	</ul>
+<?php else:?>
+	<?php $js = 'getheight(0);';?>
+<?php endif;?>
+
+<div class="tab_container_x">
+ <?php echo $this->symtabbed?>
+</div>
+
+<!-- end symp block to cycle -->
+
+<div style="clear:both;"></div>
+
+<script type="text/javascript">
+<?php echo $js; ?>
+</script>

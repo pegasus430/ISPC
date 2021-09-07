@@ -1,0 +1,109 @@
+<script type="text/javascript" src="<? echo APP_BASE;  ?>/javascript/autogrow/jquery.elastic.js"></script>
+<script type="text/javascript">
+
+	var pl_loading = function(){
+
+		var dlist = '<div class="loadingdiv" align="center"><img src="images/pageloading.gif"><br />	Loading... please wait</div>';
+		document.getElementById('content').innerHTML = dlist;
+
+	}
+
+	var addusercommentcallback = function(data){
+		if(data.id) {
+			$("#add_comment_"+data.id).removeClass('loading');
+		}
+	}
+		
+	var callBack = function(params)
+	{
+		document.getElementById('content').innerHTML = params.teamlist;
+		/**
+			ispc 1817
+			add comment that will be displayed in patient header show_user_info 
+		*/
+		$("textarea.user_add_comment")
+			.focusout(function(e){
+				e.stopPropagation();
+				var userid = $(e.target).attr("data-id");
+				var usercomment = $(e.target).val();
+				var usercomment_old = $(e.target).attr("data-old");
+				if(usercomment == usercomment_old){
+					return true;
+				}
+				$(e.target)
+					.attr("data-old",usercomment)
+					.addClass('loading');
+
+				ajaxCallserver({
+					url:'team/addusercomment', 
+					method : 'POST', 
+					data: { 'userid': userid, 'usercomment': usercomment }, 
+				});
+			})
+			.click(function(e){
+			e.stopPropagation();
+			return true;
+			})
+			.elastic();
+
+	}
+	
+	
+	$(document).ready(function() {
+		$("[id^=user-group_]").live('change',function() {
+			 var user_data = $(this).attr('id').split("_");
+			 var user_id =user_data[1]
+			 var group_id = $(this).val();
+			 
+				ajaxCallserver({
+					url : 'ajax/changegroup',
+					method : 'POST',
+					data : {
+						user_id: user_id,
+						group_id: group_id
+					}
+				});
+		 });
+		
+		//============buttons==============
+		 $(".but").click(function(){
+			 var groupid = $(this).data('group');
+			 
+//			 $(".but").removeClass("activ_gr");
+//			 $("#but_"+groupid).addClass("activ_gr");
+			 
+			 
+			 if(groupid  == 0)
+			 {
+				 $(".row").show();
+			 }else{
+				 $(".row").hide();
+				 $(".row_"+groupid).show(); 
+				
+			 }
+			
+         });
+		//============end buttons==============
+		
+		
+		
+	});
+</script>
+<form action="" method="post" name="frmuser" id="frmuser" >
+	<br />
+	<h1><? echo $this->translate('teamlist'); ?></h1>
+	<br />
+	<ul class="tabs" style="width: 100%;">
+	<?php foreach($this->group as $key_g => $val_g):?>
+    	<li><a href="javascript:void(0)" id="but_<?php echo $key_g?>" class="but" data-group="<?php echo $key_g; ?>" ><?php echo $val_g?></a></li>
+	<?php endforeach; ?>
+	</ul>
+	<div id="content" style="border:1px solid #999; border-top:0px; float:left; width:99.8%">
+
+		<? echo $this->teamgrid ?>
+
+	</div>
+</form>
+<script type="text/javascript">
+	ajaxCallserver({url:'team/fetchlist?clm=ln&ord=DESC&pgno=0',callLoading:pl_loading});
+</script>

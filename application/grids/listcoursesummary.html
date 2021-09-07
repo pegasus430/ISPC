@@ -1,0 +1,480 @@
+<gridrow>
+<phpscript>
+	$blockcounter = $this->blockcounter;
+
+	if ($isserialized != 1)
+	{
+		$coursetitlelt = str_replace("<", "&lt;", $course_title);
+		$coursetitle = str_replace(">", "&gt;", $coursetitlelt);
+		$course_title = nl2br($coursetitle);
+		$course_title = stripslashes($course_title);
+	}
+
+	if ($isbold == 1)
+	{
+		$isbold = "bold";
+	}
+	if ($isitalic == 1)
+	{
+		$isitalic = "italic";
+	}
+	if ($isunderline == 1)
+	{
+		$isunderline = "underline";
+	}
+
+	if(empty($source_ipid))
+	{
+		$letterclass = $course_type. " _owned ";
+		$shared = false;
+	}
+	else
+	{
+		$letterclass = "_shared";
+		$shared = true;
+	}
+
+
+	if ($course_type == "W")
+	{
+		//$clientusers = $view->users;
+		$clientusers_old = $view->users_todo;
+		$clientusers_new = $view->usersnewtodos_flat;
+				
+		$done_todo_color = '009900';//TODO-3086 Ancuta 08.04.2020  	
+				
+
+		$course = explode("|---------|", $course_title);
+		if (count($course) <= 1)
+		{
+			$course = explode("|", $course_title);
+		}
+
+		$courseusr = trim($course[1]);
+		
+		if ($courseusr != '0')
+	 	{
+			if(is_numeric($courseusr))
+			{
+		    	$course_user = $clientusers_old[trim($course[1])];
+			}
+			else
+			{
+				$courseusrs = explode(",", $courseusr);
+			
+				if(count($courseusrs) > 1)
+				{
+					$courseusrsname = array();
+					foreach($courseusrs as $idcourseseusr)
+					{
+						$courseusrsname[] = $clientusers_new[$idcourseseusr];
+					}
+					$course_user = implode('; ', $courseusrsname);
+				}
+				else
+				{	
+					$course_user = $clientusers_new[trim($course[1])];
+				}
+	         }
+		}
+		else
+		{		
+			$course_user = '-';
+		}
+
+		if(in_array($id, $view->patcompltodocourseids))
+		{
+				$coursetext = explode(',',$course[4]);
+				$supltext = "";
+				$username = $view->allusers_details[$view->patcompltodosdata[$id]['complete_user']]['last_name'] . " " . $view->allusers_details[$view->patcompltodosdata[$id]['complete_user']]['first_name']; 
+				if(count($coursetext) > 1)
+				{					
+					for($nrelem=4; $nrelem<count($course); $nrelem++)
+					{
+						$coursetext = explode(',',$course[$nrelem]);
+						$supltext .= "<br />&nbsp; ".$coursetext[1];
+					}
+				}
+				else
+				{
+					$supltext .= "<br />&nbsp; Erledigt von " . $username . " am " . date('d.m.Y', strtotime($view->patcompltodosdata[$id]['complete_date']));					
+				}	
+					$course_title = "<font style='color: #".$done_todo_color."; font-style: italic;'>&nbsp; geplante Maßnahme: " . html_entity_decode($course[0]) . " | " . $course_user . " | " . $course[2].$supltext."</font>";//TODO-3086 Ancuta 08.04.2020  	
+					if($view->patcompltodosdata[$id]['complete_comment'])
+					{
+						$course_title .= "<br />&nbsp; <font style='color: #000;'>Comment : </font>" . "<font style='color: #000; font-weight: normal;'>". $view->patcompltodosdata[$id]['complete_comment'] ."</font>";
+					}					
+		}
+		else
+		{
+			if(count($course)>4)
+			{
+				$supltext1 = "";
+				$supltext2 = "";
+				for($nrelem=4; $nrelem<count($course); $nrelem++)
+				{
+					$coursetext = explode(',',$course[$nrelem]);
+					$supltextarr = explode('<br />', $coursetext[1]);
+					$supltext1 .= "<br />&nbsp; <i>" . $supltextarr[0] . "</i><br />";
+					if(count($supltextarr) > 1)
+					{
+						$supltext2 .= "<font style='color: #000;'>Comment : </font>" . "<font style='color: #000; font-weight: normal;'>". $todo_comment.$supltextarr[1]."</font>";
+					}
+					else
+					{
+						$supltext2 .= "";
+					}
+					//$supltext .= "<br />&nbsp; <i>".$coursetext[1]."</i>";
+				}
+
+					$course_title = "<font style='color: #".$done_todo_color."; font-style: italic;'>&nbsp; geplante Maßnahme: " . html_entity_decode($course[0]) . " | " . $course_user . " | " . $course[2].$supltext1."</font>".$supltext2;//TODO-3086 Ancuta 08.04.2020  	
+			}
+			else
+			{
+				$course_title = "&nbsp; geplante Maßnahme: " . html_entity_decode($course[0]) . " | " . $course_user . " | " . $course[2];
+			}
+		}
+
+		/*if ($courseusr > 0 && is_numeric($courseusr))
+		{
+			$course_user = $clientusers[trim($course[1])];
+			$course_title = "&nbsp; geplante Maßnahme: " . $course[0] . " | " . $course_user . " | " . $course[2];
+		}
+		else
+		{
+			$courseusrs = explode(",", $courseusr);
+			
+			if(count($courseusrs) > 1)
+			{
+				$courseusrsname = array();
+				foreach($courseusrs as $idcourseseusr)
+				{
+					$courseusrsname[] = $clientusers_new[$idcourseseusr];
+				}
+				$course_user = implode('; ', $courseusrsname);
+			}
+			else
+			{	
+				$course_user = $clientusers_new[trim($course[1])];
+			}
+		
+			//$course_user = '-';
+			$course_title = "&nbsp; geplante Maßnahme: " . $course[0] . " | " . $course_user . " | " . $course[2];
+		}*/
+	}
+	elseif ($course_type == "D" || $course_type == "H" || $course_type == "HS")
+	{
+		$course = explode("|", $course_title);
+
+
+		if (count($course) == 3)
+		{
+			$icd = $course[1];
+			$diagnosis_name = $course[2];
+
+			$course_title = $icd . ' | ' . $diagnosis_name;
+		}
+	} 
+	elseif ($course_type == "SB")
+	{
+		$client_sb_users = $view->sb_users;
+		
+		$course = explode(" |__| ", $course_title);
+		
+
+		$courseusr = trim($course[0]);
+
+		if ($courseusr > 0 && is_numeric($courseusr))
+		{
+			$course_user = $client_sb_users[trim($course[0])];
+			$course_title = "Sanitätshausbestellung an : " . $course_user . " <br/> " . $course[1];
+		}
+	}
+
+
+	if ($tabname == "discharge")
+	{
+		$course_title = '<span style="background:#FC7272;">' . $course_title . '</span>';
+	}
+	$wrongcheck = "";
+	$cs_type = $course_type;
+	if ($wrong == 1)
+	{
+	}
+	else
+	{
+
+		$course_type = '<font color="#' . $font_color . '" style="font-style:' . $isitalic . ';font-weight:' . $isbold . ';text-decoration:' . $isunderline . ';">' . $course_type . '</font>';
+
+		$course_title = '<font color="#' . $font_color . '" style="font-style:' . $isitalic . ';font-weight:' . $isbold . ';text-decoration:' . $isunderline . ';">' . $course_title . '</font>';
+		$wrongfilterclass = "";
+	}
+
+	$wrongcheck = "";
+	if ($wrong == 1)
+	{
+		$wrongcheck = 'checked=checked';
+	}
+
+
+	$pid = $view->pid;
+
+	if ($tabname == "fileupload")
+	{
+		$course_title = '<font color="#' . $font_color . '" style="font-style:' . $isitalic . ';font-weight:' . $isbold . ';text-decoration:' . $isunderline . ';">Datei ' . '<a href="stats/patientfileupload?doc_id=' . $recordid . '&id=' . $pid . '">' . $course_title . '</a>' . ' wurde angeh&auml;ngt</font>';
+
+	}
+
+	if ($tabname == "receiptupload")
+	{
+		$course_title = '<font color="#' . $font_color . '" style="font-style:' . $isitalic . ';font-weight:' . $isbold . ';text-decoration:' . $isunderline . ';">' . '<a href="stats/patientfileupload?doc_id=' . $recordid . '&id=' . $pid . '">' . $course_title . '</a>' . ' </font>';
+	}
+
+	if ($tabname == "kvno_doctor_form")
+	{
+		$course_title = '<font color="#' . $font_color . '" style="font-style:' . $isitalic . ';font-weight:' . $isbold . ';text-decoration:' . $isunderline . ';">' . '<a href="patientform/kvnodoctorform?kvno_doc_id=' . $recordid . '&id=' . $pid . '">Besuchsbogen Arzt hinzugefügt.</a>' . '</font>';
+	}
+
+	if ($tabname == "lvn_doctor_form")
+	{
+		$course_title = '<font color="#' . $font_color . '" style="font-style:' . $isitalic . ';font-weight:' . $isbold . ';text-decoration:' . $isunderline . ';">' . '<a href="patientform/leverkusendoctorform?kvno_doc_id=' . $recordid . '&id=' . $pid . '">Besuchsbogen Arzt hinzugefügt.</a>' . '</font>';
+	}
+
+	if ($tabname == "bayern_doctorvisit")
+	{
+		$course_title = '<font color="#' . $font_color . '" style="font-style:' . $isitalic . ';font-weight:' . $isbold . ';text-decoration:' . $isunderline . ';">' . '<a href="patientform/bayerndoctorvisit?bayern_doc_id=' . $recordid . '&id=' . $pid . '">Besuchsformular Bayern hinzugefügt.</a>' . '</font>';
+	}
+
+	if ($tabname == "sakvno_doctor_form")
+	{
+		$course_title = '<font color="#' . $font_color . '" style="font-style:' . $isitalic . ';font-weight:' . $isbold . ';text-decoration:' . $isunderline . ';">' . '<a href="patientform/sakvnodoctorform?kvno_doc_id=' . $recordid . '&id=' . $pid . '">Besuchsbogen Arzt hinzugefügt.</a>' . '</font>';
+	}
+
+	if ($tabname == "wl_doctor_form")
+	{
+		$course_title = '<font color="#' . $font_color . '" style="font-style:' . $isitalic . ';font-weight:' . $isbold . ';text-decoration:' . $isunderline . ';">' . '<a href="patientform/wldoctorform?kvno_doc_id=' . $recordid . '&id=' . $pid . '">Besuchsbogen Arzt hinzugefügt.</a>' . '</font>';
+	}
+
+
+	if ($tabname == "kvno_assesment" && stripos($course_title, 'angelegt') !== false)
+	{
+		$course_title = '<font color="#' . $font_color . '" style="font-style:' . $isitalic . ';font-weight:' . $isbold . ';text-decoration:' . $isunderline . ';">' . '<a href="patientform/kvnoassessment?id=' . $pid . '">' . $course_title . '.</a>' . '</font>';
+	}
+
+
+	if ($tabname == "kvno_assesment_new")
+	{
+		$course_title = '<font color="#' . $font_color . '" style="font-style:' . $isitalic . ';font-weight:' . $isbold . ';text-decoration:' . $isunderline . ';">' . '<a href="stats/patientfileupload?doc_id=' . $recordid . '&id=' . $pid . '">' . $course_title . '.</a>' . '</font>';
+	}
+
+	if ($tabname == "recording_assesment")
+	{
+		$course_title = '<font color="#' . $font_color . '" style="font-style:' . $isitalic . ';font-weight:' . $isbold . ';text-decoration:' . $isunderline . ';">' . '<a href="patientform/aufnahmeassessment?id=' . $pid . '">' . $course_title . '.</a>' . '</font>';
+	}
+
+	if ($tabname == "reassesment")
+	{
+		$course_title = '<font color="#' . $font_color . '" style="font-style:' . $isitalic . ';font-weight:' . $isbold . ';text-decoration:' . $isunderline . ';">' . '<a href="stats/patientfileupload?doc_id=' . $recordid . '&id=' . $pid . '">' . $course_title . '.</a>' . '</font>';
+	}
+
+	if ($tabname == "kvno_nurse_form")
+	{
+		$course_title = '<font color="#' . $font_color . '" style="font-style:' . $isitalic . ';font-weight:' . $isbold . ';text-decoration:' . $isunderline . ';">' . '<a href="patientform/kvnonurseform?kvno_nurse_id=' . $recordid . '&id=' . $pid . '">Besuchsbogen Pflege hinzugefügt.</a>' . '</font>';
+	}
+
+	if ($tabname == "lvn_nurse_form")
+	{
+		$course_title = '<font color="#' . $font_color . '" style="font-style:' . $isitalic . ';font-weight:' . $isbold . ';text-decoration:' . $isunderline . ';">' . '<a href="patientform/leverkusennurseform?kvno_nurse_id=' . $recordid . '&id=' . $pid . '">Besuchsbogen Pflege hinzugefügt.</a>' . '</font>';
+	}
+
+	if ($tabname == "visit_koordination_form")
+	{
+		$course_title = '<font color="#' . $font_color . '" style="font-style:' . $isitalic . ';font-weight:' . $isbold . ';text-decoration:' . $isunderline . ';">' . '<a href="patientform/visitkoordinationform?koordination_id=' . $recordid . '&id=' . $pid . '">Besuchsformular Koordination hinzugefügt.</a>' . '</font>';
+	}
+
+	if ($tabname == "wl_nurse_form")
+	{
+		$course_title = '<font color="#' . $font_color . '" style="font-style:' . $isitalic . ';font-weight:' . $isbold . ';text-decoration:' . $isunderline . ';">' . '<a href="patientform/wlnurseform?kvno_nurse_id=' . $recordid . '&id=' . $pid . '">Besuchsbogen Pflege hinzugefügt.</a>' . '</font>';
+	}
+
+	if ($tabname == "sakvno_nurse_form")
+	{
+		$course_title = '<font color="#' . $font_color . '" style="font-style:' . $isitalic . ';font-weight:' . $isbold . ';text-decoration:' . $isunderline . ';">' . '<a href="patientform/sakvnonurseform?kvno_nurse_id=' . $recordid . '&id=' . $pid . '">Besuchsbogen Pflege hinzugefügt.</a>' . '</font>';
+	}
+
+	if ($tabname == "kvnoanlage7form")
+	{
+		$course_title = '<font color="#' . $font_color . '" style="font-style:' . $isitalic . ';font-weight:' . $isbold . ';text-decoration:' . $isunderline . ';">' . '<a href="patientform/kvnoanlage7form?kvno_anlage_id=' . $recordid . '&id=' . $pid . '">Besuchsbogen KVNO Anlage 7  hinzugefügt.</a>' . '</font>';
+	}
+
+	if ($tabname == "dgpanlage7form")
+	{
+		$course_title = '<font color="#' . $font_color . '" style="font-style:' . $isitalic . ';font-weight:' . $isbold . ';text-decoration:' . $isunderline . ';">' . '<a href="patientform/dgpanlage7form?kvno_anlage_id=' . $recordid . '&id=' . $pid . '">DGP-Kerndatensatz - Besuchsbogen Anlage 7  hinzugefügt.</a>' . '</font>';
+	}
+
+	if ($tabname == "dgpkernform")
+	{
+		$course_title = '<font color="#' . $font_color . '" style="font-style:' . $isitalic . ';font-weight:' . $isbold . ';text-decoration:' . $isunderline . ';">' . '<a href="patientform/dgpkernform?dgp_kern_id=' . $recordid . '&id=' . $pid . '">DGP-Kerndatensatz  - Kerndatensatz für Palliativpatienten  hinzugefügt.</a>' . '</font>';
+	}
+
+	if ($tabname == "dgpsapvform")
+	{
+		$course_title = '<font color="#' . $font_color . '" style="font-style:' . $isitalic . ';font-weight:' . $isbold . ';text-decoration:' . $isunderline . ';">' . '<a href="patientform/dgpsapvform?dgp_sapv_id=' . $recordid . '&id=' . $pid . '">DGP-Kerndatensatz  - SAPV-Struktur-Modul  hinzugefügt.</a>' . '</font>';
+	}
+
+	if ($tabname == "ruhen")
+	{
+		$course_title = '<font color="#' . $font_color . '" style="font-style:' . $isitalic . ';font-weight:' . $isbold . ';text-decoration:' . $isunderline . ';">' . '<a href="patientform/saruhenform?ruhen_id=' . $recordid . '&id=' . $pid . '">Ruhen der Teilnahme hinzugefügt.</a>' . '</font>';
+	}
+
+	if ($tabname == "feststellung")
+	{
+		$course_title = '<font color="#' . $font_color . '" style="font-style:' . $isitalic . ';font-weight:' . $isbold . ';text-decoration:' . $isunderline . ';">' . '<a href="patientform/safeststellung?feststellung_id=' . $recordid . '&id=' . $pid . '">Feststellung des Nichtvorliegens der Teilnahmevorraussetzung  hinzugefügt.</a>' . '</font>';
+	}
+
+	if ($tabname == "genehmigungs")
+	{
+		$course_title = '<font color="#' . $font_color . '" style="font-style:' . $isitalic . ';font-weight:' . $isbold . ';text-decoration:' . $isunderline . ';">' . '<a href="patientform/sagenehmig?genehmig_id=' . $recordid . '&id=' . $pid . '">Genehmigungsformular hinzugefügt.</a>' . '</font>';
+	}
+
+	if ($tabname == "anlage4awl")
+	{
+		if(!$recordid)
+		{
+			$course_title = '<font color="#' . $font_color . '" style="font-style:' . $isitalic . ';font-weight:' . $isbold . ';text-decoration:' . $isunderline . ';">' . '<a href="patient/anlage4awl?id=' . $pid . '">Anlage 4a wurde erstellt</a>' . '</font>
+				<input type="hidden" name="type" id="type_[[id]]" class="anlage" value="anlage" />';
+		}
+		else
+		{
+			$course_title = '<font color="#' . $font_color . '" style="font-style:' . $isitalic . ';font-weight:' . $isbold . ';text-decoration:' . $isunderline . ';">' . '<a href="stats/patientfileupload?doc_id=' . $recordid . '&id=' . $pid . '">Anlage 4a wurde erstellt</a>' . '</font>
+				<input type="hidden" name="type" id="type_[[id]]" class="anlage" value="anlage" />';
+		}
+	}
+
+	if ($tabname == "anlage4wl")
+	{
+		if(!$recordid)
+		{
+			$course_title = '<font color="#' . $font_color . '" style="font-style:' . $isitalic . ';font-weight:' . $isbold . ';text-decoration:' . $isunderline . ';">' . '<a href="patient/anlage4wl?id=' . $pid . '">Anlage 4 wurde erstellt</a>' . '</font>
+			<input type="hidden" name="type" id="type_[[id]]" class="anlage" value="anlage"/>';
+		}
+		else
+		{
+			$course_title = '<font color="#' . $font_color . '" style="font-style:' . $isitalic . ';font-weight:' . $isbold . ';text-decoration:' . $isunderline . ';">' . '<a href="stats/patientfileupload?doc_id=' . $recordid . '&id=' . $pid . '">Anlage 4 wurde erstellt</a>' . '</font>
+			<input type="hidden" name="type" id="type_[[id]]" class="anlage" value="anlage"/>';
+		}
+	}
+
+	if ($tabname == "drletter")
+	{
+		$course_title = '<font color="#' . $font_color . '" style="font-style:' . $isitalic . ';font-weight:' . $isbold . ';text-decoration:' . $isunderline . ';">' . 'Ein <a href="patient/doctorletter?id=' . $pid . '&lid=' . $recordid . '&pdf=1">Brief</a> wurde erstellt' . '</font>';
+	}
+
+	if ($tabname == "drletterfaxvor")
+	{
+		$course_title = '<font color="#' . $font_color . '" style="font-style:' . $isitalic . ';font-weight:' . $isbold . ';text-decoration:' . $isunderline . ';">' . 'Ein <a href="patient/doctorletter?id=' . $pid . '&lid=' . $recordid . '&type=4&pdf=1">Brief</a> wurde erstellt' . '</font>';
+	}
+
+	if ($tabname == "drlettertodes")
+	{
+		$course_title = '<font color="#' . $font_color . '" style="font-style:' . $isitalic . ';font-weight:' . $isbold . ';text-decoration:' . $isunderline . ';">' . 'Ein <a href="patient/doctorletter?id=' . $pid . '&lid=' . $recordid . '&type=7&pdf=1">Brief</a> wurde erstellt' . '</font>';
+	}
+
+	if ($tabname == "MdkSchne")
+	{
+		if(!$recordid)
+		{
+			$course_title = '<font color="#' . $font_color . '" style="font-style:' . $isitalic . ';font-weight:' . $isbold . ';text-decoration:' . $isunderline . ';">' . '<a href="patientform/mdkschneform?id=' . $pid . '">MDK Schnellbegutachtungsbogen</a> wurde erstellt' . '</font>';
+		}
+		else
+		{
+			$course_title = '<font color="#' . $font_color . '" style="font-style:' . $isitalic . ';font-weight:' . $isbold . ';text-decoration:' . $isunderline . ';">' . '<a href="stats/patientfileupload?doc_id=' . $recordid . '&id=' . $pid . '">MDK Schnellbegutachtungsbogen</a> wurde erstellt' . '</font>';
+		}
+	}
+
+	if ($tabname == "Stammblattsapv")
+	{
+		if(!$recordid)
+		{
+			$course_title = '<font color="#' . $font_color . '" style="font-style:' . $isitalic . ';font-weight:' . $isbold . ';text-decoration:' . $isunderline . ';">' . '<a href="patientform/stammblattsapv?id=' . $pid . '">Stammblatt</a> wurde erstellt' . '</font>';
+		}
+		else
+		{
+			$course_title = '<font color="#' . $font_color . '" style="font-style:' . $isitalic . ';font-weight:' . $isbold . ';text-decoration:' . $isunderline . ';">' . '<a href="stats/patientfileupload?doc_id=' . $recordid . '&id=' . $pid . '">Stammblatt</a> wurde erstellt' . '</font>';
+		}
+	}
+	if ($tabname == "Stammblatt4")
+	{
+		if(!$recordid)
+		{
+			$course_title = '<font color="#' . $font_color . '" style="font-style:' . $isitalic . ';font-weight:' . $isbold . ';text-decoration:' . $isunderline . ';">' . '<a href="patientform/stammblatt4?id=' . $pid . '">Stammblatt IV</a> wurde erstellt' . '</font>';
+		}
+		else
+		{
+			$course_title = '<font color="#' . $font_color . '" style="font-style:' . $isitalic . ';font-weight:' . $isbold . ';text-decoration:' . $isunderline . ';">' . '<a href="stats/patientfileupload?doc_id=' . $recordid . '&id=' . $pid . '">Stammblatt IV</a> wurde erstellt' . '</font>';
+		}
+	}
+
+	if ($tabname == "PatientStammblattsapv")
+	{
+		if(!$recordid)
+		{
+			$course_title = '<font color="#' . $font_color . '" style="font-style:' . $isitalic . ';font-weight:' . $isbold . ';text-decoration:' . $isunderline . ';">' . '<a href="patientform/patientstammblattsapv?id=' . $pid . '">Patientenstammblatt </a> wurde erstellt' . '</font>';
+		}
+		else
+		{
+			$course_title = '<font color="#' . $font_color . '" style="font-style:' . $isitalic . ';font-weight:' . $isbold . ';text-decoration:' . $isunderline . ';">' . '<a href="stats/patientfileupload?doc_id=' . $recordid . '&id=' . $pid . '">Patientenstammblatt </a> wurde erstellt' . '</font>';
+		}
+	}
+
+	if ($tabname == "patient_death")
+	{
+		$course_title = '<span  style="background: none repeat scroll 0 0 #FC7272;" > ' . $course_title . ' </span>';
+	}
+
+	if ($tabname == "formone")
+	{
+		$course_title = '<font color="#' . $font_color . '" style="font-style:' . $isitalic . ';font-weight:' . $isbold . ';text-decoration:' . $isunderline . ';">' . 'Formular <a href="patient/formone?id=' . $pid . '">SAPV-Einzelfallevaluation</a> wurde erstellt.' . '</font>';
+	}
+	
+	if ($tabname == "nutritionformular")
+	{ 
+		$course_title = '<font color="#' . $font_color . '" style="font-style:' . $isitalic . ';font-weight:' . $isbold . ';text-decoration:' . $isunderline . ';">' .  $course_title . '</font>';
+	}
+	
+	//TODO-3843 Ancuta 15.02.2021 
+	if ($tabname == "contact_form")
+	{ 
+		$course_title .= $recorddata ;
+	}
+
+    //TODO-4035 Nico 12.04.2021
+    if ($tabname == "contactform_usershortcut"){
+        if(strlen($recorddata)){
+            $json=json_decode($recorddata,1);
+            if(is_array($json) && isset($json['html'])){
+                $course_title=$json['html'];
+            }
+        }
+    }
+	if($shared){
+		$course_title = PatientCourse::remove_course_links ( $course_title);
+	}
+	
+</phpscript>
+	<div class="iefourth row clearer ListOuter [[letterclass]]">
+		<div>
+			<div class="colleft2_inpwid " style="display:none;">
+				<input type="checkbox" name="wrong[[[id]]]" class="block_[[blockcounter]]" id="[[id]]" value="1" [[wrongcheck]] />
+				<input type="hidden" value="[[cs_type]]" id="course_type_[[id]]" name="courses_types[]" class="courses_types_[[blockcounter]]" rel="[[recordid]]"/> &nbsp;</div>
+			<div class="LeftChar greyfontclass wrc_[[blockcounter]]" id="wrc_[[id]]">[[course_type]]</div>
+			<div class="iesix colRight2 greyfontclass wrt_[[blockcounter]]" id="wrt_[[id]]" >[[course_title]]</div>
+			<div class="clearer"></div>
+
+			<input type="hidden" name="oldcolor" id="old_[[id]]" value="[[font_color]]" />
+
+		</div>
+
+
+	</div>
+</gridrow>

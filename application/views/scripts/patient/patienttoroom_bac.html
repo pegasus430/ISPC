@@ -1,0 +1,680 @@
+<?php if(!$this->pdf):?>
+<?php if (!$this->ajax):?>
+ <!--  Maria:: Migration CISPC to ISPC 22.07.2020 -->
+<?php
+    $this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/page-css/patienttoroom.css?' . date('Ymd'));
+?>
+<script>
+
+    $(document).on('change', '#raumzuordnung .roompatient', function(){
+        var patid=$(this).val();
+        var room=$(this).parents('.roomentry').find('.roomid').val();
+
+        $.ajax({
+            type: "POST",
+            url: "<?php echo APP_BASE;?>/patient/patienttoroom",
+            data: { ajax: "1", eid: patid, roomid:room, <?php if(isset($this->encid)) echo "id:'$this->encid'";?> },
+        success: function( data ) {$( "#raumzuordnung_container" ).html( data )},
+    })
+    });
+    $(document).on('change', '.patmemo_entry', function () {
+        var memos = [];
+        $('.patmemo_entry').each(function () {
+            var m = $(this).attr('name');
+            m = m.slice(5, m.length - 1)
+            var v = $(this).val();
+            if (m.length > 0 && v.length > 0) {
+                memos.push([m, v]);
+            }
+        });
+
+        $.ajax({
+            type: "POST",
+            url: "<?php echo APP_BASE;?>/patient/patienttoroom",
+            data: {ajax: "1", memos: memos}
+        })
+    });
+
+    $(document).on('change', '.patmassnahme_entry', function () {
+
+        var memos = [];
+        $('.patmassnahme_entry').each(function () {
+            var m = $(this).attr('name');
+            m = m.slice(10, m.length - 1)
+            var v = $(this).val();
+            if (m.length > 0 && v.length > 0) {
+                memos.push([m, v]);
+            }
+        });
+
+        $.ajax({
+            type: "POST",
+            url: "<?php echo APP_BASE;?>/patient/patienttoroom",
+            data: {ajax: "1", massnahmen: memos}
+        })
+    });
+
+
+    $(document).on('change', '.patthema_entry', function () {
+
+        var memos = [];
+        $('.patthema_entry').each(function () {
+            var m = $(this).attr('name');
+            m = m.slice(6, m.length - 1)
+            var v = $(this).val();
+            if (m.length > 0 && v.length > 0) {
+                memos.push([m, v]);
+            }
+        });
+
+        $.ajax({
+            type: "POST",
+            url: "<?php echo APP_BASE;?>/patient/patienttoroom",
+            data: {ajax: "1", themen: memos}
+        })
+    });
+
+    $(document).ready(function () {
+
+        function addrow() {
+            var lastrow = $('.multiple_inputrow').last();
+            var newel = $(lastrow).clone();
+            var rowcount = 999;
+            $(newel).find('input, textarea').each(function () {
+                var newname = $(this).attr('name');
+                newname = newname.replace(/\[\d+\]/, "[" + rowcount + "]")
+                $(this).attr('name', newname);
+            });
+            $(newel).find('input[type="text"]').val('');
+            $(newel).find('textarea').val('');
+            $(newel).find('input[type="radio"]').prop('checked', false);
+            $($(newel).find('input[type="radio"]')[1]).prop('checked', true);
+
+            //remove the images for datepicker
+            $(newel).find("img.trigger").remove();
+            $(newel).find("img.ui-datepicker-trigger").remove();
+
+            //remove datepicker and reinitialize
+            $(newel).find('input.my_datepicker').each(function () {
+                $(this).removeClass('hasDatepicker').datepicker('destroy');
+                $(this).removeAttr("id");
+                $(this).datepicker({
+                    dateFormat: 'dd.mm.yy',
+                    showOn: "both",
+                    buttonImage: $('#calImg').attr('src'),
+                    buttonImageOnly: true,
+                    changeMonth: true,
+                    changeYear: true,
+                    nextText: '',
+                    prevText: ''
+                });
+            }).mask("99.99.9999");
+
+
+            $(lastrow).after(newel);
+        }
+
+        function rowmanager() {
+            if ($('.multiple_inputrow').length > 0) {
+                $('.multiple_inputrow').each(function () {
+                    var row_empty = true;
+                    $(this).find('input[type="text"], textarea').each(function () {
+                        if ($(this).val() != "") {
+                            row_empty = false;
+                        }
+                    });
+                    if (row_empty) {
+                        $(this).remove();
+                    }
+                });
+                addrow();
+            }
+
+
+            //cleanUp
+            var rowcount = 0;
+            $('.multiple_inputrow').each(function () {
+                $(this).find('input, textarea').each(function () {
+                    var newname = $(this).attr('name');
+                    newname = newname.replace(/\[\d+\]/, "[" + rowcount + "]");
+                    $(this).attr('name', newname);
+                });
+                rowcount++;
+            });
+            var df = $(this).parents('tr').find('input.wartedate');
+            if ($(df).val() == "") {
+                var date = new Date();
+                var day = date.getDate();
+                var month = date.getMonth() + 1;
+                var year = date.getFullYear();
+
+                var ddp = day + '.' + month + '.' + year;
+                $(df.val(ddp));
+            }
+
+            $('.multiple_inputrow input[type="radio"]:checked').each(function () {
+                var v = $(this).val();
+                var p = $(this).parents('td');
+                $(p).removeClass("prio-normal");
+                $(p).removeClass("prio-akut");
+                $(p).removeClass("prio-long");
+                $(p).addClass("prio-" + v);
+            });
+        }
+
+        function deleterow(what) {
+            $(what).parents('.multiple_inputrow').remove();
+            rowmanager();
+        }
+
+        $(document).on('change', '.multiple_inputrow input', rowmanager);
+        $(document).on('click', '.multiple_inputrow img.delete-row', function () {
+            deleterow(this);
+        });
+
+        function resizeme() {
+            if (window.innerWidth > 1100) {
+                $('body>.outer').css('width', window.innerWidth - 25);
+                $('#Wrapper').css('width', window.innerWidth - 31);
+                $('#MainContent').css('width', window.innerWidth - 250);
+            } else {
+                $('body>.outer').css('width', '');
+                $('#Wrapper').css('width', '');
+                $('#MainContent').css('width', '');
+            }
+        }
+
+        $(window).resize(resizeme);
+        resizeme();
+
+
+        function resize_tb(el) {
+            $(el).height(30);
+            $(el).innerHeight($(el)[0].scrollHeight + 20);
+        }
+
+        $("#raumzuordnung textarea, #standbylisttable textarea").each(function () {
+            resize_tb(this);
+        });
+        $(document).on('keyup', "#raumzuordnung textarea, #standbylisttable textarea", function () {
+            resize_tb(this);
+        });
+
+        //class for datepicker
+        $('.my_datepicker').each(function () {
+            $(this).datepicker({
+                dateFormat: 'dd.mm.yy',
+                showOn: "both",
+                buttonImage: $('#calImg').attr('src'),
+                buttonImageOnly: true,
+                changeMonth: true,
+                changeYear: true,
+                nextText: '',
+                prevText: ''
+            });
+        }).mask("99.99.9999");
+
+    });
+
+</script>
+<div id="showform_calendarImg" style="display: none;">
+    <img id="calImg" src="<?php echo RES_FILE_PATH; ?>/images/calendar.png" alt="Popup" class="trigger">
+</div>
+<?php if (!$this->ajax):?>
+
+<div id="printarea">
+    <?php endif;?>
+    <?php if ($this->print):?>
+    <h1 id="topcaption">Belegungsplan vom <?php echo date('d.m.Y');?></h1>
+    </br></br>
+    <h1>Stationsliste</h1>
+    <?php else:?>
+    <h1>Raumzuordnung</h1>
+    <?php endif;?>
+
+    <div id="raumzuordnung_container">
+        <?php endif;?>
+        <table id="raumzuordnung" width="auto" border="0" cellpadding="0" cellspacing="0"
+               class="datatable overalllistatable fixed_team_header"
+               style="border-width:0px;border-collapse:collapse;margin-top: 5px;">
+            <thead class="main_table_header">
+            <tr>
+                <th style="width:80px;" >Raum</th>
+                <th style="width:30px;">Icon</th>
+                <th style="width:250px;">Patient</th>
+                <?php if($this->print==1):?>
+                    <th>Thema</th>
+                    <th>Maßnahme</th>
+                    <th>Memo</th>
+                    <th>Entlassdatum/-ziel</th>
+                    <?php endif;?>
+                <?php if ($this->ipid && !$this->print):?>
+                <th style="width:60px; border:none; background:none;"></th>
+                <th style="border:none; background:#b2bdd6"><?php echo $this->patients[$this->ipid];?> <br><a href="<?php echo APP_BASE;?>patientcourse/patientcourse?id=<?php echo $this->encid?>" >Zur&uuml;ck</a></th>
+                <?php endif;?>
+
+            </tr>
+            </thead>
+
+            <?php foreach ($this->rooms as $room):?>
+             <tr class="roomentry">
+                <td><?php echo $room['bed_name'];?>
+                    <input type="hidden" class="roomid" value="<?php echo $room['id'];?>">
+                </td>
+                <td>
+                    <div class="icon_image">
+                         <img src="<?php echo APP_BASE .'icons_system/'. $room['client_id']. '/bedicons/'. $room['icon_name']; ?>"
+                             title="<?php echo $room['icon_name']; ?>" id="icon_id_<?php echo $room['icon_name']; ?>"
+                             height="32"/>
+                    </div>
+                </td>
+                <?php if(! $this->print==1):?>
+                <td>
+                    <select class="roompatient">
+                        <option value="0">(frei)</option>
+                        <?php foreach($this->patients as $ipid => $pat):?>
+                        <option value="<?php echo $this->ipid_to_encid[$ipid];?>"
+                        <?php if($this->ipid_to_loc[$ipid]==$room['id']){echo "selected";}?>><?php echo $pat;?></option>
+                        <?php endforeach;?>
+                    </select>
+                </td>
+                <?php endif;?>
+                <?php if($this->print==1):?>
+                <?php
+                $diaghd="";
+                $diagnd="";
+                $doctors="";
+                $pat="(frei)";
+                $thema="";
+                $massnahme="";
+                $myipid=false;
+                $entlassdatum="";
+                $entlassziel="";
+                $status="";
+                foreach($this->roompatients as $ipid){
+                if($this->ipid_to_loc[$ipid]==$room['id']){
+                $myipid=$ipid;
+                $pat=$this->patients[$ipid];
+
+                 if(is_array($this->assusers[$ipid])){
+                     foreach ($this->assusers[$ipid] as $user){
+                         if(is_array($user)) {
+                             if ($doctors == "") {
+                                $doctors = "<br><b>Behandelt durch:</b><br>";
+                                $doctors = $doctors .  $user['name'];
+                             }
+                            else{
+                                $doctors = $doctors . ", " . $user['name'];
+                             }
+                        }
+                     }
+                 }
+
+                $diaghd=$this->diagshd[$ipid];
+                $diagnd=$this->diagsnd[$ipid];
+                if(is_array($diaghd) && count($diaghd) > 0){
+                 $diaghd=implode(', ',$diaghd);
+                 $diaghd="<br><b>HD: </b>" . htmlspecialchars($diaghd);
+                 }
+
+               if(is_array($diagnd) && count($diagnd) > 0){
+                 $diagnd=implode(', ',$diagnd);
+                 $diagnd="<br><b>ND: </b>" . htmlspecialchars($diagnd);
+                 }
+
+                 $dischargeplanning=$this->dicharge_planning[$ipid];
+                 if(is_array($dischargeplanning) && count($dischargeplanning) > 0){
+                    $entlassdatum=htmlspecialchars($dischargeplanning['date'])."<br>";
+                    $entlassziel=htmlspecialchars($dischargeplanning['target']);
+                 }
+                 $patient_status= $this->patient_status[$ipid];
+                 if(is_array($patient_status) && count($patient_status) > 1){
+                    $status="<br><b>Status: </b>" . htmlspecialchars($patient_status['status_name']);
+                 }
+
+                 $tm=$this->meetingdata[$ipid];
+                if(is_array($tm)){
+                $thema=implode('<br>
+                <hr>
+                ', array_column($tm, 0));
+                $massnahme=implode('<br>
+                <hr>
+                ', array_column($tm, 1));
+                }
+                if ($this->freetextmode){
+                $thema=$this->themen[$myipid];
+                $massnahme=$this->massnahmen[$myipid];
+                }
+                }
+                }
+
+                ?>
+                <td style="vertical-align: top;"><?php if($myipid===false):?>
+                    (frei)
+                    <?php else:?>
+                    <b><a href="<?php echo APP_BASE . $this->patient_startpage_link."?id=".$this->ipid_to_encid[$myipid];?>"><?php echo $pat;?></a></b>
+                    <span><?php echo $this->ipid_to_birthd[$myipid];?></span>
+                    <span><?php echo $status;?></span>
+                    <span><?php echo $doctors;?></span>
+                    <span><?php echo $diaghd;?></span>
+                    <span><?php echo $diagnd;?></span>
+                    <?php endif;?>
+                </td>
+                <?php if($this->freetextmode):?>
+                <td style="vertical-align: top;">
+                    <textarea name="thema[<?php echo $this->ipid_to_encid[$myipid];?>]"
+                              class="patthema_entry"><?php echo htmlspecialchars($this->themen[$myipid]);?></textarea>
+                </td>
+                <td style="vertical-align: top;">
+                    <textarea name="massnahme[<?php echo $this->ipid_to_encid[$myipid];?>]"
+                              class="patmassnahme_entry"><?php echo htmlspecialchars($this->
+                        massnahmen[$myipid]);?></textarea>
+                </td>
+                <?php else:?>
+                <td><?php echo $thema;?></td>
+                <td><?php echo $massnahme;?></td>
+                <?php endif;?>
+                <td style="vertical-align: top;">
+                    <textarea name="memo[<?php echo $this->ipid_to_encid[$myipid];?>]"
+                              class="patmemo_entry"><?php echo htmlspecialchars($this->memos[$myipid]);?></textarea>
+                </td>
+                 <td style="vertical-align: top;">
+                     <span><?php echo $entlassdatum;?></span>
+                     <span><?php echo $entlassziel;?></span>
+                 </td>
+                <?php endif;?>
+                <?php if ($this->ipid && !$this->print):?>
+                    <td style="border:none; background:none;"></td>
+                    <td style="border:none; background:#b2bdd6">
+                        <input type="button" value="hier zuweisen"
+                               onclick="$(this).parents('tr').find('.roompatient').val('<?php echo $this->ipid_to_encid[$this->ipid];?>').change();">
+                    </td>
+                <?php endif;?>
+            </tr>
+            <?php endforeach;?>
+
+        </table>
+
+        <?php if (!$this->ajax):?>
+        <?php if($this->print):?>
+        <div style="margin:8px;"><a style="text-decoration:underline;"
+                                    href="<?php echo APP_BASE;?>/patient/patienttoroom?print=1&pdf=1&rooms=1">Stationsliste
+            ausdrucken</a></div>
+        <?php endif;?>
+    </div>
+
+    <div style="margin-top:20px;">
+        <h1>Verstorbene Patienten der letzten 7 Tage</h1>
+
+        <?php if (count($this->deathlist)<1):?>
+        <p style="padding:10px;">Keine Einträge.</p>
+        <?php else:?>
+        <table id="deathlisttable" width="auto" border="0" cellpadding="0" cellspacing="0"
+               class="datatable overalllistatable fixed_team_header"
+               style="border-width:0px;border-collapse:collapse;margin-top: 5px;">
+            <thead class="main_table_header">
+
+            <tr>
+                <th style="width:360px;">Name</th>
+                <th style="width:120px;">Alter</th>
+                <th style="width:120px;">Verstorben am</th>
+            </tr>
+            </thead>
+            <?php foreach ($this->deathlist as $death):?>
+            <tr>
+                <td><a href="<?php echo APP_BASE . "
+                       patientcourse/patientcourse?id=".$death['encid'];?>"><?php echo $death['name'];?></a></td>
+                <td><?php echo $death['age'];?></td>
+                <td><?php echo date('d.m.Y',strtotime($death['date']));?></td>
+            </tr>
+
+            <?php endforeach;?>
+        </table>
+        <?php endif;?>
+    </div>
+
+    <div style="margin-top:20px;">
+
+
+        <form method="post">
+            <h1 style="page-break-before:always;">Warteliste</h1>
+            <table id="standbylisttable" width="auto" border="0" cellpadding="0" cellspacing="0"
+                   class="datatable overalllistatable fixed_team_header"
+                   style="border-width:0px;border-collapse:collapse;margin-top: 5px;">
+                <thead class="main_table_header">
+                <tr>
+                    <th>Name</th>
+                    <th>Alter</th>
+                    <th style="width:200px;">Diagnose</th>
+                    <th style="width:200px;">Aktuelles Problem</th>
+                    <th style="width:200px;">Woher?</th>
+                    <th>Priorität</th>
+                    <th>Datum</th>
+                    <th>geplant</th>
+                    <th></th>
+                </tr>
+                </thead>
+                <?php if(!$this->
+                newstdyblist)$this->newstdyblist=array(array('name'=>"",'diag'=>"",'prob'=>"",'orig'=>""));?>
+                <?php foreach ($this->newstdyblist as $row=>$pat):?>
+                <tr class="multiple_inputrow">
+                    <td><input type="text" name="stdbylist[<?php echo $row;?>][name]"
+                               value="<?php echo $pat['name'];?>"></td>
+                    <td><input type="text" name="stdbylist[<?php echo $row;?>][age]" value="<?php echo $pat['age'];?>">
+                    </td>
+                    <td><textarea name="stdbylist[<?php echo $row;?>][diag]"><?php echo $pat['diag'];?></textarea></td>
+                    <td><textarea name="stdbylist[<?php echo $row;?>][prob]"><?php echo $pat['prob'];?></textarea></td>
+                    <td><textarea name="stdbylist[<?php echo $row;?>][orig]"><?php echo $pat['orig'];?></textarea></td>
+                    <?php
+                    $color="prio-normal";
+                    if($pat['prio']=="akut") $color="prio-akut";
+                    if($pat['prio']=="long") $color="prio-long";
+                    ?>
+                    <td class="<?php echo $color;?>">
+                        <input type="radio"
+                               name="stdbylist[<?php echo $row;?>][prio]" <?php if($pat['prio']=="akut")echo "checked";?>
+                        value="akut">
+                        <input type="radio"
+                               name="stdbylist[<?php echo $row;?>][prio]" <?php if($pat['prio']=="normal"||$pat['prio']=="")echo "checked";?>
+                        value="normal">
+                        <input type="radio"
+                               name="stdbylist[<?php echo $row;?>][prio]" <?php if($pat['prio']=="long")echo "checked";?>
+                        value="long">
+                    </td>
+                    <td><input type="text" name="stdbylist[<?php echo $row;?>][date]" class="my_datepicker"
+                               value="<?php echo $pat['date'];?>"></td>
+                    <td><input type="text" name="stdbylist[<?php echo $row;?>][datep]" class="my_datepicker"
+                               value="<?php echo $pat['datep'];?>"></td>
+                    <td class="noprint"><img src="<? echo RES_FILE_PATH;?>/images/action_delete.png" class="delete-row">
+                    </td>
+                </tr>
+                <?php endforeach;?>
+            </table>
+            <div style="text-align:left;padding:8px;">
+                <input type="submit" value="Warteliste Speichern">
+            </div>
+        </form>
+    </div>
+
+    <div style="text-align:left;margin:20px;">
+        <?php if($this->print==1):?>
+        <a style="text-decoration:underline;"
+           href="<?php echo APP_BASE;?>/patient/patienttoroom?print=1&pdf=1">Drucken</a>
+        <?//<a style="text-decoration:underline;" onClick="PrintElem();">Drucken</a> ?>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+        <a style="text-decoration:underline;" href="<?php echo APP_BASE;?>patient/patienttoroom">Patienten zuweisen</a>
+        <?php else:?>
+        <a style="text-decoration:underline;"
+           href="<?php echo APP_BASE;?>patient/patienttoroom?print=1">Druckansicht</a>
+        <?php endif;?>
+
+    </div>
+
+    <?php endif;?>
+
+    <?php if (!$this->ajax):?>
+</div>
+<?php endif;?>
+
+<?php else:
+    //PDF start
+    ?>
+<style>
+    td{font-size:9pt;}
+
+</style>
+<h1>Stationsliste</h1>
+<table id="raumzuordnung_pdf" border="1" style="border:0.1px solid black;" cellpadding="2">
+    <tr nobr="true">
+        <th bgcolor="#DDDDDD" style="border:0.1px solid black;" width="2cm">Raum</th>
+        <th bgcolor="#DDDDDD" style="border:0.1px solid black;" width="6cm">Patient</th>
+        <th bgcolor="#DDDDDD" style="border:0.1px solid black;" width="4.5cm">Thema</th>
+        <th bgcolor="#DDDDDD" style="border:0.1px solid black;" width="4.5cm">Ma&szlig;nahme</th>
+        <th bgcolor="#DDDDDD" style="border:0.1px solid black;" width="4.5cm">Memo</th>
+        <th bgcolor="#DDDDDD" style="border:0.1px solid black;" width="4.5cm">Entlassdatum/-ziel</th>
+    </tr>
+    <?php foreach ($this->rooms as $room):?>
+    <?php
+            $diaghd="";
+            $diagnd="";
+            $pat="(frei)";
+            $thema="";
+            $massnahme="";
+            $assusers="";
+            $myipid=false;
+            $entlassdatum="";
+            $entlassziel="";
+            $status="";
+            foreach($this->roompatients as $ipid){
+
+    if($this->ipid_to_loc[$ipid]==$room['id']){
+    $myipid=$ipid;
+    $pat=$this->patients[$ipid];
+
+    $diaghd=$this->diagshd[$ipid];
+    $diagnd=$this->diagsnd[$ipid];
+    if(is_array($diaghd) && count($diaghd) > 0){
+        $diaghd=implode(', ',$diaghd);
+        $diaghd="<br><b>HD: </b>" . htmlspecialchars($diaghd);
+    }
+
+    if(is_array($diagnd) && count($diagnd) > 0){
+        $diagnd=implode(', ',$diagnd);
+        $diagnd="<br><b>ND: </b>" . htmlspecialchars($diagnd);
+    }
+
+    $dischargeplanning=$this->dicharge_planning[$ipid];
+    if(is_array($dischargeplanning) && count($dischargeplanning) > 0){
+        $entlassdatum=htmlspecialchars($dischargeplanning['date'])."<br>";
+        $entlassziel=htmlspecialchars($dischargeplanning['target']);
+    }
+    $patient_status= $this->patient_status[$ipid];
+    if(is_array($patient_status) && count($patient_status) > 1){
+        $status="<br><b>Status: </b>" . htmlspecialchars($patient_status['status_name']);
+    }
+
+    $tm=$this->meetingdata[$ipid];
+    if(is_array($tm)){
+    $thema=implode('<br><hr>', array_column($tm, 0));
+    $massnahme=implode('<br><hr>', array_column($tm, 1));
+    }
+
+    if ($this->freetextmode){
+    $thema=$this->themen[$myipid];
+    $massnahme=$this->massnahmen[$myipid];
+    }
+
+    if(is_array($this->assusers[$ipid])){
+    foreach ($this->assusers[$ipid] as $user){
+    if(is_array($user)) {
+    if ($assusers == "") {
+    $assusers = "<br><b>Behandelt durch:</b>";
+    }
+    $assusers = $assusers . "<br>" . $user['name'];
+    }
+    }
+    }
+    }
+    }
+
+    if($myipid===false){
+    continue;//skip empty room!
+    }
+    ?>
+    <tr nobr="true">
+        <td style="border:0.1px solid black;"><?php echo htmlspecialchars($room['bed_name']);?></td>
+        <td style="border:0.1px solid black;"><font size="10pt"><b><?php if($myipid===false):?>
+            (frei)<?php else:?>
+            <?php echo htmlspecialchars($pat);?></b></font><br>
+            <?php echo str_replace(')','',str_replace(' (','',str_replace('Jahre', 'Jahre, ', $this->
+            ipid_to_birthd[$myipid])));?>
+            <span><?php echo $status;?></span>
+            <?php echo $assusers;?>
+            <?php echo $diaghd;?>
+            <?php echo $diagnd;?>
+            <?php endif;?></td>
+        <td style="border:0.1px solid black;"><?php echo htmlspecialchars($thema);?></td>
+        <td style="border:0.1px solid black;"><?php echo htmlspecialchars($massnahme);?></td>
+        <td style="border:0.1px solid black;"><?php echo str_replace("\n",'<br>
+            ',htmlspecialchars($this->memos[$myipid]));?></td>
+        <td style="border:0.1px solid black;"><?php echo $entlassdatum.$entlassziel;?></td>
+    </tr>
+    <?php endforeach;?>
+
+
+</table>
+
+<?php if(!$this->roomsonly):?>
+<div style="page-break-before:always;"></div>
+<h1>Verstorbene Patienten der letzten 7 Tage</h1>
+<?php if (count($this->deathlist)<1):?>
+<p style="padding:10px;">Keine Einträge.</p>
+<?php else:?>
+<table border="1" cellpadding="2">
+    <tr>
+        <th bgcolor="#DDDDDD" width="5cm" style="border:0.1px solid black;">Name</th>
+        <th bgcolor="#DDDDDD" width="4cm" style="border:0.1px solid black;">Alter</th>
+        <th bgcolor="#DDDDDD" width="4cm" style="border:0.1px solid black;">Verstorben am</th>
+    </tr>
+    <?php foreach ($this->deathlist as $death):?>
+    <tr>
+        <td style="border:0.1px solid black;"><?php echo $death['name'];?></td>
+        <td style="border:0.1px solid black;"><?php echo $death['age'];?></td>
+        <td style="border:0.1px solid black;"><?php echo date('d.m.Y',strtotime($death['date']));?></td>
+    </tr>
+    <?php endforeach;?>
+</table>
+<?php endif;?>
+
+<h1>Warteliste</h1>
+<table border="1" cellpadding="2">
+    <tr nobr="true">
+        <th bgcolor="#DDDDDD" width="5cm" style="border:0.1px solid black;">Name</th>
+        <th bgcolor="#DDDDDD" width="1cm" style="border:0.1px solid black;">Alter</th>
+        <th bgcolor="#DDDDDD" width="5.5cm" style="border:0.1px solid black;">Diagnose</th>
+        <th bgcolor="#DDDDDD" width="5.5cm" style="border:0.1px solid black;">Aktuelles Problem</th>
+        <th bgcolor="#DDDDDD" width="4.5cm" style="border:0.1px solid black;">Woher?</th>
+        <th bgcolor="#DDDDDD" width="1.8cm" style="border:0.1px solid black;">Priorität</th>
+        <th bgcolor="#DDDDDD" width="1.8cm" style="border:0.1px solid black;">Datum</th>
+        <th bgcolor="#DDDDDD" width="1.8cm" style="border:0.1px solid black;">geplant</th>
+    </tr>
+    <?php if(!$this->newstdyblist)$this->newstdyblist=array(array('name'=>"",'diag'=>"",'prob'=>"",'orig'=>""));?>
+    <?php foreach ($this->newstdyblist as $row=>$pat):?>
+    <tr nobr="true">
+        <td style="border:0.1px solid black;"><?php echo $pat['name'];?></td>
+        <td style="border:0.1px solid black;"><?php echo $pat['age'] ;?></td>
+        <td style="border:0.1px solid black;"><?php echo $pat['diag'];?></td>
+        <td style="border:0.1px solid black;"><?php echo $pat['prob'];?></td>
+        <td style="border:0.1px solid black;"><?php echo $pat['orig'];?></td>
+        <?php
+                $color="normal";
+                if($pat['prio']=="akut") $color="hoch";
+                if($pat['prio']=="long") $color="mittel";
+                ?>
+        <td style="border:0.1px solid black;"><?php echo $color;?></td>
+        <td style="border:0.1px solid black;"><?php echo $pat['date'] ;?></td>
+        <td style="border:0.1px solid black;"><?php echo $pat['datep'] ;?></td>
+    </tr>
+    <?php endforeach;?>
+</table>
+<?php endif;?>
+<?php endif;?>

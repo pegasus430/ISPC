@@ -1,0 +1,581 @@
+<!-- Maria:: Migration ISPC to CISPC 08.08.2020 -->
+<script>
+$(document).ready(function(){
+
+	$('.main_table_header th').each(function(){
+		  var thw = "1%";
+		  thw = $(this).width();
+	      $(this).css({
+		      "width":thw,
+		      "padding":"5px",
+		      "margin":"0px"
+	      }
+	      );
+	});
+	
+	var thead ="";
+	$('.pm_table').html();
+	thead = $('.main_table_header').clone();
+	thead.appendTo('.pm_table');
+	 
+	var status_team = $('#statuss').val();
+	if(status_team == "1")
+	{
+		$("textarea").attr('cols', '20');
+	}
+});
+</script>
+<style>
+tr.completed_todo td{
+	font-style: italic;
+}
+</style>
+<?php $patient_diagnosis = $this->patient_diagnosis; ?>
+<input type="hidden" name="existing_patients_count" id="number_of_existing_patients" value="<? echo $this->existing_patients_count; ?>" />
+
+<table width="auto" border="0" cellpadding="0" cellspacing="0" class="datatable overalllistatable fixed_team_header" style="border-width:0px;border-collapse:collapse;margin-top: 5px;">
+	<thead class="main_table_header">
+		<tr>
+			<th id="tr_th_no"><?php echo $this->translate('no'); ?></th>
+			<?php if($this->client_teammeeting_settings['epid'] != 'no') { ?> <!-- ISPC 2161 p.11+9a -->
+				<th id="tr_th_epid">
+					<a href="javascript:void(0);" onClick="ajaxCallserver({url: appbase+'team/fetchteampatients?meetingid=<?php echo $_REQUEST['meetingid']; ?>&new_meeting=<?php echo (int)$_REQUEST['new_meeting']; ?>&clm=epid&ord=<?php echo $this->order ?>&pgno=<?php echo $_GET['pgno'] ?>', callLoading: pl_loading})">
+						<?php echo $this->translate('epid'); ?>
+					</a>
+					<span class="colsorting">
+						<a href="javascript: void(0)" class="overallsort colsortasc" rel="ASC" title="epid"><img  src="<? echo RES_FILE_PATH;  ?>/images/up-arrow.png" alt="" /></a>
+						<a href="javascript: void(0)"  class="overallsort colsortdesc" rel="DESC" title="epid"><img  src="<? echo RES_FILE_PATH;  ?>/images/down-arrow.png" alt="" /></a>
+					</span>
+				</th>
+			<?php } ?>
+			<th id="tr_th_last_name">
+				<a href="javascript:void(0);" onClick="ajaxCallserver({url: appbase + 'team/fetchteampatients?meetingid=<?php echo $_REQUEST['meetingid']; ?>&new_meeting=<?php echo (int)$_REQUEST['new_meeting']; ?>&clm=ln&ord=<?php echo $this->order ?>&pgno=<?php echo $_GET['pgno'] ?>', callLoading: pl_loading})">
+					<?php echo $this->translate('lastname'); ?>
+				</a>
+				<span class="colsorting">
+					<a href="javascript: void(0)" class="overallsort colsortasc" rel="ASC" title="ln"><img  src="<? echo RES_FILE_PATH;  ?>/images/up-arrow.png" alt="" /></a>
+					<a href="javascript: void(0)"  class="overallsort colsortdesc" rel="DESC" title="ln"><img  src="<? echo RES_FILE_PATH;  ?>/images/down-arrow.png" alt="" /></a>
+				</span>
+			</th>
+			<th id="tr_th_first_name">
+				<a href="javascript:void(0);" onClick="ajaxCallserver({url: appbase + 'team/fetchteampatients?meetingid=<?php echo $_REQUEST['meetingid']; ?>&new_meeting=<?php echo (int)$_REQUEST['new_meeting']; ?>&clm=fn&ord=<?php echo $this->order ?>&pgno=<?php echo $_GET['pgno'] ?>', callLoading: pl_loading})">
+					<?php echo $this->translate('firstname'); ?>
+				</a>
+				<span class="colsorting">
+					<a href="javascript: void(0)" class="overallsort colsortasc" rel="ASC" title="fn"><img  src="<? echo RES_FILE_PATH;  ?>/images/up-arrow.png" alt="" /></a>
+					<a href="javascript: void(0)"  class="overallsort colsortdesc" rel="DESC" title="fn"><img  src="<? echo RES_FILE_PATH;  ?>/images/down-arrow.png" alt="" /></a>
+				</span>
+			</th>
+			<?php if($this->client_teammeeting_settings['todo'] != 'no') { ?> <!-- ISPC 2161 p.11+9a -->
+				<th id="tr_th_todo"><?php echo $this->translate('team_send_todo'); ?></th>
+			<?php } ?>
+           
+            <?php if ($this->showXTcolumn) : //ISPC-2138 ?>
+			<th id="tr_th_xt"><?php echo $this->translate('team_verlauf'); ?></th>
+            <?php endif;?>
+            
+            <!-- ISPC-2896 Lore 23.04.2021 -->
+			<?php if ($this->show_treatment_process) : ?>
+                <th id="tr_th_problems"><?php echo $this->translate('team_problems'); ?></th>
+			<?php endif;?>
+						
+			<?php if($this->client_teammeeting_settings['targets'] != 'no') { //ISPC-2556 Andrei 27.05.2020 ?>
+				<th id="tr_th_team_targets"><?php echo $this->translate('team_targets'); ?></th>
+			<?php } ?>
+			
+			<?php if($this->client_teammeeting_settings['action'] != 'no') { ?> <!-- ISPC 2161 p.11+9a -->
+				<th id="tr_th_team_todo"><?php echo $this->translate('team_todo'); ?></th>
+			<?php } ?>
+			
+			<!-- ISPC-2896 Lore 19.04.2021 -->
+			<?php if ($this->show_problems) : ?>
+				<th id="tr_th_current_situation"><?php echo $this->translate('current_situation'); ?></th>
+				<th id="tr_th_hypothesis_problem"><?php echo $this->translate('hypothesis_problem'); ?></th>
+				<th id="tr_th_measures_problem"><?php echo $this->translate('measures_problem'); ?></th>
+            <?php endif;?>
+			
+			
+	        <? if($this->status_t == "1"):?>
+			<th id="tr_th_status"><?php echo $this->translate('status'); ?>
+			    <input type="hidden" name="status" id="statuss" value="<?php echo $this->status_t; ?>" />
+			</th>
+	        <? endif;?>
+	        <?php if($this->client_teammeeting_settings['users'] != 'no') { ?> <!-- ISPC 2161 p.11+9a -->
+				<th id="tr_th_assigned_users"><?php echo $this->translate('team_assigned_users'); ?></th>
+			<?php } ?>
+            
+            <?php if ($this->client_teammeeting_settings['events'] == 'yes') : //ISPC-2161 p.2 ?>
+            <th id="tr_th_events"><?=$this->translate('upcomingevents'); ?></th>
+            <?php endif; ?>
+             
+            <?php if ($this->client_teammeeting_settings['contact'] == 'yes') : //ISPC-2161 p.5 ?>
+            <th id="tr_th_last_contact"><?=$this->translate('team_last_contact'); ?></th>
+            <?php endif; ?>
+            
+            <?php if ($this->show_assigned_doctors) : //ISPC-2161 p.16 ?>
+            <th id="tr_th_treated_by"><?=$this->translate('treatedby'); ?></th>
+            <?php endif; ?>
+            
+			<th id="tr_th_delete"></th>
+		</tr>
+	</thead>
+    
+	<tbody>
+		<?php if($this->active_patients): ?>
+			<?php $i = 1;?>
+				<?php foreach($this->active_patients as $active_ipid => $active_details): 
+					$patientlink = APP_BASE.'patientcourse/patientcourse?id='.$active_details['enc_id']; ?>
+					<?php $row_group_class = $row_group_class == 'row_group_even' ? 'row_group_odd' : 'row_group_even'; ?>
+                    <?php if($this->meeting_details['details'][$active_ipid]): ?>
+                       <?php $v_detail = ''; ?>
+                    
+						<?php foreach($this->meeting_details['details'][$active_ipid] as $k_detail => $v_detail): ?>
+                        <?php $row_colspan_counter = 0; ?>
+						<tr class="<?php if($k_detail == "0"): ?>generated_<?php echo $active_details['pepid']; ?><?php else: ?>appended_<?php echo $active_details['pepid']; ?><?php endif; ?> <?=$row_group_class;?>" id="<?php echo $active_details['pepid']; ?>_<?php echo $v_detail['row']; ?>">
+							<?php if($k_detail == '0'): ?>
+                                <?php $row_colspan_counter++; ?>
+								<td class="fixed_cell_<?php echo $active_details['pepid']; ?> <?php if ($this->show_TODO_row) { echo 'spantodo'; } ?>" rowspan="<?php if ($this->show_TODO_row) { echo count($this->meeting_details['details'][$active_ipid])+1; } else { echo count($this->meeting_details['details'][$active_ipid]); }; ?>">
+									<?php echo $i; ?>
+									<input type="hidden" name="patient[]" value="<?php echo $active_ipid; ?>" />
+								</td>
+								<?php if($this->client_teammeeting_settings['epid'] != 'no') { ?>
+	                                <?php $row_colspan_counter++; ?>
+									<td class="fixed_cell_<?php echo $active_details['pepid']; ?> has_tip <?php if ($this->show_TODO_row) { echo 'spantodo'; } ?>" rowspan="<?php if ($this->show_TODO_row) { echo count($this->meeting_details['details'][$active_ipid])+1; } else { echo count($this->meeting_details['details'][$active_ipid]); }; ?>" <?php if(!empty($patient_diagnosis[$active_ipid])): ?>title="<?php echo implode(';<br />', $patient_diagnosis[$active_ipid]); ?>"<?php endif; ?>>
+										<?php echo strtoupper($active_details['epid']); ?>
+									</td>
+								<?php } ?>
+								<input type="hidden" name="meeting[patient][]" value="<?php echo $active_details['pepid']; ?>" id="patient_master_<?php echo $active_details['pepid']; ?>" />
+								
+                                <?php $row_colspan_counter++; ?>
+								<td  class="fixed_cell_<?php echo $active_details['pepid']; ?> has_tip" rowspan="<?php echo count($this->meeting_details['details'][$active_ipid]); ?>" <?php if(!empty($patient_diagnosis[$active_ipid])): ?>title="<?php echo implode(';<br /> ', $patient_diagnosis[$active_ipid]); ?>"<?php endif; ?>>
+									<a target="_blank" href="<?php echo $patientlink; ?>"><?php echo $active_details['last_name']; ?></a>
+									<?php if($this->client_teammeeting_settings['crisestatus'] == 'yes' && $active_details['icon_data']['condition'] == 'patient_status_icon') { ?>
+										<input type="hidden" value="<?php echo $active_details['icon_data']['traffic_status']; ?>" name="current_status" class="current_traffic_status" />
+										<div class="patient_icon_cell traffic_light">											
+											<img src="<?php echo APP_BASE . 'icons_system/' . $active_details['icon_data']['status_icon']; ?>" class="fixed_cell_<?php echo $active_details['pepid']; ?> has_tip" <?php if(!empty($active_details['location'])): ?>title="<?php echo $active_details['location']; ?>"<?php endif; ?>/>
+										</div>
+										
+										<div class="other_lights" style="display: none;" data-pid = "<?php echo $active_details['id']; ?>">
+											<div class="patient_icon_cell new_traffic_light" id="patient_icon_cell_red">
+												<img src="<?php echo APP_BASE . 'icons_system/' . IconsMaster::traffic_light_icons($active_details['icon_data']['status_icon'], '3'); ?>" rel="3">
+											</div>
+											<div class="patient_icon_cell new_traffic_light" id="patient_icon_cell_yellow">
+												<img src="<?php echo APP_BASE . 'icons_system/' . IconsMaster::traffic_light_icons($active_details['icon_data']['status_icon'], '2'); ?>" rel="2">
+											</div>
+											<div class="patient_icon_cell new_traffic_light" id="patient_icon_cell_green">
+												<img src="<?php echo APP_BASE . 'icons_system/' . IconsMaster::traffic_light_icons($active_details['icon_data']['status_icon'], '1'); ?>" rel="1">
+											</div>
+										</div>
+									<?php } else { ?>
+										<div class="patient_icon_cell">											
+											<img src="<?php echo APP_BASE . 'icons_system/' . $active_details['icon_data']['status_icon']; ?>" class="fixed_cell_<?php echo $active_details['pepid']; ?> has_tip" <?php if(!empty($active_details['location'])): ?>title="<?php echo $active_details['location']; ?>"<?php endif; ?>/>
+										</div>
+									<?php } ?>
+
+									<!-- ISPC-2896 Lore 19.04.2021 -->
+									<?php if(!empty($patient_diagnosis[$active_ipid])){ ?>
+										<div class="patient_icon_cell">											
+											<img src="<?php echo APP_BASE . 'icons_system/icd.jpg'; ?>" class="fixed_cell_<?php echo $active_details['pepid']; ?> has_tip" <?php if(!empty($patient_diagnosis[$active_ipid])): ?>title="<?php echo implode(';<br /> ', $patient_diagnosis[$active_ipid]); ?>"<?php endif; ?>/>
+										</div>				
+									<?php } ?>
+									<!-- //. -->
+																		
+									<?php if($this->show_contact_comment) { ?>
+										<div class="patient_icon_cell">
+											<img src="<?php echo APP_BASE . 'icons_system/visit_form.png'; ?>" class="fixed_cell_<?php echo $active_details['pepid']; ?> has_tip" <?php if(!empty($active_details['last_comment'])): ?>title="<?php echo $active_details['last_comment']; ?>"<?php endif; ?>/>
+										</div>
+									<?php } ?>
+								</td>
+                                <?php $row_colspan_counter++; ?>
+								<td class="fixed_cell_<?php echo $active_details['pepid']; ?> has_tip" rowspan="<?php echo count($this->meeting_details['details'][$active_ipid]); ?>" <?php if(!empty($patient_diagnosis[$active_ipid])): ?>title="<?php echo implode(';<br /> ', $patient_diagnosis[$active_ipid]); ?>"<?php endif; ?>>
+									<a target="_blank" href="<?php echo $patientlink; ?>"><?php echo $active_details['first_name']; ?></a>
+								</td>
+							<?php endif; ?>
+                            
+                            <?php if($this->client_teammeeting_settings['todo'] != 'no') { ?>
+	                            <?php $row_colspan_counter++; ?>
+								<td>
+									<input type="checkbox" name="meeting[send_todo][<?php echo $active_details['pepid']; ?>][<?php echo $v_detail['row']; ?>]" id="send_todo_<?php echo $active_details['pepid']; ?>_<?php echo $v_detail['row']; ?>" value="1" <?php if($v_detail['send_todo'] == "1"): ?> checked="checked"<?php endif; ?> />
+								</td>
+                            <?php } ?>
+                            <?php if ($this->showXTcolumn) : //ISPC-2138 ?>
+	                            <?php $row_colspan_counter++; ?>
+								<td>
+									<input type="checkbox" name="meeting[verlauf][<?php echo $active_details['pepid']; ?>][<?php echo $v_detail['row']; ?>]" id="verlauf_<?php echo $active_details['pepid']; ?>_<?php echo $v_detail['row']; ?>" value="1" <?php if($v_detail['verlauf'] == "1"): ?> checked="checked"<?php endif; ?> />
+								</td>
+                            <?php endif; ?>
+                            
+            				<!-- ISPC-2896 Lore 23.04.2021 -->
+							<?php if ($this->show_treatment_process) : ?>                        
+	                            <?php $row_colspan_counter++; ?>
+								<td>
+	                                <div class="fake_container_problem">
+	                                	<?php if ($k_detail == 0): ?>
+                            			<?php if ($this->client_teammeeting_settings['prefill'] == 'yes') : //ISPC-2161 p.4 ?>
+	                                        <?php echo $this->formButton(null, null , 
+                                            	array(
+                                                	'id' => "problemsprefill_" . $active_details['pepid'] . "_" . $v_detail['row'], 
+                                                    'class' => 'prefill_contact_person_btn prefill_team_problem', 
+                                                    'title' => $this->translate('teammeeting problem prefill'),
+                                                    'onClick' => 'prefill_team_problem(this)'
+                                                ));
+                                    	?>
+										<?php endif; ?>
+                            			<?php endif; ?>
+	    								<textarea name="meeting[problem][<?php echo $active_details['pepid']; ?>][<?php echo $v_detail['row']; ?>]" id="problems_<?php echo $active_details['pepid']; ?>_<?php echo $v_detail['row']; ?>" rows="5" cols="25"><?php echo htmlspecialchars($v_detail['problem']); ?></textarea>
+	                                </div>
+								</td>
+							<?php endif;?>
+			                                                        
+                            <!-- ISPC-2556 Andrei 27.05.2020 -->
+                            <?php if($this->client_teammeeting_settings['targets'] != 'no') { ?>
+	                            <?php $row_colspan_counter++; ?>
+								<td>
+									<textarea name="meeting[targets][<?php echo $active_details['pepid']; ?>][<?php echo $v_detail['row']; ?>]" id="targets_<?php echo $active_details['pepid']; ?>_<?php echo $v_detail['row']; ?>" rows="5" cols="25"><?php echo htmlspecialchars($v_detail['targets']); ?></textarea>
+								</td>
+							<?php } ?>
+                            
+                            <?php if($this->client_teammeeting_settings['action'] != 'no') { ?>
+	                            <?php $row_colspan_counter++; ?>
+								<td>
+									<textarea name="meeting[todo][<?php echo $active_details['pepid']; ?>][<?php echo $v_detail['row']; ?>]" id="todo_<?php echo $active_details['pepid']; ?>_<?php echo $v_detail['row']; ?>" rows="5" cols="25"><?php echo htmlspecialchars($v_detail['todo']); ?></textarea>
+								</td>
+							<?php } ?>
+							
+							<!-- ISPC-2896 Lore 19.04.2021 -->
+							<?php if ($this->show_problems) : ?>
+	                            <?php $row_colspan_counter++; ?>
+	                            <?php $row_colspan_counter++; ?>
+	                            <?php $row_colspan_counter++; ?>
+	                            <td>
+									<textarea name="meeting[current_situation][<?php echo $active_details['pepid']; ?>][<?php echo $v_detail['row']; ?>]" id="currentsituation_<?php echo $active_details['pepid']; ?>_<?php echo $v_detail['row']; ?>" rows="5" cols="25"><?php echo htmlspecialchars($v_detail['current_situation']); ?></textarea>
+	                            </td>	
+	                            <td>
+									<textarea name="meeting[hypothesis_problem][<?php echo $active_details['pepid']; ?>][<?php echo $v_detail['row']; ?>]" id="hypothesisproblem_<?php echo $active_details['pepid']; ?>_<?php echo $v_detail['row']; ?>" rows="5" cols="25"><?php echo htmlspecialchars($v_detail['hypothesis_problem']); ?></textarea>
+	                            </td>	
+	                            <td>
+									<textarea name="meeting[measures_problem][<?php echo $active_details['pepid']; ?>][<?php echo $v_detail['row']; ?>]" id="measuresproblem_<?php echo $active_details['pepid']; ?>_<?php echo $v_detail['row']; ?>" rows="5" cols="25"><?php echo htmlspecialchars($v_detail['measures_problem']); ?></textarea>
+	                            </td>		                            	                            						
+				            <?php endif;?>
+				            							
+							<!-- module status -->
+							<? if($this->status_t == "1"):?>
+	                            <?php $row_colspan_counter++; ?>
+								<td>
+									<select name="meeting[status][<?php echo $active_details['pepid']; ?>][<?php echo $v_detail['row']; ?>]" id="status_<?php echo $active_details['pepid']; ?>_<?php echo $v_detail['row']; ?>">
+									     <option value="0" <?php if($v_detail[status] == "0"): ?>selected="selected"<?php endif; ?>></option>
+					                	 <option value="1" <?php if($v_detail[status] == "1"): ?>selected="selected"<?php endif; ?>><?php echo $this->translate('rehabilitativ'); ?></option>
+						                 <option value="2" <?php if($v_detail[status] == "2"): ?>selected="selected"<?php endif; ?>><?php echo $this->translate('pre-final'); ?></option>
+						                 <option value="3" <?php if($v_detail[status] == "3"): ?>selected="selected"<?php endif; ?>><?php echo $this->translate('final'); ?></option>
+					                	 <option value="4" <?php if($v_detail[status] == "4"): ?>selected="selected"<?php endif; ?>><?php echo $this->translate('terminal'); ?></option>
+					              </select>
+								</td>
+							<? endif; ?>
+							<!--end  module status -->
+							
+							<?php if($this->client_teammeeting_settings['users'] != 'no') { ?>
+	                            <?php $row_colspan_counter++; ?>
+								<td style="width:200px;">
+									<?php foreach($this->meeting_details['assigned_users'][$active_ipid][$v_detail['row']] as $k_usr => $v_usr): ?>
+										<?php $usr[] = $v_usr; ?>
+									<?php endforeach; ?>
+									
+									<input type="text" name="meeting[user][<?php echo $active_details['pepid']; ?>][<?php echo $v_detail['row']; ?>]" value="<?php echo implode(',', $usr); ?>" class="users_livesearch" rel="<?php echo $active_details['pepid']; ?>_<?php echo $v_detail['row']; ?>" id="select_user_txt_<?php echo $active_details['pepid']; ?>_<?php echo $v_detail['row']; ?>" />
+									<?php $usr = array(); ?>
+									<?php if(count($this->meeting_details['assigned_users'][$active_ipid][$v_detail['row']]) > '0'): ?>
+										<?php $show_assinged_users = ""; ?>
+									<?php else: ?>
+										<?php $show_assinged_users = "display:none;"; ?>
+									<?php endif; ?>
+								</td>
+							<?php } ?>
+							<!-- <?php if ($k_detail == 0): ?>
+                            <?php $row_colspan_counter++; ?>
+							<td class="fixed_cell_<?php echo $active_details['pepid']; ?>" rowspan="<?php echo count($this->meeting_details['details'][$active_ipid]); ?>">
+									<div class="patient_icon_cell">
+										<img src="<?php echo APP_BASE . 'icons_system/' . $active_details['status_icon']; ?>" class="fixed_cell_<?php echo $active_details['pepid']; ?> has_tip" <?php if(!empty($active_details['location'])): ?>title="<?php echo $active_details['location']; ?>"<?php endif; ?>/>
+									</div>
+							</td>
+							<?php endif; ?> -->
+                            
+                            <?php if ($k_detail == 0): ?>
+                            <?php if ($this->client_teammeeting_settings['events'] == 'yes') : //ISPC-2161 p.2 ?>
+                                <?php $row_colspan_counter++; ?>
+                                <td class="fixed_cell_<?php echo $active_details['pepid']; ?>" rowspan="<?php echo count($this->meeting_details['details'][$active_ipid]); ?>" >
+                                <?php if ( ! empty($active_details['DoctorCustomEvents'])) : ?>
+                                    <?php foreach ($active_details['DoctorCustomEvents'] as $event) :?>
+                                        <span><?=date('d.m.Y', strtotime($event['startDate']))?>:  <br/> <?=$this->escape($event['eventTitle']) ?></span><br/>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                                </td>
+                            <?php endif; ?>
+                            <?php endif; ?>
+                            
+                            <?php if ($k_detail == 0): ?>   
+                                <?php if ($this->client_teammeeting_settings['contact'] == 'yes') : //ISPC-2161 p.5 ?>
+                                <?php $row_colspan_counter++; ?>
+                                <td class="fixed_cell_<?php echo $active_details['pepid']; ?>" rowspan="<?php echo count($this->meeting_details['details'][$active_ipid]); ?>" >
+                                    <?=nl2br($this->escape($active_details['last_contact'])); ?>
+                                </td>
+                                <?php endif; ?>   
+                            <?php endif; ?>
+                            
+                            <?php if ($k_detail == 0): ?>   
+                                <?php if ($this->show_assigned_doctors) : //ISPC-2161 p.16 ?>
+                                <?php $row_colspan_counter++; ?>
+                                <td style="width: 250px;" class="fixed_cell_<?php echo $active_details['pepid']; ?>" rowspan="<?php echo count($this->meeting_details['details'][$active_ipid]); ?>" >
+                                    <?=$this->escape($active_details['assigned_doctors']); ?>
+                                </td>
+                                <?php endif; ?>   
+                            <?php endif; ?>
+                            
+                            <?php $row_colspan_counter++; ?>
+							<td>
+								<!-- ISPC-2896 Lore 23.04.2021 -->
+								<img src="<?php echo RES_FILE_PATH; ?>/images/action_add.png" rel="<?php echo $active_details['pepid']; ?>" title="add_new_patient_row" class="add_new_patient_row" />
+								
+								<?php if($k_detail != '0'): ?>
+									<img src="<?php echo RES_FILE_PATH; ?>/images/action_delete.png" rel="<?php echo $active_details['pepid']; ?>_<?php echo $v_detail['row']; ?>" class="delete_patient_row" />
+								<?php endif; ?>
+								<?php if($k_detail == '0' && $active_details['extra'] == '1' && $this->meeting_details['completed'] != "1"): ?>
+									<img src="<?php echo RES_FILE_PATH; ?>/images/remove_patient.png" rel="<?php echo $active_details['pepid']; ?>" title="remove patient" class="delete_patient" />
+								<?php endif; ?>
+							</td>						
+						</tr>
+                        <?php if( $k_detail == 0) {$first_row_colspan_counter = $row_colspan_counter;} ?>
+						<?php endforeach; ?>
+                        
+                        
+                        
+					<?php else: ?>
+                        <?php $row_colspan_counter = 0; ?>
+						<tr class="generated_<?php echo $active_details['pepid']; ?> <?=$row_group_class;?>" id="<?php echo $active_details['pepid']; ?>_1">
+                            <?php $row_colspan_counter++; ?>
+							<td class="fixed_cell_<?php echo $active_details['pepid']; ?> <?php if ($this->show_TODO_row) { echo 'spantodo'; } ?>" <?php if ($this->show_TODO_row) { echo 'rowspan="2"'; } ?>>
+								<?php echo $i; ?>
+								<input type="hidden" name="patient[]" value="<?php echo $active_ipid; ?>" />
+							</td>
+							
+							<?php if($this->client_teammeeting_settings['epid'] != 'no') { ?>
+	                            <?php $row_colspan_counter++; ?>
+								<td class="fixed_cell_<?php echo $active_details['pepid']; ?> has_tip <?php if ($this->show_TODO_row) { echo 'spantodo'; } ?>" <?php if(!empty($patient_diagnosis[$active_ipid])): ?>title="<?php echo implode(';<br />', $patient_diagnosis[$active_ipid]); ?>"<?php endif; ?> <?php if ($this->show_TODO_row) { echo 'rowspan="2"'; } ?>>
+									<?php echo strtoupper($active_details['epid']); ?>									
+								</td>
+							<?php } ?>
+							<!-- TODO-1921 -->
+							<?php if(strlen($active_details['problem'])> 0): ?>
+								<input type="hidden" name="meeting[patient][]" value="<?php echo $active_details['pepid']; ?>" id="patient_master_<?php echo $active_details['pepid']; ?>"/>							
+							<?php else: ?>
+								<input type="hidden" name="meeting[patient][]" value="<?php echo $active_details['pepid']; ?>" id="patient_master_<?php echo $active_details['pepid']; ?>" disabled="disabled"/>
+							<?php endif;?>
+                            <?php $row_colspan_counter++; ?>
+							<td   class="fixed_cell_<?php echo $active_details['pepid']; ?> has_tip" <?php if(!empty($patient_diagnosis[$active_ipid])): ?>title="<?php echo implode(';<br />', $patient_diagnosis[$active_ipid]); ?>"<?php endif; ?>>
+								<a target="_blank" href="<?php echo $patientlink; ?>"><?php echo $active_details['last_name']; ?></a>
+								<?php if($this->client_teammeeting_settings['crisestatus'] == 'yes' && $active_details['icon_data']['condition'] == 'patient_status_icon') { ?>
+										<input type="hidden" value="<?php echo $active_details['icon_data']['traffic_status']; ?>" name="current_status" class="current_traffic_status" />
+										<div class="patient_icon_cell traffic_light">											
+											<img src="<?php echo APP_BASE . 'icons_system/' . $active_details['icon_data']['status_icon']; ?>" class="fixed_cell_<?php echo $active_details['pepid']; ?> has_tip" <?php if(!empty($active_details['location'])): ?>title="<?php echo $active_details['location']; ?>"<?php endif; ?>/>
+										</div>
+										
+										<div class="other_lights" style="display: none;" data-pid = "<?php echo $active_details['id']; ?>">
+											<div class="patient_icon_cell new_traffic_light" id="patient_icon_cell_red">
+												<img src="<?php echo APP_BASE . 'icons_system/' . IconsMaster::traffic_light_icons($active_details['icon_data']['status_icon'], '3'); ?>" rel="3">
+											</div>
+											<div class="patient_icon_cell new_traffic_light" id="patient_icon_cell_yellow">
+												<img src="<?php echo APP_BASE . 'icons_system/' . IconsMaster::traffic_light_icons($active_details['icon_data']['status_icon'], '2'); ?>" rel="2">
+											</div>
+											<div class="patient_icon_cell new_traffic_light" id="patient_icon_cell_green">
+												<img src="<?php echo APP_BASE . 'icons_system/' . IconsMaster::traffic_light_icons($active_details['icon_data']['status_icon'], '1'); ?>" rel="1">
+											</div>
+										</div>
+									<?php } else { ?>
+										<div class="patient_icon_cell">											
+											<img src="<?php echo APP_BASE . 'icons_system/' . $active_details['icon_data']['status_icon']; ?>" class="fixed_cell_<?php echo $active_details['pepid']; ?> has_tip" <?php if(!empty($active_details['location'])): ?>title="<?php echo $active_details['location']; ?>"<?php endif; ?>/>
+										</div>
+									<?php } ?>
+
+								<!-- ISPC-2896 Lore 19.04.2021 -->
+								<?php if(!empty($patient_diagnosis[$active_ipid])){ ?>
+									<div class="patient_icon_cell">											
+										<img src="<?php echo APP_BASE . 'icons_system/icd.jpg'; ?>" class="fixed_cell_<?php echo $active_details['pepid']; ?> has_tip" <?php if(!empty($patient_diagnosis[$active_ipid])): ?>title="<?php echo implode(';<br /> ', $patient_diagnosis[$active_ipid]); ?>"<?php endif; ?>/>
+									</div>				
+								<?php } ?>
+																	
+								<?php if($this->show_contact_comment) { ?>
+									<div class="patient_icon_cell">
+										<img src="<?php echo APP_BASE . 'icons_system/visit_form.png'; ?>" class="fixed_cell_<?php echo $active_details['pepid']; ?> has_tip" <?php if(!empty($active_details['last_comment'])): ?>title="<?php echo $active_details['last_comment']; ?>"<?php endif; ?>/>
+									</div>
+								<?php } ?>
+							</td>
+							
+                            <?php $row_colspan_counter++; ?>
+							<td class="fixed_cell_<?php echo $active_details['pepid']; ?> has_tip" <?php if(!empty($patient_diagnosis[$active_ipid])): ?>title="<?php echo implode(';<br />', $patient_diagnosis[$active_ipid]); ?>"<?php endif; ?>>
+								<a target="_blank" href="<?php echo $patientlink; ?>"><?php echo $active_details['first_name']; ?></a>
+							</td>
+							
+							<?php if($this->client_teammeeting_settings['todo'] != 'no') { ?>
+	                            <?php $row_colspan_counter++; ?>
+								<td>
+									<input type="checkbox" name="meeting[send_todo][<?php echo $active_details['pepid']; ?>][1]" id="send_todo_<?php echo $active_details['pepid']; ?>_1" value="1" />
+								</td>
+                            <?php } ?>
+                            
+                            <?php if ($this->showXTcolumn) : //ISPC-2138 ?>
+                            <?php $row_colspan_counter++; ?>
+							<td>
+								<input type="checkbox" name="meeting[verlauf][<?php echo $active_details['pepid']; ?>][1]" id="verlauf_<?php echo $active_details['pepid']; ?>_1" value="1" />
+							</td>
+                            <?php endif; ?>
+                            
+            				<!-- ISPC-2896 Lore 23.04.2021 -->
+							<?php if ($this->show_treatment_process) : ?>                         
+                            <?php $row_colspan_counter++; ?>
+							<td>
+                                <div class="fake_container_problem">
+                                	<?php if ($this->client_teammeeting_settings['prefill'] == 'yes') : //ISPC-2161 p.4 ?>                                    
+                                     	<?php echo $this->formButton(null, null , 
+											array(
+												'id' => "problemsprefill_" . $active_details['pepid'] . "_" . $v_detail['row'],  
+												'class' => 'prefill_contact_person_btn prefill_team_problem', 
+												'title' => $this->translate('teammeeting problem prefill'),
+												'onClick' => 'prefill_team_problem(this)'
+											));
+                                    	?>
+                                    <?php endif; ?>                                    
+    								<textarea name="meeting[problem][<?php echo $active_details['pepid']; ?>][1]" id="problems_<?php echo $active_details['pepid']; ?>_1" rows="5" cols="25"><?=$this->escape($active_details['problem']); ?></textarea>
+                                </div>
+							</td>
+							<?php endif;?>
+										
+							<!-- ISPC-2556 Andrei 27.05.2020 -->
+							<?php if($this->client_teammeeting_settings['targets'] != 'no') { ?>
+	                            <?php $row_colspan_counter++; ?>
+								<td>
+									<textarea name="meeting[targets][<?php echo $active_details['pepid']; ?>][1]" id="targets_<?php echo $active_details['pepid']; ?>_1" rows="5" cols="25"></textarea>
+								</td>
+							<?php } ?>
+							
+							<?php if($this->client_teammeeting_settings['action'] != 'no') { ?>
+	                            <?php $row_colspan_counter++; ?>
+								<td>
+									<textarea name="meeting[todo][<?php echo $active_details['pepid']; ?>][1]" id="todo_<?php echo $active_details['pepid']; ?>_1" rows="5" cols="25"></textarea>
+								</td>
+							<?php } ?>
+
+							<!-- ISPC-2896 Lore 19.04.2021 -->
+							<?php if ($this->show_problems) : ?>
+	                            <?php $row_colspan_counter++; ?>
+	                            <?php $row_colspan_counter++; ?>
+	                            <?php $row_colspan_counter++; ?>
+	                            <td>
+									<textarea name="meeting[current_situation][<?php echo $active_details['pepid']; ?>][1]" id="currentsituation_<?php echo $active_details['pepid']; ?>_1" rows="5" cols="25"></textarea>
+	                            </td>	
+	                            <td>
+									<textarea name="meeting[hypothesis_problem][<?php echo $active_details['pepid']; ?>][1]" id="hypothesisproblem_<?php echo $active_details['pepid']; ?>_1" rows="5" cols="25"></textarea>
+	                            </td>	
+	                            <td>
+									<textarea name="meeting[measures_problem][<?php echo $active_details['pepid']; ?>][1]" id="measuresproblem_<?php echo $active_details['pepid']; ?>_1" rows="5" cols="25"></textarea>
+	                            </td>			                            	                            						
+				            <?php endif;?>
+				            
+				            							
+							<!-- module status -->
+							<? if($this->status_t == "1"):?>
+                            <?php $row_colspan_counter++; ?>
+							<td>
+								<select name="meeting[status][<?php echo $active_details['pepid']; ?>][1]" id="status_<?php echo $active_details['pepid']; ?>_1">
+								     <option value="0" <?php if($this->t == "0"): ?>selected="selected"<?php endif; ?>></option>
+				                	 <option value="1" <?php if($this->t == "1"): ?>selected="selected"<?php endif; ?>><?php echo $this->translate('rehabilitativ'); ?></option>
+					                 <option value="2" <?php if($this->t == "2"): ?>selected="selected"<?php endif; ?>><?php echo $this->translate('pre-final'); ?></option>
+					                 <option value="3" <?php if($this->t == "3"): ?>selected="selected"<?php endif; ?>><?php echo $this->translate('final'); ?></option>
+				                	 <option value="4" <?php if($this->t == "4"): ?>selected="selected"<?php endif; ?>><?php echo $this->translate('terminal'); ?></option>
+				              </select>
+							</td>
+							<? endif; ?>
+							
+							<!--end  module status -->
+							<?php if($this->client_teammeeting_settings['users'] != 'no') { ?>                            
+								<?php $row_colspan_counter++; ?>
+								<td style="width:200px;">
+									<input type="text" name="meeting[user][<?php echo $active_details['pepid']; ?>][1]" value="" class="users_livesearch" rel="<?php echo $active_details['pepid']; ?>_1" id="select_user_txt_<?php echo $active_details['pepid']; ?>_1" style="width:150px;"/>
+								</td>
+							<?php } ?>
+                            <!-- <?php $row_colspan_counter++; ?> ISPC-2161 p.9
+							<td class="fixed_cell_<?php echo $active_details['pepid']; ?>">
+									<div class="patient_icon_cell">
+										<img src="<?php echo APP_BASE . 'icons_system/' . $active_details['status_icon']; ?>" class="fixed_cell_<?php echo $active_details['pepid']; ?> has_tip" <?php if(!empty($active_details['location'])): ?>title="<?php echo $active_details['location']; ?>"<?php endif; ?>/>
+									</div>
+							</td> -->
+                            
+                            
+                            <?php if ($this->client_teammeeting_settings['events'] == 'yes') : //ISPC-2161 p.2 ?>
+                            <?php $row_colspan_counter++; ?>
+                            <td class="fixed_cell_<?php echo $active_details['pepid']; ?>">
+                                <?php if ( ! empty($active_details['DoctorCustomEvents'])) : ?>
+                                    <?php foreach ($active_details['DoctorCustomEvents'] as $event) :?>
+                                        <span><?=date('d.m.Y', strtotime($event['startDate']))?>: <br/> <?=$this->escape($event['eventTitle']) ?></span><br/>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </td>
+                            <?php endif; ?>
+                            
+                            <?php if ($this->client_teammeeting_settings['contact'] == 'yes') : //ISPC-2161 p.5 ?>
+                            <?php $row_colspan_counter++; ?>
+                            <td class="fixed_cell_<?php echo $active_details['pepid']; ?>">
+                                <?=nl2br($this->escape($active_details['last_contact'])); ?>
+                            </td>
+                            <?php endif; ?>
+                              
+                            <?php if ($this->show_assigned_doctors) : //ISPC-2161 p.16 ?>
+                                <?php $row_colspan_counter++; ?>
+                                <td style="width: 250px;" class="fixed_cell_<?php echo $active_details['pepid']; ?>" >
+                                    <?=$this->escape($active_details['assigned_doctors']); ?>
+                                </td>
+                            <?php endif; ?>
+                                                       
+                            <?php $row_colspan_counter++; ?>
+							<td>
+								<!-- ISPC-2896 Lore 23.04.2021 -->
+								<img src="<?php echo RES_FILE_PATH; ?>/images/action_add.png" rel="<?php echo $active_details['pepid']; ?>" title="add_new_patient_row" class="add_new_patient_row" />
+							
+								<?php if($active_details['extra'] == '1'  && $this->meeting_details['completed'] != "1"): ?>
+									<img src="<?php echo RES_FILE_PATH; ?>/images/remove_patient.png" rel="<?php echo $active_details['pepid']; ?>" title="remove patient" class="delete_patient" />
+								<?php endif; ?>
+							</td>
+						</tr>
+                        
+                        <?php $first_row_colspan_counter = $row_colspan_counter; ?>
+                        
+					<?php endif; ?>
+                    
+                    <?php //ISPC-2161 p.1 ?>
+                    <?php if ($this->show_TODO_row) : ?>
+                        <tr id="todos_<?php echo $active_details['pepid']; ?>" class="teammeting_todos_row <?=$row_group_class;?>" >
+                            <td colspan='<?= ($this->client_teammeeting_settings['epid'] != 'no' ? $first_row_colspan_counter-2 : $first_row_colspan_counter-1) ?>' style='padding:0'>
+                                <?php if ( ! empty($active_details['todo_data'])) : ?>
+                                    <!-- <?=$this->translate('todos'); ?> ISPC-2161 p.8-->
+                                    <table class="todos_table" width="100%" border=0>
+	                                    <tr>
+	                                    	<th width="10%"><?=$this->translate('todo_until_date')?></th>
+                                            <th width="50%"><?=$this->translate('todos')?></th>
+                                            <th width="40%"><?=$this->translate('todo_users')?></th>
+	                                    </tr>
+                                    <?php foreach ($active_details['todo_data'] as $todo) :?>
+                                        <tr <?php if ($todo['todo_completed'] == "1" ):?> class="completed_todo" <?php endif;?>  >
+                                        	<td width="10%"><?=$todo['todo_date']?></td>
+                                            <td width="50%"><?=$todo['todo']?></td>
+                                            <td width="40%"><?=$todo['todoers']?></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                    </table>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                    <?php endif; ?>
+                    
+                    
+				<?php $i++;?>
+				<?php endforeach; ?>
+			<?php endif; ?>
+		</tbody>
+</table>

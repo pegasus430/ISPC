@@ -1,0 +1,358 @@
+<?php 
+// ISPC-2827 Ancuta 26.03.2021
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/efapatientheader.css?' . date('Ymd'));
+
+$this->headScript()->appendFile(RES_FILE_PATH . '/javascript/pms/modalevents.js?' . date('Ymd'));
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/patienteventsmodal.css?' . date('Ymd'));
+?>
+<div style="display: none"> <img id="calImg" src="<?php echo RES_FILE_PATH;  ?>/images/calendar.png" alt="Popup" class="trigger"> </div>
+<script type="text/javascript">
+var pid = '<?php echo $_REQUEST['id']; ?>';
+
+	//ISPC-2880 Ancuta 12.04.2021
+	$(document).ready(function()
+	{
+		$('#vital_signs_modal').dialog({
+			autoOpen: false,
+			modal: true,
+			title: '<?php echo $this->translate('vital_signs_modal_title'); ?>',
+			width: '550',
+			height: '550',
+			resizable: false,
+			draggable: false,
+			dialogClass: "charts_modal",
+			
+			buttons : [
+				//delete button
+				{
+					'class' : "delbutton leftButton",
+					text : 'Eintrag löschen',
+					click : function() {
+					var that = $(this);
+					
+					jConfirm(translate('[Are you sure you want to delete this?]'), translate('confirmdeletetitle'), function(r) {
+					    if(r) {
+					    	
+					    	$.ajax({
+					    		 type: 'POST',
+								 url: 'patientform/vitalsigns?id=<?php echo $_REQUEST["id"]; ?>&subaction=delete',
+								 data: $('#vital_signs_icon_form').serialize(),
+								 success:function(data){
+									 $('#vital_signs_modal').dialog("close");
+									 if (typeof loadPage == 'function' && that.data("vs_source") == 'charts') { 
+											loadPage(); 
+										}
+										else
+										{
+											window.location.reload(true);
+										}
+									 
+										/* 	$('#awake_sleeping_modal').unblock();
+											$('.ui-dialog-buttonpane button:first').removeAttr('disabled');
+				
+											var action_name = '<?php echo Zend_Controller_Front::getInstance()->getRequest()->getActionName(); ?>';
+				
+											if(action_name == 'patientcourse') {
+												window.location.reload(true);
+											} */
+								 }
+							 });
+					    }
+					});
+						
+					},
+					
+				},
+	           {
+	        	   text : translate('save'),
+	        	   click : function() {
+	        
+	        		//ISPC-2515 Carmen 16.04.2020
+	        		if($('#vs_error').val() == '0')
+	        		{
+	        			var that = $(this);
+	        			$('input', '#vital_signs_icon_form').each(function(){
+	        				$(this).val().replace(/\,/g, '.');
+	        			});
+						
+	        			$.ajax({
+	        			   type: 'POST',
+	        			   url: 'patientform/vitalsigns?id=<?php echo $_REQUEST["id"]; ?>&vs_source='+that.data("vs_source"), //ISPC-2515
+    					   data: $('#vital_signs_icon_form').serialize(),
+    					   success:function(data){
+    						   $('#vital_signs_modal').dialog("close");
+    						   $('.modal_success_msg').show();
+								setTimeout(function () {
+									$('.modal_success_msg').hide();
+									},1000);
+							
+    						   if (typeof loadPage == 'function' && that.data("vs_source") == 'charts') { 
+									loadPage(); 
+								}
+								else if(that.data("vs_source") == 'icon')
+								{
+									
+									window.location.reload(true);
+								}
+    						   
+    						   /*$('#vital_signs_modal').unblock();
+ 								$('.ui-dialog-buttonpane button:first').removeAttr('disabled');
+
+ 								var action_name = '<?php echo Zend_Controller_Front::getInstance()->getRequest()->getActionName(); ?>';
+
+ 								if(action_name == 'patientcourse') {
+ 									window.location.reload(true);
+ 								} */
+								}
+							});
+					  }
+	        		  //--
+	        	   }
+	           },
+	           //ISPC-2517 Carmen 05.06.2020
+	           {
+	        	   text : translate('save and go back to chart'),
+	        	   click : function() {
+	        
+	        		//ISPC-2515 Carmen 16.04.2020
+	        		if($('#vs_error').val() == '0')
+	        		{
+	        			var that = $(this);
+	        			$('input', '#vital_signs_icon_form').each(function(){
+	        				$(this).val().replace(/\,/g, '.');
+	        			});
+						
+	        			$.ajax({
+	        			   type: 'POST',
+	        			   url: 'patientform/vitalsigns?id=<?php echo $_REQUEST["id"]; ?>&vs_source='+that.data("vs_source"), //ISPC-2515
+    					   data: $('#vital_signs_icon_form').serialize(),
+    					   success:function(data){
+    						   $('#vital_signs_modal').dialog("close");
+    						   $('#patient-main-add-modal').dialog("close");
+    						   $('.modal_success_msg').show();
+								setTimeout(function () {
+									$('.modal_success_msg').hide();
+									},1000);
+							
+    						   if (typeof loadPage == 'function' && that.data("vs_source") == 'charts') { 
+									loadPage(); 
+								}
+								else if(that.data("vs_source") == 'icon')
+								{
+									
+									//window.location.reload(true);
+									// go to charts Ancuta 05.06.2020
+									window.location.href = appbase + 'charts/overview?id='+pid+'#vital_signs_chart';
+								}
+    						   
+    						   /*$('#vital_signs_modal').unblock();
+ 								$('.ui-dialog-buttonpane button:first').removeAttr('disabled');
+
+ 								var action_name = '<?php echo Zend_Controller_Front::getInstance()->getRequest()->getActionName(); ?>';
+
+ 								if(action_name == 'patientcourse') {
+ 									window.location.reload(true);
+ 								} */
+								}
+							});
+					  }
+	        		  //--
+	        	   }
+	           },
+	           //--
+	           {
+	        	   text : translate('cancel'),
+	        	   click : function() {
+	        		   //$('#vital_signs_modal').html('<div id="loading_vs" style="display: none; width: 100%; text-align: center"><img src="<? echo RES_FILE_PATH;  ?>/images/pageloading.gif"></div>');
+	        		   $(this).dialog("close");
+				}}
+			],
+			open: function(ui) {
+				//ISPC-2517
+				if(($('#patient-main-add-modal').length && $('#patient-main-add-modal').hasClass('ui-dialog-content') && $('#patient-main-add-modal').dialog('isOpen')) || typeof loadPage != 'function' || (typeof loadPage == 'function' && $(this).data("vs_source") == 'icon'))
+				{
+					$('#vital_save_go_back').show();
+				}
+				else
+				{
+					$('#vital_save_go_back').hide();
+				}
+				//--
+				
+				 jQuery('.ui-widget-overlay').on('click', function () {
+					 $('#vital_signs_modal').dialog('close');
+		            });
+				
+				
+				$('.modal_loading_div', this).show();
+				
+				
+				/*
+				$( ".datepick" ).datepicker({
+						dateFormat: 'dd.mm.yy',
+						showOn: "both",
+						buttonImage: $('#calImg').attr('src'),
+						buttonImageOnly: true,
+						changeMonth: true,
+						changeYear: true,
+						nextText: '',
+						prevText: ''
+					}).mask("99.99.9999");	
+				 */
+				//ISPC-2515 Carmen 16.04.2020
+				// if ($("#loading_vs", this).length){					
+					if($(this).data('recid'))
+				   	{
+						$('#vital_signs_modal').load('<?php  echo APP_BASE."ajax/loadvitalsignsform?id=".$_REQUEST['id']; ?>&vs_source='+$(this).data('vs_source')+'&recid='+$(this).data('recid'));
+						if($(this).parent().find('.delbutton').is(":hidden"))
+    					{
+    		   				$(this).parent().find('.delbutton').show();
+    					}
+				   	}
+					else
+					{
+						$('#vital_signs_modal').load('<?php  echo APP_BASE."ajax/loadvitalsignsform?id=".$_REQUEST['id']; ?>&vs_source='+$(this).data('vs_source'));
+						$(this).parent().find('.delbutton').hide();
+					}
+				 /* } else {
+					 $(ui.target).find('input[type=text]').not('.vs_datepick').val('');
+				 } */
+				//--
+			},
+			close:function(){
+			}
+		});
+});
+</script>
+<div class="ph_item">
+	<div class="ph_item_avatar">
+		<div class="ph_avatar"></div>
+	</div>
+	<div class="ph_item_details">
+		<div class="ph_item_name_location">
+			<b><?php echo $this->patient_name; ?></b>&nbsp;<span
+				class="ph_location"><?php echo $this->current_location; ?></span>
+		</div>
+		<div class="ph_item_birth"><?php echo  $this->patient_age; ?></div>
+		<div class="ph_item_diagnosis"><?php echo $this->main_diagnosis; ?> </div>
+	</div>
+</div>
+
+
+<!-- ISPC-2880 Ancuta 12.04.2021 -->
+<?php if($this->has_events_add_button == '1'): ?>
+<div class="expandingbuttons">
+	<?php 
+		echo $this->formButton('patient-main-add-btn', '+', array("type"=>"button" ,"class"=>"btn-primary patient-main-add-btn", "onclick"=>"$.fn.modalevents()"));
+	?>
+<!-- 	
+	<div class="extrabuttons">
+		<button name="prev" title="1 Tag zurück" id="prev" type="button" value="" class="btnPrev"></button>	
+		<button name="top"  title="zum Seitenanfang" id="top" type="button" value="" class="btnTop"></button>
+		<button name="next" title="1 Tag vor" id="next" type="button" value="" class="btnNext"></button>
+	</div>
+ -->
+</div>	
+<?php endif; ?>
+
+<div id="patient-main-add-modal">
+<div class="modal_loading_div"></div>
+</div>
+
+
+
+    <div id="vital_signs_modal" class="modal_events_dialog">
+    	<div class="modal_loading_div"></div>
+    	<!-- load form -->
+    </div>
+
+	<!-- ISPC-2516 Carmen 09.04.2020 -->
+	<div id="awake_sleeping_modal" class="modal_events_dialog">
+		<div class="modal_loading_div"></div>
+		<!-- load form -->
+	</div>
+	<!-- end  ISPC-2516 Carmen 09.04.2020 -->
+	
+	<!-- ISPC-2522 Carmen 10.04.2020 -->
+	<div id="positioning_modal" class="modal_events_dialog">
+		<div class="modal_loading_div"></div>
+		<!-- load form -->
+	</div>
+	<!-- ISPC-2522 Carmen 10.04.2020 -->
+	
+	<!-- ISPC-2523 Carmen 13.04.2020 -->
+	<div id="suckoff_modal" class="modal_events_dialog">
+		<div class="modal_loading_div"></div>
+		<!-- load form -->
+	</div>
+	<!-- ISPC-2523 Carmen 13.04.2020 -->
+	
+	<!-- ISPC-2518+ISPC-2520 Carmen 14.04.2020 -->
+	<div id="organicentriesexits_modal" class="modal_events_dialog">
+		<div class="modal_loading_div"></div>
+		<!-- load form -->
+	</div>
+	<!-- ISPC-2518+ISPC-2520 Carmen 14.04.2020 -->
+	
+	<!-- ISPC-2519 Carmen 15.04.2020 -->
+	<div id="custom_event_modal" class="modal_events_dialog">
+		<div class="modal_loading_div"></div>
+		<!-- load form -->
+	</div>
+	<!-- ISPC-2519 Carmen 15.04.2020 -->
+	<!-- ISPC-2508 Carmen 21.04.2020 -->
+	<div id="artificial_entries_exits_modal" class="modal_events_dialog">
+		<div class="modal_loading_div"></div>
+		<!-- load form -->
+	</div>
+	<!-- ISPC-2508 Carmen 21.04.2020 -->
+	<!-- ISPC-2583 Carmen 28.04.2020 -->
+	<div id="medication_dosage_interaction_modal" class="modal_events_dialog">
+		<div class="modal_loading_div"></div>
+		<!-- load form -->
+	</div>
+	<!-- ISPC-2583 Carmen 28.04.2020 -->
+	<div id="symptomatology_modal" class="modal_events_dialog">
+		<div class="modal_loading_div"></div>
+		<!-- load form -->
+	</div>
+	
+	<!-- ISPC-2516 Carmen 15.07.2020 -->
+	<div id="symptomatologyII_modal" class="modal_events_dialog">
+		<div class="modal_loading_div"></div>
+		<!-- load form -->
+	</div>
+		
+	<!-- ISPC-2583 Ancuta -->
+	<div id="medication_dosage_view_modal" class="modal_events_dialog">
+		<div class="modal_loading_div"></div>
+		<!-- load medication icon   -->
+	
+	</div>
+	<div id="medication_dosage_interaction_bulk_modal" class="modal_events_dialog">
+		<div class="modal_loading_div"></div>
+		<!-- load medication icon   -->
+	
+	</div>
+
+<!-- ISPC-2697, elena, 11.10.2020 -->
+	<div id="patient_beatmung_modal" class="modal_events_dialog">
+	<div class="modal_loading_div"></div>
+	<!-- load beatmung form   -->
+
+</div>
+<!-- //-- -->
+	<div id='patient_charts_actions_modal'></div> <!-- //ISPC-2508 Carmen 20.05.2020 new design -->
+	<div id='artificial_entries_exits_main_modal'></div> <!-- //ISPC-2508 Carmen 27.05.2020 new design -->
+
+<!-- ISPC-2683 Carmen 15.10.2020 -->
+    <div id="vigilance_awareness_modal" class="modal_events_dialog">
+    	<div class="modal_loading_div"></div>
+    	<!-- load form -->
+    </div>
+    
+<!-- ISPC-2864 Ancuta 14.04.2021-->
+    <div id="patient_problems_modal" class="modal_events_dialog">
+    	<div class="modal_loading_div"></div>
+    	<!-- load form -->
+    </div>

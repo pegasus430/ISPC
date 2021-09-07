@@ -1,0 +1,619 @@
+<?php
+	$patient_details = $this->patient_details;
+	$invoice_data = $this->invoice_data;
+	$invoice_items = $invoice_data['items'];
+	$client_details = $this->client_details;
+?>
+<style>
+	.readonly_input{
+		background: #ffffff;
+		border: 0!important;
+		box-shadow: none;
+	}
+	.custom_item td{
+		border-bottom: 1px solid #000000;
+	}
+
+</style>
+<script>
+	var hide_patient_tab = 1;
+	var res_file_path = '<?php echo RES_FILE_PATH; ?>';
+
+	var min_number = '0'; //to avoid NaN
+
+	function german_format(number) {
+		var postComma, preComma, stringReverse, _ref;
+		stringReverse = function(str) {
+			return str.split('').reverse().join('');
+		};
+
+		_ref = number.toFixed(2).split('.'), preComma = _ref[0], postComma = _ref[1];
+
+		//handle - sign
+		var modified_preComma = String(Number(preComma)*(-1)).length;
+
+		var minus_sign = '';
+		if(preComma.length > modified_preComma) {
+			minus_sign = '-';
+			preComma = String(Number(preComma)*(-1));
+		} else {
+			minus_sign = '';
+		}
+
+		preComma = stringReverse(stringReverse(preComma).match(/.{1,3}/g).join('.'));
+
+		return minus_sign + preComma + "," + postComma;
+	}
+
+
+	function createnewitem()
+	{
+		var itemcount = $('#counter').val();
+
+			<?php
+				$sel_str = '<option value=""> </option>';
+				foreach($this->hessen_related_dta as $prod_sh=>$prod_name) {
+					$sel_str .= '<option value="'.$prod_sh.'">'.$prod_name.'</option>';
+				}
+			?>
+			var product_custom_dta = '<input type="text" name="custom[custom_dta_id][]" id="custom_dta_id_'+itemcount+'"   value="" style="display: none; margin-left:5px;"/>';
+			
+			var product_select = '<tr class="row_'+itemcount+'"><td colspan="6"><select name="custom[related_shortcut][]"  class="related_prod" rel="'+itemcount+'"  id="dta_'+itemcount+'"    style="width:295px; text-align:left; float:left;" ><?php echo $sel_str;?></select>'+product_custom_dta+'</td><tr>';
+		
+
+		var trInnerHtml = $('\n\
+		<tr id="row_'+itemcount+'"  class="custom_item row_'+itemcount+'">\n\
+			<td class="shortcut_column" id="item_shortcut_row_'+itemcount+'"> \n\
+				<input type="hidden" value="'+itemcount+'" name="custom[id][]" id="custom_id'+itemcount+'" />\n\
+				<input type="text" name="custom[shortcut][]" id="shortcut_row_'+itemcount+'" class="shortcut" value="" />\n\
+			</td>\n\
+			<td class="description_column" id="item_description_row_'+itemcount+'"> \n\
+				<input type="text" name="custom[description][]" id="description_row_'+itemcount+'" class="description" value="" />\n\
+			</td>\n\
+			<td class="qty_column" id="item_amount_row_'+itemcount+'"> \n\
+				<input type="text" name="custom[qty][]" id="amount_row_'+itemcount+'" class="amount" value="" autocomplete="off" />\n\
+			</td>\n\
+			<td class="price_column" id="item_price_row_'+itemcount+'"> \n\
+				<input type="text" name="custom[price][]" id="price_row_'+itemcount+'" class="price" value="" autocomplete="off" />\n\
+			</td>\n\
+			<td class="row_total_column" id="item_total_row_'+itemcount+'"> \n\
+				<input type="text" name="custom[total][]" id="total_row_'+itemcount+'" class="total" value="0" readonly="readonly" />\n\
+			</td>\n\
+			<td class="row_delete">\n\
+				<a href="javascript:void(0)" class="remove_item" id="'+itemcount+'"><img src="<?php echo RES_FILE_PATH; ?>/images/action_delete.png" border="0"></a>\n\
+			</td>\n\
+		</tr>\n\
+			'+product_select+'');
+
+		if($('#pseudo_row').length) {
+			$('#pseudo_row').before(trInnerHtml);
+		} else {
+			$('#new_med_row_action').before(trInnerHtml);
+		}
+		itemcount++;
+		$('#counter').val(itemcount);
+	}
+
+	function update_total()
+	{
+		var custom_total = 0;
+		$('.total').each(function(){
+			$(this).val(parseFloat($(this).val()).toFixed(2))
+			custom_total += parseFloat($(this).val());
+		});
+
+		var grand_total = parseFloat(parseFloat(custom_total)+parseFloat(min_number)).toFixed(2);
+		$('#invoice_total').val(grand_total);
+		$('#grand_total_cell').html(german_format(parseFloat(grand_total)));
+	}
+
+	$(function() {
+		update_total();
+		$('.remove_item').live('click', function(){
+			var row_id = $(this).attr('id');
+			
+			$('.row_'+row_id).remove(); 
+			$(this).parent().parent().hide('slow').remove();
+			update_total();
+		});
+
+		
+
+		//show / hide custom dta id
+		$('.related_prod').live("change",function(){
+			var row_id =$(this).attr('rel'); 
+				
+			if($(this).val() == "custom_dta")
+			{
+				$('#custom_dta_id_'+row_id).show();
+			} 
+			else
+			{
+				$('#custom_dta_id_'+row_id).hide();
+			}
+			
+		});
+		
+		
+		//remove system normal items
+		$('.remove_item_normal').live('click', function(){
+			var removed_elem_id = $(this).parent().parent().attr('id');
+
+			$(this).parent().parent().hide('slow').remove();
+
+			if($('.'+removed_elem_id))
+			{
+				$('.'+removed_elem_id + '_data').hide('slow').remove();
+			}
+
+			if($('#excluded_normal_items').val().length == '0') {
+				$('#excluded_normal_items').val($(this).attr('id'));
+			} else {
+				$('#excluded_normal_items').val($('#excluded_normal_items').val()+', '+$(this).attr('id'));
+			}
+
+			update_total();
+		});
+
+
+		//remove system previous invoice items
+		$('.remove_item_pv').live('click', function(){
+			var removed_elem_id = $(this).parent().parent().attr('id');
+
+			$(this).parent().parent().hide('slow').remove();
+
+			if($('.'+removed_elem_id))
+			{
+				$('.'+removed_elem_id + '_data').hide('slow').remove();
+			}
+
+			if($('#excluded_pv_items').val().length == '0') {
+				$('#excluded_pv_items').val($(this).attr('id'));
+			} else {
+				$('#excluded_pv_items').val($('#excluded_pv_items').val()+', '+$(this).attr('id'));
+			}
+
+			update_total();
+		});
+		//amount and price
+		$('.amount').live('keyup change ', function(){
+			$(this).val($(this).val().replace(/[^0-9\.]/g,''));
+			if($.isNumeric($(this).val()))
+			{
+				var row_id = $(this).attr('id').substr(('amount_row_').length);
+
+				if($('#price_row_'+row_id).val().length != '0' && $('#price_row_'+row_id).val() != '' && $(this).val().length != '0'){
+					$('#total_row_' + row_id).val(parseFloat(parseFloat($(this).val())*parseFloat($('#price_row_'+row_id).val())).toFixed(2));
+				} else if($(this).val().length == '0' || $('#price_row_'+row_id).val().length) {
+					$('#total_row_' + row_id).val('0,00');
+				}
+				update_total();
+			}
+		});
+
+		$('.price').live('keyup change ', function() {
+			$(this).val($(this).val().replace(/[^0-9\.-]/g,''));
+			if($.isNumeric($(this).val()))
+			{
+				var row_id = $(this).attr('id').substr(('price_row_').length);
+
+				if ($('#amount_row_' + row_id).val().length != '0' && $('#amount_row_' + row_id).val() != '' && $(this).val().length != '0') {
+					$('#total_row_' + row_id).val(parseFloat(parseFloat($(this).val())*parseFloat($('#amount_row_'+row_id).val())).toFixed(2));
+				} else if($(this).val().length == '0' || $('#amount_row_'+row_id).val().length) {
+					$('#total_row_' + row_id).val('0,00');
+				}
+
+				update_total();
+			}
+
+		});
+		$('#storno').click(function(event){
+			$('#storno_dialog').dialog('open');
+		});
+
+		$('#storno_dialog').dialog({
+			autoOpen:false,
+			modal:true,
+			draggable: false,
+			resizable: false,
+			buttons: {
+				"<?php echo $this->translate('yesconfirm'); ?>": function() {
+					set_storno('<?php echo $_REQUEST['invoiceid']; ?>');
+					$( this ).dialog( "close" );
+				},
+				"<?php echo $this->translate('noconfirm'); ?>": function() {
+					$( this ).dialog("close");
+				}
+			},
+			open: function(){
+				$( "#storno_dialog" ).dialog( "option", "title", "<?php echo $this->translate('storno_invoice_no'); ?> "+'<?php echo $invoice_data['prefix'].$invoice_data['invoice_number']; ?>');
+			}
+		});
+
+		$('#confirmDelete').dialog({
+			autoOpen:false,
+			resize:false,
+			draggable:false,
+			width:300,
+			height:200,
+			title: '<?php echo $this->translate('confirmdeletetitle'); ?>',
+			buttons: {
+				<?php echo $this->translate('delete'); ?>: function() {
+
+						$('#edit_he_invoice').submit();
+				},
+				<?php echo $this->translate('cancelModalRechnung'); ?>: function(){
+							$('input[name=deletemore]').val("");
+							$( this ).dialog( "close" );
+				}
+			}
+		});
+
+
+		$('.delete').live('click',function(event){
+			event.preventDefault();
+			$('#deletemore').val("1");
+			$('#confirmDelete').dialog('open');
+
+
+		});
+
+		$('#completed_date').datepicker({
+			dateFormat: 'dd.mm.yy',
+			showOn: "both",
+			buttonImage: $('#calImg').attr('src'),
+			buttonImageOnly: true,
+			changeMonth: true,
+			changeYear: true,
+			nextText: '',
+			prevText: ''
+		});
+
+
+
+
+
+	});
+ 
+	function set_storno(invoice_id) {
+		
+		//ISPC-2312 Ancuta 07.12.2020
+		var redirect2new = "";
+		
+		<?php if(isset($_REQUEST['redirect2new']) && $_REQUEST['redirect2new'] == '1'):?>
+		var redirect2new = "&redirect2new=1";
+		<?php endif; ?>
+		// --
+		
+		var url = '<?php echo APP_BASE; ?>invoice/heinvoiceslist';
+		window.location = url + '?' + 'mode=setstorno&inv_id='+invoice_id+redirect2new;
+	}
+	
+</script>
+
+
+<script type="text/javascript" src="<?php echo RES_FILE_PATH;  ?>/javascript/tinymce3/jscripts/tiny_mce/tiny_mce.js?<?php echo date('Ymd'); ?>"></script>
+<script type="text/javascript" src="<?php echo RES_FILE_PATH;  ?>/javascript/he_invoice.js?<?php echo date('Ymd'); ?>"></script>
+<link rel='stylesheet' type='text/css' href='<?php echo RES_FILE_PATH;  ?>/css/page-css/invoice/he_invoice_style.css?<?php echo date('Ymd'); ?>' />
+<input type="hidden" value="999999999" id="counter" />
+<div style="display: none;"><img id="calImg" src="<?php echo RES_FILE_PATH;  ?>/images/calendar.png" alt="Popup" class="trigger"></div>
+<form name='edit_he_invoice' id="edit_he_invoice" method="POST" action="">
+	<table class="table" id="health_insurance_invoice_table" cellspacing="2" cellpadding="2" width="100%">
+		<tr class="rowa">
+			<td class="col1 cell"></td>
+			<td class="col2 cell"></td>
+			<td class="col3 cell"></td>
+		</tr>
+		<tr class="rowb">
+			<td class="col1 cell" style="width: 635px;height: 50px;">
+				<textarea name="address" id="invoice_address" cols="37" rows="7" class="textareawhitehalf"><?php echo $invoice_data['address']; ?></textarea>
+			</td>
+			<td class="col2 cell"></td>
+			<td class="col3 cell"></td>
+		</tr>
+
+		<tr class="rowa">
+			<td class="col2 cell" style="text-align: left;" colspan="2">
+
+			</td>
+			<td class="col1 cell"></td>
+		</tr>
+
+		<tr class="rowb">
+			<td class="col1 cell" colspan="3">
+				&nbsp;
+			</td>
+		</tr>
+
+
+		<tr class="rowb">
+			<td class="col2 cell" style="text-align: left; font-size:16px;" colspan="2"><b>Rechnung Nr.: &nbsp;<?php echo $invoice_data['prefix']; ?><?php echo $invoice_data['invoice_number']; ?></b></td>
+			<td class="col1 cell" style="width: 380px;text-align: right;">
+				<?php if($invoice_data['completed_date_sort'] != '0000-00-00 00:00:00' && date('Y', strtotime($invoice_data['completed_date_sort'])) != "1970"): ?>
+					<?php echo strftime('%A, %d. %B %Y', strtotime($invoice_data['completed_date_sort']));  ?>
+				<?php endif; ?>
+				<br />
+				<?php if($invoice_data['status'] > '1'):  ?>
+					<?php echo $this->translate('complete_date'); ?>
+					<input type="text" id="completed_date" value="<?php if($invoice_data['completed_date'] == '0000-00-00 00:00:00'): echo date('d.m.Y', strtotime($invoice_data['create_date'])); else: echo date('d.m.Y', strtotime($invoice_data['completed_date'])); endif;  ?>" name="completed_date" />
+				<?php else:  ?>
+					<input type="hidden" value="<?php echo date('d.m.Y', time()); ?>" name="completed_date" />
+				<?php endif;  ?>
+			</td>
+		</tr>
+
+		<tr class="rowb">
+			<td class="col1 cell" colspan="3" style="border: 1px solid #000; padding:5px;">
+				<table style="width:100%;">
+					<tr>
+						<td style="width:20%"><b>Leistungsempfänger:</b></td>
+						<td style="width:40%"><?php echo $patient_details['first_name']?> <?php echo $patient_details['last_name']?></td>
+						<td style="width:15%"></td>
+						<td style="width:25%"></td>
+					</tr>
+					<tr>
+						<td>Geburtsdatum:</td>
+						<td><?php echo $patient_details['birthd']?></td>
+						<td></td>
+						<td></td>
+					</tr>
+					<tr>
+						<td>Vers-Nr.:</td>
+						<td><?php echo $this->insurance_no;  ?></td>
+						<td></td>
+						<td></td>
+					</tr>
+				</table>
+			</td>
+		</tr>
+		<tr class="rowb">
+			<td class="col1 cell" colspan="3">
+				&nbsp;
+			</td>
+		</tr>
+		<tr class="rowb">
+			<td class="col1 cell" colspan="3">
+				<input type="hidden" name="excluded_normal_items" id="excluded_normal_items" value="" />
+				<input type="hidden" name="excluded_pv_items" id="excluded_pv_items" value="" />
+				<table class="sapv_invoice_items">
+					<tr class="tr_invoice_th">
+						<th class="shortcut_column"> Pauschale</th>
+						<th class="date_column"></th>
+						<th class="description_column"> Leistung</th>
+						<th class="qty_column"> <?php // if($invoice_data['pricelist_type'] != 'primar' || $this->has_custom == '1'):  ?>Anzahl <?php // endif;  ?></th>
+						<th class="price_column"> Einzelpreis  &euro;</th>
+						<th class="row_total_column"> Gesamtpreis &euro;</th>
+						<th class="row_delete">&nbsp;</th>
+					</tr>
+					<?php $item = '0'; $cust_inv_item = '0'; ?>
+					<?php foreach($invoice_data['items'] as $k_shortcut_item => $v_shortcut_values):   ?>
+						<?php if($v_shortcut_values['custom'] != '1' && $v_shortcut_values['custom'] != '2' && $v_shortcut_values['custom'] != '3'):  ?>
+						<tr id="row_<?php echo $v_shortcut_values['id']; ?>">
+
+							<?php if(($v_shortcut_values['shortcut'] == 'pa13_' || $v_shortcut_values['shortcut'] == 'pc13_') && $v_shortcut_values['custom'] == '0' && !empty($v_shortcut_values['description'])): ?>
+							<td colspan="2"> <?php echo $v_shortcut_values['description']; ?></td>
+							<td class="date_column"></td>
+							<?php else: ?>
+								<td class="shortcut_column"> <?php if($v_shortcut_values['custom'] == '0'): echo strtoupper($v_shortcut_values['shortcut']); endif;  ?></td>
+								<td class="date_columns"></td>
+								<td class="description_column"> <?php echo $v_shortcut_values['description'];  ?></td>
+							<?php endif; ?>
+
+							<td class="qty_column">
+								<?php // if(!empty($v_shortcut_values['percent'])): echo $v_shortcut_values['percent'].' %'; elseif(!empty($v_shortcut_values['qty'])): echo $v_shortcut_values['qty']; endif; ?>
+								<?php if(!empty($v_shortcut_values['percent'])): echo $v_shortcut_values['percent'].' %'; elseif(($k_shortcut_item == 'pa13' || $k_shortcut_item == 'pc13') && !empty($v_shortcut_values['qty'])): echo '+'.number_format($v_shortcut_values['qty'], '2', ',', '.'); elseif(!empty($v_shortcut_values['qty'])): echo number_format($v_shortcut_values['qty'], '2', ',', '.'); endif; ?>
+							</td>
+							<td class="price_column"> <?php echo number_format($v_shortcut_values['price'], '2', ',', '.');  ?></td>
+							<td class="row_total_column"> <?php echo number_format($v_shortcut_values['total'], '2', ',', '.');  ?></td>
+							<td class="row_delete">
+								<input type="hidden" id="total_row_intern_<?php echo $item; ?>" class="total" value="<?php echo $v_shortcut_values['total'];  ?>" readonly="readonly" />
+								<?php if($this->read_only_items == '0'):  ?><a href="javascript:void(0)" class="remove_item_normal" id="del_<?php echo $v_shortcut_values['id']; ?>"><img src="<?php echo RES_FILE_PATH; ?>/images/action_delete.png" border="0"></a><?php endif; ?>
+							</td>
+						</tr>
+
+						<?php foreach($v_shortcut_values['from_date'] as $k_period => $v_period): ?>
+						<tr  class="row_<?php echo $v_shortcut_values['id']; ?>_data"  style="font-style: italic;">
+							<?php if($k_period == '0'): ?>
+							<td width="15%" style="height: 30px;text-align:left;border-bottom: 1px solid #000;" rowspan="<?php echo count($v_shortcut_values['from_date']); ?>">Begründung:</td>
+							<?php endif; ?>
+							<td style="height: 30px;text-align:left;<?php if(count($v_shortcut_values['from_date']) == ($k_period+1)): ?>border-bottom: 1px solid #000;<?php endif; ?>" colspan="6">
+								<?php echo date('d.m.Y', strtotime($v_period));  ?> - <?php echo date('d.m.Y', strtotime($v_shortcut_values['till_date'][$k_period]));  ?>
+								<?php if($v_shortcut_values['paid_periods'][$k_period] == '1'): ?>
+									<?php echo $this->translate('allready_paid'); ?>
+								<?php endif; ?>
+							</td>
+						</tr>
+						<?php endforeach; ?>
+
+						<?php elseif($v_shortcut_values['custom'] == '2'):  ?>
+						<?php if($cust_inv_item == '0'): $cust_inv_item++; ?>
+							<tr id="pseudo_row"></tr>
+						<?php endif; ?>
+							<tr id="row_<?php echo $v_shortcut_values['id']; ?>">
+								<td class="shortcut_column"> <?php if($v_shortcut_values['custom'] == '0'): echo strtoupper($v_shortcut_values['shortcut']); endif;  ?></td>
+								<td class="date_column"></td>
+								<td class="description_column"> <?php echo $v_shortcut_values['description'];  ?></td>
+								<td class="qty_column"><?php echo date('d.m.Y', strtotime($v_shortcut_values['from_date']));  ?> - <?php echo date('d.m.Y', strtotime($v_shortcut_values['till_date']));  ?></td>
+								<td class="price_column"> <?php echo number_format($v_shortcut_values['price'], '2', ',', '.');  ?></td>
+								<td class="row_total_column"> <?php echo number_format($v_shortcut_values['total'], '2', ',', '.');  ?></td>
+								<td class="row_delete">
+									<input type="hidden" id="total_row_intern_<?php echo $item; ?>" class="total" value="<?php echo $v_shortcut_values['total'];  ?>" readonly="readonly" />
+									<?php if($this->read_only_items == '0'):  ?><a href="javascript:void(0)" class="remove_item_pv" id="del_<?php echo $v_shortcut_values['id']; ?>"><img src="<?php echo RES_FILE_PATH; ?>/images/action_delete.png" border="0"></a><?php endif; ?>
+								</td>
+							</tr>
+
+						<?php elseif($v_shortcut_values['custom'] == '3'):  ?>
+						<tr id="row_<?php echo $v_shortcut_values['id']; ?>" class="custom_item row_<?php echo $v_shortcut_values['id']; ?>">
+							<td class="shortcut_column" id="item_shortcut_row_<?php echo $v_shortcut_values['id']; ?>">
+								<input type="hidden" value="<?php echo $v_shortcut_values['id']; ?>" name="custom[id][]" id="custom_id" />
+								<input type="hidden" name="custom[xbdt_action][]" id="xbdt_action_row_<?php echo $v_shortcut_values['xbdt_action']; ?>" class="shortcut readonly_input" value="<?php echo $v_shortcut_values['xbdt_action'];  ?>" <?php if($this->read_only_items == '1'):  ?>readonly="readonly"<?php endif;  ?>/>
+								<input type="hidden" name="custom[from_date][]" id="from_date_row_<?php echo $v_shortcut_values['from_date']; ?>" class="from_date readonly_input" value="<?php echo $v_shortcut_values['from_date'];  ?>" <?php if($this->read_only_items == '1'):  ?>readonly="readonly"<?php endif;  ?>/>
+								<input type="hidden" name="custom[till_date][]" id="till_date_row_<?php echo $v_shortcut_values['till_date']; ?>" class="till_date readonly_input" value="<?php echo $v_shortcut_values['till_date'];  ?>" <?php if($this->read_only_items == '1'):  ?>readonly="readonly"<?php endif;  ?>/>
+
+								<input type="text" name="custom[shortcut][]" id="shortcut_row_<?php echo $v_shortcut_values['id']; ?>" class="shortcut readonly_input" value="<?php echo $v_shortcut_values['shortcut'];  ?>" <?php if($this->read_only_items == '1'):  ?>readonly="readonly"<?php endif;  ?>/>
+							</td>
+							<td class="date_column">
+								<?php echo date('d.m.Y',strtotime($v_shortcut_values['from_date']));  ?>
+							</td>
+							<td class="description_column" id="item_description_row_<?php echo $v_shortcut_values['id']; ?>">
+								<?php echo $v_shortcut_values['description'];  ?>
+								<input type="hidden" name="custom[description][]" id="description_row_<?php echo $v_shortcut_values['id']; ?>" class="description readonly_input" value="<?php echo $v_shortcut_values['description'];  ?>" <?php if($this->read_only_items == '1'):  ?>readonly="readonly"<?php endif;  ?>/>
+							</td>
+							<td class="qty_column" id="item_amount_row_<?php echo $v_shortcut_values['id']; ?>">
+								<input type="text" name="custom[qty][]" id="amount_row_<?php echo $v_shortcut_values['id']; ?>" class="amount readonly_input" value="<?php echo $v_shortcut_values['qty'];  ?>" <?php if($this->read_only_items == '1'):  ?>readonly="readonly"<?php endif;  ?>/>
+							</td>
+							<td class="price_column" id="item_price_row_<?php echo $v_shortcut_values['id']; ?>">
+								<input type="text" name="custom[price][]" id="price_row_<?php echo $v_shortcut_values['id']; ?>" class="price readonly_input" value="<?php echo $v_shortcut_values['price'];  ?>" <?php if($this->read_only_items == '1'):  ?>readonly="readonly"<?php endif;  ?> />
+							</td>
+							<td class="row_total_column" id="item_total_row_<?php echo $v_shortcut_values['id']; ?>">
+								<input type="text" name="custom[total][]" id="total_row_<?php echo $v_shortcut_values['id']; ?>" class="total readonly_input" value="<?php echo $v_shortcut_values['total'];  ?>" readonly="readonly" />
+							</td>
+							<td class="row_delete">
+								<?php if($this->read_only_items == '0'):  ?><a href="javascript:void(0)" class="remove_item" id="<?php echo $v_shortcut_values['id']; ?>" ><img src="<?php echo RES_FILE_PATH; ?>/images/action_delete.png" border="0"></a><?php endif;  ?>
+							</td>
+						</tr>
+						<!-- 						
+						<tr class="row_<?php echo $item; ?>">
+							<td colspan="6">
+								<select name="custom[related_shortcut][]" style="display: block; float: left" class="related_prod" rel="<?php echo $item; ?>">
+									<option value=""> </option>
+								<? 	foreach($this->hessen_related_dta as $prod_sh=>$prod_name) :?>
+										<option value="<?php echo $prod_sh; ?>" <?php if( $v_shortcut_values['related_shortcut'] == $prod_sh): ?> selected="selected" <?php endif;?> ><?php echo $prod_name; ?></option>
+								<? endforeach; ?>
+								</select>	
+								
+								<?php if( $v_shortcut_values['related_shortcut'] == "custom_dta"): ?>
+									<input type="text" name="custom[custom_dta_id][]" id="custom_dta_id_<?php echo $item; ?>"   value="<?php echo $v_shortcut_values['custom_dta_id']?>" style="margin-left:5px;"/>
+								<? else:?>
+									<input type="text" name="custom[custom_dta_id][]" id="custom_dta_id_<?php echo $item; ?>"   value="" style="display: none; margin-left:5px;"/>
+								<? endif;?>
+								
+							</td>
+						</tr>
+ 						-->
+						<?php else:  ?>
+						<tr id="row_<?php echo $item; ?>" class="custom_item row_<?php echo $item; ?>">
+							<td class="shortcut_column" id="item_shortcut_row_<?php echo $item; ?>">
+								<input type="hidden" value="<?php echo $v_shortcut_values['id']; ?>" name="custom[id][]" id="custom_id" />
+								<input type="text" name="custom[shortcut][]" id="shortcut_row_<?php echo $item; ?>" class="shortcut" value="<?php echo $v_shortcut_values['shortcut'];  ?>" <?php if($this->read_only_items == '1'):  ?>readonly="readonly"<?php endif;  ?>/>
+							</td>
+							<td class="date_column"></td>
+							<td class="description_column" id="item_description_row_<?php echo $item; ?>">
+								<input type="text" name="custom[description][]" id="description_row_<?php echo $item; ?>" class="description" value="<?php echo $v_shortcut_values['description'];  ?>" <?php if($this->read_only_items == '1'):  ?>readonly="readonly"<?php endif;  ?>/>
+							</td>
+							<td class="qty_column" id="item_amount_row_<?php echo $item; ?>">
+								<input type="text" name="custom[qty][]" id="amount_row_<?php echo $item; ?>" class="amount" value="<?php echo $v_shortcut_values['qty'];  ?>" <?php if($this->read_only_items == '1'):  ?>readonly="readonly"<?php endif;  ?>/>
+							</td>
+							<td class="price_column" id="item_price_row_<?php echo $item; ?>">
+								<input type="text" name="custom[price][]" id="price_row_<?php echo $item; ?>" class="price" value="<?php echo $v_shortcut_values['price'];  ?>" <?php if($this->read_only_items == '1'):  ?>readonly="readonly"<?php endif;  ?> />
+							</td>
+							<td class="row_total_column" id="item_total_row_<?php echo $item; ?>">
+								<input type="text" name="custom[total][]" id="total_row_<?php echo $item; ?>" class="total" value="<?php echo $v_shortcut_values['total'];  ?>" readonly="readonly" />
+							</td>
+							<td class="row_delete">
+								<?php if($this->read_only_items == '0'):  ?><a href="javascript:void(0)" class="remove_item" id="<?php echo $item; ?>" ><img src="<?php echo RES_FILE_PATH; ?>/images/action_delete.png" border="0"></a><?php endif;  ?>
+							</td>
+						</tr>
+						<tr class="row_<?php echo $item; ?>">
+							<td colspan="6">
+								<select name="custom[related_shortcut][]" style="display: block; float: left" class="related_prod" rel="<?php echo $item; ?>">
+									<option value=""> </option>
+								<? 	foreach($this->hessen_related_dta as $prod_sh=>$prod_name) :?>
+										<option value="<?php echo $prod_sh; ?>" <?php if( $v_shortcut_values['related_shortcut'] == $prod_sh): ?> selected="selected" <?php endif;?> ><?php echo $prod_name; ?></option>
+								<? endforeach; ?>
+								</select>	
+								
+								<?php if( $v_shortcut_values['related_shortcut'] == "custom_dta"): ?>
+									<input type="text" name="custom[custom_dta_id][]" id="custom_dta_id_<?php echo $item; ?>"   value="<?php echo $v_shortcut_values['custom_dta_id']?>" style="margin-left:5px;"/>
+								<? else:?>
+									<input type="text" name="custom[custom_dta_id][]" id="custom_dta_id_<?php echo $item; ?>"   value="" style="display: none; margin-left:5px;"/>
+								<? endif;?>
+								
+							</td>
+						</tr>
+						
+						<?php $item++; endif;  ?>
+					<?php endforeach;  ?>
+					<?php if($this->read_only_items == '0'):  ?>
+					<tr id="new_med_row_action">
+						<td colspan="6">
+							<div class="add_new_medi">
+								<a href="javascript:createnewitem()">
+									<img src="<?php echo RES_FILE_PATH; ?>/images/edit_add.png" width="20" height="20" />
+									<?php echo $this->translate('add_new_item'); ?>
+								</a>
+							</div>
+						</td>
+					</tr>
+					<?php endif;  ?>
+					<tr class="tr_invoice_tr_total">
+						<td colspan="2"> </td>
+						<td colspan="3"><b>Rechnungsbetrag:</b></td>
+						<td id="grand_total_cell">
+							<?php echo number_format($invoice_data['invoice_total'], '2', ',', '.');  ?>
+
+						</td>
+						<td>
+							<input type="hidden" name="invoice_total" value="<?php echo Pms_CommonData::str2num($invoice_data['invoice_total']);  ?>" id="invoice_total" />
+						</td>
+					</tr>
+				</table>
+			</td>
+		</tr>
+		<tr class="rowb">
+			<td class="col1 cell" colspan="3">
+				&nbsp;
+			</td>
+		</tr>
+		<tr class="rowb">
+			<td class="col1 cell" colspan="3">
+				Die abgerechneten Leistungen sind gemäß § 4 Nr. 14 UStG umsatzsteuerbefreit.
+				<br />
+				<textarea name="footer" id="sapv_footer" cols="" rows="10" style="width: 100%;"  ><?php echo $invoice_data['footer']; ?></textarea>
+			</td>
+		</tr>
+
+
+
+
+		<tr class="rowa">
+			<td class="col1 cell" colspan="3">&nbsp;</td>
+		</tr>
+
+	</table>
+
+	<div class="buttonsBar">
+		<input type="hidden" name="deletemore" value="" id="deletemore"/>
+		<?php if($invoice_data['status'] >= '2'):  ?>
+			<!--Save when completed-->
+			<input type="submit" value="<?php echo $this->translate('save'); ?>" name="completed" class="bigbutton ui-state-default ui-corner-all submit" />
+		<?php endif;  ?>
+
+		<?php if($invoice_data['status'] == '1'):  ?>
+			<!--Save when in draft-->
+			<input type="submit" value="<?php echo $this->translate('save'); ?>" name="edit_invoice"  class="bigbutton ui-state-default ui-corner-all submit" />
+		<?php endif;  ?>
+
+		<?php if($invoice_data['status'] == '1'):  ?>
+			<!--Complete when in draft-->
+			<input type="submit" value="<?php echo $this->translate('Fertigstellen'); ?>" name="completed" class="bigbutton ui-state-default ui-corner-all submit" />
+		<?php endif;  ?>
+		&nbsp;&nbsp;&nbsp;
+
+		<?php if($invoice_data['status'] == 1 || $invoice_data['status'] == 2 ): ?>
+			<input type="submit" value="<?php echo $this->translate('Löschen'); ?>" name="deleted" class="bigbutton ui-state-default ui-corner-all submit delete" />
+		<?php endif; ?>
+
+		<input type="submit" value="<?php echo $this->translate('Pdf'); ?>" name="pdf" class="bigbutton ui-state-default ui-corner-all submit" />
+		<?php if($invoice_data['status'] > '1' && $this->has_storno == '0'): ?>
+		<input type="button"  id="storno"  value="<?php echo $this->translate('storno_button'); ?>" name="storno" class="bigbutton ui-state-default ui-corner-all submit" />
+		<?php endif; ?>
+	</div>
+
+</form>
+<div id="storno_dialog">
+	<p>
+		<?php echo $this->translate('storno_dialog_text');  ?>
+	</p>
+
+</div><div id="confirmDelete"><?php echo $this->translate('confirm_invoice_delete'); ?></div>

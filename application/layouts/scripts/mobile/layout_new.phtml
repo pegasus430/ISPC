@@ -1,0 +1,179 @@
+<?php
+/**
+ * @author @cla
+ * @since 01.11.2018
+ * 
+ * this layout is activated by Pms_Controller_Action
+ * check Pms_Plugin_LayoutSetup for default settings 
+ */
+?>
+<?=$this->doctype();?>
+
+<html>
+<head>
+<base href="<?php echo APP_BASE?>" />
+<?php
+/**
+ * 1: default page title is set in Pms_Plugin_LayoutSetup = cotroller|action|ISPC
+ *
+ * 2: default title for any patient page will be re-set in the below if
+ * - you can write your own custom title in your view template by calling $this->headTitle->set('Ana Are Mere');
+ * - or best prectice would be $this->headTitle()->append() or $this->headTitle()->prepend()
+ */
+if (isset($this->patientMasterData) && ! empty($this->patientMasterData['nice_name_epid'])) {
+    $this->headTitle()->set($this->patientMasterData['nice_name_epid']);
+}
+
+echo $this->headTitle(); 
+?>
+
+<!-- layout metas  -->
+<?php
+$this->headMeta()
+->setName("viewport", "width=device-width initial-scale=1 maximum-scale=3.0 user-scalable=yes")
+->setHttpEquiv('X-UA-Compatible', "IE=edge")
+->setHttpEquiv('Content-Type', 'text/html; charset=UTF-8')
+->setHttpEquiv('Content-Language', 'de-DE');
+
+echo $this->headMeta();
+?>
+
+<!-- layout links  -->
+<?php
+/**
+ * global css should be added in LayoutSetup.php
+ * 
+ * here you add only layout specific css
+ */
+$this->headLink()
+
+->appendStylesheet(RES_FILE_PATH . '/bootstrap/3.3.5/css/bootstrap.min.css')
+
+->appendStylesheet(RES_FILE_PATH . '/css/smoothness/jquery-ui-1.8.23.custom.css')
+
+//datatables css
+->appendStylesheet(RES_FILE_PATH . '/css/data_tables/dataTables.jqueryui.css')
+//qtip css
+->appendStylesheet(RES_FILE_PATH . '/css/qtip/jquery.qtip.min.css', ['media' => "screen"])
+->appendStylesheet(RES_FILE_PATH . '/css/ispc-mobile.css')
+->appendStylesheet(RES_FILE_PATH . '/css/ispc-mobile-verlauf-datein.css')
+->appendStylesheet(RES_FILE_PATH . '/css/ispc-mobile-verlauf-datein-extended.css')
+->appendStylesheet(RES_FILE_PATH . '/css/ispc-mobile-fix.css')
+->appendStylesheet(RES_FILE_PATH . '/css/ispc-mobile-verlauf-inputs.css')
+
+;
+
+echo $this->headLink();
+?> 
+
+<!-- layout head css  -->
+<?php 
+/**
+ * check inlineScript to see how you should add css from your views
+ */
+echo $this->headStyle(); 
+?>
+
+
+<!-- layout scripts  -->
+<?php 
+/**
+ * global js should be added in LayoutSetup.php
+ *
+ * here you add only layout specific javascript
+ * 
+ * inline script from your views can be added like this, so it will be placed in the <head>
+ * $this->headScript()->appendScript('alert(11111)', $type = 'text/javascript', $attrs = array());
+ */
+
+$this->headScript()
+
+->appendFile(RES_FILE_PATH . '/javascript/jquery.ui.touch-punch.js')
+
+//datatables js
+->appendFile(RES_FILE_PATH.'/javascript/data_tables/jquery.dataTables.js')
+->appendFile(RES_FILE_PATH.'/javascript/data_tables/dataTables.jqueryui.js')
+
+//qtip js
+->appendFile(RES_FILE_PATH.'/javascript/qtip/jquery.qtip.min.js')
+
+//global js for this layout... this must be last included... and if needed defer
+->appendFile(RES_FILE_PATH.'/javascript/mobile_view.js')
+
+//->prependFile(RES_FILE_PATH.'/javascript/mobile_view.js')
+
+;
+
+echo $this->headScript();
+?>
+
+<script type="text/javascript">
+<?php 
+	/**
+	 * GLOBAL VARIABLES FOR JS
+	 * idpd = encoded id of current patient 
+	 * idcidpd = encoded id of current client
+	 */ 
+?>
+	var appbase = '<?php echo APP_BASE; ?>';
+	var res_path = '<?php echo RES_FILE_PATH; ?>';
+	var idpd = '<?=isset($_REQUEST['id']) ? $this->escape($_REQUEST['id']) : ''?>';
+	<?php 
+		$logininfo = new Zend_Session_Namespace('Login_Info');
+		$idcidpd_encrypt = Pms_Uuid::encrypt($logininfo->clientid);
+		$client_modules = $logininfo->_clientModules;//ISPC-2561 Ancuta 11.05.2020
+	?>
+	var idcidpd = '<?php echo $idcidpd_encrypt;?>';
+	var is_iPad = '<?php echo ((stripos($_SERVER['HTTP_USER_AGENT'], 'iPad') !== false) ? '1' : '0') ?>';
+	var reset_datatable = '<?php echo ((isset($_REQUEST['lf']) && $_REQUEST['lf'] == "list" ) ? '1' : '0') ?>';
+    //ISPC-2561 Ancuta 11.05.2020
+    var connected_patient_search = '<?php if ( ! empty($client_modules) && $client_modules[221]) : echo "1"; else: echo "0"; endif; ?>';
+    //--
+</script>
+
+<script type="text/javascript">
+	// ------x|ZZZZ|x-------
+	var notifymessage = "<?php echo $this->msgnotify ?>";
+	var dbinactivetime = '<?php echo $this->inactive_time; ?>';
+	var dialogTitle = '<?php echo $this->translate("inactivewintitle") ?>';
+	var dialogMessage = '<?php echo $this->translate("inactivemsg"); ?>';
+	var inactivebtn = '<?php echo $this->translate("StayLoggedIn"); ?>';
+	var sysnews = '<?php echo $this->systemnews ?>';
+	//this is used for patient memo script to pass the curent patient id to the request vars
+	setVarsForm('id=' + idpd);
+	
+	function disable() {
+		$('.button').attr("disabled", true);
+	}
+	
+<?php echo $this->disable ?>
+</script>
+
+
+</head>
+
+<body class='evoixmobile'> 
+
+    <div class="mobileview">
+    
+        <!-- isMaintenanceMode banner -->
+        <?php echo $this->render('mobile/layout_new.undermaintenance.phtml') ?>
+    
+        <!-- mobileheader -->
+        <?php echo $this->render('mobile/layout_new.ispc_header.phtml') ?>
+        
+        <!-- patient header, only if patient is selected  -->
+        <?php echo $this->render('mobile/layout_new.patient.phtml') ?>
+        
+    
+
+        <div id="content">
+            <?php echo $this->layout()->content ?>
+        </div>
+     
+    </div>
+    
+    <!-- footer  -->
+    <?php echo $this->render('mobile/layout_new.ispc_footer.phtml') ?>
+</body>
+</html>

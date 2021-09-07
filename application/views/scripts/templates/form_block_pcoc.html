@@ -1,0 +1,1133 @@
+<!--  Maria:: Migration CISPC to ISPC 22.07.2020 -->
+<?php
+//Update whole File for TODO-4163
+$pdf=0;
+if($this->pdf){
+    $pdf=1;
+}
+function xx($type, $name, $val, $all, $more=null){
+
+    $name='FormBlockPcoc'.$name;
+
+    if($all->options['formular_type']=="pdf"){
+        switch ($type){
+            case 'short':
+            case 'long':
+                echo htmlspecialchars($val);
+                break;
+            case 'radio':
+                $checked="";
+                if($val==$more){
+                    echo "X";
+                }
+                break;
+            case 'select':
+                foreach ($more as $vval=>$verb){
+                    if($vval == $val){
+                        echo $verb;
+                    }
+                }
+                break;
+            case 'hiddensectionenabled':
+                break;
+        }
+    }else{
+        switch ($type){
+            case 'long':
+                echo '<input type="text"  name="'.$name.'" class="long" value="' . htmlspecialchars($val) . '">';
+                break;
+            case 'short':
+                echo '<input type="text"  name="'.$name.'" class="short" value="' . htmlspecialchars($val) . '">';
+                break;
+            case 'radio':
+                $checked="";
+                if($val==$more){
+                    $checked="checked";
+                }
+                echo '<input type="radio" name="'.$name.'" value="' . $more . '" '.$checked.'>';
+                break;
+            case 'checkbox':
+                $checked="";
+                if($val==1){
+                    $checked="checked";
+                }
+                echo '<input type="checkbox" name="'.$name.'" value="1" '.$checked.'>';
+                break;
+            case 'select':
+                echo '<select name="'.$name.'">';
+                foreach ($more as $vval=>$verb){
+                    if($vval == $val){
+                        echo '<option selected value="'.$vval.'">';
+                    }else {
+                        echo '<option value="' . $vval . '">';
+                    }
+                    echo $verb;
+                    echo '</option>';
+                }
+                echo '</select>';
+                break;
+            case 'hiddensectionenabled':
+                echo '<input type="hidden"  class="sectionenabled" name="'.$name.'"  value="' . $val . '">';
+                break;
+        }
+    }
+}
+$itemclasses=FormBlockPcoc::$itemclasses;
+$pcocitems=FormBlockPcoc::$items;
+$sections=FormBlockPcoc::$sections;
+?>
+<?php if (!$pdf):?>
+    <script>
+        $(document).ready(function(){
+
+            $(document).on('mouseenter', '#pcoc_shortstatus .pcoc_shortstatus_table', function(){
+                $(this).find('.pcoc_shortstatus_table_btnrow td').show();
+            });
+            $(document).on('mouseleave', '#pcoc_shortstatus .pcoc_shortstatus_table', function(){
+                $(this).find('.pcoc_shortstatus_table_btnrow td').hide();
+            });
+
+            $(document).on('click', '.pcoc_shortstatus_table_btnrow td', function(){
+
+                var itemclassmap=<?php echo json_encode(FormBlockPcoc::$itemclasses);?>;
+
+
+                var thisRowNum = $(this).closest('tr').prevAll().length;
+                var thisColNum = $(this).prevAll().length;
+
+                thisRowNum=thisRowNum-1;
+                var mode='dec';
+                if($(this).parents('tr').hasClass('pcoc_shortstatus_table_btnrow_up')){
+                    mode='inc';
+                    thisRowNum=thisRowNum+2;
+                }
+
+                var target_cell = $(this)
+                    .closest('table')
+                    .find('tr:eq('+thisRowNum+') td:eq('+thisColNum+')');
+
+                var step=1;
+                var limit_min=1;
+                var limit_max=4;
+                var map ={1:0, 2:1, 3:2, 4:3, '-1':'?'};
+                var icon=0;
+
+                var disp_map='ipos';
+                if($(target_cell).hasClass('pcoc_shortstatus_ipos')){
+                    limit_max=5;
+                    map ={1:0, 2:1, 3:2, 4:3, 5:4, '-1':'?'};
+                    disp_map='ipos';
+                }
+                if($(target_cell).hasClass('pcoc_shortstatus_akps')){
+                    step=10;
+                    limit_min=1;
+                    limit_max=100;
+                    icon=1;
+                    map ={
+                        <?php
+                        foreach ($itemclasses['akps'] as $ak=>$ai){
+                            if($ak!=="") {
+                                echo $ak . " : " . "\"" . $ai['icon'] . "\",\n";
+                            }
+                        }?>
+                        9999:0
+                    };
+                }
+                if($(target_cell).hasClass('pcoc_shortstatus_phase')){
+                    limit_max=5;
+                    limit_min=1;
+                    icon=0;
+                    map ={
+                        <?php
+                        foreach ($itemclasses['phase'] as $ak=>$ai){
+                            if($ak!=="") {
+                                echo $ak . " : " . "\"" . $ai['icon'] . "\",";
+                            }
+                        }?>
+                        9999:0
+                    };
+                    disp_map='phase';
+                }
+                if($(target_cell).hasClass('pcoc_shortstatus_pcpss')){
+                    disp_map='pcpss';
+                }
+                if($(target_cell).hasClass('pcoc_shortstatus_nps')){
+                    disp_map='nps';
+                }
+
+                var oldval=$(target_cell).find('input').val();
+                oldval=parseInt(oldval);
+                var newval=oldval;
+
+                if(mode=="dec"){
+                    newval=newval-step;
+                }else{
+                    newval=newval+step;
+                    if(newval==11){
+                        newval=10;
+                    }
+                }
+
+                if(newval<limit_min){
+                    newval=limit_max;
+                }
+                if(newval>limit_max){
+                    newval=limit_min;
+                }
+
+                $(target_cell).find('input').val(newval);
+                var iname=$(target_cell).find('input').attr('name');
+
+                if(iname.indexOf('ipos_add_')>-1){
+                    var i=iname.substr(-1);
+                    var iname='ipos_add';
+                    var iname_i='input[name="FormBlockPcoc\['+iname+'\]\['+i+'\]\[value\]"][value="'+newval+'"]';
+                    var iname_s='select[name="FormBlockPcoc\['+iname+'\]\['+i+'\]\[value\]"]';
+                    $('#pcoc').find(iname_i).prop('checked',true).change();
+                }else{
+
+                    var iname_i='input[name="FormBlockPcoc\['+iname+'\]"][value="'+newval+'"]';
+                    var iname_s='select[name="FormBlockPcoc\['+iname+'\]"]';
+                    $('#pcoc').find(iname_i).prop('checked',true).change();
+                    $('#pcoc').find(iname_s).val(newval).change();
+                }
+
+
+                if(!icon) {
+                    var bgcolor = "grey";
+                    if(newval in itemclassmap[disp_map]) {
+                        var bgcolor = itemclassmap[disp_map][newval]['color'];
+                    }
+
+                    $(target_cell).css('background-color', bgcolor);
+                    $(target_cell).css('color', '');
+                    if(bgcolor=="black"){
+                        $(target_cell).css('color', '#dddddd');
+                    }
+
+                    mydisp=map[newval];
+                    if(disp_map.length>0) {
+                        var mydisp = itemclassmap[disp_map][newval]['shortdisp2'];
+                    }
+                    $(target_cell).find('span').html(mydisp);
+
+
+                }else{
+                    $(target_cell).find('img').attr('src', map[newval]);
+                }
+
+                if(iname=="phase_phase" && newval!=oldval){
+                    $('#pcoc_full').val(1);
+                    pcoc_hide_shortstatus();
+                }
+            });
+            function pcoc_hide_shortstatus(){
+                //$('#pcoc_full').val(1);
+                $('#pcoc_shortstatus').hide('slow');
+                $('#pcoc_fullstatus').show('slow');
+                $('#is_shortstatus').val(0);
+            }
+
+            $(document).on('click', '#pcoc_show_full', function(){
+                pcoc_hide_shortstatus();
+            });
+
+            $(document).on('dblclick', '.pcpss_table input:checked', function(){
+                if($(this).prop('checked')){
+                    $(this).prop('checked', false);
+                    return 1;
+                }
+            });
+
+            //START show psysoz + barthel + AKPS on phase change
+            var varblocks=['psysoz','barthel', 'akps'];
+            var phase_original=$('#pcoc_phase_table select').val();
+            var varblocks_enabled_original=[];
+            for (itemx in varblocks){
+                var bname=varblocks[itemx];
+                varblocks_enabled_original[bname]=$('#pcoc_'+bname+' .sectionenabled').val();
+            }
+
+            $(document).on('change', '#pcoc_phase_table select', function () {
+                if ($('#pcoc_phase_table select').val() != phase_original) {
+                    for (itemx in varblocks){
+                        var bname=varblocks[itemx];
+                        $('#pcoc_'+bname).show();
+                        $('#pcoc_'+bname+' .sectionenabled').val(1);
+                    }
+                }else{
+                    for (itemx in varblocks){
+                        var bname=varblocks[itemx];
+                        $('#pcoc_'+bname).hide();
+                        $('#pcoc_'+bname+' .sectionenabled').val(0);
+                    }
+                }
+            });
+
+
+
+
+
+
+            //END show psysoz on phase change
+
+
+            $(document).on('change', '.pcoc_ipos_add input.short', function(){
+                var proto=$($('tr.pcoc_ipos_add').get(0)).clone();
+                var parent=$($('tr.pcoc_ipos_add').get(0)).parent();
+
+                $('tr.pcoc_ipos_add input.short').each(function(){
+                    if($(this).val()==""){
+                        $(this).parents('tr.pcoc_ipos_add').remove();
+                    }
+                });
+
+                $(proto).find('.short').val('');
+                $(proto).find('input[type="radio"]').prop('checked', false);
+                $(parent).append(proto);
+
+                var cnt=0;
+                $('tr.pcoc_ipos_add').each(function(){
+                    $(this).find('input').each(function(){
+                        var oldname= $(this).prop('name');
+                        newname=oldname.replace(/\[\d+\]/, '[' + cnt + ']');
+                        $(this).prop('name', newname);
+                    });
+                    cnt++;
+                });
+
+            });
+
+            function check_valid() {
+                var errors = [];
+
+                //pcoc-phase - patientstatus change IM-153
+                if ($('#pcoc_phase .sectionenabled').val() > 0) {
+                    $('#actual-status-change-newstatus-row').hide();
+                    var sel_status = $('select[name="FormBlockPcoc[phase_phase]"]').val();
+                    var m_date=$('.time_block #date').val();//new! take date from form date
+                    var m_date = m_date.substr(6) + "-" + m_date.substr(3,2) +"-" + m_date.substr(0,2) + " " + $('.time_block #begin_date_h').val() + ":" + $('.time_block #begin_date_m').val()+":00";
+                    if (sel_status != $('#actual-status-change-status').val() && m_date >= $('#actual-status-change-date').val()) {
+                        $('#actual-status-change-newstatus').text($('select[name="FormBlockPcoc[phase_phase]"] option:selected').text());
+                        $('#actual-status-change-newstatus-row').show();
+                    }
+                    var death_date = "<?php echo $this->options['death'];?>";
+                    if (sel_status == "5" && (death_date > m_date || death_date == "0")) {
+                        errors.push('Die Palliativphase "trauer" kann erst nach dem Tod des Patienten ausgewählt werden.');
+                    }
+                }
+
+                if ($('#pcoc_ipos .sectionenabled').val() > 0) {
+                    $('#pcoc_ipos .ipos_table tr').each(function () {
+                        var x = $(this).find('td').first().text();
+                        if (x.length) {
+                            //we have a caption
+                            if ($(this).find('input:checked').length < 1 && $(this).find('input').length>0) {
+                                errors.push('IPOS: ' + x + ' muss ausgefüllt werden.');
+                            }
+                        }
+                    });
+                }
+
+                if ($('#pcoc_pcpss .sectionenabled').val() > 0) {
+                    $('#pcoc_pcpss .pcpss_table tr').each(function () {
+                        var x = $(this).find('td').first().text();
+                        if (x.length) {
+                            //we have a caption
+                            if ($(this).find('input:checked').length < 1) {
+                                errors.push('PCPSS: ' + x + ' muss ausgefüllt werden.');
+                            }
+                        }
+                    });
+                }
+
+                if ($('#pcoc_nps .sectionenabled').val() > 0) {
+                    $('#pcoc_nps .pcpss_table tr').each(function () {
+                        var x = $(this).find('td').first().text();
+                        if (x.length) {
+                            //we have a caption
+                            if ($(this).find('input:checked').length < 1) {
+                                errors.push('Fremdeinschätzung: ' + x + ' muss ausgefüllt werden.');
+                            }
+                        }
+                    });
+                }
+
+                if ($('#pcoc_psysoz .sectionenabled').val() > 0) {
+                    $('#pcoc_psysoz .ipos_table tr').each(function () {
+                        var x = $(this).find('td').first().text();
+                        if (x.length) {
+                            //we have a caption
+                            if ($(this).find('input:checked').length < 1) {
+                                errors.push('IPOS Psysoz.: ' + x + ' muss ausgefüllt werden.');
+                            }
+                        }
+                    });
+                }
+
+                if ($('#pcoc_akps .sectionenabled').val() > 0) {
+                    if($('#pcoc_akps select').val()==""){
+                        errors.push('AKPS muss ausgefüllt werden.');
+                    }
+                }
+
+                if ($('#pcoc_barthel .sectionenabled').val() > 0) {
+                    $('#pcoc_barthel select').each(function(){
+                            if($(this).val()=="0"){
+                                var title=$(this).parent().prev().text();
+                                errors.push('Barthel: "'+title+'" muss ausgefüllt werden.');
+                            }
+                        }
+                    );
+                }
+
+                if($('input[name="FormBlockPcoc[misc_by]"]:checked').length<1){
+                    errors.push('"Erhoben von" muss ausgefüllt werden.');
+                }
+
+                $('#pcoc_errors').empty();
+                $('#pcoc_errors').hide();
+                <?php if($this->must_be_filled):?>
+                for(itemx in errors) {
+                    $('#pcoc_errors').append('<div class="pcoc_error">' + errors[itemx] + '</div>');
+                    $('#pcoc_errors').show();
+                }
+                <?php endif;?>
+
+                if($('#pcoc_done .pcoc-done:checked').val()=="0"){
+                    $('#pcoc_errors').empty();
+                }
+            };
+            check_valid();
+
+            $(document).on('change', '.pcoc_section_content input, .pcoc_section_content select', check_valid);
+
+            $(document).on('change', '#pcoc_done .pcoc-done', function(){
+                var v= $('#pcoc_done .pcoc-done:checked').val();
+                if(v=="1") {
+                    show_shortstatus_preview();
+                    $('#pcoc_done_body').show();
+                    check_valid();
+                }else{
+                    show_shortstatus_preview();
+                    $('#pcoc_done_body').hide();
+                    check_valid();
+                }
+            });
+
+            var show_shortstatus_preview = function (){
+                var element=$('#pcoc_done_body #pcoc_shortstatus_table_top').clone();
+                var element2=$('#pcoc_done_body #pcoc_shortstatus_table_bottom').clone();
+                //$(element).attr('id','pcoc_shortstatus_table')
+                $(element).find('input').remove();
+                $(element2).find('input').remove();
+                var v= $('#pcoc_done .pcoc-done:checked').val();
+                $('#pcoc_preview').empty();
+                if(v=="1") {
+
+                }else{
+                    $('#pcoc_preview').append(element);
+                    $('#pcoc_preview').append(element2);
+                }
+            }
+            show_shortstatus_preview();
+
+        });
+    </script>
+<?php endif;?>
+<style>
+    .pcoc_section .pcoc_section_head{
+        font-size:15px;
+        background-color: #aebd37;
+        padding:4px;
+        padding-top:8px;
+        font-weight:bold;
+    }
+
+    .pcpss_table .grey,
+    .ipos_table .grey{
+        background-color: #cccccc;
+    }
+    .pcpss_table .grey.small,
+    .ipos_table .grey.small{
+        font-size:10px;
+    }
+
+    .ipos_center{
+        text-align:center;
+        vertical-align: middle;
+    }
+
+    .pcoc_section input.long{
+        width:600px;
+    }
+
+    #pcoc_shortstatus_table{
+        border-collapse: collapse;
+    }
+    .pcoc_shortstatus_table td,
+    .pcoc_shortstatus_table th{
+        font-size:9px;
+        border:1px solid #444;
+        width:50px;
+    }
+
+    .pcoc_shortstatus_table img.pcoc_shortstatus_icon{
+        width:32px;
+        margin:1px;
+    }
+
+    .pcoc_shortstatus_table .pcoc_shortstatus_table_groupheader th{
+        font-weight:bold;
+        border:none;
+    }
+
+    .pcoc_shortstatus_table .pcoc_shortstatus_table_itemheader th{
+        text-align: center;
+    }
+
+    .pcoc_shortstatus_table .pcoc_shortstatus_table_gap{
+        border:none;
+        width:52px;
+    }
+    .pcoc_shortstatus_table td.pcoc_shortstatus_itemvalue{
+        font-size: 11px;
+        font-weight: bold;
+        text-align: center;
+        vertical-align: middle;
+        height:42px;
+        line-height: 10px;
+        color: black;
+    }
+    .pcoc_shortstatus_table .pcoc_shortstatus_table_btnrow td
+    {
+        height:32px;
+        display:none;
+        text-align: center;
+        cursor:pointer;
+        background-color: #ccc;
+        vertical-align: middle;
+        font-size: 32px;
+        font-weight: bold;
+    }
+    .pcoc_shortstatus_table .pcoc_shortstatus_table_btnrow_down td{
+        color:green;
+    }
+    .pcoc_shortstatus_table .pcoc_shortstatus_table_btnrow_up td{
+        color:red;
+    }
+    #pcoc_done .left, #pcoc_done .right {
+        width: 50%;
+        float: left;
+        display: inline-table;
+        box-sizing: border-box;
+    }
+
+    #pcoc_done .radioswitch {
+        margin-top: 0px;
+        margin-bottom: 10px;
+        display: inline-table;
+        width:100%;
+    }
+
+    #pcoc_done .radioswitch > input {
+        display: none !important;
+    }
+
+    #pcoc_done .radioswitch > input:checked ~ label {
+        background-image: url(<?php echo APP_BASE;?>/css/page-css/images/checkmark-green.svg);
+        background-size: 32px auto;
+        background-repeat: no-repeat;
+        background-position: 15px 50%;
+        padding-left: 60px;
+        background-color: #EDFFE9;
+        border: 1px solid #00C11A !important;
+        color: #00C11A;
+        font-weight: 400;
+        font-weight: bold;
+        transition: background-color 0.3s ease;
+    }
+
+    #pcoc_done .radioswitch > label {
+        font-size: 13px;
+        font-weight: bold;
+        color: #111111;
+        display: block;
+        border: 1px solid #D8D8D8;
+        padding: 12px 15px;
+        width: auto;
+        float: right;
+        border-radius: 6px;
+        margin-bottom: 0;
+        transition: background-color 0.3s ease;
+        text-transform: none;
+        letter-spacing: 0;
+        box-sizing: border-box;
+        cursor: pointer;
+        width:100%;
+    }
+
+    #pcoc_done .left .radioswitch > input ~ label {
+        border-radius: 6px 0 0 6px;
+        border-right: 0;
+    }
+    #pcoc_done .right .radioswitch > input ~ label {
+        border-radius: 0 6px 6px 0;
+        border-left: 0;
+    }
+
+
+
+
+</style>
+
+<?php
+$statitemst=FormBlockPcoc::$items;
+$statitems_top=array_merge($statitemst['ipos']);
+$statitems_bottom=array_merge($statitemst['nps'],$statitemst['pcpss'],$statitemst['akps'],$statitemst['phase']);
+
+$more_keys=[];
+$i=0;
+foreach ($this->options['ipos_add'] as $entry){
+    if(strlen($entry['key'])){
+        $mykey='ipos_add_'.$i;
+        $this->options[$mykey] = $entry['value'];
+        $statitems_top[$mykey]=[
+            'long'=>$entry['key'],
+            'short'=>substr($entry['key'], 0, 8),
+            'itemclass'=>'ipos'
+        ];
+        $i++;
+        if($i>5){
+            break;
+        }
+    }
+}
+
+$statitems_arr=['top'=>$statitems_top,'btt'=>$statitems_bottom ];
+
+
+?>
+
+<?php
+$fulld=$this->options['pcoc_full'];
+$shortstatus=$this->options['shortstatus'];
+$pcoc_done=$this->options['pcoc_done'];
+
+;?>
+
+<div class="contactform_dragvbox" id="pcoc">
+    <h2> + <?php echo $this->translate('block_pcoc') ?></h2>
+    <div class="contactform_dragvbox_content" id="grow18"  style="width:unset;display:<?php if($this->box_open == '1'){ echo 'block';} else { echo 'none'; }?>;" >
+        <?php if($pdf && !$pcoc_done)://pcoc not done - pdf empty?>
+            keine Erhebung vorgenommen
+        <?php else://pcoc not done - pdf empty?>
+
+            <?php if(!$pdf):?>
+            <div id="pcoc_done">
+                <div class="left">
+                    <div class="radioswitch">
+                        <input type="radio" class="left pcoc-done" name="FormBlockPcoc[pcoc_done]" id="pcoc-done-notdone" value="0" <?php if(!$pcoc_done):?>checked="checked"<?php endif;?>>
+                        <label for="pcoc-done-notdone">Keine Erhebung vornehmen
+                            <span></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="right">
+                    <div class="radioswitch">
+                        <input type="radio" class="right pcoc-done" id="pcoc-done-done" name="FormBlockPcoc[pcoc_done]" value="1" <?php if($pcoc_done):?>checked="checked"<?php endif;?>>
+                        <label for="pcoc-done-done">Erhebung vornehmen
+                            <span></span>
+                        </label>
+                    </div>
+                </div>
+
+            </div>
+            <div id="pcoc_preview"></div>
+            <div id="pcoc_done_body" <?php if(!$pcoc_done):?>style="display:none;"<?php endif;?>>
+
+            <input type="hidden" id="pcoc_full" name="FormBlockPcoc[pcoc_full]" value="<?php echo $fulld;?>">
+            <input type="hidden" id="is_shortstatus" name="FormBlockPcoc[shortstatus]" value="<?php echo $shortstatus;?>">
+
+            <div id="pcoc_shortstatus" <?php if(!$shortstatus){echo "style=\"display:none;\"";};?>>
+
+            <?php foreach ($statitems_arr as $sk=>$statitems):?>
+
+
+                <?php if ($sk=='top'):?>
+                    <table id="pcoc_shortstatus_table_top" class="pcoc_shortstatus_table">
+                    <tr class="pcoc_shortstatus_table_groupheader">
+                        <th colspan="10" >IPOS-Symptombelastung</th>
+                    </tr>
+                <?php else:?>
+                    <table id="pcoc_shortstatus_table_bottom" style=""  class="pcoc_shortstatus_table">
+                    <tr class="pcoc_shortstatus_table_groupheader">
+                        <th colspan="2">Neuro/Psych.</th>
+                        <th rowspan="5" class="pcoc_shortstatus_table_gap"></th>
+                        <th colspan="4">Palliative Problem- und Symptomstärke</th>
+                        <th rowspan="5" class="pcoc_shortstatus_table_gap"></th>
+                        <th></th>
+                        <th></th>
+                    </tr>
+                <?php endif;?>
+
+                    <tr class="pcoc_shortstatus_table_itemheader">
+                    <?php foreach ($statitems as $item):?>
+                        <th><?php echo $item['short'];?></th>
+                    <?php endforeach;?>
+                    </tr>
+
+                    <tr class="pcoc_shortstatus_table_btnrow_up pcoc_shortstatus_table_btnrow">
+                        <?php foreach ($statitems as $item):?>
+                            <td>+</td>
+                        <?php endforeach;?>
+                    </tr>
+
+                    <tr>
+                        <?php foreach ($statitems as $item_k=>$item):?>
+                                <?php
+                                $my_val=$this->options[$item_k];
+                                $itemclass=$item['itemclass'];
+                                $itemclasses_items=$itemclasses[$itemclass];
+                                $style_add="";
+                                if (!isset($itemclasses_items[$my_val]['icon']) || $itemclass=="phase"){
+                                    $color="";
+                                    if($itemclasses_items[$my_val]['color'] == "black"){
+                                        $color="color:#cccccc;";
+                                    }
+                                    $style_add="style='".$color."background-color:" . $itemclasses_items[$my_val]['color'] . "'";
+                                }
+
+                                ?>
+                            <td id="pcoc_shortstatus_<?php echo $item_k;?>" class="pcoc_shortstatus_<?php echo $item['itemclass'];?> pcoc_shortstatus_itemvalue" <?php echo $style_add;?>>
+                                <?php
+                                $my_val=$this->options[$item_k];
+                                $itemclass=$item['itemclass'];
+                                $itemclasses_items=$itemclasses[$itemclass];
+                                if(isset($itemclasses_items[$my_val]['icon']) && $itemclass!=="phase"){
+                                    echo '<img class="pcoc_shortstatus_icon" src=' . RES_FILE_PATH . "/" . $itemclasses_items[$my_val]['icon'].'>';
+                                }else{
+                                    echo "<span>" . $itemclasses_items[$my_val]['shortdisp2'] . "</span>";
+                                }
+
+
+                                ?>
+                                <input type="hidden" value="<?php echo $my_val;?>" name="<?php echo $item_k;?>" disabled>
+                            </td>
+                        <?php endforeach;?>
+                    </tr>
+
+                    <tr class="pcoc_shortstatus_table_btnrow_down pcoc_shortstatus_table_btnrow">
+                        <?php foreach ($statitems as $item):?>
+                            <td>-</td>
+                        <?php endforeach;?>
+                    </tr>
+                </table>
+                <?php endforeach;?>
+            <div style="text-align:right;">
+                <?php xx('checkbox', '[pcoc_assessment]', $this->options['pcoc_assessment'], $this);?> tägliches Assessment von pall. Vitalparametern
+            </div>
+            <?php endif;//!pdf?>
+
+
+            <?php if(!$pdf):?>
+                        <p style="margin-top:1em;margin-bottom:2em">
+                Nur wenn tägliches Assessment markiert wurde, erscheint die Erhebung in der Übersicht unter dem Icon.<br>
+                Bei Änderung der Phase müssen alle Vitalparameter überprüft werden.</p>
+                <div style="text-align: right;">
+                    <input type="button" value="Volldokumentation einblenden" id="pcoc_show_full">
+                </div>
+            </div><?//div-pcoc_shortstatus?>
+            <?php endif;?>
+
+            <?php if(!$pdf):?>
+            <div id="pcoc_fullstatus" <?php if($shortstatus){echo "style=\"display:none;\"";};?>>
+            <?php endif;?>
+
+<?php if($this->options['problems_enabled'] || !$pdf):?>
+			<table class="pcoc_section" id="pcoc_problems" style="width:100%;<?php if($this->options['problems_enabled']<1){echo 'display:none';}?>">
+				<tr><td class="pcoc_section_head"><?php echo $sections['problems'];?><?php xx('hiddensectionenabled', '[problems_enabled]', $this->options['problems_enabled'], $this);?></td></tr>
+				<tr><td class="pcoc_section_content"><b>Welche Hauptprobleme hat der Patient*</b><br><small>Um die Fragen möglichst kurz zu halten, wird im Folgenden nur „der Patient“ genannt. Gemeint ist immer „die Patientin/der Patient“.</small><br>
+						<table style="width:100%;">
+							<tr><td>a)</td><td><?php xx('long', '[problems_p1]', $this->options['problems_p1'], $this);?></td></tr>
+							<tr><td>b)</td><td><?php xx('long', '[problems_p2]', $this->options['problems_p2'], $this);?></td></tr>
+							<tr><td>c)</td><td><?php xx('long', '[problems_p3]', $this->options['problems_p3'], $this);?></td></tr>
+						</table>
+					</td>
+				</tr>
+			</table>
+<?php endif;?>
+
+<?php if($this->options['ipos_enabled'] || !$pdf):?>
+			<table class="pcoc_section" id="pcoc_ipos" style="width:100%;<?php if($this->options['ipos_enabled']<1){echo 'display:none';}?>">
+				<tr><td class="pcoc_section_head"><?php echo $sections['ipos'];?><?php xx('hiddensectionenabled', '[ipos_enabled]', $this->options['ipos_enabled'], $this);?></td></tr>
+				<tr><td class="pcoc_section_content"><b>1. Welche Hauptprobleme hat der Patient*</b><br><small>Um die Fragen möglichst kurz zu halten, wird im Folgenden nur „der Patient“ genannt. Gemeint ist immer „die Patientin/der Patient“.</small><br>
+
+						<b>Wie sehr ist der/die Patient*in von folgenden Symptomen belastet?</b><br>
+						<table class="ipos_table" style="width:100%;">
+							<tr>
+								<td width="28%" class="grey"></td>
+                                <?php foreach($itemclasses['ipos'] as $v):?>
+                                    <td width="12%" class="ipos_center grey small"><?php echo $v['disp'];?></td>
+                                <?php endforeach;?>
+							</tr>
+							<?php
+							$verbs=$pcocitems['ipos'];
+							?>
+
+							<?php $rowcount=0;?>
+							<?php foreach ($verbs as $verb_i=>$verb):?>
+							<?php
+                            $verb=$verb['long'];
+								$rowcount++;
+								$zebra="";
+								if($rowcount%2==0){
+									$zebra="background-color:#F4F4F4;";
+								}
+								?>
+							<tr style="<?php echo $zebra;?>">
+								<td><?php echo $verb;?></td>
+								<?php foreach($itemclasses['ipos'] as $v=>$foo):?>
+									<td class="ipos_center"><?php xx('radio', '['.$verb_i.']', $this->options[$verb_i], $this, $v);?></td>
+								<?php endforeach;?>
+							</tr>
+							<?php endforeach;?>
+							<tr>
+								<td colspan="7" class="grey">Bitte nennen Sie weitere Symptome, die aus Ihrer Sicht den Patienten* belasten.</td>
+							</tr>
+							<?php foreach ($this->options['ipos_add'] as $i=>$iadd):?>
+							<tr class="pcoc_ipos_add">
+								<td><?php xx('short', '[ipos_add]['.$i.'][key]', $this->options['ipos_add'][$i]['key'], $this);?></td>
+                                <?php foreach($itemclasses['ipos'] as $v=>$foo):?>
+									<td class="ipos_center"><?php xx('radio', '[ipos_add]['.$i.'][value]', $this->options['ipos_add'][$i]['value'], $this, $v);?></td>
+								<?php endforeach;?>
+							</tr>
+							<?php endforeach;?>
+						</table>
+					</td></tr>
+			</table>
+<?php endif;?>
+
+<?php if($this->options['pcpss_enabled'] || !$pdf):?>
+			<table class="pcoc_section"  id="pcoc_pcpss"  style="width:100%;<?php if($this->options['pcpss_enabled']<1){echo 'display:none';}?>">
+				<tr><td class="pcoc_section_head"><?php echo $sections['pcpss'];?><?php xx('hiddensectionenabled', '[pcpss_enabled]', $this->options['pcpss_enabled'], $this);?></td></tr>
+				<tr><td class="pcoc_section_content">
+					<table class="pcpss_table" style="width:100%;">
+						<tr>
+							<td width="28%" class="grey"></td>
+                            <?php foreach($itemclasses['pcpss'] as $v):?>
+                                <td width="14.4%" class="ipos_center grey"><?php echo $v['disp'];?></td>
+                            <?php endforeach;?>
+						</tr>
+						<?php $rowcount=0;
+                        $verbs=$pcocitems['pcpss'];
+						?>
+						<?php foreach ($verbs as $verbi=>$verb):?>
+							<?php
+							$rowcount++;
+							$zebra="";
+							if($rowcount%2==0){
+								$zebra="background-color:#F4F4F4;";
+							}
+							?>
+							<tr style="<?php echo $zebra;?>">
+								<td><?php echo $verb['long'];?></td>
+								<td class="ipos_center"><?php xx('radio', '['.$verbi.']', $this->options[$verbi], $this, 1);?></td>
+								<td class="ipos_center"><?php xx('radio', '['.$verbi.']', $this->options[$verbi], $this, 2);?></td>
+								<td class="ipos_center"><?php xx('radio', '['.$verbi.']', $this->options[$verbi], $this, 3);?></td>
+								<td class="ipos_center"><?php xx('radio', '['.$verbi.']', $this->options[$verbi], $this, 4);?></td>
+                                <td class="ipos_center"><?php xx('radio', '['.$verbi.']', $this->options[$verbi], $this, -1);?></td>
+							</tr>
+						<?php endforeach;?>
+					</table>
+				</td></tr>
+			</table>
+<?php endif;?>
+
+<?php if($this->options['nps_enabled'] || !$pdf):?>
+			<table class="pcoc_section" id="pcoc_nps"  style="width:100%;<?php if($this->options['nps_enabled']<1){echo 'display:none';}?>">
+				<tr><td class="pcoc_section_head"><?php echo $sections['nps'];?><?php xx('hiddensectionenabled', '[nps_enabled]', $this->options['nps_enabled'], $this);?></td></tr>
+				<tr><td class="pcoc_section_content">
+						<table class="pcpss_table" style="width:100%;">
+							<tr>
+								<td width="28%" class="grey"></td>
+                                <?php foreach($itemclasses['pcpss'] as $v):?>
+                                    <td width="14.4%" class="ipos_center grey"><?php echo $v['disp'];?></td>
+                                <?php endforeach;?>
+							</tr>
+							<?php $rowcount=0;
+                                  $verbs=$pcocitems['nps'];
+
+                            ?>
+							<?php foreach ($verbs as $verbi=>$verb):?>
+								<?php
+								$rowcount++;
+								$zebra="";
+								if($rowcount%2==0){
+									$zebra="background-color:#F4F4F4;";
+								}
+								?>
+								<tr style="<?php echo $zebra;?>">
+									<td><?php echo $verb['long'];?></td>
+									<td class="ipos_center"><?php xx('radio', '['.$verbi.']', $this->options[$verbi], $this, 1);?></td>
+									<td class="ipos_center"><?php xx('radio', '['.$verbi.']', $this->options[$verbi], $this, 2);?></td>
+									<td class="ipos_center"><?php xx('radio', '['.$verbi.']', $this->options[$verbi], $this, 3);?></td>
+									<td class="ipos_center"><?php xx('radio', '['.$verbi.']', $this->options[$verbi], $this, 4);?></td>
+                                    <td class="ipos_center"><?php xx('radio', '['.$verbi.']', $this->options[$verbi], $this, -1);?></td>
+								</tr>
+							<?php endforeach;?>
+						</table>
+					</td></tr>
+			</table>
+<?php endif;?>
+
+<?php if($this->options['phase_enabled'] || !$pdf):?>
+			<table class="pcoc_section" id="pcoc_phase"  style="width:100%;">
+				<tr><td class="pcoc_section_head"><?php echo $sections['phase'];?><?php xx('hiddensectionenabled', '[phase_enabled]', $this->options['phase_enabled'], $this);?></td></tr>
+				<tr><td class="pcoc_section_content">
+						<table class="pcpss_table" id="pcoc_phase_table" style="width:100%;">
+							<tr>
+								<td width="28%">Palliativphase</td>
+								<td width="72%"><?php
+									$verbs=$itemclasses['phase'];
+									$verbs=array_combine(array_keys($verbs), array_column($verbs, 'disp'));
+									xx('select', '[phase_phase]', $this->options['phase_phase'], $this, $verbs);
+									?>
+								</td>
+							</tr>
+                            <?php if(!$pdf):?>
+                            <tr>
+                                <td></td>
+                                <td>Der bisherige Status des Patienten ist <?php echo $verbs[$this->options['last_status']['phase_phase']];?> (<?php echo $this->options['last_status']['date_verb'];?>)</td>
+                            </tr>
+                            <tr>
+                                <td></td>
+                                <td id="actual-status-change">
+                                    <input type="hidden" id="actual-status-change-status"value="<?php echo $this->options['last_status']['phase_phase'];?>">
+                                    <input type="hidden" id="actual-status-change-date"value="<?php echo $this->options['last_status']['misc_date'];?>">
+                                    <span id="actual-status-change-newstatus-row">
+                                        Der aktuelle Status des Patienten wird beim Speichern auf
+                                        <span id="actual-status-change-newstatus"></span>
+                                        gesetzt.
+                                    </span>
+                                </td>
+                            </tr>
+                            <?php endif;?>
+						</table>
+					</td></tr>
+			</table>
+<?php endif;?>
+
+
+<?php if($this->options['psysoz_enabled'] || !$pdf):?>
+			<table class="pcoc_section"  id="pcoc_psysoz" style="width:100%;<?php if($this->options['psysoz_enabled']<1){echo 'display:none';}?>">
+				<tr><td class="pcoc_section_head"><?php echo $sections['psysoz'];?><?php xx('hiddensectionenabled', '[psysoz_enabled]', $this->options['psysoz_enabled'], $this);?></td></tr>
+				<tr><td class="pcoc_section_content">
+						<table class="ipos_table" style="width:100%;">
+							<tr>
+								<td width="28%" class="grey"></td>
+                                <?php foreach($itemclasses['ipos'] as $v):?>
+                                    <td width="12%" class="ipos_center grey small"><?php echo $v['disp'];?></td>
+                                <?php endforeach;?>
+							</tr>
+							<?php
+                            $verbs=$pcocitems['psysoz'];
+							$verbs=array_slice($verbs,0,3);
+                            ?>
+
+							<?php $rowcount=0;?>
+							<?php foreach ($verbs as $verb_i=>$verb):?>
+								<?php
+								$rowcount++;
+								$zebra="";
+								if($rowcount%2==0){
+									$zebra="background-color:#F4F4F4;";
+								}
+								?>
+								<tr style="<?php echo $zebra;?>">
+									<td><?php echo $verb['long'];?></td>
+                                    <?php foreach($itemclasses['ipos'] as $v=>$foo):?>
+										<td class="ipos_center"><?php xx('radio', '['.$verb_i.']', $this->options[$verb_i], $this, $v);?></td>
+									<?php endforeach;?>
+								</tr>
+							<?php endforeach;?>
+
+							<tr>
+								<td width="28%" class="grey"></td>
+                                <?php foreach($itemclasses['iposb'] as $v):?>
+                                    <td width="12%" class="ipos_center grey small"><?php echo $v['disp'];?></td>
+                                <?php endforeach;?>
+							</tr>
+							<?php
+                            $verbs=$pcocitems['psysoz'];
+							$verbs=array_slice($verbs,3,3);
+                            ?>
+
+							<?php $rowcount=0;?>
+							<?php foreach ($verbs as $verb_i=>$verb):?>
+								<?php
+								$rowcount++;
+								$zebra="";
+								if($rowcount%2==0){
+									$zebra="background-color:#F4F4F4;";
+								}
+								?>
+								<tr style="<?php echo $zebra;?>">
+									<td><?php echo $verb['long'];?></td>
+                                    <?php foreach($itemclasses['iposb'] as $v=>$foo):?>
+										<td class="ipos_center"><?php xx('radio', '['.$verb_i.']', $this->options[$verb_i], $this, $v);?></td>
+									<?php endforeach;?>
+								</tr>
+							<?php endforeach;?>
+
+							<tr>
+								<td width="28%" class="grey"></td>
+                                <?php foreach($itemclasses['iposc'] as $v):?>
+                                    <td width="12%" class="ipos_center grey small"><?php echo $v['disp'];?></td>
+                                <?php endforeach;?>
+							</tr>
+							<?php
+
+                            $verbs=$pcocitems['psysoz'];
+							$verbs=array_slice($verbs,6,1);
+                            ?>
+
+							<?php $rowcount=0;?>
+							<?php foreach ($verbs as $verb_i=>$verb):?>
+								<?php
+								$rowcount++;
+								$zebra="";
+								if($rowcount%2==0){
+									$zebra="background-color:#F4F4F4;";
+								}
+								?>
+								<tr style="<?php echo $zebra;?>">
+									<td><?php echo $verb['long'];?></td>
+                                    <?php foreach($itemclasses['iposc'] as $v=>$foo):?>
+										<td class="ipos_center"><?php xx('radio', '['.$verb_i.']', $this->options[$verb_i], $this, $v);?></td>
+									<?php endforeach;?>
+								</tr>
+							<?php endforeach;?>
+
+						</table>
+					</td></tr>
+			</table>
+<?php endif;?>
+
+<?php if($this->options['akps_enabled'] || !$pdf):?>
+			<table class="pcoc_section" id="pcoc_akps" style="width:100%;<?php if($this->options['akps_enabled']<1){echo 'display:none';}?>">
+				<tr><td class="pcoc_section_head"><?php echo $sections['akps'];?><?php xx('hiddensectionenabled', '[akps_enabled]', $this->options['akps_enabled'], $this);?></td></tr>
+				<tr><td class="pcoc_section_content">
+						<table class="pcpss_table" style="width:100%;">
+							<tr>
+								<td width="28%">AKPS</td>
+								<td width="72%"><?php
+                                    $verbs=$itemclasses['akps'];
+                                    $verbs=array_combine(array_keys($verbs), array_column($verbs, 'disp'));
+
+									xx('select', '[akps_akps]', $this->options['akps_akps'], $this, $verbs);
+									?>
+								</td>
+							</tr>
+						</table>
+					</td></tr>
+			</table>
+<?php endif;?>
+
+<?php if($this->options['barthel_enabled'] || !$pdf):?>
+			<table class="pcoc_section" id="pcoc_barthel" style="width:100%;<?php if($this->options['barthel_enabled']<1){echo 'display:none';}?>">
+				<tr><td class="pcoc_section_head"><?php echo $sections['barthel'];?></td><?php xx('hiddensectionenabled', '[barthel_enabled]', $this->options['barthel_enabled'], $this);?></tr>
+				<tr><td class="pcoc_section_content">
+						<table class="pcpss_table" style="width:100%;">
+							<?php
+                            $verbs=$pcocitems['barthel'];
+
+							$i=0;
+							foreach ($verbs as $verbkey=>$verb):
+								$i++;
+								$zebra="";
+								if($i%2==0){
+									$zebra="background-color:#F4F4F4;";
+								}
+
+								$options_b=array_combine(array_keys($itemclasses[$verb['itemclass']]),array_column($itemclasses[$verb['itemclass']], 'disp'));
+							?>
+							<tr style="<?php echo $zebra;?>">
+								<td width="28%"><?php echo $verb['long'];?></td>
+								<td width="72%"><?php
+									xx('select', '['.$verbkey.']', $this->options['barthel'.$i], $this, $options_b);
+									?>
+								</td>
+							</tr>
+							<?php endforeach;?>
+                            <?php if (!$pdf):?>
+                            <tr>
+                                <td></td>
+                                <td>
+                                    <input type="button" value="alle nicht beurteilbar" onclick="$('#pcoc_barthel select').val(-1)">
+                                </td>
+                            </tr>
+                            <?php endif;?>
+						</table>
+					</td></tr>
+			</table>
+<?php endif;?>
+
+<?php if(!$pdf):?>
+			<table border="0" cellspacing="2" cellpadding="2" style="width:100%;" class="pcoc_section">
+				<tr>
+					<td colspan="4" class="pcoc_section_head">Ermittlung</td>
+				</tr>
+				<tr>
+					<td class="pcoc_section_content">
+						<table style="width:100%;">
+						<tr>
+							<td>
+								Erhoben von:
+							</td>
+							<td>
+								<input type="radio" name="FormBlockPcoc[misc_by]" value="selbst" <?php if ($this->options['misc_by']=="selbst") echo "checked"; ?>> Patient selbst
+							</td>
+							<td>
+								<input type="radio" name="FormBlockPcoc[misc_by]" value="prof" <?php if ($this->options['misc_by']=="prof") echo "checked"; ?>> Professionelle
+							</td>
+							<td>
+								<input type="radio" name="FormBlockPcoc[misc_by]" value="angeh" <?php if ($this->options['misc_by']=="angeh") echo "checked"; ?>> Angehörige
+							</td>
+						</tr>
+						</table>
+					</td>
+				</tr>
+			</table>
+<?php else:?>
+			<table border="0" style="width:100%;" class="pcoc_section">
+				<tr>
+					<td class="pcoc_section_head">Ermittlung</td>
+				</tr>
+				<tr>
+					<td class="pcoc_section_content">
+						<table>
+							<tr>
+								<td>Erhoben von:</td>
+								<td>
+									<?php if($this->options['misc_by']=="selbst") echo "Patient selbst";?>
+									<?php if($this->options['misc_by']=="prof") echo "Professionelle";?>
+									<?php if($this->options['misc_by']=="angeh") echo "Angehörige";?>
+								</td>
+							</tr>
+						</table>
+					</td>
+				</tr>
+			</table>
+<?php endif;?>
+<?php if(!$pdf):?>
+			<div id="pcoc_errors" style="display:none;border:2px double red;padding:4px;margin:4px;">
+			</div>
+            </div><?php//fullstatus ;?>
+            </div><?php//pcoc_done_body ;?>
+<?php endif;?>
+
+<?php endif;//pcoc not done - pdf empty?>
+    </div><?php//contactform_dragvbox_content ;?>
+</div><?php//contactform_dragvbox ;?>

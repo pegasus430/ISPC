@@ -1,0 +1,141 @@
+<script type="text/javascript">
+	var pl_loading = function () {
+	    var dlist = '<div class="loadingdiv" align="center"><img src="<?php echo RES_FILE_PATH; ?>/images/pageloading.gif"><br />	Loading... please wait</div>';
+	    document.getElementById('content').innerHTML = dlist;
+	}
+
+	function loadpage(ord, clm)
+	{
+	    if($('#hdnlastpage').val() >= parseInt($('#pageno').val())) {
+			if((parseInt($('#pageno').val())) > 0) {
+				pgno = (parseInt($('#pageno').val() - 1));
+			} else {
+				pgno = 0;
+			}
+			ajaxCallserver({url: appbase + 'sync/fetchcertifieddevice?clm=' + clm + '&ord=' + ord + '&pgno=' + pgno, callLoading: pl_loading});
+	    } else {
+			jAlert("<?php echo $this->translate('invalidpageno'); ?>");
+	    }
+	}
+
+	var callBack = function (params)
+	{
+	    $('#content').html(params.deviceslist);
+	}
+	
+	$(document).ready(function() {
+		$('#new_device_modal').dialog({
+			autoOpen: false,
+			width: '300',
+			title: '<?php echo $this->translate('sync_add_device_id_title'); ?>',
+			modal: true,
+			draggable: false,
+			resizable: false,
+			open: function() {
+				$('#device_id').val('');
+				$('#save_device_id').val('1');
+			},
+			buttons: {
+				"<?php echo $this->translate('save'); ?>": function () {
+					
+					if($('#device_id').val().length > '0')
+					{
+//						$('#save_device_id').val('1');			
+						$('#save_device_id_form').submit();
+						$(this).dialog("close");
+					}
+					else
+					{
+						alert('<?php echo $this->translate('device_id_must_fill'); ?>');
+					}
+				},
+				"<?php echo $this->translate('cancel'); ?>": function () {
+					$('#save_device_id').val('0');
+					$(this).dialog("close");
+				}
+			}
+		});
+		
+		$('#remove_device_modal').dialog({
+			autoOpen: false,
+			modal: true,
+			draggable: false,
+			resizable: false,
+			title: '<?php echo $this->translate('remove_device_title'); ?>',
+			buttons: {
+				"<?php echo $this->translate('delete'); ?>": function () {
+					$('#remove_device_form').submit();
+					$('#device_id').val('');
+					$(this).dialog("close");
+				},
+				"<?php echo $this->translate('cancel'); ?>": function () {
+					$('#rid').val('');
+					$('#device_id').val('');
+					$(this).dialog("close");
+				}
+			}
+		});
+		
+		$('#new_device').on('click', function() {
+			$('#new_device_modal').dialog('open');
+		});
+		
+		$('.remove_device').live('click', function() {
+			$('#remove_device_modal').dialog('open');
+			$('#rid').val($(this).attr('rel'));
+			
+			var string = $('#alert_delete_txt').text();
+			$('#alert_delete_txt').text(string.replace('%code', $('#device_id_source_'+$(this).attr('rel')).val()));
+		});
+	})
+</script>
+<style>
+	.datatable th.action, .datatable td.action {
+		width:60px;
+	}
+
+	.datatable th.date, .datatable td.date {
+		width:110px;
+	}
+	.datatable th.patient_name, .datatable td.patient_name {
+		width:350px;
+	}
+	div#modal_container {
+		width: 100%;
+		padding: 0px;
+		margin: 0px;
+		line-height: 150%;
+	}
+</style>
+
+<div id="familyDocFetchlist_mainDiv" class="grid">
+	<h1><?php echo $this->translate('list_certified_devices'); ?></h1>
+	<br />
+	<input type="button" name="new_device" id="new_device" value="<?php echo $this->translate('new_device_button'); ?>" />
+	<br />
+	<br />
+	<div id="content">
+		<?php echo $this->templates_grid; ?>
+	</div>
+</div>
+<script type="text/javascript">
+	ajaxCallserver({url: appbase + 'sync/fetchcertifieddevice?clm=cdate&ord=ASC&pgno=0', callLoading: pl_loading});
+</script>
+<div id="new_device_modal">
+	<form id="save_device_id_form" method="POST" action="">
+		<br />
+		<div id="modal_container">
+			<input type="hidden" name="save_device_id" id="save_device_id" value="0" />
+			<label for="device_id"><?php echo $this->translate('sync_device_id_name'); ?></label>
+			<input type="text" name="device_id" id="device_id" value="">
+		</div>
+	</form>
+</div>
+<div id="remove_device_modal">
+	<form id="remove_device_form" method="POST" action="">
+		<div id="modal_container">
+			<input type="hidden" name="rid" id="rid" value="" />
+			<span id="alert_delete_txt"><?php echo $this->translate('sync_remove_device_alert_message'); ?></span>
+		</div>
+	</form>
+</div>

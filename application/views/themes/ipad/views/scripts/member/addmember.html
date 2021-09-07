@@ -1,0 +1,2651 @@
+<?php
+
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/tinymce3/jscripts/tiny_mce/tiny_mce.js'); // ISPC-2602 Andrei 29.05.2020
+
+$this->headScript()->appendFile(APP_BASE.'javascript/fine-uploader/fine-uploader.min.js');
+$this->headLink()->appendStylesheet(APP_BASE.'javascript/fine-uploader/fine-uploader.css');
+
+/*
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/jgrowl/fileuploader.js?'.date('Ymd'));
+$this->headLink()->appendStylesheet(RES_FILE_PATH.'/javascript/jgrowl/filepatient.css?'.date('Ymd'));
+*/
+
+$this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/page-css/member_style.css');
+$this->headScript()->appendFile( APP_BASE . '/javascript/livesearch/getzipcities.js');
+
+$this->headScript()->appendFile(APP_BASE.'javascript/views/member/addmember.js'); // ISPC-2602 Andrei 29.05.2020
+?>
+
+<?php 
+	$membership_history = $this->membership_history;
+	$memberships = $this->memberships ;
+	$invoices = $this->invoices_array ;
+	$action_page = $this->action_page ;
+
+	$sepa_xml_files = $this->sepa_xml_files_array ;
+ 	$sepa_how_often_select = array(
+"monthly"=>$this->translate("sepa_monthly"), 
+"quarterly"=>$this->translate("sepa_quarterly"), 
+"annually"=>$this->translate("sepa_annually"));
+
+
+$allowed_referal_tabs =  array('donors', 'members', 'active', 'inactive');
+
+$current_referal_tab = '';
+
+if ( (isset($_GET['referal_tab']) && "donors" == $_GET['referal_tab']) 
+		|| $this->MemberReferalTabreferal_tab == "donors"
+
+) {
+	$current_referal_tab = "donors";
+
+} elseif(isset($_GET['referal_tab']) && in_array($_GET['referal_tab'] , $allowed_referal_tabs)) {
+
+	$current_referal_tab = $_GET['referal_tab']; 
+}
+
+//ISPC-2228 Lore
+if ($this->birthd !=''){
+	$age = ~~((time()- strtotime($this->birthd)) /(3600 * 24 * 365));
+}else{
+	$age = '';
+}
+if ($this->family_child['birthd'] !=''){
+	$child_age = ~~((time()- strtotime($this->family_child['birthd'])) /(3600 * 24 * 365));
+}else{
+	$child_age = '';
+}
+
+?>
+<script type="text/javascript">
+	var validate_duplicate = {};
+$(document).ready(function() { /*------ Start $(document).ready --------------------*/
+	var member_id = $("#member_id").val();
+	var member_type = "<?php echo $this->type; ?>";
+	var age = "<?php echo $age; ?>";
+	var child_age ="<?php echo $child_age; ?>";
+	
+	if(member_id){
+		$('#existing_invoices').html('<br/><div class="loadingdiv" align="center"><img src="<?php echo RES_FILE_PATH; ?>/images/ajax-loader.gif"><br /><?php echo $this->translate(loadingpleasewait); ?></div><br/>');
+		$.ajax({
+			url : appbase+'member/memberinvoices?id='+member_id,
+			success : function(response) {
+				$('#existing_invoices').html(response);
+			}
+		});
+	}
+	
+
+	$('a.invoice_element').live('click', function() {
+		var invoice_data_rel = $(this).attr('rel');
+		var invoice_data =invoice_data_rel.split("_");
+		var alink_id = $(this).attr('id');
+		
+		
+		jConfirm('<?php echo $this->translate('are you sure you want to create invoice?'); ?>', '<?php echo $this->translate('invoice'); ?>', function(r) {
+			if(r) {
+				$("#"+alink_id).addClass('generated_flow_element');
+				
+				// create invoice
+//				window.location =appbase+'invoicenew/membersinvoice?member='+invoice_data[0]+'&membership_data='+invoice_data[1]+'&int_start='+invoice_data[2]+'&int_end='+invoice_data[3];
+ 
+			 	$.ajax({url: appbase+'invoicenew/membersinvoice?member='+invoice_data[0]+'&membership_data='+invoice_data[1]+'&int_start='+invoice_data[2]+'&int_end='+invoice_data[3] });
+ 
+ 
+				// add time out then - refresh invoice list
+				$('#existing_invoices').html('<br/><div class="loadingdiv" align="center"><img src="<?php echo RES_FILE_PATH; ?>/images/ajax-loader.gif"><br /><?php echo $this->translate(loadingpleasewait); ?></div><br/>');
+				setTimeout(function () {
+					$.ajax({
+						url : appbase+'member/memberinvoices?id='+member_id,
+						success : function(response) {
+							$('#existing_invoices').html(response);
+						}
+					});
+				}, 150);
+				 
+			} else{
+				return false;
+			}
+		});
+});
+
+	$( ".birth_date" ).datepicker({
+		dateFormat: 'dd.mm.yy',
+		showOn: "both",
+		buttonImage: $('#calImg').attr('src'),
+		buttonImageOnly: true,
+		changeMonth: true,
+		changeYear: true,
+		nextText: '',
+		prevText: '',
+		maxDate: '<?php echo date('d.m.Y'); ?>',
+		yearRange: '-100:+10',
+		onSelect: function(dateText) {
+			membercheckduplicate('birthd', this.value);
+			var newbirth = this.value;
+			$('#theage').val(getAge(newbirth));
+		}
+	})
+	.on("input change", function (e) {
+		membercheckduplicate('birthd', this.value);
+		var newbirth = this.value;
+		$('#theage').val('-');
+	});
+	
+	$( "#mandate_reference_date" ).datepicker({
+		dateFormat: 'dd.mm.yy',
+		showOn: "both",
+		buttonImage: $('#calImg').attr('src'),
+		buttonImageOnly: true,
+		changeMonth: true,
+		changeYear: true,
+		nextText: '',
+		prevText: '',
+		//maxDate: '<?php echo date('d.m.Y'); ?>',
+		yearRange: '-5:+5',
+		onSelect: function(dateText) {
+			//membercheckduplicate('birthd', this.value);
+		}
+	});
+	
+	
+	$( ".inactive_from" ).datepicker({
+		dateFormat: 'dd.mm.yy',
+		showOn: "both",
+		buttonImage: $('#calImg').attr('src'),
+		buttonImageOnly: true,
+		changeMonth: true,
+		changeYear: true,
+		nextText: '',
+		prevText: ''
+	});
+	
+	$('.a_date').each(function(){
+		
+		var ms_id = $(this).attr('rel');
+	
+		$("#membership_start_"+ms_id).datepicker({
+			dateFormat: 'dd.mm.yy',
+			showOn: "both",					
+			buttonImage: $('#calImg').attr('src'),
+			buttonImageOnly: true,
+			changeMonth: true,
+			changeYear: true,
+			nextText: '',
+			prevText: '',
+			maxDate: $("#membership_end_"+ms_id).val(),
+	        onClose: function( selectedDate ) {
+	        	$("#membership_end_"+ms_id).datepicker( "option", "minDate", selectedDate );
+	        }
+	      });
+		
+		$("#membership_end_"+ms_id).datepicker({
+			dateFormat: 'dd.mm.yy',
+			showOn: "both",					
+			buttonImage: $('#calImg').attr('src'),
+			buttonImageOnly: true,
+			changeMonth: true,
+			changeYear: true,
+			nextText: '',
+			prevText: '',
+			minDate: $("#membership_start_"+ms_id).val(),
+	        onClose: function( selectedDate ) {
+	        	$("#membership_start_"+ms_id).datepicker( "option", "maxDate", selectedDate );
+	        } 
+	      });
+	});
+	
+ 
+	
+ 	$('table').on('click','tr a.delete_row',function(e){
+		e.preventDefault();
+		var new_del_id = $("select.update_price", $(this).closest('tr')).attr('data-row_id');
+		
+		$("#end_reasonid_" + new_del_id).closest('tr').remove();
+		$(this).closest('tr').remove();	
+		
+		
+		$(".sepa_row_membership_" + new_del_id).remove();
+		//count memberships so we can hide sepa settings div or button
+		if ($("select.update_price").length < 1){
+			$("#sepa_activate").hide();
+			$("#sepa_settings_div").hide();
+			$("#sepa_is_active_input").val("0");
+
+		}
+		
+		
+	});
+	
+	
+	$('table').on('click','tr a.delete_existing_row',function(e){
+		e.preventDefault();
+		var del_ids = $('#delete_ids').val();
+		var new_del_id = $(this).attr('rel');
+		  var $this = $(this);
+		jConfirm('<?php echo $this->translate('confirmdeleterecord'); ?>', '<?php echo $this->translate('confirmdeletetitle'); ?>', function(r) {
+			if(r) {
+				if(new_del_id){
+					$('#delete_ids').val(del_ids+','+new_del_id)
+				}
+				$this.closest('tr').remove();
+				
+				$("#end_reasonid_" + new_del_id).closest('tr').remove();
+				
+				//remove sepa-setting for this plan
+				$(".sepa_row_membership_" + new_del_id).remove();
+				//count memberships so we can hide sepa settings div or button
+				if ($("select.update_price").length < 1){
+
+					$("#sepa_activate").hide();
+					$("#sepa_settings_div").hide();
+					$("#sepa_is_active_input").val("0");
+
+				}
+				
+			}
+		});
+	});
+	
+ 
+	$('table').on('click','tr a.donation_delete_row',function(e){
+		  e.preventDefault();
+		  $(this).closest('tr').remove();
+		});
+ 
+	
+	
+	$('table').on('click','tr a.donation_delete_existing_row',function(e){
+		e.preventDefault();
+		var del_ids = $('#delete_donation_ids').val();
+		var new_del_id = $(this).attr('rel');
+		  var $this = $(this);
+		jConfirm('<?php echo $this->translate('confirmdeleterecord'); ?>', '<?php echo $this->translate('confirmdeletetitle'); ?>', function(r) {
+			if(r) {
+				if(new_del_id){
+					$('#delete_donation_ids').val(del_ids+','+new_del_id)
+				}
+				$this.closest('tr').remove();
+			}
+		});
+	});
+	
+	$( "#tabs" ).tabs({
+		show: function(event, ui) {},
+		select: function(event, ui) {
+			var selected_tab = ui.index;
+			$("#tabs_selected_id").val(selected_tab);
+		}
+	});	
+	var $tabs = $("#tabs").tabs();
+	
+	
+	$('#my-text-link2').click(function() {// bind click event to link
+		$tabs.tabs('select', 1); // switch to 2nd tab
+		return false;
+	})
+	
+	// ####################
+	// status 
+	// ####################
+	
+		
+	$('#inactive_from_div').hide();
+	$('#inactive_info').live('change',function(){
+ 		var inactive_value = $(this).val();
+ 		if(inactive_value != 0){
+ 			$('#inactive_from_div').show();
+ 		} else{
+ 			$('#inactive_from_div').removeClass('force_display');
+ 			$('#inactive_from_div').hide();
+ 		}	
+	});
+	
+	
+	$('.update_price').live('change',function(){
+		var row_id = $(this).data("row_id");
+		$.ajax({
+			type: 'POST',
+			url: 'member/getmembershipprice',
+			data: {
+				form_data: $('#member_form').serialize(),
+				row_id: row_id
+			},
+
+			success:function(data){
+				var membership_data = jQuery.parseJSON(data);
+				if(membership_data.needed_data == "1"  )
+				{
+					$('#membership_price_'+row_id).attr('disabled',false);
+					$('#membership_price_'+row_id).val(membership_data.membership_price);
+					$('#membership_price_from_list_'+row_id).val(membership_data.membership_price);
+					update_sepa(row_id , 'update_price');
+				} 
+				else 
+				{
+					$('#membership_price_'+row_id).attr('disabled',true);
+				}
+			},
+			error:function(){
+				ajax_done = 1;
+			}
+		});
+		
+		
+		
+	})
+	
+	// ####################
+	// memberships 
+	// ####################
+	
+	
+	
+	$('[id^=membership_price_]').live('change',function(){
+		var row_id = $(this).data("row_id");
+		var new_price = $(this).val();			
+		var price_list_value = $('#membership_price_from_list_'+row_id).val();
+
+		var result = parseFloat(new_price)-parseFloat(price_list_value) ;
+		if(result < 0  || !new_price){
+			$(this).val(price_list_value)
+		}
+		update_sepa(row_id);
+	})	
+	
+	
+	
+	$('.add_new_patient_line').live('click',function(){
+
+		var row_status = $('#memberships2member').val();
+
+		
+		var action_page = "<?php echo $action_page; ?>"
+		
+		<?php
+			foreach($memberships as $km=>$mt_data) {
+					$sel_str .= '<option value="'.$mt_data["id"].'">'.$mt_data["membership"].'</option>';
+				}
+			?>
+			var membership_select = '<select class="update_price"  data-row_id ="'+row_status+'"  name="membership['+row_status+'][membership]"  style="width:110px;">  <?php echo $sel_str;?></select>';
+			
+		
+		var tr ='<tr class="patient_row '+row_status+'">';
+		var membership_sel ='<td>'+membership_select+'</td>';
+		var start_date ='<td><input type="text" name="membership['+row_status+'][start]" rel="'+row_status+'"  data-row_id ="'+row_status+'"  class="update_price start_date_input date_input '+row_status+'" value="" id="membership_start_'+row_status+'"   /><input type="hidden" name="membership['+row_status+'][custom]" value="1" /></td>';
+		var end_date ='<td><input type="text" name="membership['+row_status+'][end]"  rel="'+row_status+'"    data-row_id ="'+row_status+'"  class="update_price end_date_input date_input '+row_status+'"  value="" id="membership_end_'+row_status+'"     /></td>';
+		
+		var end_reasonid = '';
+		<?php
+			if(count($this->reasonofmembershipend_array)>1):
+				$sel_str = '';
+				foreach($this->reasonofmembershipend_array as $k=>$v){
+					$sel_str .= '<option value="'.$k.'">'.$v.'</option>';
+				}
+		?>
+		end_reasonid = '<select id="end_reasonid_'+row_status+'" data-row_id ="'+row_status+'"  name="membership['+row_status+'][end_reasonid]"  style="display:none;width:300px!important">  <?php echo $sel_str;?></select>';
+		end_reasonid = '<tr><td colspan=2></td><td colspan=4>' + end_reasonid + '</td></tr>';
+		<?php endif; ?>
+		var membership_price ='<td> <input type="text" disabled="disabled"   data-row_id ="'+row_status+'" name="membership['+row_status+'][price]" rel="'+row_status+'" class="membership_price memnership_price_'+row_status+'" value="" id="membership_price_'+row_status+'"   /> &euro; <input type="hidden"  name="membership['+row_status+'][price_from_list]" rel="'+row_status+'"   data-row_id ="'+row_status+'" value="" id="membership_price_from_list_'+row_status+'" class="membership_price"/></td>';
+		var invoice_periods ='<td> </td>';
+		var a_delete ='<td><a href="javascript:void(0)" class="delete_row" rel="<?php echo $k; ?>" id="delete_<?php echo $k; ?>"><img src="<?php echo RES_FILE_PATH;  ?>/images/action_delete.png" /></a></td>';
+		var tr_end = '</tr>';
+		if(action_page =="edit"){
+			$('#patient_table').append(tr+membership_sel+start_date+end_date+membership_price+invoice_periods+a_delete+tr_end + end_reasonid);
+		} else{
+			$('#patient_table').append(tr+membership_sel+start_date+end_date+membership_price+a_delete+tr_end + end_reasonid);
+		}
+		
+		$('#membership_start_'+row_status).datepicker({
+			dateFormat: 'dd.mm.yy',
+			showOn: "both",					
+			buttonImage: $('#calImg').attr('src'),
+			buttonImageOnly: true,
+			changeMonth: true,
+			changeYear: true,
+			nextText: '',
+			prevText: '',
+	        onClose: function( selectedDate ) {
+	        	$('#membership_end_'+row_status).datepicker( "option", "minDate", selectedDate );
+	        }
+	      });
+		
+		$('#membership_end_'+row_status).datepicker({
+			dateFormat: 'dd.mm.yy',
+			showOn: "both",					
+			buttonImage: $('#calImg').attr('src'),
+			buttonImageOnly: true,
+			changeMonth: true,
+			changeYear: true,
+			nextText: '',
+			prevText: '',
+	        onClose: function( selectedDate ) {
+	        	$('#membership_start_'+row_status).datepicker( "option", "maxDate", selectedDate );
+	        }
+	      });
+		
+		$("#membership_end_"+row_status)
+		.change(function(){
+			var $rel = $(this).attr('rel');
+			if($(this).val() != ""){
+				$("#end_reasonid_" + $rel).show();
+			}else{
+				$("#end_reasonid_" + $rel).val("0");
+				$("#end_reasonid_" + $rel).hide();
+			}
+
+		});
+		
+		//add new-row for sepa-setting
+		sepa_settings_new_row(row_status);
+		//display sepa settings
+		if ( $("#sepa_settings_div").is(':visible') ) {
+			$("#sepa_activate").hide();
+			$("#sepa_is_active_input").val("1");
+			
+		}else{
+			$("#sepa_settings_div").hide();
+			$("#sepa_activate").show();
+			$("#sepa_is_active_input").val("0");
+		}
+		
+		var new_row = parseInt(row_status) + 1;
+		$('#memberships2member').val(new_row);
+	});
+	
+	
+	
+	// ####################
+	// DONATIONS 
+	// ####################
+	
+		$('.price, .membership_price').live('keyup change ', function() {			
+			$(this).val($(this).val().replace(/[^0-9\.-]/g,''));
+		});
+	
+	$( ".donation_date_input" ).datepicker({
+		dateFormat: 'dd.mm.yy',
+		showOn: "both",
+		buttonImage: $('#calImg').attr('src'),
+		buttonImageOnly: true,
+		changeMonth: true,
+		changeYear: true,
+		nextText: '',
+		prevText: ''
+	});
+	
+	$('.add_new_donation_line').live('click',function(){
+
+		var row_status = $('#donation2member').val();
+
+ 
+		var tr ='<tr class="donation_row_'+row_status+'">';
+		var donations_date ='<td><input type="text" name="donation['+row_status+'][donation_date]" rel="'+row_status+'" class="donation_date_input date_input '+row_status+'" value="" id="donation_date_'+row_status+'"   /><input type="hidden" name="donation['+row_status+'][custom]" value="1" /></td>';
+		var amount ='<td><input type="text" name="donation['+row_status+'][amount]"  rel="'+row_status+'"   class="donation_amount_input price r'+row_status+'"  value="" id="donation_amout_'+row_status+'"     /></td>';
+		var don_delete ='<td><a href="javascript:void(0)" class="donation_delete_row" rel="<?php echo $k; ?>" id="donation_delete_<?php echo $k; ?>"><img src="<?php echo RES_FILE_PATH;  ?>/images/action_delete.png" /></a></td>';
+		var tr_end = '</tr>';
+		
+		$('#donation_table').append(tr+donations_date+amount+don_delete+tr_end);
+		
+		$('#donation_date_'+row_status).datepicker({
+			dateFormat: 'dd.mm.yy',
+			showOn: "both",					
+			buttonImage: $('#calImg').attr('src'),
+			buttonImageOnly: true,
+			changeMonth: true,
+			changeYear: true,
+			nextText: '',
+			prevText: ''
+	      });
+		
+		var new_row = parseInt(row_status) + 1;
+		$('#donation2member').val(new_row);
+	});
+	
+	
+	//###############################################################
+		//voluntary workers ls
+		$('#voluntary_name').live('change', function() {
+			$('#vw_id').val('');
+		}).liveSearch({
+			url: 'ajax/voluntaryworkers?q=',
+			id: 'livesearch_stammdaten_voluntaryworkers',
+			aditionalWidth: '50',
+			noResultsDelay: '900',
+			typeDelay: '900'
+		});
+	
+	
+	
+	var family_block = false;
+	
+	$("input[name=type]").bind('click',function() {
+		
+	    if($(this).val() == "person"){
+		    $('.company_block').hide();
+		    $('#company_block').val('');
+			$('.person_block').removeClass('w360');
+			$('.person_block input').removeClass('w200').addClass('w400');
+			$('.person_block input#birthd').removeClass('w200').removeClass('w400').css({"width":"70px!important"});
+			$('.person_block input#theage').removeClass('w200').removeClass('w400')
+
+			$('#tabs-1  label').removeClass('w80').addClass('w100');
+			$('#profile_image').show();
+			$('.family_block').hide();
+			
+	    } 
+		else if($(this).val() == "family"){
+			$('.company_block').hide();
+			$('.person_block input').addClass('w200');
+			/*$('.person_block label').addClass('w80');*/
+			$('#tabs-1 label').addClass('w80');
+			$("#profile_image").hide();
+			
+			$('.person_block input#birthd').removeClass('w200').removeClass('w400').css({"width":"70px!important"});
+			$('.person_block input#theage').removeClass('w200').removeClass('w400')
+			$('.family_block input#birthd_child').removeClass('w200').removeClass('w400').css({"width":"70px!important"});
+			$('.person_block input#theage_child').removeClass('w200').removeClass('w400')
+
+			$('.person_block').css({"float": "left"}).addClass('w360');
+			$('.person_block .error').css({"margin": "0 0 5px 0","width": "350px"});
+			$('.family_block').css({"float": "right"}).show();
+			
+			if(family_block) return;
+			family_block = true; 
+				
+			$('.person_block').clone(false).prependTo(".family_block");
+
+			
+			$('.family_block input, .family_block select, .family_block div.error').each(function(i) {
+ 				 $(this).attr('name', $(this).attr('name') + "_child");
+ 				 $(this).attr('id', $(this).attr('id') + "_child");
+ 				 $(this).val("");
+			});
+			$('.family_block div.error').each(function(i) {
+				 $(this).html("");
+			});
+			$('.family_block label').each(function(i) {
+ 				 $(this).attr('for', $(this).attr('for') + "_child");
+			});
+			
+			<?php if (is_array($this->family_child)) :?>
+			$('#title_child').val('<?php echo $this->family_child["title"] ?>');
+			$('#salutation_child').val('<?php echo $this->family_child["salutation"] ?>');
+			$('#salutation_letter_child').val('<?php echo $this->family_child["salutation_letter"] ?>');
+			$('#first_name_child').val('<?php echo $this->family_child["first_name"] ?>');
+			$('#last_name_child').val('<?php echo $this->family_child["last_name"] ?>');
+			$('#birthd_child').val('<?php echo $this->family_child["birthd"] ?>');
+			$('#sex_child').val('<?php echo $this->family_child["gender"] ?>');
+			
+			$('#theage_child').val('<?php echo $child_age; ?>');
+			
+			<?php endif; ?>
+			//display errors
+			<?php if ($this->error_child_first_name != "") :?>
+				$('.family_block #error_first_name_child').html('<?php echo $this->error_child_first_name ?>');
+			<?php endif; ?>
+			<?php if ($this->error_child_last_name != "") :?>
+				$('.family_block #error_last_name_child').html('<?php echo $this->error_child_last_name ?>');
+			<?php endif; ?>
+			<?php if ($this->error_child_birthd != "") :?>
+				$('.family_block #error_birthd_child').html('<?php echo $this->error_child_birthd?>');
+			<?php endif; ?>	
+			
+			$('.family_block img.ui-datepicker-trigger').remove();
+			$('#birthd_child').removeClass('hasDatepicker').datepicker('destroy');
+			$( "#birthd_child" ).datepicker({
+				dateFormat: 'dd.mm.yy',
+				showOn: "both",
+				buttonImage: $('#calImg').attr('src'),
+				buttonImageOnly: true,
+				changeMonth: true,
+				changeYear: true,
+				nextText: '',
+				prevText: '',
+				maxDate: '<?php echo date('d.m.Y'); ?>',
+				yearRange: '-100:+10',
+				onSelect: function(dateText) {
+					var newbirth_child = this.value;
+					$('#theage_child').val(getAge(newbirth_child));
+				}
+			})
+			.on("input change", function (e) {
+				var newbirth_child = this.value;
+				$('#theage_child').val('-');
+			});
+			
+			$("select[name=salutation_child]").change(function(){
+				var value = $(this).val();
+				if (value == "Frau"){$("select[name=gender_child]").val("2");}
+				else if (value == "Herr"){$("select[name=gender_child]").val("1");}
+				else{$("select[name=gender_child]").val("");}				
+			});
+			
+				
+		}
+		else {
+			$('.person_block').removeClass('w360');
+			$('.person_block input').removeClass('w200').addClass('w400');
+			$('.person_block input#birthd').removeClass('w200').removeClass('w400').css({"width":"70px!important"});
+			$('#tabs-1  label').removeClass('w80').addClass('w100');
+			$('#profile_image').show();
+			$('.family_block').hide();
+			$('.company_block').show();
+	    }
+	});
+		
+	if(member_type == "company"){
+	    $('.company_block').show();
+	} 
+	else if(member_type == "family"){
+		$('.company_block').hide();
+		$('#family_type').prop('checked',true);
+		$('#family_type').trigger( "click" );
+	}
+	else{
+	    $('.company_block').hide();
+	    $('#person_type').prop('checked',true)   
+	}
+	
+	
+	// ####################
+	// HIGHEST NUMBER
+	// ####################
+	
+		
+	$('#auto_member_number').live('change',function(){
+		if($(this).val() == "1" ){
+			$.get(appbase + 'member/gethighestmembernumber', function(result) {
+	
+				if (result != 0) {
+					var resultx = jQuery.parseJSON(result);
+					$('#member_number').val(resultx);
+				} else {
+					
+				}
+			});
+		}
+	})
+	
+	
+	//###############################################################
+	$('#btnsubmit').live('click',function(e){
+		e.preventDefault();
+		var submit_form = 1;
+		
+		if(submit_form == 1){
+			var error = 0;
+			var ajax_done = 0;
+			
+			
+			$("input[name=type]").bind('click',function() {
+
+			    if($(this).val() == "person"){
+				    if($('#first_name').val() == ""){
+				        error = 1
+				    }
+				  
+				    if($('#last_name').val() == ""){
+				        error = 2
+				    }
+			    } else {
+			    
+				    if($('#member_company').val() == ""){
+				        error = 3
+				    }
+			    }
+			});
+			
+			
+			  $(".start_date_input, .start_a_date").each(function(){
+				  	if((this.value) == "00.00.0000"){
+			            error = 5
+			            var inpur_nr = $(this).attr("rel");
+			            $('input.'+inpur_nr+'').addClass("error_overlapping");
+			        } 
+				  	if($.trim(this.value) == ""){
+			            error = 4
+			            var inpur_nr = $(this).attr("rel");
+			            $('input.'+inpur_nr+'').addClass("error_overlapping");
+			        } /* else {
+			            error = 0
+			        } */
+			    })
+			
+			    $(".end_date_input, .end_a_date").each(function(){  //TODO-2585 @Lore 08.10.2019
+				  //alert(this.value);
+			        if((this.value) == "00.00.0000"){
+			            error = 5
+ 			            var inpur_nr = $(this).attr("rel");
+			            $('input.'+inpur_nr+'').addClass("error_overlapping"); 
+			        }
+			    })
+			    
+			if(error == '1'){
+				alert("Vorname fehlt");
+			}
+			
+			if(error == '2'){
+				alert("Nachname");
+			}
+ 
+			if(error == '3'){
+				alert('<?php echo $this->translate("enter_member_company")?>');
+			}
+			
+			if(error == '4'){
+				alert("<?php echo $this->translate('PLease insert membership period'); ?>");
+			}
+			
+			if(error == '5'){
+				alert("<?php echo 'Invalid membership period' ?>");   
+			}
+			
+			if(error == '0'){
+				
+				$(this).attr('disabled', true);
+				setTimeout(function () {$('input[type=submit]').attr('disabled', true);}, 150);
+				setTimeout(function () {$('input[type=submit]').attr('disabled', false);}, 9000);
+				
+				$.ajax({
+					type: 'POST',
+					url: 'ajax/overlappingmemberships',
+					data: {
+						form_data: $('#member_form').serialize()
+					},
+	
+					success:function(data){
+						var visitdata = jQuery.parseJSON(data);
+					
+						if(visitdata.new_intersected == "1" || visitdata.intersected == "1" )
+						{
+					
+							if(visitdata.new_intersected == "1")
+							{
+								var new_overlapping = visitdata.inserted_overlapping; // overlapping for form visits
+								 $.each(new_overlapping, function(key,day_nr) {
+	 								 $('.'+day_nr).find('input').addClass("error_overlapping");
+								 });
+								
+								jAlert("<?php echo  $this->translate('membership period are overlapping') ?>");
+							}
+	 
+							 
+							 $('.save_form_btn').attr('disabled',false);
+							 $(".ui-button:first").attr("disabled", false)                                               
+							 .removeClass("ui-state-disabled").next("button").attr("disabled", false)                                               
+							 .removeClass("ui-state-disabled");
+							setTimeout(function () {$('input[type=submit]').attr('disabled', false);}, 10);
+							return false; // used with modal
+						} 
+						else 
+						{
+							$('.save_form_btn').attr('disabled',true);
+							 $(".ui-button:first").attr("disabled", true)                                               
+							 .addClass("ui-state-disabled").next("button").attr("disabled", true)                                               
+							 .addClass("ui-state-disabled");
+						 	
+	 					 	 $('#save_form').val('1');
+							 $('#member_form').submit();
+						 
+						}
+					},
+					error:function(){
+						ajax_done = 1;
+					}
+				});
+			}
+		}
+	});
+	
+	//change gender if salutation is changed
+	$("select[name=salutation]").change(function(){
+		var value = $(this).val();
+		if (value == "Frau"){$("select[name=gender]").val("2");}
+		else if (value == "Herr"){$("select[name=gender]").val("1");}
+		else{$("select[name=gender]").val("");}				
+	});
+	
+	
+	$("#patient_table .end_a_date")
+		.each(function(){
+			var $rel = $(this).attr('rel');
+			if($(this).val() != ""){
+				$("#end_reasonid_" + $rel).show();
+			}else{
+				$("#end_reasonid_" + $rel).hide();
+			}
+		
+		})
+		.change(function(){
+			var $rel = $(this).attr('rel');
+			if($(this).val() != ""){
+				$("#end_reasonid_" + $rel).show();
+			}else{
+				$("#end_reasonid_" + $rel).val("0");
+				$("#end_reasonid_" + $rel).hide();
+			}
+
+		});
+	
+	$(".open_versions").click(function(){
+		var $val = $(this).attr("rel");
+		var link = $(this);
+		$("#div_versions_"+$val).toggle( 0, function(){
+			if ($(this).is(':visible')) {
+				link.removeClass('arrow_down').addClass('arrow_up');                
+       		} else {
+				link.removeClass('arrow_up').addClass('arrow_down');          
+			}        
+		
+		});
+	
+	});	
+	<?php
+	if(isset($_GET['tabs'])){
+	?>
+		
+		$tabs.tabs('select', <?php echo (int)$_GET['tabs']; ?>);
+		
+	<?php
+	}elseif	(!empty($this->tabs_menu)){
+	?>
+		$tabs.tabs('select', <?php echo $this->tabs_menu; ?>);
+	<?php
+	}	
+	?>
+	
+		
+	// icons ISPC - 1793
+	
+	
+	check_icons();
+
+	$('#assign_custom_icon').click(function() {
+		$('#available_custom_icons').toggle();
+		check_icons();
+	});
+
+	//assign
+	$('div#available_custom_icons div.available').live('click', function() {
+		
+		$(this).hide();
+		var $clone = $(this).clone();
+		$($clone)
+			.append( "<input type='hidden' value='"+$(this).attr('rel')+"' name='custom_icons["+$(this).attr('rel')+"]'/>" )
+			.attr('id', 'assigned_custom_icon-' + $(this).attr('rel'))
+			.removeClass('available')
+			.addClass('custom_icon_assigned')
+			.insertAfter('div.fixed');
+		$($clone).click(function(e){
+			$('#available_custom_icon-' + $(this).attr('rel')).show();
+			$(this).remove();
+			check_icons();
+		});
+		$($clone).show();
+		
+		check_icons();
+		return; 
+	});
+	
+	//(un)assign
+	$(".custom_icon_assigned").click(function(e){
+		
+		$('#available_custom_icon-' + $(this).attr('rel')).show();
+		$(this).remove();	
+		check_icons();
+
+	});
+	
+	
+	
+	$("#first_name, #last_name, #member_company").change(function(){		
+		membercheckduplicate(this.id, this.value);	
+	});
+	
+	
+		
+	$("#sepa_how_often").change(function(){
+	
+		switch(this.value) {
+			case "monthly":
+				$("#sepa_when_table_quarterly , #sepa_when_table_annually, #sepa_when_table_biannual").hide();
+				$("#sepa_when_table_monthly").show();				
+				break;
+
+			case "quarterly":
+				$("#sepa_when_table_monthly , #sepa_when_table_annually, #sepa_when_table_biannual").hide();
+				$("#sepa_when_table_quarterly").show();	
+				break;
+
+			case "biannual":
+				$("#sepa_when_table_monthly , #sepa_when_table_quarterly, #sepa_when_table_annually").hide();
+				$("#sepa_when_table_biannual").show();	
+				break;
+
+			case "annually":
+				$("#sepa_when_table_quarterly , #sepa_when_table_monthly, #sepa_when_table_biannual").hide();	
+				$("#sepa_when_table_annually").show();
+				break;
+
+		}
+		update_sepa(0);
+	});
+	
+	
+	$(".sepa_when_checkbox").change(function(){
+		update_sepa(0);
+	});
+	
+	$('.sepa_amount, input[name=sepa_when_monthly], input[name=sepa_when_quarterly]').on('keyup change ', function() {			
+		$(this).val($(this).val().replace(/[^0-9\.-]/g,''));
+		update_sepa_amount($(this));
+		//update_sepa($(this).attr('data-row_id') , 'price' ,  $(this).val());
+	});
+	
+
+	
+	$( "#sepa_when_annually" ).datepicker({
+		dateFormat: 'dd.MM',
+		
+		altField: "#sepa_when_annually_hidden",
+		altFormat: "yy-mm-dd",
+		 
+		
+		showOn: "both",
+		buttonImage: $('#calImg').attr('src'),
+		buttonImageOnly: true,
+		changeMonth: true,
+		changeYear: false,
+		nextText: '',
+		prevText: '',
+		onSelect: function(dateText) {
+			//membercheckduplicate('birthd', this.value);
+		},
+		beforeShow :function(e, o) {
+			o.dpDiv.addClass('sepa_when_annually_hide_year');		
+		}
+	});
+
+	
+});/*-- END  $(document).ready ----------- --*/
+
+//ISPC-2228 Lore
+function getAge(dateString) {
+	var today = new Date();  
+    var yearbirth = dateString;
+    var year = yearbirth.substr(yearbirth.length - 4);
+    var age = today.getFullYear() - year;
+    return age;
+}
+
+
+function membercheckduplicate( id , value){
+
+	
+	if(value != ""){
+			validate_duplicate[id] = value;
+		}else{
+			delete validate_duplicate[id];
+		}
+		var len = $.map(validate_duplicate, function(n, i) { return i; }).length;
+		if( len >1) {
+		
+			$.ajax({
+					type: 'POST',
+					url: 'ajax/membercheckduplicate',
+					data: { data: validate_duplicate },
+					dataType: "json",
+	
+					success: function(responseJSON){
+						
+						if(typeof(responseJSON) === 'object' &&  responseJSON.success === true){
+
+							var body = '<b><?php echo $this->translate('firstname') ?>: </b>' + responseJSON.data.first_name ;
+							
+							if(responseJSON.data.last_name != undefined  && responseJSON.data.last_name != ""){
+								body += '<br><b><?php echo $this->translate('lastname') ?>: </b>' + responseJSON.data.last_name ;
+							}
+							
+							if(responseJSON.data.birthd != undefined && responseJSON.data.birthd != ""){
+								body += '<br><b><?php echo $this->translate('birthd') ?>: </b>' + responseJSON.data.birthd ;
+							}
+							
+							if(responseJSON.data.member_company != undefined && responseJSON.data.member_company != ""){
+								body += '<br><b><?php echo $this->translate('member_company') ?>: </b>' + responseJSON.data.member_company ;
+							}
+							body += "<br><b><?php echo $this->translate('confirm_continue_new_page') ?></b>";
+							jConfirm(body, '<?php echo $this->translate('member_allready_exists'); ?>', function(r) {
+								if(r) {
+									//goto member
+									window.open(appbase+'member/editmember?id='+responseJSON.data.id,'_blank');
+								}
+							});
+						}
+					},
+					complete: function(data){
+						//validate_duplicate = {};
+					},
+					error: function (){
+					}
+			});	
+		
+		}
+
+}
+	
+function selectVoluntary(vol_id)
+{
+	$('#vw_id').val($('#vol_id_'+vol_id).val());
+	$('#voluntary_name').val( $('#vol_lname_'+vol_id).val()+', '+$('#vol_fname_'+vol_id).val() );
+}
+
+	
+function check_icons() {
+	var count_asigned = $('div.custom_icon_assigned').length;
+	var count_available = $('div.available').length;
+
+	if (count_asigned == count_available) {
+		$('#available_custom_icons').hide();
+		$('#assign_custom_icon').hide();
+	} else {
+		$('#assign_custom_icon').show();
+	}
+}
+	
+function roundToTwo(num) {    
+    return +(Math.round(num + "e+2")  + "e-2");
+}
+	
+function update_sepa(row_id , action ,  value ){
+
+	
+		if ( Number(row_id) > 0 && action == 'update_price'){
+			var newtext = $('select.update_price[data-row_id='+row_id+'] option:selected').text();
+			$("table.sepa_when_table tr.sepa_row_membership_"+row_id).each(function(){
+				$("td:eq(0) label", this).text(newtext);
+			});
+		}
+	
+		var checked_length = $(".sepa_when_checkbox:checked", $("table.sepa_when_table:visible")).length;
+		
+		if (checked_length > 0){
+			$(".sepa_when_checkbox:checked",  $("table.sepa_when_table:visible")).each(function(){
+				var checked_column_id = $(this).parent().index();
+
+				$(".sepa_amount", $(this).closest("table").find("td:nth-child("+(checked_column_id+1)+")"))
+				.each(function(){
+					
+					var mid = $(this).attr("data-memebership_id");
+
+					var mid_price = $("input#membership_price_"+mid).val();
+
+					//var new_value = Math.round(mid_price/checked_length);
+					var new_value = roundToTwo(mid_price/checked_length);
+					
+					
+										
+					if ( row_id == 0 ||  row_id ==mid ){
+						
+						$(this).val(new_value).attr("disabled", false);
+					}
+					
+					
+					
+				});
+			});		
+		}
+		$(".sepa_when_checkbox:not(:checked)",  $("table.sepa_when_table:visible")).each(function(){
+			var index_cell = $(this).parent().index();
+			$(".sepa_amount", $(this).closest("table").find("td:nth-child("+(index_cell+1)+")")) .each(function(){
+				$(this).val('').attr("disabled", true);
+			});
+		});
+		
+		$('.sepa_infobox_id', $("table.sepa_when_table:visible")).hide();
+
+}
+
+function update_sepa_amount(_this){
+
+	var row_amount = 0;
+	$.map( $(".sepa_amount", $(_this).closest("tr")), function( val, i ) {
+		row_amount += Number(val.value);
+	});
+	
+	var mid = $(_this).attr("data-memebership_id");
+	
+	var mid_price = $("input#membership_price_"+mid).val();
+	
+	var max = Number(mid_price) - Number(row_amount);
+	
+	if( max > 0){
+		//not enough minerals
+		$('.sepa_infobox_id', $(_this).closest("tr"))
+			.show()
+			.html(roundToTwo(max ) +'&euro; '+ ' <?php echo $this->translate('total_amount_too_low') ?>')
+			.css("color", "red");
+		
+		
+	}else if(  max < 0){
+		//too much money, you must construct additional pylons
+		$('.sepa_infobox_id', $(_this).closest("tr"))
+			.show()
+			.html(roundToTwo(-max) + '&euro; '+ ' <?php echo $this->translate('total_amount_too_high') ?>')
+			.css("color", "green");
+	}else{
+		//100%
+		$('.sepa_infobox_id', $(_this).closest("tr")).hide();
+	}
+	
+
+	
+	
+}	
+
+function sepa_settings_new_row(row_status){
+	var newtext = $('select.update_price[data-row_id='+row_status+']').find(":selected").text();
+
+	var tds = "<td><label>"+newtext+"</label><div class='sepa_infobox_id'></div></td>";
+	for(var i=1; i<=12;i++){
+		tds += "<td>";
+		tds += '<input type="text" class="sepa_amount" data-memebership_id="'+row_status+'" name="sepa_month_amount['+i+']['+row_status+']" value="" />&euro;';
+		tds += "</td>";
+	}
+	
+	$("#sepa_when_table_monthly").append($('<tr class="sepa_row_membership_'+row_status+'">'+tds+'</tr>'));
+	
+	
+	var tds = "<td><label>"+newtext+"</label><div class='sepa_infobox_id'></div></td>";
+	for(var i=1; i<=4;i++){
+		tds += "<td>";
+		tds += '<input type="text" class="sepa_amount" data-memebership_id="'+row_status+'" name="sepa_quarter_amount['+i+']['+row_status+']" value="" />&euro;';
+		tds += "</td>";
+	}
+	
+	$("#sepa_when_table_quarterly").append($('<tr class="sepa_row_membership_'+row_status+'">'+tds+'</tr>'));
+	$('.sepa_amount').on('keyup change ', function() {			
+		$(this).val($(this).val().replace(/[^0-9\.-]/g,''));
+		update_sepa_amount($(this));
+	});
+}
+
+	function sepa_activate()
+	{
+		if ( $("#sepa_settings_div").is(':visible') ) {
+			$("#sepa_is_active_input").val("0");
+			$("#sepa_settings_div").hide();
+			$("#sepa_activate span").show().text("<?php echo $this->translate('sepa_click_to_activate')?>");
+		}else{
+			$("#sepa_settings_div").show();
+			$("#sepa_activate span").text("<?php echo $this->translate('sepa_click_to_deactivate')?>");
+			$("#sepa_is_active_input").val("1");
+		}
+
+	}
+
+	
+	function get_auto_mandate_reference(_this) 
+	{
+		if( ! $(_this).is(':checked')) {
+			return false;
+		}
+			
+		if ( $("#mandate_reference").val() == "" && $('#member_number').val() == "" ) {
+		
+			
+			var timestamp = new Date().getTime(); 
+			$.get(appbase + 'member/gethighest_mandate_reference?_t='+timestamp, function(result) {
+				
+				if (typeof(result) =='object' && result.highest_nr != null) {
+					$('#mandate_reference').val(String(result.highest_nr));
+				} else {
+					
+				}
+			});
+		} else if( $("#mandate_reference").val() == "" && $('#member_number').val() != "" ) {
+			
+			var str1 = String($('#member_number').val()); 
+			$("#mandate_reference").val( str1.concat("-001") );
+		}
+		
+		return false;
+	}
+</script>
+<style>
+	.qq-upload-list{
+		margin:5px!important;
+		padding-left: 5px;
+	}	
+	.qq-upload-file{
+		width: 120px!important;
+		word-wrap: break-word;
+		display: block;
+	}
+</style>
+
+<div style="display: none"> <img id="calImg" src="<?php echo RES_FILE_PATH;  ?>/images/calendar.png" alt="Popup" class="trigger"> </div>
+<div class="back_list">
+<?php 
+	if ($current_referal_tab == 'donors' ) {
+?>
+	<a href="member/memberslist?tab=<?php echo $current_referal_tab;?>">&laquo; <?php echo $this->translate('members_list_donor') ?></a>
+
+<?php
+	} else { 
+?>	
+	<a href="member/memberslist?tab=<?php echo ($current_referal_tab);?>">&laquo; <?php echo $this->translate('members_list') ?></a>
+<?php
+	}
+?>
+</div>
+<fieldset>
+
+<?php if($_REQUEST['id']):?>
+	<legend><?php echo $this->translate("Edit member") ?></legend>
+<?php else:?>
+	<legend><?php echo $this->translate("Add member") ?></legend>
+<?php endif;?>
+
+<form action="" method="post" name="member_form" id="member_form" enctype="multipart/form-data" >
+<div id="addfamilydoctor_Msgerror" class="err"><?php echo $this->error_member_exists ?> <?php echo $this->error_message_file ?></div>
+<?php if(!empty($this->validate_suc) && empty($this->validate_err)):?>
+<div id="addfamilydoctor_Msgerror" class="success">
+	<?php echo implode('<br/><br/>',$this->validate_suc);?>
+</div>
+<?php endif;?>
+<?php if(!empty($this->validate_err)):?>
+<div id="addfamilydoctor_Msgerror" class="err-left">
+<?php echo implode('<br/><br/>',$this->validate_err);?>
+<br/>
+<?php echo $this->error_member_exists ?> <?php echo $this->error_message_file ?></div>
+<?php endif;?>
+<?php if($_REQUEST['id']):?>
+<input type="hidden" name="member_id" value="<?php echo $_REQUEST['id'];?>" id="member_id" />
+<?php if($this->type == "person"):?>
+	<span class="span_page_title"><b><?php echo $this->translate("Member:") ?></b> <?php echo $this->first_name ?> <?php echo $this->last_name ?></span>
+<?php elseif($this->type == "company"): ?>
+	<span class="span_page_title"><b><?php echo $this->translate("Member:") ?></b> <?php echo $this->member_company ?></span>
+<?php elseif($this->type == "family"): ?>
+	<span class="span_page_title"><b><?php echo $this->translate("Member:") ?></b> 
+		<?php echo $this->first_name ?> <?php echo $this->last_name ?>, <?php echo $this->family_child["first_name"] ?> <?php echo $this->family_child["last_name"] ?>
+	</span>
+<?php endif;?>
+	<br/><br/>
+<?php if(isset($this->change_date) && '0000-00-00 00:00:00'!=$this->change_date) : ?>
+<p><?php echo $this->translate("changedate") ?>: <?php echo date('d.m.Y',strtotime($this->change_date));  ?></p>
+<?php endif;?>
+<?php endif;?>
+<div class="tab_container" style="width:100%;" >
+		<div id="tabs" style=" width:100%;">
+			<ul>
+				<li><a href="#tabs-1">Stammdaten</a></li>
+				<li><a href="#tabs-2">Mitgliedschaft</a></li>
+				<li><a href="#tabs-3">Bankverbindung</a></li>
+				<li><a href="#tabs-4">Spende</a></li>
+				<?php if($_REQUEST['id']):?>
+				<li><a href="#tabs-5"><?php echo $this->translate("tab_files") ?></a></li>
+				<li><a href="#tabs-6"><?php echo $this->translate("tab_history") ?></a></li>
+				<?php endif; ?>
+			</ul>
+			
+			<div id="tabs-1">
+			
+				
+				<!-- upload image -->
+				<div id="profile_image" style="position: absolute; right: 0; margin-right:5px;">
+				<table>
+					
+					<tr>
+						
+						<td>
+						
+						<?php $img_file = 'icons_system/'.trim($this->img_path);?>
+						<img src="<?php echo $img_file; ?>" class="vw_img" style="width:100px; <?php if(strlen($this->img_path)<1) echo 'display:none;' ?>"/>
+						</td>
+					</tr>
+					
+					
+					<tr>
+						<td>
+							<div id="file-uploader-demo1">
+								<noscript>
+								Please enable JavaScript to use file uploader.
+								</noscript>
+							</div>
+							
+							<script type="text/template" id="qq-template">
+        <div class="qq-uploader-selector qq-uploader" qq-drop-area-text="Drop files here">
+            
+			<div class="qq-total-progress-bar-container-selector qq-total-progress-bar-container">
+                <div role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" class="qq-total-progress-bar-selector qq-progress-bar qq-total-progress-bar"></div>
+            </div>
+			
+            <div class="qq-upload-drop-area-selector qq-upload-drop-area" qq-hide-dropzone>
+                <span class="qq-upload-drop-area-text-selector"></span>
+            </div>
+            <div class="qq-upload-button-selector qq-upload-button">
+                <div><?php echo $this->translate('uploadafile'); ?></div>
+            </div>
+			
+            <span class="qq-drop-processing-selector qq-drop-processing">
+                <span>Processing dropped files...</span>
+                <span class="qq-drop-processing-spinner-selector qq-drop-processing-spinner"></span>
+            </span>
+			
+			
+            <ul class="qq-upload-list-selector qq-upload-list" aria-live="polite" aria-relevant="additions removals">
+                <li>
+                    <div class="qq-progress-bar-container-selector">
+                        <div role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" class="qq-progress-bar-selector qq-progress-bar"></div>
+                    </div>
+										
+					<img class="qq-thumbnail-selector" qq-max-size="100" qq-server-scale>
+                   					
+					
+                </li>
+            </ul>
+			
+
+          
+        </div>
+    </script>
+							
+						<script type="text/javascript">
+							var uploader = new qq.FineUploader({
+								debug: false,
+								multiple : false,
+								element: document.getElementById('file-uploader-demo1'),
+								template: 'qq-template',
+								request: {
+									endpoint: appbase+'iconsystem/iconimageupload',
+									params: {
+										'op':'members',
+										'date': new Date()
+									},
+								},
+								retry: {
+								   enableAuto: false
+								},
+								validation: {
+									allowedExtensions: ['jpeg', 'jpg', 'gif', 'png'],
+									sizeLimit: (200 * 1024) 
+								},
+								messages: {
+									sizeError: '<?php echo $this->translate("FineUploader sizeError");?>',
+									typeError: '<?php echo $this->translate("FineUploader typeError");?>',
+								},
+								callbacks: {
+									onComplete: function(id, fileName, responseJSON){	
+										$('#btnsubmit').removeAttr("disabled");
+										if (responseJSON.success == true){
+											//update images
+											var d = new Date();
+    										$('.vw_img').attr('src', '<?php echo APP_BASE ?>' + responseJSON.file + '?dummy=' + d.getTime()).show();	
+										}
+									},
+									onSubmit: function(id, fileName){
+										$('#btnsubmit').attr("disabled", "true");
+																	 
+									},
+								}
+								
+							});
+						</script>	
+						
+							
+						 </td>
+					</tr>
+				</table>
+				</div>
+				
+	<?php if (count($this->custom_icon_details) > 0 ) : ?>
+<!-- add icons selector -->
+		<label for="assign_custom_icon" id="lbl_assign_custom_icon" class="label_class100px"><?php echo $this->translate('addicons'); ?></label>
+							
+							<a href="javascript:void(0);" id="assign_custom_icon" style="padding-top:2px"; float:left; >
+								<img src="<?php echo APP_BASE . 'images/btttt_plus.png' ?>" title="<?php echo $this->translate('assign_custom_icon'); ?>" />
+							</a>
+
+<div class="patient_icon_cell" style="float:left;">
+								
+								<div class='fixed'></div>
+								<?php foreach($this->custom_icon_details as $k_cust_icon_det => $v_cust_icon_det): ?>
+								<?php if($v_cust_icon_det['visible'] == '0'): ?>
+	
+									<div class="patient_icon_cell custom_icon_assigned" style="background:#<?php echo $v_cust_icon_det['color']; ?>; " rel="<?php echo $v_cust_icon_det['id']; ?>" id="assigned_custom_icon-<?php echo $v_cust_icon_det['id']; ?>" title="<?php echo $v_cust_icon_det['name']; ?>">
+										<?php if(!empty($v_cust_icon_det['image'])): ?>
+											<img src="<?php echo APP_BASE . 'icons_system/' . $v_cust_icon_det['image']; ?>" style="width: 32px; height: 32px;"/>
+										<?php else: ?>
+											<p> &nbsp; </p>
+										<?php endif; ?>
+										<input type='hidden' value='<?php echo $v_cust_icon_det['id']; ?>' name='custom_icons[<?php echo $v_cust_icon_det['id']; ?>]' />
+									</div>
+							
+								<?php endif; ?>
+								<?php endforeach; ?>
+							</div>
+								
+							
+<?php
+
+$div_height =  ( (int)(sizeof($this->custom_icon_details) / 4) + (sizeof($this->custom_icon_details) % 4) ) * 10 ;
+
+?>
+							
+							
+							<div class="icons_block" style="clear:both;">
+								<div id="available_custom_icons" style="display:none; background: #ffffff ; height:<?php echo $div_height; ?>px;">
+								<?php foreach($this->custom_icon_details as $k_cust_icon_det => $v_cust_icon_det): ?>
+
+										<div class="patient_icon_cell available" style="<?php if($v_cust_icon_det['visible'] == '0'): ?>display:none; <?php endif; ?>background:#<?php echo $v_cust_icon_det['color']; ?>" rel="<?php echo $v_cust_icon_det['id']; ?>" id="available_custom_icon-<?php echo $v_cust_icon_det['id']; ?>" title="<?php echo $v_cust_icon_det['name']; ?>">
+											<?php if(!empty($v_cust_icon_det['image'])): ?>
+												<img src="<?php echo APP_BASE . 'icons_system/' . $v_cust_icon_det['image']; ?>" style="width: 32px; height: 32px;"/>
+											<?php else: ?>
+												<p> &nbsp; </p>
+											<?php endif; ?>
+										</div>
+
+									<?php endforeach; ?>
+								</div>
+			</div>
+<?php endif; ?>
+		
+				
+				<label for="type" id="lbl_type"><?php echo $this->translate('type'); ?></label>
+				
+				<label for="person_type" ><?php echo $this->translate('person_type')?></label>
+				<input type="radio" name="type" id="person_type" value="person" <?php if($this->type =="person"):?>  checked="checked" <?php endif;?>/>
+				
+				<label for="company_type" ><?php echo $this->translate('company_type')?></label>
+				<input type="radio" name="type"  id="company_type"  value="company" <?php if($this->type =="company"):?>  checked="checked" <?php endif;?>>
+				
+				<label for="family_type" ><?php echo $this->translate('family_type')?></label>
+				<input type="radio" name="type"  id="family_type"  value="family" <?php if($this->type =="family"):?>  checked="checked" <?php endif;?>>
+				
+				<div id="error_type" class="error"><?php echo $this->error_type ?></div><div class="clearer"></div>				
+
+
+				
+				
+				
+				<div class="company_block">
+				<label for="title" id="lbl_member_company" class="label_class100px"><?php echo $this->translate('member_company'); ?></label>
+				<input type="text" name="member_company" id="member_company" value="<?php echo $this->member_company; ?>">
+				<div id="error_member_company" class="error"><?php echo $this->error_member_company ?></div><div class="clearer"></div>
+				</div>
+			
+				<div class="person_block">
+				<label for="title" id="lbl_title"><?php echo $this->translate('title'); ?></label>
+				<input type="text" name="title" id="title"  value="<?php echo $this->title; ?>">
+				<div id="error_title" class="error"><?php echo $this->error_title ?></div>
+				<div class="clearer"></div>
+				
+				
+				<label for="salutation" id="lbl_salutation"><?php echo $this->translate('salutation'); ?></label>
+				<select name="salutation" id="salutation" class="w100">
+				<option value=""></option>				
+				<option value="Frau" <?php if($this->salutation == "Frau"):?> selected="selected" <?php endif; ?>>Frau</option>				
+				<option value="Herr" <?php if($this->salutation == "Herr"):?> selected="selected" <?php endif; ?>>Herr</option>				
+				</select>
+				<div id="error_salutation" class="error"><?php echo $this->error_salutation ?></div><div class="clearer"></div>
+				
+				
+				<label for="salutation_letter" id="lbl_salutation_letter" class="label_class100px"><?php echo $this->translate('salutation_letter'); ?></label>
+				<input type="text" name="salutation_letter" id="salutation_letter"  value="<?php echo $this->salutation_letter; ?>">
+				<div id="error_salutation_letter" class="error"><?php echo $this->error_salutation_letter ?></div><div class="clearer"></div>
+				
+				
+				
+				<label for="first_name" id="lbl_firstname"><?php echo $this->translate('firstname') ?></label>
+				<input type="text" name="first_name" id="first_name" value="<?php echo $this->first_name ?>">
+				<div id="error_first_name" class="error"><?php echo $this->error_first_name ?></div><div class="clearer"></div>
+		
+				<label for="last_name" id="lbl_lastname"><?php echo $this->translate('lastname') ?></label>
+				<input type="text" name="last_name" id="last_name" value="<?php echo $this->last_name ?>">
+				<div id="error_last_name" class="error"> <?php echo $this->error_last_name ?></div><div class="clearer"></div>
+		
+		        <div style="float:left;padding-right: 10px;">
+					<label for="birthd" id="lbl_birthd" ><?php echo $this->translate('birthd') ?></label>
+					<input type="text" name="birthd" id="birthd" style="width: 74px;" value="<?php if(strlen($this->birthd) > 0 && $this->birthd != '0000-00-00'): echo date('d.m.Y',strtotime($this->birthd)); endif;?>" class="birth_date"> 
+				</div>
+				
+					<!-- ISPC-2228 @Lore 10.10.2019 -->
+					<div class="person_age_block" style="width:77px;float: left;">
+						<label for="theage" ><?php echo '('.$this->translate('age') ?>:</label>	<input type="text" class="person_age" id="theage" value="<?php echo $age ?>" readonly style="width:  25px;background: transparent!important; border: 0px!important;"/><?php echo ')' ?>
+					</div>
+					<div id="error_birthd" class="error"> <?php echo $this->error_birthd ?></div><div class="clearer"></div>
+				
+				<label for="sex" id="lbl_sex"><?php echo $this->translate('gender') ?></label>
+				<?php echo $this->formSelect('gender', $this->gender, array('id'=>'sex', 'class' =>'w200'), $this->genders) ?>
+				<div id="error_sex" class="error"> <?php echo $this->error_sex ?></div>
+		</div>
+		
+		<div class="family_block" style="display:none">	
+		</div>
+		
+		<div style="clear:both"></div>
+		
+				<label for="street1" id="lbl_street1"><?php echo $this->translate('street') ?></label>
+				<input type="text" name="street" id="street1" value="<?php echo $this->street1 ?>">
+				<div id="addfamilydoctor_streetOneerror" class="error"><?php echo $this->error_street ?></div><div class="clearer"></div>
+				
+		<label class="label_class100px" for="street2" id="lbl_street2"><?php echo $this->translate('street2') ?></label>
+				<input class="input_style" type="text" name="street2" id="street2" value="<?php echo $this->street2 ?>">
+				<div class="error"><?php echo $this->error_street ?></div><div class="clearer"></div>
+		
+				<label for="zip" id="lbl_postcode"><?php echo $this->translate('postcode') ?></label>
+				<input type="text" name="zip" id="zip"  value="<?php echo $this->zip ?>">
+				<div id="addfamilydoctor_ziperror" class="error"> <?php echo $this->error_zip ?></div><div class="clearer"></div>
+		
+				<label for="city" id="lbl_city"><?php echo $this->translate('city') ?></label>
+				<input type="text" name="city" id="city" value="<?php echo $this->city ?>">
+				<div id="addfamilydoctor_cityerror" class="error"> <?php echo $this->error_city ?></div><div class="clearer"></div>
+		
+				<label class="label_class100px" for="country" id="lbl_country"><?php echo $this->translate('country') ?></label>
+				<input class="input_style" type="text" name="country" id="country" value="<?php echo $this->country ?>">
+				<div class="error"> <?php echo $this->error_country ?></div><div class="clearer"></div>
+		
+				<label for="phone_private" id="lbl_phone_private"><?php echo $this->translate('phone') ?></label>
+				<input type="text" name="phone" id="phone" value="<?php echo $this->phone ?>">
+				<div id="addfamilydoctor_Privatephoneerror" class="error"> <?php echo $this->error_phone ?></div><div class="clearer"></div>
+		
+				<label for="phone_emergency" id="lbl_phone_private"><?php echo $this->translate('mobile') ?></label>
+				<input type="text" name="mobile" id="mobile" value="<?php echo $this->mobile ?>">
+				<div id="addfamilydoctor_Privatephoneerror" class="error"> <?php echo $this->error_mobile ?></div><div class="clearer"></div>
+		
+				<label for="fax" id="lbl_fax"><?php echo $this->translate('fax') ?></label>
+				<input type="text" name="fax" id="fax" value="<?php echo $this->fax ?>">
+				<div id="addfamilydoctor_faxeerror" class="error"> <?php echo $this->error_fax ?></div><div class="clearer"></div>
+		
+				<label for="email" id="lbl_email" class="label_class100px"><?php echo $this->translate('email') ?></label>
+				<input type="text" name="email" id="email" value="<?php echo $this->email ?>">
+				<div id="addfamilydoctor_emailerror" class="error"> <?php echo $this->error_email ?></div><div class="clearer"></div>
+		
+		<label class="label_class100px" for="website" id="lbl_website"><?php echo $this->translate('website') ?></label>
+				<input class="input_style" type="text" name="website" id="website" value="<?php echo $this->website ?>">
+				<div class="error"> <?php echo $this->error_website ?></div><div class="clearer"></div>
+		
+				<div class="inactive_option_div" >
+				<label for="inactive" class="label_class100px" id="lbl_incative"><?php echo $this->translate('inactive') ?></label>
+					<select name="inactive" id="inactive_info">
+					<option value="0" <? if($this->inactive == "0"): ?> selected="selected" <? endif;?> >Nein</option>
+					<option value="1" <? if($this->inactive == "1"): ?> selected="selected" <? endif;?> >Ja</option>
+				</select>
+				</div>
+
+				<div id="inactive_from_div" class="<?php if($this->inactive == "1"):?> force_display <?php endif;?> w300" >
+					
+					<input type="text" name="inactive_from"  id="inactive_from" style="width:115px;" value="<?php if(strlen($this->inactive_from) > 0 && $this->inactive_from != '0000-00-00'): echo date('d.m.Y',strtotime($this->inactive_from)); endif;?>" class="inactive_from"> 
+					<div id="inactive_fromerror" class="error"> <?php echo $this->error_inactive_from ?></div>
+				</div>
+				<div class="clearer"></div>
+
+				
+				
+				
+				
+				<div>
+				<label for="voluntary" id="lbl_voluntary_referance" class="label_class100px"><?php echo $this->translate('voluntary_referance'); ?></label>
+					<input type="text" name="voluntary_name" id="voluntary_name"  value="<?php echo $this->voluntary_name; ?>">
+					<input type="hidden" name="vw_id" id="vw_id"  value="<?php echo $this->vw_id; ?>">
+				<div id="addfamilydoctor_titleOneerror" class="error"><?php echo $this->error_title ?></div><div class="clearer"></div>
+				</div>
+				
+				<div>
+					<label for="status" class="label_class100px" id="lbl_status"><?php echo $this->translate('mtstatus') ?></label>
+					<select name="status" class="w400" id="mt_status">
+						<option value="0" ><?php echo $this->translate('select_status'); ?></option>
+					<?php foreach($this->statuses as $status_id => $status_data):?>
+						<option value="<?php echo $status_id?>" <? if($this->status == $status_id): ?> selected="selected" <? endif;?> ><?php echo $status_data['status']; ?></option>
+					<?php endforeach; ?>
+				</select>
+					<div id="addfamilydoctor_sprofessionOneerror" class="error"></div>
+				</div>
+				<div class="clearer"></div>
+				
+				<div>				
+				<label for="profession" id="lbl_profession" class="label_class100px"><?php echo $this->translate('member_profession') ?></label>
+					<input type="text" name="profession" id="profession"  value="<?php echo $this->profession ?>">
+				<div id="addfamilydoctor_sprofessionOneerror" class="error"><?php echo $this->error_profession ?></div><div class="clearer"></div>
+				</div>
+		
+				<label for="auto_member_number" id="lbl_auto_member_number" class="label_class100px"><?php echo $this->translate('auto_member_number'); ?></label>
+				<select name="auto_member_number" id="auto_member_number">
+				<option value="0" <?php if($this->auto_member_number == "0"):?> selected="selected" <?php endif; ?>>Nein</option>				
+				<option value="1" <?php if($this->auto_member_number == "1"):?> selected="selected" <?php endif; ?>>Ja</option>				
+				</select>
+				<div id="addfamilydoctor_auto_member_numberOneerror" class="error"><?php echo $this->error_auto_member_number ?></div><div class="clearer"></div>
+				
+				<div class="clearer"></div>
+				<div>				
+					<label for="member_number" id="lbl_member_number" class="label_class100px"><?php echo $this->translate('member_number') ?></label>
+					<input type="text" name="member_number" id="member_number" value="<?php echo $this->member_number ?>">
+					<div id="addfamilydoctor_member_numberOneerror" class="error"><?php echo $this->error_member_number ?></div><div class="clearer"></div>
+				</div>
+				
+				<div class="clearer"></div>
+				<?php if(strlen($this->last_invoice_date) > 0 ):?>
+					<div>				
+						<label for="member_number" id="lbl_member_number" class="label_class100px"><?php echo $this->translate('last_invoice_date') ?></label>
+						<br/>
+						<a  href="javascript:void(0)" id="my-text-link2"><?php echo $this->last_invoice_date;?></a>
+			</div>
+				<?php endif; ?>
+				<div class="clearer"></div>
+				
+				
+		<label class="label_class100px" for="memos" id="lbl_memos"><?php echo $this->translate('memos') ?></label>
+				<textarea class="input_style" name="memos" id="memos" rows="1"><?php echo $this->memos ?></textarea>
+				<div class="error"> <?php echo $this->error_memos ?></div><div class="clearer"></div>
+		
+		<label class="label_class100px" for="comments" id="lbl_comments"><?php echo $this->translate('comments') ?></label>
+		<textarea name="comments" id="fdcomments" cols="45" rows="7" tabindex="17" class="mceEditor defaultSkin"><?php  echo $this->comments ?></textarea> <!-- ISPC-2602 Andrei 29.05.2020 added mceEditor -->
+		<div class="error"> <?php echo $this->error_comments ?></div><div class="clearer"></div>
+
+		<label class="label_class100px" for="member_referal_tab" ><?php echo $this->translate('member_register_referal_tab') ?></label>
+				<?php echo $this->formSelect("member_referal_tab", !empty($this->MemberReferalTabreferal_tab) ? $this->MemberReferalTabreferal_tab : $current_referal_tab, null, array("members"=>$this->translate('member_registered_as_members'), "donors"=>$this->translate('member_registered_as_donors'))); ?>
+
+	
+
+
+
+
+
+			</div>
+			
+			<div id="tabs-2">
+				
+					<h5 class="pat_tab_title"> <?php echo $this->translate('Add membership') ?></h5>
+					<?php if($this->inactive == "1") : ?>
+					<div class="clearer"></div>
+					<div class="error" style="margin:0"> 
+						<?php echo $this->translate('atention') ." ".$this->translate('inactive') ." ".$this->translate('member')  ; ?>
+					</div>
+					<?php endif; ?>
+					
+					<!-- table of patients where voluntary worker is associated -->
+					<table id="patient_table" class="PatientDetail_datatable">
+					<tr>
+						<th><? echo $this->translate('Membership')?></th>
+						<th><? echo $this->translate('start_date')?></th>
+						<th><? echo $this->translate('end_date')?></th>
+						<th style="width:63px;"><? echo $this->translate('th_membership_price')?></th>
+						<?php if($action_page =="edit"):?>
+						<th><? echo $this->translate('Membershipi invoice')?></th>
+						<?php endif; ?>
+						<th><? echo $this->translate('delete')?></th>
+					</tr>
+					<? foreach($membership_history as $ke =>$membership_data): ?>
+						<tr class="<? echo $membership_data['id']; ?>">
+							<td>
+								<select name="membership[<? echo $membership_data['id']?>][membership]" class="membership_select_sm update_price"   data-row_id="<? echo $membership_data['id']?>" >
+									<?php foreach($memberships as $k=>$mt):?>
+										<option value="<? echo $mt['id']?>" <? if($membership_data['membership'] == $mt['id'] ):?>  selected="selected" <? endif;?> > <?php echo $mt['membership']?></option>
+									<?php endforeach; ?>
+								</select>
+							</td>
+							<td><input type="text" name="membership[<? echo $membership_data['id']; ?>][start]" data-row_id="<? echo $membership_data['id']?>" value="<? echo $membership_data['start']?>" rel="<? echo $membership_data['id']; ?>" id="membership_start_<? echo $membership_data['id']; ?>" class=" update_price a_date start_a_date <? echo $membership_data['id']; ?>"></td>
+							<td>
+								<input type="text" name="membership[<? echo $membership_data['id']; ?>][end]"  data-row_id="<? echo $membership_data['id']?>" value="<? echo $membership_data['end']?>"   rel="<? echo $membership_data['id']; ?>" id="membership_end_<? echo $membership_data['id']; ?>" class=" update_price a_date end_a_date <? echo $membership_data['id']; ?>">
+
+								<?php if(empty($membership_data['end']) && !empty($this->error_inactive_membership_end)):?>
+						 		<span style="color: red;"><?php echo $this->translate('inactive_membership_end_must_be_filled_item') ?></span>  
+								<?php endif;?>								
+							</td>
+							<td>
+								<input type="text" name="membership[<? echo $membership_data['id']; ?>][price]"  value="<? echo $membership_data['price']?>"  data-row_id="<? echo $membership_data['id']?>"  rel="<? echo $membership_data['id']; ?>" id="membership_price_<? echo $membership_data['id']; ?>" class="membership_price membership_price_<? echo $membership_data['id']; ?>"> &euro;
+								<input type="hidden" name="membership[<? echo $membership_data['id']; ?>][price_from_list]"  value="<? echo $membership_data['price_from_list']?>" data-row_id="<? echo $membership_data['id']?>"   rel="<? echo $membership_data['id']; ?>" id="membership_price_from_list_<? echo $membership_data['id']; ?>" class="membership_price membership_price_<? echo $membership_data['id']; ?>">
+								<input type="hidden" name="membership[<? echo $membership_data['id']; ?>][custom]"  value="0" >
+							</td>
+							<?php if($action_page =="edit"):?>
+							<td>
+							<?php if($this->billing_method =="membership"):?>
+								<? foreach ($this->membership_invoice_period[$membership_data['id']] as $interval =>$interval_data):?>
+									<!-- <a href="invoicenew/membersinvoice?member=<?php echo $membership_data['member']; ?>&membership_data=<?php echo $membership_data['id'];?>&int_start=<?php echo strtotime($interval_data['start']);?>&int_end=<?php echo strtotime($interval_data['end']);?>"  rel="<?php echo $membership_data['member']; ?>_<?php echo $membership_data['id'];?>_<?php echo strtotime($interval_data['start']);?>_<?php echo strtotime($interval_data['end']);?>"  class="invoice_element  <?php if($interval_data['invoiced'] > 0) :?> generated_flow_element<?php endif;?>" ><?php echo  $this->translate('generate invoice for period: ');?> <? echo $interval_data['start'].' - '.$interval_data['end']?></a> -->
+									<a href="javascript:void(0)"  rel="<?php echo $membership_data['member']; ?>_<?php echo $membership_data['id'];?>_<?php echo strtotime($interval_data['start']);?>_<?php echo strtotime($interval_data['end']);?>"  id="linkid_<?php echo $membership_data['member']; ?>_<?php echo $membership_data['id'];?>_<?php echo strtotime($interval_data['start']);?>_<?php echo strtotime($interval_data['end']);?>"   class="invoice_element  <?php if($interval_data['invoiced'] > 0) :?> generated_flow_element<?php endif;?>" ><?php echo  $this->translate('generate invoice for period: ');?> <? echo $interval_data['start'].' - '.$interval_data['end']?></a>
+								<?php endforeach;?>
+							<? else: ?>	
+								<? foreach ($this->membership_invoice_period[$membership_data['id']] as $interval =>$interval_data):?>
+									<!-- <a href="invoicenew/membersinvoice?member=<?php echo $membership_data['member']; ?>&membership_data=<?php echo $membership_data['id'];?>&int_start=<?php echo strtotime($interval_data['start']);?>&int_end=<?php echo strtotime($interval_data['end']);?>" rel="<?php echo $membership_data['member']; ?>_<?php echo $membership_data['id'];?>_<?php echo strtotime($interval_data['start']);?>_<?php echo strtotime($interval_data['end']);?>" class="invoice_element  <?php if($interval_data['invoiced'] > 0) :?> generated_flow_element<?php endif;?>" ><?php echo  $this->translate('generate invoice for period: ');?> <? echo $interval_data['start'].' - '.$interval_data['end']?></a> -->
+									<a href="javascript:void(0)" rel="<?php echo $membership_data['member']; ?>_<?php echo $membership_data['id'];?>_<?php echo strtotime($interval_data['start']);?>_<?php echo strtotime($interval_data['end']);?>"  id="linkid_<?php echo $membership_data['member']; ?>_<?php echo $membership_data['id'];?>_<?php echo strtotime($interval_data['start']);?>_<?php echo strtotime($interval_data['end']);?>" class="invoice_element  <?php if($interval_data['invoiced'] > 0) :?> generated_flow_element<?php endif;?>" ><?php echo  $this->translate('generate invoice for period: ');?> <? echo $interval_data['start'].' - '.$interval_data['end']?></a>
+								<?php endforeach;?>
+							<? endif; ?>
+							</td>
+							<?php endif; ?>
+							<td><a href="javascript:void(0)" class="delete_existing_row" rel="<? echo $membership_data['id']; ?>"   id="delete_<?php echo $k; ?>"><img src="<?php echo RES_FILE_PATH;  ?>/images/action_delete.png" /></a>
+							</td>
+						</tr>
+						<?php
+							if(count($this->reasonofmembershipend_array)>1):
+						?>
+						<tr>
+							<td colspan=2></td>
+							<td  colspan=4>
+								<?php
+								echo $this->formSelect('membership['.$membership_data['id'].'][end_reasonid]',  $membership_data['end_reasonid'], array('id'=>'end_reasonid_'.$membership_data['id'], 'class' =>'w100' ,'style'=>'display:none;width:300px!important' ), $this->reasonofmembershipend_array); 
+								?>
+							</td>
+						</tr>
+						<?php endif; ?>
+
+					<? endforeach;?>
+					</table>
+					<table>
+					<tr>
+					<td>
+					<input type="hidden" id="memberships2member" value="<?php echo 900000+count($membership_history) ?>" />
+					<a class="add_new_patient_line" rel=""  title="" href="javascript:void(0)"><img width="20" height="20" src="<?php echo RES_FILE_PATH;  ?>/images/edit_add.png"><span><?php echo $this->translate('add add membership')?></span> </a>
+					
+					</td>
+					</tr>
+					</table>
+					<input type="hidden" value="0" id="delete_ids" name="delete_memberships" />
+				
+
+
+<!-- sepa settings -->	
+			<br/>	
+			<!-- sepa activate button -->
+			<a id="sepa_activate" href="javascript:void(0)" onclick="return sepa_activate();" style="<?php if (count($membership_history) == 0) echo 'display:none;'; ?>">
+				<span class="button" >
+					<?php 
+						if ($this->sepa_is_active_input == "1" || $this->member_sepa_settings!==false) {
+							echo $this->translate("sepa_click_to_deactivate");
+						}else{
+							echo $this->translate("sepa_click_to_activate");
+						}	
+					?>
+				</span>
+			</a>
+			<input type="hidden" name="sepa_is_active_input" id="sepa_is_active_input" value="<?php if($this->sepa_is_active_input == '1' ){echo '1';} elseif ($this->member_sepa_settings === false || count($membership_history)==0 ) {echo '0';} else {echo '1';} ?>">
+			<div class="clearer"></div>
+
+			<div id="sepa_settings_div" style="<?php if($this->sepa_is_active_input == '1' ){} elseif ( $this->member_sepa_settings === false || count($membership_history)==0) echo 'display:none;'?>" >
+				
+				<h5 class="pat_tab_title"><?php echo $this->translate("sepa_settings_title")?></h5>
+				<div class="clearer"></div>
+
+				<div class="error">
+					<?php echo $this->error_sepa_when_monthly ?>
+					<?php echo $this->error_sepa_when_quarterly ?>
+					<?php echo $this->error_sepa_when_annually ?>
+					<?php echo $this->error_sepa_month ?>
+					<?php echo $this->error_sepa_quarter ?>
+				</div>
+				<div class="clearer"></div>
+
+
+				<label class="label_class100px w200" for="sepa_how_often"><? echo $this->translate('sepa_settings_how_often')?></label>
+				<?php 
+					if(!empty($this->sepa_howoften)) {
+						$sepa_howoften = $this->sepa_howoften;
+					} 
+					elseif(!empty($this->howoften)) {
+						$sepa_howoften= $this->howoften;
+					}
+					else {
+						$sepa_howoften= "annually";
+					} 
+				?>
+				<?php echo $this->formSelect('sepa_howoften', $sepa_howoften , array('id'=>'sepa_how_often', 'class' =>'w200'), $sepa_how_often_select) ?>
+				
+				<table id="sepa_when_table_monthly" class="sepa_when_table" style="<?php if ($sepa_howoften != 'monthly') echo 'display:none;' ?>">
+					<thead>
+						<tr>
+							<th>
+								<label  class="label_class100px" for="sepa_when"><? echo $this->translate('sepa_settings_when')?></label>		
+							</th>
+							<?php for($i=1;$i<=12;$i++):?>			
+							<th>
+								<label>
+									<?php echo strftime("%b", mktime(0, 0, 0, $i, 10))?>
+								</label>
+							</th>
+							<?php endfor;?>
+						</tr>
+					</thead>				
+					<tbody>
+						<tr>
+							<td>
+								 
+								<input type="text" style="width:20px;"  name="sepa_when_monthly"
+								<?php $is_value = false; ?>
+								<?php if ($sepa_howoften == "monthly") :?>
+									
+									<?php if (!empty($this->sepa_when_monthly)):?>	
+										<?php echo ' value="' .$this->sepa_when_monthly . '" ';	 $is_value = true; ?>	
+									<?php else:	?>	
+										<?php 
+											foreach($this->member_sepa_settings as $v){
+												if($v['when_day'] != ''){
+													echo ' value="' .$v['when_day'] . '" ';
+													$is_value = true; 
+													break;
+												}
+											}
+										?>
+
+									<?php endif;?>
+									
+								<?php endif;?>
+								
+								<?php 
+									if (!$is_value){
+										echo ' value="1" ';
+									}
+								?>
+									   /><?php echo $this->translate('th day of month')?>	 	
+							</td>
+
+							<?php for($i=1;$i<=12;$i++):?>			
+							<td>
+								<div style="width: 40px;"></div>
+								<input type="checkbox" class="sepa_when_checkbox" name="sepa_month[<?php echo $i ?>]"
+								<?php if ($sepa_howoften == "monthly") :?>
+									<?php if (!empty($this->{'sepa_month' . $i})):?>	
+									<?php echo " checked ";	?>	
+									<?php else:	?>	
+										<?php 
+										foreach($this->member_sepa_settings as $v){
+											if($v['when_month'] == $i){
+												echo " checked ";
+												break;
+											}
+										}
+										?>
+									<?php endif;?>	
+								<?php endif;?>
+								/>
+							</td>
+							<?php endfor;?>
+						</tr>
+						
+						
+						<? foreach($membership_history as $ke =>$membership_data): ?>
+						<tr class="sepa_row_membership_<?php echo $membership_data['id']; ?>">
+							<td>
+								<label>
+								<?php foreach($memberships as $k=>$mt):?>
+									<?php if($membership_data['membership'] == $mt['id']): ?>
+										<?php echo $mt['membership'] ?>
+									<?php endif; ?>
+								<?php endforeach; ?>
+								</label>
+								<div class="sepa_infobox_id"></div>
+							</td>
+							
+							<?php for($i=1;$i<=12;$i++):?>			
+							<td>
+								
+								
+								<input type="text" class="sepa_amount" data-memebership_id="<?php echo $membership_data['id'] ?>" name="sepa_month_amount[<?php echo $i ?>][<?php echo $membership_data['id'] ?>]"
+								<?php $disabled = true;?>
+								<?php if ($sepa_howoften == "monthly") :?>
+									<?php if (!empty($this->{'sepa_month_amount' . $i.$membership_data['id']})):?>	
+										<?php echo " value='".$this->{'sepa_month_amount' . $i.$membership_data['id']}."' ";$disabled = false;	?>	
+									<?php else:	?>
+
+										<?php 
+										foreach($this->member_sepa_settings as $v){
+											if($v['when_month'] == $i && $membership_data['id'] == $v['member2membershipsid'] ){
+												echo " value='".$v['amount']."' ";
+												$disabled = false;
+												break;
+											}
+										}
+										?>
+									<?php endif;?>	
+								<?php endif;?>	
+								
+								<?php if($disabled) {
+										echo " disabled ";
+									}
+								?>
+								/>&euro;
+							</td>
+							<?php endfor;?>
+							
+						</tr>
+						<?php endforeach; ?>
+						
+						
+						
+					</tbody>				
+				</table>
+	
+				
+				<table id="sepa_when_table_quarterly"  class="sepa_when_table" style="<?php if ($sepa_howoften != 'quarterly') echo 'display:none;' ?>">
+					<thead>
+						<tr>
+							<th>
+								<label  class="label_class100px" for="sepa_when"><? echo $this->translate('quarter')?></label>		
+							</th>
+							<th>
+								<div style="width: 50px;"></div>
+								<label>Q1</label>
+							</th>
+							<th>
+								<div style="width: 50px;"></div>
+								<label>Q2</label>
+							</th>
+							<th>
+								<div style="width: 50px;"></div>
+								<label>Q3</label>
+							</th>
+							<th>
+								<div style="width: 50px;"></div>
+								<label>Q4</label>
+							</th>
+							
+						</tr>
+					</thead>
+					<tbody>
+						<tr>
+							<td>
+								<input type="text" style="width:20px;" name="sepa_when_quarterly"
+								<?php $is_value = false; ?>
+								<?php if ($sepa_howoften == "quarterly") :?>
+								
+								<?php if (!empty($this->sepa_when_quarterly)):?>	
+										<?php echo ' value="' .$this->sepa_when_quarterly . '" '; $is_value=true;?>	
+									<?php else:	?>
+								
+										<?php 
+										foreach($this->member_sepa_settings as $v){
+											if($v['when_day'] != ''){
+												echo ' value="' .$v['when_day'] . '" ';
+												$is_value=true;
+												break;
+											}
+										}
+										?>
+
+									<?php endif;?>
+
+								<?php endif;?>
+								
+								<?php 
+									if (!$is_value){
+										echo ' value="1" ';
+									}
+								?>
+									   /><?php echo $this->translate('th day of quarter')?>	   
+	
+							</td>
+							<?php for($i=1;$i<=4;$i++):?>			
+							<td>
+								<input type="checkbox" class="sepa_when_checkbox" name="sepa_quarter[<?php echo $i ?>]"
+								<?php if ($sepa_howoften == "quarterly") :?>
+								<?php if (!empty($this->{'sepa_quarter' . $i})):?>	
+								<?php echo " checked ";	?>	
+								<?php else:	?>	
+									<?php 
+										foreach($this->member_sepa_settings as $v){
+											if($v['when_month'] == $i){
+												echo " checked ";
+												break;
+											}
+										}
+										?>
+									<?php endif;?>	   
+								<?php endif;?>
+								/>
+							</td>
+							<?php endfor;?>
+						</tr>
+						
+						<? foreach($membership_history as $ke =>$membership_data): ?>
+						<tr class="sepa_row_membership_<?php echo $membership_data['id']; ?>">
+							<td>
+								<label>
+								<?php foreach($memberships as $k=>$mt):?>
+									<?php if($membership_data['membership'] == $mt['id']): ?>
+										<?php echo $mt['membership'] ?>
+									<?php endif; ?>
+								<?php endforeach; ?>
+								</label>
+								<div class="sepa_infobox_id"></div>
+							</td>
+							
+							<?php for($i=1;$i<=4;$i++):?>			
+							<td>
+								<input type="text" class="sepa_amount" data-memebership_id="<?php echo $membership_data['id'] ?>" name="sepa_quarter_amount[<?php echo $i ?>][<?php echo $membership_data['id'] ?>]"
+								<?php $disabled = true;?>
+									
+								
+								<?php if ($sepa_howoften == "quarterly") :?>
+									<?php if (!empty($this->{'sepa_quarter_amount' . $i . $membership_data['id']})): ?>	
+										<?php echo " value='".$this->{'sepa_quarter_amount' . $i . $membership_data['id']}."' "; $disabled = false;	?>
+									<?php else: ?>
+										<?php 
+										foreach($this->member_sepa_settings as $v){
+											if($v['when_month'] == $i && $membership_data['id'] == $v['member2membershipsid'] ){
+												echo " value='".$v['amount']."' ";
+												$disabled = false;
+												break;
+											}
+										}
+										?>
+									<?php endif;?>
+								<?php endif; ?>
+								<?php if($disabled) {
+										echo " disabled ";
+									}
+								?>
+								/>&euro;
+							</td>
+							<?php endfor;?>
+							
+						</tr>
+						<?php endforeach; ?>
+						
+					</tbody>	
+				</table>
+				
+
+				<div id="sepa_when_table_annually" style="<?php if ($sepa_howoften != 'annually') echo 'display:none;' ?>">
+					
+					<label class="label_class100px w200" for="sepa_when_annually"><? echo $this->translate('sepa_settings_when')?></label>
+					<input type="text" class="w200" name="sepa_when_annually" id="sepa_when_annually"
+					
+					<?php
+						if( $this->howoften == "annually" && !empty($this->member_sepa_settings)){
+							$when_day = $this->member_sepa_settings[0]['when_day']; 
+							$when_month =  $this->member_sepa_settings[0]['when_month']; 
+
+							echo ' value="' .$when_day. '.' . strftime("%B", mktime(null, null, null, $when_month, 1)).'" ';
+						}	
+					?>
+					
+					/>
+					<input type="hidden" name="sepa_when_annually_hidden" id="sepa_when_annually_hidden"
+					<?php
+						if( $this->howoften == "annually" && !empty($this->member_sepa_settings)){
+
+							echo ' value="'. date("Y") .'-'.$when_month .'-' . $when_day. '" ';
+						}	
+					?>
+					/>
+				</div>
+			</div>
+			<!-- end sepa settings-->
+
+
+				<!-- 	Generated invoices -->
+				<?php if($action_page =="edit"):?>
+				<table class="overalllistatable datatable" style="display: none;">
+					<tr> 
+						<th colspan="2"><b><?php echo $this->translate("Member- generated invoices")?></b></th>
+						<th><b><?php echo $this->translate("Rechnungsdatum")?></b></th>
+						<th colspan="2"><b><?php echo $this->translate("action")?></b></th>
+					</tr>
+					
+					<?php if(sizeof($invoices) > 0):?>
+						<?php $i=1;	foreach($invoices as $invoice):?>
+							<tr id="row-<?php echo $i; ?>" class="listItemData row">
+								<td class="columns"  width="5%">
+									<?php echo ($i+(($this->current_page-1)*$this->limit)); ?>
+								</td>
+								<td class="columns" width="65%" >
+									Rechnungen:  <?php echo $invoice['prefix']; ?><?php echo $invoice['invoice_number']; ?> (<?php echo date('d.m.Y',strtotime($invoice['invoice_start']))?> - <?php echo date('d.m.Y',strtotime($invoice['invoice_end']))?>)
+									<span style="color:#999;" id="i_status_<?php echo $invoice['id'] ?>"> <?php echo $this->translate('inv_type_'.$invoice['status']); ?> </span> 
+									<?php if($invoice['storno'] == 1):  ?>
+									- Storno
+									<?php endif; ?>
+								</td>
+								
+								<td class="columns" width="15%" >
+									<?php echo date('d.m.Y',strtotime($invoice['completed_date_sort']))?>
+								</td>
+								
+								<td class="columns" width="5%" >
+									<?php if($invoice['storno'] == 0 && $invoice['isdelete'] == '0'):  ?>
+										<a href="invoicenew/editmembersinvoice?invoiceid=<?php echo $invoice['id']; ?>"><img src="<?php echo RES_FILE_PATH;  ?>/images/edit.png" border="0" /></a>
+									<?php endif; ?>
+								</td>
+					
+								<td class="columns" width="5%" >
+									<?php if($invoice['storno'] == 0 && $invoice['isdelete'] == '0'):  ?>
+										<div class="ui-icon-printer">
+											<a class="print" target="_blank" href="invoicenew/membersinvoice?iid=<?php echo $invoice['id']; ?>&amp;only_invoice=1&amp;member=<?php echo $invoice['member']; ?>&membership_data=<?php echo $invoice['membership_data']; ?>&type=pdf"></a>
+										</div>
+									<?php elseif($invoice['storno'] == 1 && $invoice['isdelete'] == '0'):  ?>
+											<div class="ui-icon-printer"><a class="print" target="_blank" href="invoicenew/membersinvoice?iid=<?php echo $invoice['id']; ?>&amp;only_invoice=1&amp;member=<?php echo $invoice['member']; ?>&membership_data=<?php echo $invoice['membership_data']; ?>&stornopdf=1&stornoid=<?php echo $invoice['record_id']; ?>"></a></div>
+											
+									<?php endif; ?>
+								</td>
+							</tr>
+						<?php	$i++;	endforeach;?>
+					<?php else:?>
+						<tr>
+							<td colspan="5"><?php echo $this->translate('noinvoicesfound')?></td>
+						</tr>
+					<?php endif;?>
+					
+					</table>	
+					
+					<div id="existing_invoices">
+						
+					</div>
+					
+				<!-- sepa_xml_files -->
+				<?php if ( $this->member_sepa_settings !== false || count($sepa_xml_files) > 0) : ?>
+				<table class="overalllistatable datatable">
+						
+					<tr> 
+						<th colspan="2"><b><?php echo $this->translate("Member- sepa xml files")?>sepa_xml_files</b></th>
+						<th><b><?php echo $this->translate("Rechnungsdatum")?></b></th>
+						<th colspan="2"><b><?php echo $this->translate("action")?></b></th>
+					</tr>
+					
+					<?php if(sizeof($sepa_xml_files) > 0):?>
+						<?php $i=1;	foreach($sepa_xml_files as $file):?>
+					
+							<tr id="row-<?php echo $i; ?>" class="listItemData row">
+								<td class="columns"  width="5%">
+									<?php echo ($i+(($this->current_page-1)*$this->limit)); ?>
+								</td>
+								<td class="columns" width="65%" >
+									
+									<?php echo htmlentities(utf8_encode($file['filename_nice'])); ?>
+									
+								</td>
+								
+								<td class="columns" width="15%" >
+									<?php echo date('d.m.Y',strtotime($file['create_date']))?>
+								</td>
+								
+					
+								<td class="columns" width="5%" >
+									<div class="ui-icon-printer download_file_icon">
+										<a class="print" target="_blank" href="invoicenew/filedownloadsepaxml?id=<?php echo $file['id']; ?>&memberid=<?php echo $file['memberid']; ?>&"></a>
+									</div>
+								</td>
+							</tr>
+					
+					<?php	$i++;	endforeach;?>
+					<?php else:?>
+						<tr>
+							<td colspan="5"><?php echo $this->translate('no_sepa_xml_files_found')?></td>
+						</tr>
+					<?php endif;?>
+					
+				</table>					
+				<?php endif; ?>
+
+
+
+					<?php endif; ?>
+					
+					
+			<!-- 	Bank Information -->				
+					
+			<div class="clearer"></div>
+			</div>
+			<div id="tabs-3">
+				<label for="bank_name" id="lbl_bank_name"><?php echo $this->translate('Bank Name'); ?></label>
+				<input type="text" name="bank_name" id="bank_name" tabindex="12" value="<?php echo $this->bank_name; ?>">
+				<div id="addfamilydoctor_titleOneerror" class="error"><?php echo $this->error_bank_name ?></div><div class="clearer"></div>
+				
+				<label for="iban" id="lbl_iban"><?php echo $this->translate('IBAN'); ?></label>
+				<input type="text" name="iban" id="iban" tabindex="13" value="<?php echo $this->iban; ?>">
+				<div id="addfamilydoctor_salutationOneerror" class="error"><?php echo $this->error_iban ?></div><div class="clearer"></div>
+				
+				<label for="bic" id="lbl_bic"><?php echo $this->translate('BIC') ?></label>
+				<input type="text" name="bic" id="bic" tabindex="14" value="<?php echo $this->bic ?>">
+				<div id="addfamilydoctor_firstNameerror" class="error"><?php echo $this->error_bic ?></div><div class="clearer"></div>
+		
+				<label for="account_holder" id="lbl_account_holder"><?php echo $this->translate('account_holder') ?></label>
+				<input type="text" name="account_holder" tabindex="15" id="account_holder" value="<?php echo $this->account_holder ?>">
+				<div id="addfamilydoctor_lastNameerror" class="error"> <?php echo $this->error_account_holder ?></div><div class="clearer"></div>
+
+				<label >
+					<span  style=" margin-right: 10px;  padding: 6px 10px 3px 0; width: 100px;"><?php echo $this->translate('mandate_reference') ?></span>
+					<input type="text" name="mandate_reference" style="width:140px;" id="mandate_reference" value="<?php echo $this->mandate_reference ?>">
+				</label>
+
+				<?php if ( trim($this->mandate_reference)=="") : ?>
+				<label>autom
+					<input type="checkbox" id="auto_mandate_reference" onchange="get_auto_mandate_reference(this);">
+				</label>
+				<?php endif; ?>
+
+
+				<label >
+					<span style=" padding: 6px 10px 3px 10px;""><?php echo $this->translate('from') ?></span>
+					<input type="text" style="width:80px;" name="mandate_reference_date" id="mandate_reference_date" value="<?php if (!is_null($this->mandate_reference_date) &&  $this->mandate_reference_date!='0000-00-00' && $this->mandate_reference_date!='1970-01-01' && strlen($this->mandate_reference_date) > 0) echo date('d.m.Y',strtotime($this->mandate_reference_date));?>">
+				</label>
+				
+				<div class="error"> <?php echo $this->error_mandate_reference ?></div><div class="clearer"></div>
+
+
+				<label for="remarks" id="lbl_remarks"><?php echo $this->translate('remarks') ?></label>
+				<input type="text" name="remarks" tabindex="15" id="account_holder" value="<?php echo $this->remarks; ?>">
+				<div class="error"> <?php echo $this->error_remarks; ?></div><div class="clearer"></div>
+				
+				<label for="payment_method_id" id="lbl_remarks"><?php echo $this->translate('payment_method') ?></label>
+				<?php
+					echo $this->formSelect('payment_method_id',  $this->payment_method_id, array('id'=>'payment_method_id', 'class' =>'w200' ,'style'=>'padding: 2px 2px 2px 4px;' ), $this->paymentmethod_array); 
+				?>
+				<div id="addfamilydoctor_payment_method_id" class="error"> <?php echo $this->error_payment_method_id; ?></div><div class="clearer"></div>
+			</div>
+			
+			
+			<div id="tabs-4">
+			<?php $donation_history = $this->donation_history;?>
+					<table id="donation_table" class="overalllistatable datatable">
+						<thead>
+							<tr>
+								<th width="20%"><?php echo $this->translate("date")?></th>
+								<th width="70%"><?php echo $this->translate("amount")?></th>
+								<th width="10%"><?php echo $this->translate("actions")?></th>
+							</tr>
+						</thead>
+						
+						<tbody>
+							<?php $d = 1; foreach($donation_history as $kd => $donation_data):?>
+							<tr class="donation_row_existing_<?php echo $donation_data['id'];?>">
+								<td> <input type="text" name="donation[<?php echo $donation_data['id'];?>][donation_date]" value="<?php echo $donation_data['donation_date'];?>" class="donation_date_input"></td>
+								<td> <input type="text" name="donation[<?php echo $donation_data['id'];?>][amount]" value="<?php echo $donation_data['amount'];?>" class="price"></td>
+								<!-- <td> <input type="text" name="donation[<?php echo $donation_data['id'];?>][amount]" value="<?php echo number_format($donation_data['amount'], '2', ',', '.');  ?>"></td> -->
+								<td><a href="javascript:void(0)" class="donation_delete_existing_row" rel="<?php echo $donation_data['id']; ?>" id="donation_delete_<?php echo $donation_data['id']; ?>"><img src="<?php echo RES_FILE_PATH;  ?>/images/action_delete.png" /></a></td>
+							</tr>
+							<?php $d++; endforeach; ?>
+						</tbody>
+						
+					</table>
+				
+				<input type="hidden" name="delete_donation_ids" id="delete_donation_ids" value="0" />
+				<input type="hidden" id="donation2member" value="<?php echo 1500000+count($donation_history) ?>" />
+				<a class="add_new_donation_line" rel=""  title="" href="javascript:void(0)"><img width="20" height="20" src="<?php echo RES_FILE_PATH;  ?>/images/edit_add.png"><span><?php echo $this->translate('add new donation')?></span> </a>
+			</div>
+					
+				
+			
+<?php if($_REQUEST['id']):?>
+<!-- tabs-6 Files  -->
+<script type="text/javascript">
+$(document).ready(function() { 
+	$('#file_first_version').bind('change', function() {
+		var fileName = ''; 
+		fileName = $(this).val(); 
+		
+		var ext = fileName.split('.').pop().toLowerCase(); 
+		if($.inArray(ext, ['docx', 'doc', 'pdf','csv']) == -1) {
+			$(this).val("");
+			$('#file-selected').html("");
+			$('#file_first_version_add_file').val('0'); 
+			setTimeout(function () {alert('<?php echo $this->translate("youuploadedaninvalidfile")?> '+ext+' - nur .docx, .doc, .pdf, .csv');},50);
+			return;
+		}else{
+		 
+			$('#file-selected').html(fileName); 
+			$('#file_first_version_add_file').val('1'); 
+		}
+		
+		 
+	 });
+	
+	$('.file_remove').click(function(e){
+		if ( ! checkclientchanged()){
+			return false;
+		}
+		e.preventDefault();
+		var url = $(this).attr('href');						
+		jConfirm('<?php echo $this->translate('confirmdeleterecord'); ?>', '<?php echo $this->translate('confirmdeletetitle'); ?>', function(r) {
+			if(r) {
+				window.location = url;  
+			}
+		});
+	});
+});
+</script>
+
+<?php
+
+function return_bytes($val) {
+    $val = trim($val);
+    $last = strtolower($val[strlen($val)-1]);
+    switch($last) {
+        // The 'G' modifier is available since PHP 5.1.0
+        case 'g':
+            $val *= 1024;
+        case 'm':
+            $val *= 1024;
+        case 'k':
+            $val *= 1024;
+    }
+
+    return $val;
+}
+
+$upload_max_filesize = return_bytes(ini_get('upload_max_filesize'));
+
+?>			
+				<script type="text/template" id="qq-template_revisions">
+					<div class="qq-uploader-selector qq-uploader qq-uploader2" qq-drop-area-text="Drop files here">
+
+
+						<div class="qq-upload-drop-area-selector qq-upload-drop-area" qq-hide-dropzone>
+							<span class="qq-upload-drop-area-text-selector"></span>
+						</div>
+						
+						<div class="qq-upload-button-selector qq-upload-button qq-upload-button2">
+							<div><?php echo $this->translate('uploadafile'); ?></div>
+						</div>
+
+						<span class="qq-drop-processing-selector qq-drop-processing">
+							<span>Processing dropped files...</span>
+							<span class="qq-drop-processing-spinner-selector qq-drop-processing-spinner"></span>
+						</span>
+
+						<div class="qq-total-progress-bar-container-selector qq-total-progress-bar-container">
+							<div role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" class="qq-total-progress-bar-selector qq-progress-bar qq-total-progress-bar"></div>
+						</div>
+						
+						<ul class="qq-upload-list-selector qq-upload-list qq-upload-list2" aria-live="polite" aria-relevant="additions removals">
+							<li>
+								<div class="qq-progress-bar-container-selector">
+									<div role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" class="qq-progress-bar-selector qq-progress-bar"></div>
+								</div>
+
+								<img class="qq-thumbnail-selector" qq-max-size="100" qq-server-scale>
+
+
+							</li>
+						</ul>
+						
+
+
+					</div>
+				</script>	
+
+			<div id="tabs-5">
+				<table id="files_table" class="overalllistatable datatable w3-table-all" style="width:100%; table-layout:fixed; ">
+						<thead>
+							<tr>
+								<th width="30px"><strong>#<strong></th>
+								<th width="100px"><strong><?php echo $this->translate('date'); ?><strong></th>
+								<th width="100%" ><strong><?php echo $this->translate('filename'); ?><strong></th>
+								
+								
+								
+								<th width="110px"><strong><?php echo $this->translate('revision'); ?><strong></th>
+								
+							</tr>
+						</thead>
+						
+						<tbody>
+							<?php 
+								$cnt=0;
+								$member_files = $this->member_files;
+								foreach($member_files as $k=>$file): 
+								$cnt++;
+							?>
+							<tr>
+								<td><?php echo $cnt; ?></td>
+								<td><?php echo date('d.m.Y H:i',strtotime($file[ count($member_files[$k]) ]['create_date'])); ?></td>
+								<td style="overflow:hidden; white-space: nowrap;padding:0;">
+									<table width="100%" style="paggin:0px; margin:0;">
+										<tbody>
+											<td width="100%" <?php if(!count($file)>1) echo 'colspan="2"';?> >
+												<a style="float:left;" href="member/filedownload?doc_id=<?php echo $file[ count($member_files[$k]) ]['id']; ?>&id=<?php echo $file[ count($member_files[$k]) ]['member_id']; ?>&rev=<?php echo $file[ count($member_files[$k]) ]['revision'] ?>"><?php echo($file[ count($member_files[$k]) ]['file_showname']); ?></a>
+											</td>
+											<?php if(count($file)>1) :?>
+											<td>
+												<a style="display: block; width:120px;" class="show_versions arrow_down open_versions" rel="<?php echo $k;?>"  data-arr_class="down" data-work_type="simple_visits" href="javascript:void(0)"><?php echo $this->translate("open_versions")?></a>
+											</td>
+											<?php  endif; ?>
+											<td  width="20px" style="padding-top:3px;">
+												<a class="file_remove" href="member/fileremove?doc_id=<?php echo $file[count($member_files[$k])]['id']; ?>&member_id=<?php echo $file[ count($member_files[$k]) ]['member_id']; ?>"><img align="right" src="<?php echo RES_FILE_PATH; ?>/images/action_delete.png" border="0" /></a>
+											</td>
+											
+										</tbody>
+									</table>
+									
+									<div style="white-space:nowrap;">
+										
+										
+										
+
+										
+		</div>
+									
+									<?php
+									if(count($file)>1) :
+									?>
+									
+									<div style="clear:both;"></div>
+
+									<table id="div_versions_<?php echo $k;?>" style="width:100%; table-layout:fixed; display:none;">
+										<thead>
+											<th width="100px"><?php echo $this->translate("date")?></th>
+											<th><?php echo $this->translate("filename")?></th>
+											<th width="60px">Version</th>
+										</thead>
+										</tbody>
+									<?php
+									krsort($file);
+									foreach($file as $j => $version) :
+										if( $j != (count($file))) :
+									?>
+											<tr>
+												<td><?php echo date("d.m.Y H:i", strtotime($version['create_date']));?></td>
+												<td style="overflow:hidden; white-space: nowrap;"><a href="member/filedownload?doc_id=<?php echo $version['id']; ?>&id=<?php echo $version['member_id']; ?>&rev=<?php echo $version['revision']; ?>"><?php echo($version['file_showname']); ?></a></td>
+												<td><?php echo $version['revision'];?></td>
+											</tr>	
+									<?php
+									endif;
+									endforeach;
+									?>
+										</tbody>
+									</table>
+									<?php endif; /*if(count($file)>1)*/ ?>
+									
+								</td>
+								
+								<td>
+									<div id="file_replace_<?php echo $cnt;?>">
+										<noscript>
+										Please enable JavaScript to use file uploader.
+										</noscript>
+									</div>
+									<script type="text/javascript">
+										var uploader = new qq.FineUploader({
+											debug: false,
+											multiple : false,
+											element: document.getElementById("file_replace_<?php echo $cnt;?>"),
+											template: 'qq-template_revisions',
+											request: {
+												endpoint: appbase+'member/fileupload',
+												params: {
+													'date': new Date(),
+													"parent_id":"<?php echo $file[1]['parent_id']; ?>", 
+													"member_id":"<?php echo $file[1]['member_id']; ?>"
+												},
+
+											},
+											retry: {
+											   enableAuto: false
+											},
+											validation: {
+												allowedExtensions: ['docx','doc','csv','pdf'],
+												sizeLimit: <?php echo $upload_max_filesize; ?> 												
+											},
+											messages: {
+												sizeError: '<?php echo $this->translate("FineUploader sizeError");?>',
+												typeError: '<?php echo $this->translate("FineUploader typeError");?>',
+											},
+											callbacks: {
+												onComplete: function(id, fileName, responseJSON){
+													$('#btnsubmit').removeAttr("disabled");
+																										
+													if(typeof(responseJSON) === 'object' &&  responseJSON.success === true){
+														window.location.href = "<? echo APP_BASE ?>member/editmember?tabs=4&id=<?php echo $file[1]['member_id']; ?>&flg=suc";
+													}else{
+														if (responseJSON.success === false) {
+															
+															window.setTimeout(function () {alert(responseJSON.error);},0);
+
+														}
+														$("body").removeClass("loading");
+													}
+												},
+												onSubmit: function(id, fileName){
+													if ( ! checkclientchanged()){
+														return false;
+													}
+													$("body").addClass("loading"); 
+													$('#btnsubmit').attr("disabled", "true");							 
+												},
+											}
+
+										});
+									</script>	
+									
+								</td>
+							</tr>
+							<?php endforeach; ?>
+					</tbody>
+				</table>
+				<strong></strong>	
+			
+
+				<fieldset>
+   					<legend style="font-size:1em!important"><?php echo $this->translate("upload_a_new_letter")?></legend>
+					
+					<?php echo $this->translate("file_upload_title")?> <input class="input_style" type="text" name="file_first_version_name" id="file_first_version_name" val="">
+					<br/>
+					<?php echo $this->translate("uploadfile_user")?>: 
+	
+					<label class="custom-file-upload qq-upload-button">
+    					<input type="file" name="qqfile" id="file_first_version" style= "display:none"/>
+    					<input type="hidden" name="add_file" id="file_first_version_add_file" value="0"/>
+    					<?php echo $this->translate("uploadafile")?> 
+					</label>
+					<span id="file-selected"></span>				
+					
+				</fieldset>
+							
+	</div>
+
+<!-- end tabs-6 -->
+<?php endif; ?>
+
+<?php if($_REQUEST['id']):?>
+<!-- tabs-5 history log -->
+<style>
+#history_table tr:nth-child(odd) td {
+   background-color: #f2f5f7 ;
+	
+}
+	#history_table span{
+		display: block;
+		float: left;
+
+	}
+	#history_table p{
+		width:510px!important;
+		display: inline-block;
+		border-bottom: 1px solid #e5e5e5;
+		padding:3px;
+	}
+</style>
+
+			<div id="tabs-6">
+			<?php $member_history = $this->member_history;?>
+					<table id="history_table" class="overalllistatable datatable w3-table-all">
+						<thead>
+							<tr>
+								<th>#</th>
+								<th width="20%"><?php echo $this->translate("changedate")?></th>
+								<th width="20%"><?php echo $this->translate("user")?></th>
+								
+								<th width="140px"><?php echo $this->translate("fields")?></th>
+								
+								<th width="180px"><?php echo $this->translate("old_value")?></th>
+								<th width="180px"><?php echo $this->translate("new_value")?></th>
+							</tr>
+						</thead>
+						
+						<tbody>
+							<tr>
+								<td></td>
+								<td><?php 
+										if($this->create_date != "0000-00-00 00:00:00"){
+											echo date('d.m.Y<\b\r>H:i',strtotime($this->create_date)); 
+										}else echo"auto";
+								?></td>
+								<td><?php echo $this->member_history_user_names[$this->create_user] ?></td>
+								<td colspan=3>
+									<?php echo $this->translate("member_was_created")?>
+									<?php if($this->merged_parent == "1")
+										echo "<br>".$this->translate("member_created_via_merge");
+									?>
+								</td>
+							</tr>
+							
+							<?php 
+								$d = 1; 
+								foreach($member_history as $k):
+								if(sizeof($k['result']) > 0):
+							?>
+							<tr><td><?php echo $d;?></td>
+								<td><?php echo date('d.m.Y<\b\r>H:i',strtotime($k['date'])) ?></td>
+								<td><?php echo $this->member_history_user_names[$k['change_user']] ?> </td>
+								<td colspan=3>
+									<?php 
+										if (is_array( $k['result'] ) && sizeof($k['result']) > 0) {
+
+										if ($k['tab_block'] == 'memberfamily') echo "<b>[Familie]</b>";
+										if ($k['tab_block'] == 'memberdonations') echo "<b>[Spende]</b>";
+										if ($k['tab_block'] == 'member2memberships') echo "<b>[Mitgliedschaft]</b>";
+ 
+										foreach($k['result'] as $column => $change){
+									?>
+									
+									
+										<p>
+											<span style="width:140px"><?php echo $this->member_history_translate[$column];?>&nbsp;</span>
+											<span style="width:170px"><?php echo $change['old'];?>&nbsp;</span>
+											<?php if (!empty($change['old']) || !empty($change['new'])):?>
+											<span style="width:20px">&raquo;</span>
+											<?php endif; ?>
+											<span style="width:170px"><?php echo $change['new'];?>&nbsp;</span>
+										</p>
+																			
+									<?php }} ?> 
+								
+
+								</td>
+							</tr>
+							<?php 	$d++; 
+									endif;			
+									endforeach; 
+							?>
+						</tbody>
+						
+					</table>
+			</div>
+<!-- end tabs-6 -->
+<?php endif; ?>
+
+	</div>
+	</div>
+<!-- end tab_container -->
+
+
+		<div class="clearer"></div>
+
+
+
+		<label for="btnsubmit" id="lbl_btnSubmit"></label>
+		<input type="submit" name="btnsubmit" id="btnsubmit" class="button save_form_btn" tabindex="30" value="<?php echo $this->translate('submit') ?>">
+		<input type="hidden" name="save_form" value="" id="save_form" class="save_form" /> 
+		<input type="hidden" name="tabs" value="" id="tabs_selected_id" /> 
+		<input type="hidden" name="current_referal_tab" value="<?php echo $current_referal_tab; ?>" /> 
+
+</form>
+	</fieldset>
+<div class="modal"><!-- Place at bottom of page --></div>

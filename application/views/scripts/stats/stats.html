@@ -1,0 +1,229 @@
+<script type="text/javascript">
+	var pl_loading = function () {
+
+	    var dlist = '<div class="loadingdiv" align="center"><img src="images/pageloading.gif"><br />	Loading... please wait</div>';
+	    document.getElementById('content').innerHTML = dlist;
+
+	}
+	var callBack = function (params)
+	{
+	    document.getElementById('content').innerHTML = params.statslist;
+
+
+	}
+
+	function loadpage(ord, clm)
+	{
+	    if($('#hdnlastpage').val() >= parseInt($('#pageno').val())) {
+		if((parseInt($('#pageno').val())) > 0) {
+		    pgno = (parseInt($('#pageno').val() - 1));
+		} else {
+		    pgno = 0;
+		}
+		ajaxCallserver({url: 'client/fetchlist?clm=' + clm + '&ord=' + ord + '&pgno=' + pgno, callLoading: pl_loading});
+	    } else {
+		jAlert("<? echo $this->translate('invalidpageno'); ?>");
+	    }
+	}
+
+</script>
+        
+<style>
+tr.row:HOVER{
+	background:yellow;
+}
+</style>
+
+<form action="" method="post" name="frmuser" id="frmuser">
+	<div id="clientlist_translateUldiv" class="add"></div>
+	<div style="clear:both;"></div>
+	<div id="clientlist_errorOf_message" class="err"><? echo $this->error_message ?></div>
+	<div id="content">
+		<div id="fetchlist_Content_div" class="grid">
+			<h1><? echo $this->translate('clientlist') ?></h1>
+			<table class="datatable" cellpadding="0" cellspacing="0" border="0" id="fetchlist_ContentTabel" >
+				<tr id="fetchlist_TableTr">
+					<th id="fetchlist_TableTh"><? echo $this->translate('ID'); ?></th>
+<? if($_SESSION['Login_Info']['usertype'] == "SA"): ?>
+					<th valign="top">Client id <br/>for SUPERADMIN only </th>
+	<? endif; ?>
+					<th id="fetchlist_TableThTwo" class="sort<? echo $this->cnorder ?>"  ><? echo $this->translate('clientname') ?></th>
+
+					<th id="fetchlist_TableThFour" class="sort<? echo $this->fnorder ?>"  ><? echo $this->translate('overallpatients') ?></th>
+					<th id="fetchlist_TableThFive" class="sort<? echo $this->lnorder ?>"  ><? echo $this->translate('overallactulapatients') ?></th>
+
+					<th id="fetchlist_TableThSeven" class="sort<? echo $this->emorder ?>"  ><? echo $this->translate('overalldispatients') ?></th>
+					<th id="fetchlist_TableThSeven" class="sort<? echo $this->emorder ?>"  ><? echo $this->translate('overallstandbypatients') ?></th>
+					<th id="fetchlist_TableThSeven" class="sort<? echo $this->emorder ?>"  ><? echo $this->translate('Gelöschte Anfragen') ?></th>
+					<th id="fetchlist_TableThSeven" class="sort<? echo $this->emorder ?>"  ><? echo $this->translate('Archiv') ?></th>
+					<th id="fetchlist_TableThEight"><? echo $this->translate('overallusers') ?></th>
+
+				</tr> 
+				<?
+					foreach($this->clientlimit as $key => $val)
+					{
+
+
+						$count++;
+						$noofpatients = "";
+						$noofactpatients = "";
+						$noofdispatients = "";
+						$noofstandbypatients = "";
+						$noofstandbydeletedpatients = "";
+						$noofarcpatients = "";
+						$noofusers = "";
+
+						$patientqury = Doctrine_Query::create()
+							->select('count(*)')
+							->from('PatientMaster p')
+							->where('isdelete = 0');
+						$patientqury->leftJoin("p.EpidIpidMapping e");
+						$patientqury->andWhere('e.clientid = ' . $val['id']);
+						$patexec = $patientqury->execute();
+						$patientcount = $patexec->toArray();
+						$noofpatients = $patientcount[0]['count'];
+
+						$totnoofpatients +=$noofpatients;
+
+						$actpatientqury = Doctrine_Query::create()
+							->select('count(*)')
+							->from('PatientMaster p')
+							->where('isdelete=0 and isdischarged=0 and isstandby=0 and isstandbydelete = 0');
+						$actpatientqury->leftJoin("p.EpidIpidMapping e");
+						$actpatientqury->andWhere('e.clientid = ' . $val['id']);
+						$actpatexec = $actpatientqury->execute();
+						$actpatientcount = $actpatexec->toArray();
+						$noofactpatients = $actpatientcount[0]['count'];
+
+						$totnoofactpatients += $noofactpatients;
+
+						$dispatientqury = Doctrine_Query::create()
+							->select('count(*)')
+							->from('PatientMaster p')
+							->where('isdelete=0 and isdischarged=1 and isarchived = 0');
+						$dispatientqury->leftJoin("p.EpidIpidMapping e");
+						$dispatientqury->andWhere('e.clientid = ' . $val['id']);
+
+						$dispatexec = $dispatientqury->execute();
+						$dispatientcount = $dispatexec->toArray();
+						$noofdispatients = $dispatientcount[0]['count'];
+
+						$totnoofdispatients += $noofdispatients;
+
+
+						$standbypatientqury = Doctrine_Query::create()
+							->select('count(*),ipid')
+							->from('PatientMaster p')
+							->where('isdelete=0 and isstandby=1 and isdischarged=0  and isstandbydelete = 0 and isarchived = 0');
+						$standbypatientqury->leftJoin("p.EpidIpidMapping e");
+						$standbypatientqury->andWhere('e.clientid = ' . $val['id']);
+
+						$standpatexec = $standbypatientqury->execute();
+						$standpatientcount = $standpatexec->toArray();
+
+						$noofstandbypatients = $standpatientcount[0]['count'];
+						$totalstandby += $noofstandbypatients;
+
+
+
+
+						$standbydeletedpatientqury = Doctrine_Query::create()
+							->select('count(*)')
+							->from('PatientMaster p')
+							->where('isdelete=0 and isstandby=0 and isdischarged=0  and isstandbydelete = 1 and isarchived = 0');
+						$standbydeletedpatientqury->leftJoin("p.EpidIpidMapping e");
+						$standbydeletedpatientqury->andWhere('e.clientid = ' . $val['id']);
+
+						$standdelpatexec = $standbydeletedpatientqury->execute();
+						$standdelpatientcount = $standdelpatexec->toArray();
+
+						$noofstandbydeletedpatients = $standdelpatientcount[0]['count'];
+						$totalstandbydeleted += $noofstandbydeletedpatients;
+
+
+						$arcpatientqury = Doctrine_Query::create()
+							->select('count(*)')
+							->from('PatientMaster p')
+							->where('isdelete=0 and isarchived = 1');
+						$arcpatientqury->leftJoin("p.EpidIpidMapping e");
+						$arcpatientqury->andWhere('e.clientid = ' . $val['id']);
+
+						$arcpatexec = $arcpatientqury->execute();
+						$arcpatientcount = $arcpatexec->toArray();
+
+						$noofarcpatients = $arcpatientcount[0]['count'];
+						$totalarc += $noofarcpatients;
+
+
+
+						$userqury = Doctrine_Query::create()
+							->select('count(*)')
+							->from('User')
+							->where('isdelete=0');
+						$userqury->andWhere('clientid = ' . $val['id']);
+
+						$userexec = $userqury->execute();
+						$usercount = $userexec->toArray();
+						$noofusers = $usercount[0]['count'];
+						$totnoofusers += $noofusers;
+						?>
+						<tr id="listclient_trfor_client<? echo $count ?>" class="row" > 
+							<td valign="top"><? echo $count ?></td>
+		<? if($_SESSION['Login_Info']['usertype'] == "SA"): ?>
+							<td valign="top"><? echo $val['id'] ?></td>
+		<? endif; ?>
+
+							<td valign="top"><? echo $val['client_name'] ?></td>
+
+							<td valign="top"><? echo $noofpatients ?></td>
+							<td valign="top"><? echo $noofactpatients ?></td>
+
+							<td valign="top"><? echo $noofdispatients ?></td>
+							<td valign="top"><? echo $noofstandbypatients ?></td>
+							<td valign="top"><? echo $noofstandbydeletedpatients ?></td>
+							<td valign="top"><? echo $noofarcpatients ?></td>
+							<td valign="top"><? echo $noofusers ?></td>
+
+						</tr>
+
+
+	<? } ?> 
+
+				<tr id="listclient_trfor_client<? echo $count + 1 ?>" class="row" > 
+					<? if($_SESSION['Login_Info']['usertype'] == "SA"): ?>
+						<th valign="top"></th>
+					<?php endif; ?>
+					<th valign="top"></th>
+					<th valign="top"></th>
+					<th valign="top"><? echo $totnoofpatients; ?></th>
+					<th valign="top"><? echo $totnoofactpatients ?></th>
+					<th valign="top"><? echo $totnoofdispatients ?></th>
+					<th valign="top"><? echo $totalstandby ?></th>
+					<th valign="top"><? echo $totalstandbydeleted ?></th>
+					<th valign="top"><? echo $totalarc ?></th>
+					<th valign="top"><? echo $totnoofusers ?></th>
+				</tr>
+			<tr id="fetchlist_TableTr">
+					<th id="fetchlist_TableTh"><? echo $this->translate('ID'); ?></th>
+<? if($_SESSION['Login_Info']['usertype'] == "SA"): ?>
+					<th valign="top">Client id <br/>for SUPERADMIN only </th>
+	<? endif; ?>
+					<th id="fetchlist_TableThTwo" class="sort<? echo $this->cnorder ?>"  ><? echo $this->translate('clientname') ?></th>
+
+					<th id="fetchlist_TableThFour" class="sort<? echo $this->fnorder ?>"  ><? echo $this->translate('overallpatients') ?></th>
+					<th id="fetchlist_TableThFive" class="sort<? echo $this->lnorder ?>"  ><? echo $this->translate('overallactulapatients') ?></th>
+
+					<th id="fetchlist_TableThSeven" class="sort<? echo $this->emorder ?>"  ><? echo $this->translate('overalldispatients') ?></th>
+					<th id="fetchlist_TableThSeven" class="sort<? echo $this->emorder ?>"  ><? echo $this->translate('overallstandbypatients') ?></th>
+					<th id="fetchlist_TableThSeven" class="sort<? echo $this->emorder ?>"  ><? echo $this->translate('Gelöschte Anfragen') ?></th>
+					<th id="fetchlist_TableThSeven" class="sort<? echo $this->emorder ?>"  ><? echo $this->translate('Archiv') ?></th>
+					<th id="fetchlist_TableThEight"><? echo $this->translate('overallusers') ?></th>
+
+				</tr> 	              
+			</table>
+		</div>
+	</div>
+</form>
+<script type="text/javascript">
+	//ajaxCallserver({url:'stats/fetchlist?clm=cn&ord=ASC&pgno=0',callLoading:pl_loading});
+</script>

@@ -1,0 +1,532 @@
+<!-- ISPC-2736 Lore 12.11.2020 -->
+<?php
+	$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/page-css/emergencyplansapv24.css?' . date('Ymd'));
+	$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/autogrow/jquery.elastic.js?'.date('Ymd'));
+
+
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/data_tables/datatables.min.css');
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/data_tables/jquery.dataTables.js');
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/data_tables/fixedColumns.dataTables.min.css');
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/data_tables/dataTables.fixedColumns.min.js');
+	echo $this->patientinfo;
+	echo $this->tabmenus;
+	$form = $this->form_data;
+?>
+<script>
+$(document).ready(function() {
+	//ISPC-2359 Lore 17.09.2019
+	/*table_actual = $('#medication_block').DataTable({
+		// ADD language
+		"language": {
+			"emptyTable" : "Keine Medikamente",
+		},
+		"lengthMenu": [[10, 25, 50], [10, 25, 50]],
+        "dom": 't',
+		processing: true,
+		info: false,
+		filter: true,
+		paginate: false,
+		 "orderCellsTop": true,
+		serverSide: false,
+		"stateSave": false,
+		"scrollX": false,
+		"autoWidth": false,
+		"scrollCollapse":true,
+		columnDefs: [ 
+			
+				{ "targets": 0, "searchable": true, "orderable": true, "name":"medication_indication" , "data": "indication "}, // medication_concentration
+		        { "targets": 1, "searchable": true, "orderable": true, "name":"medication_name" ,       "data": "medication"}, // medication_concentration
+				{ "targets": 2, "searchable": true, "orderable": true, "name":"medication_dosage" ,     "data": "dosage"}, // medication_concentration
+				{ "targets": 3, "searchable": true, "orderable": true, "name":"medication_nursing_measures" ,  "data": "nursing_measures"}, // medication_concentration
+				{ "targets": 4, "searchable": true, "orderable": true  }, // medication_concentration
+
+			
+				],				
+ 		order: [[1,'ASC']],
+ 		
+		initComplete: function()
+		{ 
+			
+			 
+		}
+	});*/
+	
+	$('textarea').elastic();
+	
+$( ".datepick" ).datepicker({
+	dateFormat: 'dd.mm.yy',
+	showOn: "both",
+	buttonImage: $('#calImg').attr('src'),
+	buttonImageOnly: true,
+	changeMonth: true,
+	changeYear: true,
+	nextText: '',
+	prevText: ''
+});
+
+$('.hasDatepicker').mask('99.99.9999'); //add date mask
+
+$('.submit_form').click(function(){
+	var error = 0;
+	var text1 = $('#special_features').val().length;
+	var text2 = $('#main_diagnosis').val().length;
+	
+	if(text1 > 210)
+	{
+		alert("<?php  echo $this->translate('You have reached your maximum limit of characters allowed ' ) ?> Besonderheiten/Absprachen" );
+		error++;
+	}
+	
+	if(text2 > 400)
+	{
+		alert("<?php  echo $this->translate('You have reached your maximum limit of characters allowed ' ) ?> Diagnose" );
+		error++;
+	}
+	
+	setTimeout(function () {$('.submit_form').attr('disabled', true);}, 150);
+	setTimeout(function () {$('.submit_form').attr('disabled', false);}, 3000);
+	
+	if(error == 0)
+	{	
+		var action = $(this).data("action");
+		if(action == 'reset') {
+			jConfirm('Sind Sie sicher, dass Sie das Formular zurücksetzen möchten', '<?php echo $this->translate('confirmationdialog'); ?>', function (ans) {
+				if(!ans) {
+					return;
+				}
+				else {
+					$('#form_action').val(action);
+					$('#emergenty_plan24').submit();
+				}
+			});
+		}
+		else if(action == 'save') {
+			jConfirm('Sie laden gerade einen Notfallplan hoch. Soll dieser Plan als aktuelle Fassung hinterlegt werden und somit eventuell andere Versionen ersetzen?', '<?php echo $this->translate('confirmationdialog'); ?>', function (ans) {
+				if(ans) {
+					$('#active_version').val('1');
+				}
+				else
+				{
+					$('#active_version').val('0');
+				}
+				$('#form_action').val(action);
+				$('#emergenty_plan24').submit();
+			});
+		}
+		else {
+			$('#form_action').val(action);
+			$('#emergenty_plan24').submit();
+		}
+	}
+	
+	
+});
+
+$('.medication_add_link').click(function() {
+	var rowCount = $('#medication_block tr').length;
+	var new_line = '';
+	//alert(rowCount);
+	new_line += '<tr>';
+	new_line += '<td class="left_td_col ten">';
+// 	new_line += '<input type="text" name="form[data][medication]['+(rowCount-1)+'][indication]" value="" />';
+	new_line += '<textarea name="form[data][medication]['+(rowCount-1)+'][indication]"></textarea>';
+	new_line += '<input type="hidden" name="form[data][medication]['+(rowCount-1)+'][med_type]" value="F" />';
+	new_line += '</td>';
+	new_line += '<td class="left_td_col quart">';
+// 	new_line += '<input type="text" class="large_text" name="form[data][medication]['+(rowCount-1)+'][medication]" value="" />';
+	new_line += '<textarea class="large_text" name="form[data][medication]['+(rowCount-1)+'][medication]"></textarea>';
+	new_line += '</td>';
+	new_line += '<td class="left_td_col twenty">';
+// 	new_line += '<input type="text" name="form[data][medication]['+(rowCount-1)+'][dosage]" value="" />';
+	new_line += '<textarea name="form[data][medication]['+(rowCount-1)+'][dosage]"></textarea>';
+	new_line += '</td>';
+	new_line += '<td class="left_td_col forty">';
+// 	new_line += '<input type="text" class="large_textarea" name="form[data][medication]['+(rowCount-1)+'][nursing_measures]" value="" />';
+	new_line += '<textarea class="large_textarea" name="form[data][medication]['+(rowCount-1)+'][nursing_measures]"></textarea>';
+	new_line += '</td>';
+	new_line += '<td class="right_td_col center_td_col five">';
+	new_line += '<a href="javascript:void(0)" class="medication_delete_link"></a>';
+	new_line += '</td>';
+	new_line += '</tr>';
+	
+	$('#medication_block').append(new_line);
+
+	$('textarea').elastic();
+});
+
+$('#medication_block').on('click', '.medication_delete_link', function() {
+	 $(this).closest('tr').remove();
+});
+
+/* ==================================textarea 1 ====================================== */
+var maximus_input_1  = 210;
+var text_length1 = 0;
+var text_remaining1 = 0;
+	 
+var nr_text1 = $('#special_features').val().length;
+var text_max1 = maximus_input_1;
+var	text_max1 = maximus_input_1 - nr_text1;
+
+//console.log("t1maxallowed: "+maximus_input_1+" current:"+nr_text1+" text_max:"+text_max1);
+
+if(text_max1 < 0 )
+{
+	$('#textarea_feedback1').html((-text_max1 )+ ' <?php echo $this->translate('characters over limit') ?>');	
+	$('#textarea_feedback1').css("color", "red");
+}
+else
+{
+	$('#textarea_feedback1').html(text_max1 + ' <?php echo $this->translate('characters remaining') ?>');
+	$('#textarea_feedback1').css("color", "green");
+}
+    
+$('#special_features').keyup(function(){
+	text_length1 = $('#special_features').val().length;
+	text_remaining1 = maximus_input_1 - text_length1;
+
+	if(text_remaining1 <0)
+    {
+		$('#textarea_feedback1').html((-text_remaining1)+ ' <?php echo $this->translate('characters over limit') ?>');
+		$('#textarea_feedback1').css("color", "red");	
+	}
+	else
+	{
+		$('#textarea_feedback1').html(text_remaining1 + ' <?php echo $this->translate('characters remaining') ?>');
+		$('#textarea_feedback1').css("color", "green");
+	}
+});
+
+/*----------------------------------------------------------------------------------------------------------*/
+
+
+/* ==================================textarea 2 ====================================== */
+var maximus_input_2  = 400;
+var text_length2 = 0;
+var text_remaining2 = 0;
+	 
+var nr_text2 = $('#main_diagnosis').val().length;
+var text_max2 = maximus_input_2;
+var	text_max2 = maximus_input_2 - nr_text2;
+
+//console.log("t1maxallowed: "+maximus_input_1+" current:"+nr_text1+" text_max:"+text_max1);
+
+if(text_max2 < 0 )
+{
+	$('#textarea_feedback2').html((-text_max2 )+ ' <?php echo $this->translate('characters over limit') ?>');	
+	$('#textarea_feedback2').css("color", "red");
+}
+else
+{
+	$('#textarea_feedback2').html(text_max2 + ' <?php echo $this->translate('characters remaining') ?>');
+	$('#textarea_feedback2').css("color", "green");
+}
+    
+$('#main_diagnosis').keyup(function(){
+	text_length2= $('#main_diagnosis').val().length;
+	text_remaining2 = maximus_input_2 - text_length2;
+
+	if(text_remaining2 <0)
+    {
+		$('#textarea_feedback2').html((-text_remaining2)+ ' <?php echo $this->translate('characters over limit') ?>');
+		$('#textarea_feedback2').css("color", "red");	
+	}
+	else
+	{
+		$('#textarea_feedback2').html(text_remaining2 + ' <?php echo $this->translate('characters remaining') ?>');
+		$('#textarea_feedback2').css("color", "green");
+	}
+});
+
+/*----------------------------------------------------------------------------------------------------------*/
+
+});
+</script>
+
+<div class="emergenty_plan_sapv24">
+	<form action="" method="post" name="emergenty_plan24" id="emergenty_plan24">
+	<div id="CalImg" style="display: none;"> <img id="calImg" src="<?php echo RES_FILE_PATH; ?>/images/calendar.png" alt="Popup" class="trigger"> </div>
+	<?php if($form['client']['emergencynr_a'] != '') { ?>
+		<div class="headline_notfall_sapv24 left_align">
+			<span class="no-border">Notfallrufnummer:&nbsp;</span><span class="no-border"><?php echo $form['client']['emergencynr_a']; ?></span>
+		</div>
+	<?php  } elseif ($form['client']['emergencynr_b'] != '') { ?>
+		<div class="headline_notfall_sapv24 left_align">
+			<span class="no-border">Notfallrufnummer:&nbsp;</span><span class="no-border"><?php echo $form['client']['emergencynr_b']; ?></span>
+		</div>
+	<?php } ?>
+	<div class="headline_notfall_sapv24 right_align">
+			<span class="no-border">Notfallplan II </span>
+	</div>
+		<table class="emergenty_plan_sapv24_table">
+		<tr>
+			<td class="left_td_col half">
+				<table class="emergenty_plan_sapv24_patientinfo_half">
+					<tr>
+						<td class="left_td_col no-border">Name, Vorname</td>
+						<td class="right_td_col no-border">Geb.Datum</td>
+					</tr>
+					<tr>
+						<td class="left_td_col no-border bigfont"><?php echo $form['patient']['name']; ?></td>
+						<td class="right_td_col no-border bigfont"><?php echo  $form['patient']['birthd']; ?></td>
+					</tr>
+				</table>
+			</td>
+			<td  rowspan="3" class="right_td_col half">
+				<table class="emergenty_plan_sapv24_patientinfo_half">
+					<tr>
+						<td class="center_td_col">Besonderheiten/Absprachen</td>
+					</tr>
+					<tr>
+						<td class="right_td_col no-border">
+							<textarea name="form[data][special_features]" id="special_features" rows="3" cols=""><?php echo $form['data']['special_features']; ?></textarea>
+							<div id="textarea_feedback1"></div>
+						</td>
+					</tr>
+				</table>
+			</td>
+		</tr>
+		<tr>
+			<td class="left_td_col half">
+				<table class="emergenty_plan_sapv24_patientinfo_half">
+					<tr>
+						<td>An-/Zugehörige</td>
+					</tr>
+					<tr>
+						<td><input type="text" class="large_textarea" name="form[data][relatives]" value="<?php echo $form['data']['relatives']; ?>"/></td>
+					</tr>
+				</table>
+			</td>
+		</tr>
+		<tr>
+			<td class="left_td_col half">
+				<table class="emergenty_plan_sapv24_patientinfo_half">
+					<tr>
+						<td >Betreuer</td>
+					</tr>
+					<tr>
+						<td><input type="text" class="large_textarea" name="form[data][supervisor]" value="<?php echo $form['data']['supervisor']; ?>" /></td>
+					</tr>
+				</table>
+			</td>
+		</tr>
+		</table>
+		<table class="emergenty_plan_sapv24_table no-border">
+			<tr>
+				<td class="left_td_col ten no-border"><b>Diagnose:&nbsp;</b></td>
+				<td class="right_td_col ninety no-border">
+					<textarea name="form[data][main_diagnosis]" id="main_diagnosis" rows="3" cols=""><?php echo $form['data']['main_diagnosis']; ?></textarea>
+					<div id="textarea_feedback2"></div> 
+				</td>
+			</tr>
+		</table>
+		<table class="emergenty_plan_sapv24_table no-border">
+			<tr>
+				<td class="ten vert_middle">Vorsorgevollmacht:&nbsp;</td>
+				<td class="two vert_middle">Ja&nbsp;</td>
+				<td class="five"><input type="radio" name="form[data][prev_attorney]" value="1"  <?php if($form['data']['prev_attorney'] == "1") :?>checked="checked"  <?php endif; ?>  /></td>
+				<td class="two vert_middle">&nbsp;Nein</td>
+				<td class="five"><input type="radio" name="form[data][prev_attorney]" value="0"  <?php if($form['data']['prev_attorney'] == "0") :?>checked="checked"  <?php endif; ?>  /></td>
+				
+				<td class="five">&nbsp;</td>
+				
+				<td class="ten vert_middle">Patientenverfügung:&nbsp;</td>
+				<td class="two vert_middle">Ja&nbsp;</td>
+				<td class="five"><input type="radio" name="form[data][living_will]" value="1"  <?php if($form['data']['living_will'] == "1") :?>checked="checked"  <?php endif; ?>  /></td>
+				<td class="two vert_middle">&nbsp;Nein</td>
+				<td class="five"><input type="radio" name="form[data][living_will]" value="0"  <?php if($form['data']['living_will'] == "0") :?>checked="checked"  <?php endif; ?>  /></td>
+				
+				<td class="five">&nbsp;</td>
+				
+				<td class="ten vert_middle">Betreuungsverfügung:&nbsp;</td>
+				<td class="two vert_middle">Ja&nbsp;</td>
+				<td class="five"><input type="radio" name="form[data][serv_available]" value="1"  <?php if($form['data']['serv_available'] == "1") :?>checked="checked"  <?php endif; ?>  /></td>
+				<td class="two vert_middle">&nbsp;Nein</td>
+				<td class="five"><input type="radio" name="form[data][serv_available]" value="0"  <?php if($form['data']['serv_available'] == "0") :?>checked="checked"  <?php endif; ?>  /></td>
+				
+				<td class="fifteen">&nbsp;</td>
+			</tr>
+		</table>
+		<div class="headline_notfall_sapv24">
+			<span>Therapieabsprachen</span>
+		</div>
+		<table class="emergenty_plan_sapv24_table no-border">
+			<tr>
+				<td class="left_td_col no-border forty">
+					<table class="emergenty_plan_sapv24_patientinfo_half">
+						<tr>
+							<td class="sixtyfive vert_middle">Wiederbelebung:&nbsp;</td>
+							<td class="five vert_middle">Ja&nbsp;</td>
+							<td class="ten"><input type="radio" name="form[data][resuscitation]" value="1"  <?php if($form['data']['resuscitation'] == "1") :?>checked="checked"  <?php endif; ?>  /></td>
+							<td class="five vert_middle">Nein&nbsp;</td>
+							<td class="ten"><input type="radio" name="form[data][resuscitation]" value="0"  <?php if($form['data']['resuscitation'] == "0") :?>checked="checked"  <?php endif; ?>  /></td>
+							<td class="five">&nbsp;</td>
+						</tr>
+						<tr>
+							<td class="sixtyfive vert_middle">Krankenhauseinweisung gewünscht:&nbsp;</td>
+							<td class="five vert_middle">Ja&nbsp;</td>
+							<td class="five"><input type="radio" name="form[data][hosp_required]" value="1"  <?php if($form['data']['hosp_required'] == "1") :?>checked="checked"  <?php endif; ?>  /></td>
+							<td class="five vert_middle">Nein&nbsp;</td>
+							<td class="five"><input type="radio" name="form[data][hosp_required]" value="0"  <?php if($form['data']['hosp_required'] == "0") :?>checked="checked"  <?php endif; ?>  /></td>
+							<td class="fifteen">&nbsp;</td>
+						</tr>
+						<tr>
+							<td class="sixtyfive vert_middle">Aufklärung Diagnose/Krisen:&nbsp;</td>
+							<td class="five vert_middle">Ja&nbsp;</td>
+							<td class="five"><input type="radio" name="form[data][crises]" value="1"  <?php if($form['data']['crises'] == "1") :?>checked="checked"  <?php endif; ?>  /></td>
+							<td class="five vert_middle">Nein&nbsp;</td>
+							<td class="five"><input type="radio" name="form[data][crises]" value="0"  <?php if($form['data']['crises'] == "0") :?>checked="checked"  <?php endif; ?>  /></td>
+							<td class="fifteen">&nbsp;</td>
+						</tr>
+					</table>
+				</td>
+				<td class="ten">&nbsp;</td>
+				<td class="right_td_col no-border forty">
+					<table class="emergenty_plan_sapv24_patientinfo_half">
+						<tr>
+							<td class="forty vert_middle">Künstliche Ernährung:&nbsp;</td>
+							<td class="five vert_middle">Ja&nbsp;</td>
+							<td class="ten"><input type="radio" name="form[data][artificial_food]" value="1"  <?php if($form['data']['artificial_food'] == "1") :?>checked="checked"  <?php endif; ?>  /></td>
+							<td class="five vert_middle">Nein&nbsp;</td>
+							<td class="ten"><input type="radio" name="form[data][artificial_food]" value="0"  <?php if($form['data']['artificial_food'] == "0") :?>checked="checked"  <?php endif; ?>  /></td>
+							<td class="thirty">&nbsp;</td>
+						</tr>
+						<tr>
+							<td class="forty vert_middle">Antibiotikatherapie:&nbsp;</td>
+							<td class="five vert_middle">Ja&nbsp;</td>
+							<td class="ten"><input type="radio" name="form[data][antibiotic_therapy]" value="1"  <?php if($form['data']['antibiotic_therapy'] == "1") :?>checked="checked"  <?php endif; ?>  /></td>
+							<td class="five vert_middle">Nein&nbsp;</td>
+							<td class="ten"><input type="radio" name="form[data][antibiotic_therapy]" value="0"  <?php if($form['data']['antibiotic_therapy'] == "0") :?>checked="checked"  <?php endif; ?>  /></td>
+							<td class="thirty">&nbsp;</td>
+						</tr>
+						<tr>
+							<td class="forty vert_middle">Transfusion:&nbsp;</td>
+							<td class="five vert_middle">Ja&nbsp;</td>
+							<td class="ten"><input type="radio" name="form[data][transfusion]" value="1"  <?php if($form['data']['transfusion'] == "1") :?>checked="checked"  <?php endif; ?>  /></td>
+							<td class="five vert_middle">Nein&nbsp;</td>
+							<td class="ten"><input type="radio" name="form[data][transfusion]" value="0"  <?php if($form['data']['transfusion'] == "0") :?>checked="checked"  <?php endif; ?>  /></td>
+							<td class="thirty">&nbsp;</td>
+						</tr>
+						<tr>
+							<td class="quart vert_middle">Infusion:&nbsp;</td>
+							<td class="five vert_middle">Ja&nbsp;</td>
+							<td class="ten"><input type="radio" name="form[data][infusion]" value="1"  <?php if($form['data']['infusion'] == "1") :?>checked="checked"  <?php endif; ?>  /></td>
+							<td class="five vert_middle">Nein&nbsp;</td>
+							<td class="ten"><input type="radio" name="form[data][infusion]" value="0"  <?php if($form['data']['infusion'] == "0") :?>checked="checked"  <?php endif; ?>  /></td>
+							<td class="thirty">&nbsp;</td>
+						</tr>
+						<tr>
+							<td class="quart vert_middle">Palliative Sedierung:&nbsp;</td>
+							<td class="five vert_middle">Ja&nbsp;</td>
+							<td class="ten"><input type="radio" name="form[data][palliative_sedation]" value="1"  <?php if($form['data']['palliative_sedation'] == "1") :?>checked="checked"  <?php endif; ?>  /></td>
+							<td class="five vert_middle">Nein&nbsp;</td>
+							<td class="ten"><input type="radio" name="form[data][palliative_sedation]" value="0"  <?php if($form['data']['palliative_sedation'] == "0") :?>checked="checked"  <?php endif; ?>  /></td>
+							<td class="thirty">&nbsp;</td>
+						</tr>
+					</table>
+				</td>
+			</tr>
+		</table>
+		<div class="headline_notfall_sapv24 left">
+			<span class="bordered">Tritt erst in Kraft wenn der Bedarfsplan nicht mehr greift</span>
+		</div>
+		<table style="border-collapse: collapse;" class="emergenty_plan_sapv24_table" id="medication_block">
+			<thead>
+			<tr>
+				<th style="border:1px solid #000" class="left_td_col center_td_col ten vtop bold">Indikation</th>
+				<th style="border:1px solid #000" class="left_td_col center_td_col quart vtop bold">Medikation</th>
+				<th style="border:1px solid #000" class="left_td_col center_td_col twenty vtop bold">Dosierung</th>
+				<th style="border:1px solid #000" class="left_td_col center_td_col forty vtop bold">Kommentar</th>	<!-- ISPC-2736 Lore 20.11.2020 -->
+				<!-- <th style="border:1px solid #000" class="left_td_col center_td_col forty vtop bold">Pflegerische Maßnahmen</th>
+				 -->
+				 <th style="border:1px solid #000" class="left_td_col center_td_col five">&nbsp;</th>
+			</tr>
+			</thead>
+		<?php
+			$cnt = 0;
+
+			if(isset($form['data']['medication_M'])) {
+				foreach ($form['data']['medication_M'] as $med) { 
+				?>	
+			<tr>
+				<td class="left_td_col ten vmiddle" style="background-color: #<?php echo $med['indication_color'];?>">
+					<input type="hidden" name="form[data][medication][<?php echo $cnt; ?>][indication]" value="<?php echo $med['indication']; ?>" />
+					<input type="hidden" name="form[data][medication][<?php echo $cnt; ?>][indication_color]" value="<?php echo $med['indication_color']; ?>" />
+					<input type="hidden" name="form[data][medication][<?php echo $cnt; ?>][med_type]" value="M" />
+					<?php echo $med['indication']; ?>
+				</td>
+				<td class="left_td_col quart vmiddle">
+					<input class="large_text" type="hidden" name="form[data][medication][<?php echo $cnt; ?>][medication]" value="<?php echo $med['medication']; ?>" />
+					<?php echo $med['medication']; ?>
+				</td>
+				<td class="left_td_col twenty vmiddle">
+					<input type="hidden" name="form[data][medication][<?php echo $cnt; ?>][dosage]" value="<?php echo $med['dosage']; ?>" />
+					<?php echo $med['dosage']; ?>
+				</td>
+				<td class="left_td_col forty">
+					<textarea  class="large_textarea" name="form[data][medication][<?php echo $cnt; ?>][nursing_measures]" ><?php echo $med['nursing_measures']; ?></textarea>
+				</td>
+				<td class="right_td_col center_td_col five">
+					<a href="javascript:void(0)" class="medication_delete_link"></a>
+				</td>
+			</tr>
+			
+		<?php 
+			$cnt++;
+			} }
+
+			if(isset($form['data']['medication_F'])) {
+		 	foreach ($form['data']['medication_F'] as $med) { ?>
+		 		
+			<tr>
+				<td class="left_td_col ten">
+					<textarea name="form[data][medication][<?php echo $cnt; ?>][indication]"><?php echo $med['indication']; ?></textarea>
+					<input type="hidden" name="form[data][medication][<?php echo $cnt; ?>][med_type]" value="F" />
+				</td>
+				<td class="left_td_col quart">
+					<textarea class="large_text"  name="form[data][medication][<?php echo $cnt; ?>][medication]"><?php echo $med['medication']; ?></textarea>
+				</td>
+				<td class="left_td_col twenty">
+					<textarea name="form[data][medication][<?php echo $cnt; ?>][dosage]"><?php echo $med['dosage']; ?></textarea>
+				</td>
+				<td class="left_td_col forty">
+					<textarea  class="large_textarea" name="form[data][medication][<?php echo $cnt; ?>][nursing_measures]" ><?php echo $med['nursing_measures']; ?></textarea>
+				</td>
+				<td class="right_td_col center_td_col five">
+					<a href="javascript:void(0)" class="medication_delete_link"></a>
+				</td>
+			</tr>
+			
+		<?php 
+			$cnt++;
+			} }?>
+			
+		</table>
+		
+		<a href="javascript:void(0)" class="medication_add_link"></a>
+		
+		<div class="headline_notfall_sapv24 left_align no-border">
+			<span class="no-border"><input type="text" class="datepick" name="form[data][sapv24_date]" value="<?php if($form['data']['sapv24_date'] != '') {echo date('d.m.Y', strtotime($form['data']['sapv24_date'])); } else {echo date(d.m.Y);} ?>"/></span><span class="no-border">&#44;&nbsp;</span><span><input type="text" name="form[data][sapv24_city]" value="<?php echo $form['data']['sapv24_city']; ?>"/></span>
+		</div>
+		<table class="emergenty_plan_sapv24_table no-border">
+		<tr>
+			<td>
+				<input type="hidden" id="form_action" name="form_action" value="" />
+				<input type="hidden" name="formid" value="<?php echo $form['data']['id']; ?>" >
+				<input type="hidden" name="active_version" id="active_version" value="0" >
+				<button type="button" class="submit_form " data-action="save" id="save_form">
+					<?php echo $this->translate("save"); ?>
+				</button>
+				<button type="button" class="submit_form " data-action="pdf_print" id="pdf_print_form">
+					<?php echo $this->translate("generatepdf"); ?>
+				</button>
+				<?php if($this->saveddata == '1')
+				{ ?>
+				<button type="button" class="submit_form " data-action="reset" id="reset_form">
+					<?php echo $this->translate("reset"); ?>
+				</button>
+				<?php } ?>
+			</td>
+		</tr>
+		</table>
+	</form>
+</div>

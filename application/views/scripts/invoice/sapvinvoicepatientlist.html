@@ -1,0 +1,400 @@
+<!-- Maria:: Migration ISPC to CISPC 08.08.2020 -->
+<?php
+//anlage6billing
+//IE Freaking hack
+$url = APP_BASE . "invoice/sapvinvoicepatientlist?" . $_SERVER['QUERY_STRING'];
+if (str_replace("&list=" . $_REQUEST['list'] . "", "", $url))
+{
+	$finalJsUrl = str_replace("&list=" . $_REQUEST['list'] . "", "", $url);
+}
+else
+{
+	$finalJsUrl = $url;
+}
+$visits_per_patient = $this->visits_per_patient;
+$cf_types = $this->contact_form_types;
+$invoiced_contact_forms = $this->invoiced_contact_forms;
+?>
+<script type="text/javascript" >
+	function changeMonth(data){
+		var url = "<?php echo $finalJsUrl; ?>&list="+data;
+		$(location).attr('href',url);
+	}
+
+$(function() {
+	$('.quality_control_invoice').bind('click', function() {		
+		$('#master_div_modal').dialog( "option", "title", $(this).attr('title')).html($('#visit-'+$(this).attr('rel').replace('=', '')).html()).dialog('open');
+	});
+	
+	$('#master_div_modal').dialog({
+		resizable: false,
+		autoOpen: false,
+		height:195,
+		width: 400,
+		modal: true,
+		draggable: false,		
+		close: function(){
+			$('.visit_selector').val('');
+		},
+		buttons: {
+			"<?php echo $this->translate('cancel'); ?>": function() {
+				$( this ).dialog( "close" );
+			},			
+			"<?php echo $this->translate('generatepdf'); ?>": function() {
+				var select_element = $(this).parent().find('select.visit_selector');
+				if(select_element.val() > '0'){
+					url_pdf = '<?php echo APP_BASE; ?>invoice/sgbxiinvoice?id='+select_element.attr('rel')+'&list='+$('#select_month').val()+'&visit_id='+select_element.val()+'&mode=pdfs';
+					$(location).attr('href',url_pdf);					
+				}
+				$( this ).dialog( "close" );
+			}
+		}
+	});
+	
+	$('.visit_selector').bind('change', function(){
+	});
+	
+	$('#invoice_number').live('change keyup', function(){
+		var invoice_nr = $(this).val();
+
+		$('.gen_invoices').each(function(){
+			var curent_url = $(this).attr('href');
+			var new_url = curent_url.replace(/(inr=).*?(&)/,'$1' + invoice_nr + '$2');
+			$(this).attr('href', new_url);
+		});
+
+		$('.gen_invoices_sgbv').each(function(){
+			var curent_url = $(this).attr('href');
+			var new_url = curent_url.replace(/(inr=).*?(&)/,'$1' + invoice_nr + '$2');
+			$(this).attr('href', new_url);
+		});
+	});
+	
+	
+	
+	/* ISPC- 2220 Ancuta 30.07.2018 */
+	$('.gen_invoices').on('click',function(event){
+		event.preventDefault();
+		
+		var url = $(this).attr('href');
+
+		var patientid = $(this).data('patientid');
+		var element_id = $(this).attr('id');		
+		var check_array = [];
+		check_array.patient_epid = patientid;
+		check_array.invoice_type = $(this).data('check_invoice_type');
+		check_array.period_start = $(this).data('check_period_start');
+		check_array.period_end = $(this).data('check_period_end');
+		
+		
+		
+		$.ajax({
+		  	url:'ajax/checkgenerateinvoices',
+		    type: 'POST',
+			data:{
+				'patient': check_array.patient_epid,
+				'invoice_type': check_array.invoice_type,
+				'period_type': check_array.period_type,
+				'period_id': check_array.period_id,
+				'period_start': check_array.period_start,
+				'period_end': check_array.period_end
+			}, 
+		    success: function(result) {
+		    	var result_data = jQuery.parseJSON(result);
+		    	if(result_data.skip_modal == "1"){
+		    		
+
+
+	 				$(location).attr('href',url);
+	 				$('#'+element_id).addClass('generated_flow_element');
+	 				
+		    	} else{
+		    		
+		    		if(result_data.completed_invoices){
+		    			alert('<?php echo $this->translate("The relevant invoice is already completed and or paid. Please Storno it before you proceed.")?>');
+		    		} else if(result_data.invoices){
+		    			
+			    		// open modal 
+			    		$('#already_generated_invoices')
+			    		.data('url' , url)
+			    		.data('invoices' , result_data.invoices)
+			    		.data('patient' ,  check_array.patient_epid)
+			    		.data('invoice_type' ,  check_array.invoice_type)
+			    		.data('element_id' ,  element_id)
+			    		.dialog('open');
+			    		
+		    		} else{
+		 				$(location).attr('href',url);
+		 				$('#'+element_id).addClass('generated_flow_element');
+		 					
+		    		}
+		    	}
+		    },
+		    error: function(){
+		      alert("Unable to check period");
+		    }
+		  });
+		
+
+
+	});
+	$('#already_generated_invoices').dialog({
+		autoOpen:false,
+		resize:false,
+		draggable:false,
+		width:950,
+		height:150,
+		title: '<?php echo $this->translate('confirmdeletetitle'); ?>',
+		buttons: {
+		"<?php echo $this->translate('delete existing draft and generate'); ?>": function() {
+	   		var inv_url = $(this).data('url');
+			var element_id = $(this).data('element_id');
+			
+			$.ajax({
+				  	url:'ajax/deletedraftinvoices',
+				    type: 'POST',
+					data:{
+						'patient': $(this).data('patient'),
+						'invoice_type': $(this).data('invoice_type'),
+						'invoices': $(this).data('invoices')
+					}, 
+				    success: function(result) {
+				    	
+				    	var result_data = jQuery.parseJSON(result);
+				    	if(result_data.invoice_deleted == "1"){
+							$(location).attr('href',inv_url);
+							$('#'+element_id).addClass('generated_flow_element');
+							$('#already_generated_invoices').dialog( "close" );
+				    		
+				    	} else{
+				    		alert("Old invoice was not DELETED");
+				    	}
+				    },
+				    error: function(){
+				      alert("Unable to check period");
+				    }
+				  });
+			
+		},
+		"<?php echo $this->translate('continue generating the invoice'); ?>": function(){
+
+				var element_id = $(this).data('element_id');				 		
+				var url = $(this).data('url');
+				$(location).attr('href',url);
+				$('#'+element_id).addClass('generated_flow_element');
+				
+				$('#already_generated_invoices').dialog( "close" );
+		},
+		"<?php echo $this->translate('cancel'); ?>": function(){
+				 
+			$('#already_generated_invoices').dialog( "close" );
+		}
+	},
+	close: function(){
+		 
+	}
+});
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+});
+</script>
+<h1><?php echo $this->translate('rechnung active patients'); ?></h1>
+
+<br />
+<?php echo $this->translate('select_month'); ?> : <?php echo $this->months_selector; ?>
+<br />
+<br />
+<?php if($this->invoice_number_type == '1'):  ?>
+<p>
+	<?php echo $this->translate('if_empty_continue_from'); ?>  <?php echo $this->sgbv_highest_invoice_number; ?>
+</p>
+<?php else:  ?>
+<p>
+	<?php echo $this->translate('if_empty_continue_from'); ?> <br /> SGB V (<?php echo $this->sgbv_highest_invoice_number_new; ?>) - SAPV (<?php echo $this->highest_invoice_number_new;  ?>) - Medipumps (<?php echo $this->mp_highest_invoice_number_new; ?>) - SGBXI (<?php echo $this->sgbxi_highest_invoice_number_new; ?>)
+</p>
+<?php endif;  ?>
+<?php 
+if($_REQUEST['list'])
+{
+	$list_url = '&list='.$_REQUEST['list'];
+}
+else
+{
+	$list_url = '';
+}
+?>
+<table class="datatable" id="active_patients" >
+	<thead>
+		<tr>
+			<th><?php echo $this->translate('no'); ?></th>
+			<th>
+				<span class="column_label">
+					<?php echo $this->translate('epid'); ?>
+				</span>
+				<br />
+				<span class="colsorting">
+					<a href="<?php echo APP_BASE  ?>invoice/sapvinvoicepatientlist?sort=epid&ord=asc<?php echo $list_url; ?>" class="overallsort colsortasc" rel="ln" title="asc"><img  src="<?php echo RES_FILE_PATH;  ?>/images/up-arrow.png" alt="" /></a>
+					<a href="<?php echo APP_BASE  ?>invoice/sapvinvoicepatientlist?sort=epid&ord=desc<?php echo $list_url; ?>"  class="overallsort colsortdesc" rel="ln" title="desc"><img  src="<?php echo RES_FILE_PATH;  ?>/images/down-arrow.png" alt="" /></a>
+				</span>
+			</th>
+			<th>
+				<span class="column_label">
+					<?php echo $this->translate('lastname'); ?>
+				</span>
+				<br />
+				<span class="colsorting">
+					<a href="<?php echo APP_BASE  ?>invoice/sapvinvoicepatientlist?sort=ln&ord=asc<?php echo $list_url; ?>" class="overallsort colsortasc" rel="ln" title="asc"><img  src="<?php echo RES_FILE_PATH;  ?>/images/up-arrow.png" alt="" /></a>
+					<a href="<?php echo APP_BASE  ?>invoice/sapvinvoicepatientlist?sort=ln&ord=desc<?php echo $list_url; ?>"  class="overallsort colsortdesc" rel="ln" title="desc"><img  src="<?php echo RES_FILE_PATH;  ?>/images/down-arrow.png" alt="" /></a>
+				</span>
+			</th>
+			<th>
+				<span class="column_label">
+					<?php echo $this->translate('firstname'); ?>
+				</span>
+				<br />
+				<span class="colsorting">
+					<a href="<?php echo APP_BASE  ?>invoice/sapvinvoicepatientlist?sort=fn&ord=asc<?php echo $list_url; ?>" class="overallsort colsortasc" rel="ln" title="asc"><img  src="<?php echo RES_FILE_PATH;  ?>/images/up-arrow.png" alt="" /></a>
+					<a href="<?php echo APP_BASE  ?>invoice/sapvinvoicepatientlist?sort=fn&ord=desc<?php echo $list_url; ?>"  class="overallsort colsortdesc" rel="ln" title="desc"><img  src="<?php echo RES_FILE_PATH;  ?>/images/down-arrow.png" alt="" /></a>
+				</span>
+			</th>
+			<th>
+				<span class="column_label">
+					<?php echo $this->translate('admissiondate'); ?>
+				</span>
+				<br />
+				<span class="colsorting">
+					<a href="<?php echo APP_BASE  ?>invoice/sapvinvoicepatientlist?sort=adm&ord=asc<?php echo $list_url; ?>" class="overallsort colsortasc" rel="ln" title="asc"><img  src="<?php echo RES_FILE_PATH;  ?>/images/up-arrow.png" alt="" /></a>
+					<a href="<?php echo APP_BASE  ?>invoice/sapvinvoicepatientlist?sort=adm&ord=desc<?php echo $list_url; ?>"  class="overallsort colsortdesc" rel="ln" title="desc"><img  src="<?php echo RES_FILE_PATH;  ?>/images/down-arrow.png" alt="" /></a>
+				</span>
+			</th>
+			<th>
+				<span class="column_label">
+					<?php echo $this->translate('discharge_date'); ?>
+				</span>
+				<br />
+				<span class="colsorting">
+					<a href="<?php echo APP_BASE  ?>invoice/sapvinvoicepatientlist?sort=dis&ord=asc<?php echo $list_url; ?>" class="overallsort colsortasc" rel="ln" title="asc"><img  src="<?php echo RES_FILE_PATH;  ?>/images/up-arrow.png" alt="" /></a>
+					<a href="<?php echo APP_BASE  ?>invoice/sapvinvoicepatientlist?sort=dis&ord=desc<?php echo $list_url; ?>"  class="overallsort colsortdesc" rel="ln" title="desc"><img  src="<?php echo RES_FILE_PATH;  ?>/images/down-arrow.png" alt="" /></a>
+				</span>
+			</th>
+			<th><?php echo $this->translate('SGB V Rechnung'); ?></th>
+			<th><?php echo $this->translate('SAPV Rechnung'); ?></th>
+			<th><?php echo $this->translate('Medipumps Rechnung'); ?></th>
+			<th><?php echo $this->translate('SGB XI Rechnung'); ?></th>
+			<th><?php echo $this->translate('Invoice_symbols'); ?></th>
+		</tr>
+	</thead>
+
+	<tbody>
+		<?php if ($this->active_patients): ?>
+			<?php $i = 1; foreach($this->active_patients as $active_ipid => $active_details):  ?>
+			<tr>
+				<td ><?php echo $i; $encrypted_id = Pms_Uuid::encrypt($active_details['id']); ?></td>
+				<td ><?php echo strtoupper($active_details['epid']); ?></td>
+				<td ><?php echo $active_details['last_name'];  ?></td>
+				<td ><?php echo $active_details['first_name'];  ?></td>
+				<td ><?php if($active_details['admission_date'] != '0000-00-00 00:00:00'): echo $active_details['admission_date']; else: echo '-'; endif; ?></td>
+				<td ><?php if($active_details['discharge_date'] != '0000-00-00 00:00:00'): echo $active_details['discharge_date']; else: echo '-'; endif; ?></td>
+			
+				<td style="padding:0; " <?php if( $this->invoice_status[$active_ipid]['sgbv_invoices']== "1" )  :?> class="green_td" <?php endif;?>> 
+					<a class="gen_invoices"
+					 id="<?php echo strtoupper($active_details['epid']); ?>bw_sgbv_invoice"
+					data-patientid="<?php echo strtoupper($active_details['epid']); ?>"
+					data-check_invoice_type="bw_sgbv_invoice"
+					data-check_period_start="<?php echo $active_details['period_start']; ?>"
+					data-check_period_end="<?php echo $active_details['period_end']; ?>"
+					href="<?php echo APP_BASE.'invoice/socialcoderecord?id='.$encrypted_id.'&list='.$this->selected_month.'&inr=&mode=pdfs'; ?>" style="display:inline-block;"><?php echo $this->translate('sgbv_rechnung');  ?></a> 
+				</td>
+				
+				
+				
+				<td style="width:100px; padding:0; "  <?php if( $this->invoice_status[$active_ipid]['sapv_invoices']== "1" )  :?> class="green_td" <?php endif;?>>
+					<a class="gen_invoices" 
+					
+					id="<?php echo strtoupper($active_details['epid']); ?>bw_sapv_invoice"
+					data-patientid="<?php echo strtoupper($active_details['epid']); ?>"
+					data-check_invoice_type="bw_sapv_invoice"
+					data-check_period_start="<?php echo $active_details['period_start']; ?>"
+					data-check_period_end="<?php echo $active_details['period_end']; ?>"
+					
+					href="<?php echo APP_BASE.'invoice/performancerecordform?id='.$encrypted_id.'&list='.$this->selected_month.'&inr=&mode=pdfs'; ?>" 
+					style="display:inline-block;"><?php echo $this->translate('sapv_rechnung');  ?></a>
+				</td>
+				
+				
+				<td style="width:100px;padding:0; "  <?php if( $this->invoice_status[$active_ipid]['medipump_invoices']== "1" )  :?> class="green_td" <?php endif;?>>
+					<a class="gen_invoices" 
+					id="<?php echo strtoupper($active_details['epid']); ?>bw_mp_invoice"
+					data-patientid="<?php echo strtoupper($active_details['epid']); ?>"
+					data-check_invoice_type="bw_mp_invoice"
+					data-check_period_start="<?php echo $active_details['period_start']; ?>"
+					data-check_period_end="<?php echo $active_details['period_end']; ?>"
+					href="<?php echo APP_BASE.'invoice/medipumpscontrol?id='.$encrypted_id.'&list='.$this->selected_month.'&inr=&mode=pdfs'; ?>" 
+					style="display:inline-block;"><?php echo $this->translate('medipumps_rechnung');  ?></a>
+				</td>
+				<td style="width:100px; padding:0; "  <?php if( $this->invoice_status[$active_ipid]['sgbxi_invoices']== "1" )  :?> class="green_td" <?php endif;?>>
+					<!--<a class="gen_invoices" href="<?php echo APP_BASE.'invoice/sgbxiinvoice?id='.$encrypted_id.'&list='.$this->selected_month.'&inr=&mode=pdfs'; ?>" style="display:inline-block;"><?php echo $this->translate('sgbxi_rechnung');  ?></a>-->					
+					<?php $m_title = $this->translate('select_visit_title'); ?>
+					<a class="gen_invoices_sgbv quality_control_invoice" 
+					id="<?php echo strtoupper($active_details['epid']); ?>bw_sgbxi_invoice"
+					data-patientid="<?php echo strtoupper($active_details['epid']); ?>"
+					data-check_invoice_type="bw_sgbxi_invoice"
+					data-check_period_start="<?php echo $active_details['period_start']; ?>"
+					data-check_period_end="<?php echo $active_details['period_end']; ?>"
+					href="javascript:void(0);" rel="<?php echo $encrypted_id; ?>" title="<?php echo $m_title  ?>" style="display:inline-block;">
+						<?php echo $this->translate('sgbxi_rechnung');  ?>
+					</a>
+					
+					
+					<!--Modal for each patient with its visits-->
+					<div id="visit-<?php echo str_replace("=", "", $encrypted_id); ?>" class="visits" style="display: none;">		
+
+						<?php if($visits_per_patient[$active_ipid]):  ?>
+							<select name="sel_visit" class="visit_selector" id="visit-<?php echo str_replace("=", "", $encrypted_id); ?>-sel" rel="<?php echo $encrypted_id;  ?>" style="width:302px;">
+								<option value="0"><?php echo $this->translate('select_visit');  ?></option>
+								
+								<?php foreach($visits_per_patient[$active_ipid] as $k_visit => $v_visit): ?>
+								<option value="<?php echo $v_visit['id'];  ?>"><?php echo $cf_types[$v_visit['form_type']].": ".date('d.m.Y', strtotime($v_visit['start_date']))."  (".date('H:i', strtotime($v_visit['start_date']))." - ".date('H:i', strtotime($v_visit['end_date'])).") ";  ?> <?php if(in_array($v_visit['id'],$invoiced_contact_forms[$v_visit['ipid']])): echo '*'; endif;  ?></option>
+								<?php endforeach;  ?>
+							</select>
+						<p style="font-size: 10px;"><?php echo $this->translate('sgbxi_asterix_note');  ?></p>
+						<?php else:  ?>
+						<br />
+							<?php echo $this->translate('no_visits_found');  ?>
+						<?php endif;  ?>
+					</div>
+				</td>
+				<td class="symbols_available"> 
+					<?php if(!empty( $this->invoice_status[$active_ipid]['sapv_available']) &&  is_array($this->invoice_status[$active_ipid]['sapv_available']))  :?>
+						<img src="<?php echo RES_FILE_PATH.'/images/sapv_available.png';  ?>">
+					<?php endif;?>
+					
+					<?php if(!empty( $this->invoice_status[$active_ipid]['sgbv_available']) &&  is_array($this->invoice_status[$active_ipid]['sgbv_available']) ) :?>
+						<img src="<?php echo RES_FILE_PATH.'/images/sgbv_available.png';  ?>">
+					<?php endif;?>
+					
+					<?php if(!empty( $this->invoice_status[$active_ipid]['sgbxi_available']) &&  is_array($this->invoice_status[$active_ipid]['sgbxi_available']) ) :?>
+						<img src="<?php echo RES_FILE_PATH.'/images/sgbxi_available.png';  ?>">
+					<?php endif;?>
+					
+				 </td>
+			</tr>
+			<?php $i++; endforeach;  ?>
+		<?php endif; ?>
+	</tbody>
+</table>
+<div id="master_div_modal"></div>
+
+<div id="already_generated_invoices">
+	<?php echo $this->translate('invoices are already generated or this period');?>
+</div>

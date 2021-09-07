@@ -1,0 +1,206 @@
+<?php
+//ISPC-2697, elena, 06.11.2020
+$aGroups = [];
+
+$machine = $this->machine;
+
+$machinename = (isset($machine->machine_name) ? $machine->machine_name : '');
+$sets = json_decode($machine->parameters, true);
+
+//print_r($sets);
+
+?>
+<script>
+
+    var machinename= '<?php echo $machinename; ?>';
+    var optnumber = -1;
+    $(document).ready(function(){
+        <?php if($machinename == ''): ?>
+            $('#sets').hide();
+        <?php endif; ?>
+
+        $('#machine').on('input', function(){
+            machinename = $('#machine').val();
+            if(machinename.trim() != ''){
+            $('#sets').show();
+            }else{
+            $('#sets').hide();
+            }
+        });
+
+        $( "#ventilation_maschine_edit_dialog" ).dialog({
+            autoOpen: false,
+            title:"Set bearbeiten/hinzufügen",
+            resizable: false,
+            //height: 680,
+            width: 680,
+            modal: true,
+            open: function () {
+                $.ajax({
+                    type: 'POST',
+                    data : {
+                        machine : $('#machine').val()
+                    },
+                    url: '<?php echo APP_BASE; ?>ajax/beatmungsoption?id=<?php echo $_GET['opt']; ?>&optnumber=' + optnumber ,
+
+                    beforeSend: function () {
+                        //loading image
+                        $('#set_ajax_load_edt').show();
+                    },
+                    success: function (data) {
+                    $('#set_ajax_load_edt').hide();
+
+                        $('#ventilation_maschine_content').html(data).promise().done(function () {
+
+                        });
+                    },
+                })
+            },
+            buttons: {
+                "Speichern": function(){
+
+                    $('#beatmungoption').submit();
+
+
+
+                },
+                "<?php echo $this->translate('cancel'); ?>": function(){
+                    $("#ventilation_maschine_edit_dialog" ).dialog('close');
+                }
+            },create:function () {
+                $(this).closest(".ui-dialog")
+                    .find(".ui-button:first") // the first button
+                    .addClass("submitform");
+            },
+            close:function () {
+                $('#ventilation_maschine_content').html('');
+                $('.submitform').attr('disabled',false);
+                $(".ui-button:first").attr("disabled", false)
+                    .removeClass("ui-state-disabled").next("button").attr("disabled", false)
+                    .removeClass("ui-state-disabled");
+            }
+        });
+
+
+        $('#add_option').on('click', function(){
+            console.log('add option');
+            optnumber = -1;
+            $('#ventilation_maschine_edit_dialog').dialog('open');
+        });
+
+        $('.edit_set').on('click', function(){
+            console.log('add option');
+            optnumber = $(this).attr('data-set');
+            $('#ventilation_maschine_edit_dialog').dialog('open');
+        });
+
+         $('.remove_set').on('click', function(){
+            console.log('remove option');
+
+            var frm = $(this).closest('form');
+            jConfirm('<? echo $this->translate('confirmdeleterecord'); ?>', '<? echo $this->translate('confirmdeletetitle'); ?>', function(r) {
+            if(r)
+            {
+            $(frm).submit();
+            }
+            });
+
+
+        });
+
+
+        $('#rename_btn').on('click', function(e){
+
+        e.preventDefault();
+        jConfirm('Namen der Machine ändern', 'Möchten Sie Machine umbenennen?', function(r) {
+        if(r)
+        {
+            if($('#machine').val().trim() != ''){
+                console.log('weiter');
+                $('#name_to_save').val($('#machine').val());
+                console.log( $('#rename_machine'));
+                $('#rename_machine').submit();
+            }else{
+                jAlert('Name der Machine darf nicht leer sein.')
+
+            }
+
+        }
+        });
+
+
+        })
+
+
+
+
+    });
+
+
+</script>
+<style>
+    #machine_params tr td{
+        padding: 5px;
+    }
+    #machine_params tr td:nth-child(odd){
+        font-weight: bold;
+    }
+</style>
+<div>
+    <div style="display:none;"  id="set_ajax_load_edt">
+        <img src="<?php echo RES_FILE_PATH;  ?>/images/loading-transp.gif" style="width:16px;"/>
+    </div>
+    <h1>Beatmung</h1>
+    <br>
+    <div>
+        <a href="<?php echo APP_BASE; ?>/selectboxlists/beatmung">Zur Liste</a>
+    </div>
+    <br>
+        <label for="machine">Name der Maschine</label>
+        <input type="text" name="machine" id="machine" value="<?php echo $machinename; ?>"><div style="display:inline-block;"><form method="post" id="rename_machine"><input type="hidden" name="machine_name_save" id="name_to_save" value="<?php echo $machinename; ?>"><input type="button" id="rename_btn" value="Speichern"></form></div>
+        <br>
+        <div id="sets">
+            <table class="datatable" width="100%">
+                <tr>
+                    <th>Bezeichnung</th><!-- //ISPC-2816,Elena,04.02.2021 -->
+                    <th>Validations/Lists</th>
+                    <th>Einheit</th><!-- //ISPC-2816,Elena,04.02.2021 -->
+                    <th>Alarm</th>
+                    <!--<th>Emergency</th>--><!--ISPC-2836,Elena,23.02.2021-->
+                    <th colspan="2">Actions</th>
+                </tr>
+            <?php $counter = 0; ?>
+            <?php foreach($sets as $set): ?>
+                <tr>
+                    <td><?php echo $set['label']; ?></td>
+                    <td><?php echo $this->translate('beatmung_' . $set['value']);//ISPC-2816,Elena,04.02.2021 ?><br>
+                       <?php if($set['value'] == 'dropdown'): ?>
+                       <?php echo implode(', ', $set['list']) ?>
+                        <?php else: ?>
+                        <?php echo $this->translate($set['validation']); ?>
+                        <?php endif; ?>
+                    </td>
+                    <td><?php echo $set['unit']; ?></td>
+                    <td> <?php if($set['has_alarm']): ?>Ja <?php else: ?>Nein<?php endif; ?> </td>
+                    <!--<td><?php if($set['has_emergency']): ?>Ja<?php else: ?>Nein<?php endif; ?></td>--><!--ISPC-2836,Elena,23.02.2021-->
+                    <td><img src="<?php echo RES_FILE_PATH; ?>/images/edit.png" width="16px"  class="edit_set" data-set="<?php echo $counter; ?>" /></td>
+                    <td><form method="post"><input type="hidden" name="remove_set" value="<?php echo $counter; ?>"> <img class="remove_set" src="<?php echo RES_FILE_PATH; ?>/images/cross.png" width="16px" data-set="<?php echo $counter; ?>" /></form></td>
+                </tr>
+
+
+            <?php $counter++; ?>
+            <?php  endforeach; ?>
+            </table>
+        <h4>Sets hinzufügen/bearbeiten</h4>
+        <input type="button" id="add_option" value="Neues Set eintragen">
+        </div>
+
+
+
+
+</div>
+
+<div id="ventilation_maschine_edit_dialog" class="dialog_input">
+    <div id="ventilation_maschine_content"></div>
+
+</div>

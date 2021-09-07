@@ -1,0 +1,534 @@
+<?php
+
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/data_tables/datatables.min.css?' . date('Ymd'));
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/data_tables/jquery.dataTables.js?'.date('Ymd'));
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/data_tables/fixedColumns.dataTables.min.css?' . date('Ymd'));
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/data_tables/dataTables.fixedColumns.min.js?'.date('Ymd'));
+
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/xbdtnew.css?' . date('Ymd'));
+
+$page_lang = $this->translate("xbdt_export");
+?>
+ 
+<script type="text/javascript">
+$(document).ready(function(){
+	// DATATABLE
+var datatable =	$('.patients').DataTable({
+		// ADD language
+		 "language": {
+                "url": "<?php echo RES_FILE_PATH.'/javascript/data_tables/de_language.json?'.date('Ymd')?>"
+         },
+ 		sDom: 
+			'tr',
+			
+//		"lengthMenu": [[10, 25, 50], [10, 25, 50]],
+			
+		processing: true,
+
+		info: false,
+		filter: true,
+		paginate: true,
+
+		serverSide: true,
+		"autoWidth": false,
+		"stateSave": false,
+		"scrollX": false,
+		"scrollCollapse": true,
+
+		columns: [
+		          { data: "epid_number", className: ""},//0
+		          { data: "admission_date_full", className: ""},//1
+		          { data: "discharge_date_full", className: ""},//2
+		          { data: "dob_full", className: ""},//3
+		          
+		          {
+                      data: "select_patient", 
+                      className: "",
+                      render: function (data, type, row, meta) {
+                          return '<label class=\'checkboxes\'><span>' + (meta.row + meta.settings._iDisplayStart + 1) + '</span> ' +  data + '</label>';
+                      }
+                  },//4
+		          { data: "epid", className: ""},//5
+		          { data: "first_name", className: ""},//6
+		          { data: "last_name", className: ""},//7
+		          { data: "birthd", className: ""},//8
+		          { data: "admission_date", className: ""},//9
+		          { data: "discharge_date", className: ""},//10
+		          { data: "health_insurance_company", className: ""},//11
+		          { data: "health_insurance_number", className: ""},//12
+		          { data: "health_insurance_kassennummer", className: ""},//13
+		          { data: "health_insurance_status", className: ""},//14
+		          { data: "health_insurance_ik", className: ""},//15
+		          { data: "insurance_options", className: ""}//16
+			],
+			
+		 columnDefs: [ 
+				       	{ "bVisible": false, "targets": 0, "searchable": true, "orderable": true, "name":"epid_number" },  // epid_number -HIDDEN
+				       	{ "bVisible": false, "targets": 1, "searchable": true, "orderable": true, "name":"admission_date_full" },  // admission_date_full -HIDDEN
+				       	{ "bVisible": false, "targets": 2, "searchable": true, "orderable": true, "name":"discharge_date_full" },  // discharge_date_full -HIDDEN
+				       	{ "bVisible": false, "targets": 3, "searchable": true, "orderable": true, "name":"dob_full" },  // date of birth full -HIDDEN
+				       	{ "targets": 4, "searchable": false, "orderable": false, "name":"select_patients" },  // select patients checkbox
+				       	{ "iDataSort": 0,"targets": 5, "searchable": false, "orderable": true, "name":"epid" }, // epid
+				       	{ "targets": 6, "searchable": false, "orderable": true, "name":"first_name" }, // first_name
+				       	{ "targets": 7, "searchable": false, "orderable": true, "name":"last_name" }, // last_name
+				       	{ "iDataSort": 3,"targets": 8, "searchable": false, "orderable": true, "name":"birthd" }, // birthd
+				       	{ "iDataSort": 1,"targets": 9, "searchable": false, "orderable": true, "name":"admission_date" }, // admission_date
+				       	{ "iDataSort": 2,"targets": 10, "searchable": false, "orderable": true, "name":"discharge_date" }, // discharge_date
+				       	{ "targets": 11, "searchable": true, "orderable": true, "name":"health_insurance_company" }, // health_insurance_company
+				       	{ "targets": 12, "searchable": true, "orderable": true, "name":"health_insurance_number" }, // health_insurance_number
+				       	{ "targets": 13, "searchable": true, "orderable": true, "name":"health_insurance_kassennummer" }, // health_insurance_kassennummer
+				       	{ "targets": 14, "searchable": true, "orderable": true, "name":"health_insurance_status" }, // health_insurance_status
+				       	{ "targets": 15, "searchable": true, "orderable": true, "name":"health_insurance_ik" }, // health_insurance_ik
+				       	{ "targets": 16, "searchable": true, "orderable": true, "name":"insurance_options" } // insurance_options
+				],	
+		order: [[ 0, "asc" ]],
+ 		 ajax: {
+			url:'xbdtnew/getpatients',
+			type: 'POST',
+			data: buildAjaxData
+		}
+	});
+ 
+
+
+function buildAjaxData (){
+    var settings = $(".patients").dataTable().fnSettings();
+     
+    var obj = {
+        //default params
+        "draw" : settings.iDraw,
+        "start" : settings._iDisplayStart,
+        "length" : settings._iDisplayLength,
+        "columns" : "",
+        "order": "",
+         
+        "cmd" : "refresh",
+        "period_start": $("#from").val(),
+        "period_end"  : $("#to").val(),
+        "type"  : $("#type").val(),
+        "quarter"  : $("#quarter").val(),
+        "user" :  $("select[name=user]").val(),
+        "group_type" :  $("select[name=group_type]").val()
+        };
+         
+        //building the columns
+        var col = new Array(); // array
+         
+        for(var index in settings.aoColumns){
+            var data = settings.aoColumns[index];
+            col.push(data.sName);
+                             
+        }
+         
+        var ord = {
+            "column" : settings.aaSorting[0][0], 
+            "dir" : settings.aaSorting[0][1]
+        };
+         
+        //assigning
+        obj.columns = col;
+        obj.order = ord;
+         
+    return obj;
+}
+
+	$('#type, select[name=user], select[name=group_type]').on('change', function () {
+		   datatable.draw(); // Redraw the DataTable
+		});
+	$('#quarter').on('change', function () {
+		   datatable.draw(); // Redraw the DataTable
+		});
+	
+	$('#type').live('change', function(){
+		if($(this).val() == 'ado') {
+			$('.ado_hidden').show();
+		} else {
+			$('.ado_hidden').hide();
+		}
+	});
+	
+    $( "#from" ).datepicker({
+        changeMonth: true,
+        changeYear: true,
+		showOn: "both",
+		buttonImage: $('#calImg').attr('src'),
+		buttonImageOnly: true,
+        onClose: function( selectedDate ) {
+          $( "#to" ).datepicker( "option", "minDate", selectedDate );
+        },
+        onSelect:function(  ) {
+        	  datatable.draw(); // Redraw the DataTable
+        }
+      });
+      $( "#to" ).datepicker({
+		showOn: "both",
+		buttonImage: $('#calImg').attr('src'),
+		buttonImageOnly: true,
+        changeMonth: true,
+        changeYear: true,
+        onClose: function( selectedDate ) {
+          $( "#from" ).datepicker( "option", "maxDate", selectedDate );
+        },
+        onSelect:function(  ) {
+      	  datatable.draw(); // Redraw the DataTable
+      }
+      });
+	
+
+  	$('#all_patients').live('click', function(){
+  		if($(this).is(':checked')){
+  			$('.patients_select').each(function(){
+  				$(this).attr('checked', true)
+  			});
+  		} else {
+  			$('.patients_select').each(function(){
+  				$(this).attr('checked', false)
+  			});
+  		}
+  	});
+  	
+  	
+  	
+  	
+  	var datatable_files =	$('.xbdt_files').DataTable({
+		// ADD language
+		 "language": {
+                "url": "<?php echo RES_FILE_PATH.'/javascript/data_tables/de_language.json?'.date('Ymd')?>"
+         },
+ 		sDom: 
+			'tr',
+ 
+		processing: true,
+		
+		info: false,
+		filter: true,
+		paginate: true,
+
+		serverSide: true,
+		"autoWidth": false,
+		"stateSave": false,
+		"scrollX": false,
+		"scrollCollapse": true,
+		"ordering": false,
+		
+
+		columns: [
+		          { data: "export_date", className: ""},//0
+// 		          { data: "download_link", className: ""},//1
+		          { data: "delete", className: ""},//2
+			],
+			
+		 columnDefs: [ 
+				       	{ "targets": 0, "searchable": false, "orderable": false, "name":"export_date" }, // export_date
+// 				       	{ "targets": 1, "searchable": false, "orderable": false, "name":"download_link" }, // first_name
+				       	{ "targets": 1, "searchable": false, "orderable": false, "name":"delete" } // last_name
+				],				
+ 		 ajax: {
+			url:'xbdtnew/getxbdtfiles',
+			type: 'POST'
+		}
+	});
+  	
+	$(".delete_file").live('click', function() {
+		$.confirmdeleteid = $(this).attr('rel');
+			jConfirm('<? echo $this->translate('confirmdeleterecord'); ?>', '<? echo $this->translate('confirmdeletetitle'); ?>', function(r) {
+			if(r)
+			{	
+				
+// 				$.ajax({
+// 					  method: "POST",
+// 					  url : 'xbdtnew/deletefile?id='+ $.confirmdeleteid,
+					  
+// 					  success: function(data)
+// 					  {  
+// 						  $(this).closest('tr').remove();
+// 					  }
+// 					}) 
+				
+				location.href = "<? echo APP_BASE ?>xbdtnew/deletefile?id="+ $.confirmdeleteid;
+			}
+		});
+	});
+	
+});
+</script>
+<style>
+.dataTables_processing{
+	top:10px!important;      
+	height: 100%!important;      
+	border: 1px solid #333;
+}
+
+#ap-mainbody {
+overflow:visible
+}
+
+label.checkboxes {
+  display: block;
+  float: left;
+  padding-right: 10px;
+  white-space: nowrap;
+}
+label.checkboxes input {
+  vertical-align: middle;
+}
+label.checkboxes span {
+  vertical-align: middle;
+}
+</style>
+
+<div style="display: none"> <img id="calImg" src="<?php echo RES_FILE_PATH;  ?>/images/calendar.png" alt="Popup" class="trigger"> </div>
+<form action="" method="post" id="export">
+<input type="hidden" name="tp" value="<?php echo $_REQUEST['tp']?>" />
+<table border="0" cellspacing="3" cellpadding="2" class="export_settings">
+	<tr>
+		<td class="tdheader">
+		BDT-Art: 
+		</td>
+		<td class="tdoptions">
+		<span><?php echo $this->formSelect('type','', '', $this->types) ?></span>
+		</td>
+	</tr>
+	
+ 
+	
+	<tr class="ado_hidden" style="display: none">
+		<td class="tdheader">
+		ID für Leistung Aufnahme:
+		</td>
+		<td class="tdoptions"> 
+		<span>
+			<input type="text" name="ado_text_id"/> 
+		</span>
+		</td>
+	</tr>
+	
+	
+	<tr class="ado_hidden" style="display: none">
+		<td class="tdheader">
+		Text für Leistung Aufnahme:
+		</td>
+		<td class="tdoptions">
+		<span>
+			<input type="text" name="ado_text"/>
+		</span>
+		</td>
+	</tr>
+	
+<!-- 	<tr> 
+		<td class="tdheader">
+		Quartal: 
+		</td>
+		<td class="tdoptions">
+		<span><?php echo $this->formSelect('quarter', date('Y').'-'.ceil(date('m')/3), array(), $this->quarters) ?></span>
+		</td>
+	</tr>
+-->
+	
+	<tr>
+		<td class="tdheader">
+		LANR:
+		</td>
+		<td class="tdoptions">
+		<span>
+			<input type="text" name="lanr"/>
+		</span>
+		</td>
+	</tr>
+	
+	<tr>
+		<td class="tdheader">
+		<?php echo $this->translate("ik_digits_option")?>
+		</td>
+		<td class="tdoptions"> 
+			<div class="radio_opt_div">
+				<input id="ik_option_7" type="radio" value="7" name="ik_option" />
+				<label for="ik_option_7"><?php echo $this->translate("7 digits")?></label>
+			</div>		
+			
+			<div class="radio_opt_div">	
+				<input id="ik_option_9" type="radio" value="9" name="ik_option" />
+				<label for="ik_option_9"><?php echo $this->translate("9 digits")?></label>
+			</div>			
+		</td>
+	</tr>
+
+	<tr>
+		<td class="tdheader">
+		<?php echo $this->translate("hi_status_option")?>
+		</td>
+		<td class="tdoptions">
+			<div class="radio_opt_div">
+				<input  id="status_option_M" type="radio" value="M" name="status_option" />
+				<label  for="status_option_M"><?php echo $this->translate("M / F / R")?></label>
+			</div>		
+			
+			<div class="radio_opt_div" style="width: 125px!important;">	
+				<input  id="status_option_1000" type="radio" value="1000" name="status_option" />
+				<label  for="status_option_1000"><?php echo $this->translate("1000 / 3000 / 5000")?></label>
+			</div>			
+			<div class="radio_opt_div">	
+				<input  id="status_option_1" type="radio" value="1" name="status_option" />
+				<label  for="status_option_1"><?php echo $this->translate("1 / 3 / 5")?></label>
+			</div>			
+		</td>
+	</tr>
+	
+	<tr>
+		<td class="tdheader">
+		<?php echo $this->translate("Select user actions")?>
+		</td>
+		<td class="tdoptions">
+			<div class="select_div">
+				<select name="user">
+					<option value=""><?php echo $this->translate("please select")?></option>
+					<?php foreach ($this->client_users as $uid=>$uname): ?>
+						<option value="<?php echo  $uid; ?>"><?php echo $uname; ?></option>
+					<?php endforeach;?>
+				</select>
+			</div>		
+		</td>
+	</tr>
+	
+	
+	<tr>
+		<td class="tdheader">
+		<?php echo $this->translate("Select group type")?>
+		</td>
+		<td class="tdoptions"> 
+			<div class="select_div">
+				<select name="group_type">
+					<option value=""><?php echo $this->translate("please select")?></option>
+					<?php foreach ($this->action_groups as $k => $groupname): ?>
+						<option value="<?php echo  $groupname; ?>"><?php echo $groupname; ?></option>
+					<?php endforeach;?>
+				</select>
+			</div>		
+		</td>
+	</tr>
+		
+	<tr>
+		<td class="tdheader">
+		<?php echo $this->translate("diagnosis_side_option")?>
+		</td>
+		<td class="tdoptions">
+			<div class="radio_opt_div">
+				<input id="diagnosis_side_option_1" type="radio" value="1" name="diagnosis_side_option" />
+				<label for="diagnosis_side_option_1">Ja</label>
+			</div>		
+			
+			<div class="radio_opt_div">	
+				<input id="diagnosis_side_option_0" type="radio" value="0" name="diagnosis_side_option" />
+				<label for="diagnosis_side_option_0">Nein</label>
+			</div>			
+		</td>
+	</tr>
+	
+	<tr>
+		<td class="tdheader">
+		<?php echo $this->translate("diagnosis_main_option")?>
+		</td>
+		<td class="tdoptions">
+			<div class="radio_opt_div">
+				<input id="diagnosis_main_option_1" type="radio" value="1" name="diagnosis_main_option" />
+				<label for="diagnosis_main_option_1">Ja</label>
+			</div>		
+			
+			<div class="radio_opt_div">	
+				<input id="diagnosis_main_option_0" type="radio" value="0" name="diagnosis_main_option" />
+				<label for="diagnosis_main_option_0">Nein</label>
+			</div>			
+		</td>
+	</tr>
+	
+	
+	<tr>
+		<td class="tdheader">
+		<?php echo $page_lang['Period selection']?>
+		</td>
+		<td class="tdoptions">
+			<input type="text" name="period[start]"  id="from" value="<?php echo $this->period_start;?>" /> 
+			<input type="text" name="period[end]"    id="to" value="<?php echo $this->period_end;?>" /> 
+		</td>
+	</tr>
+
+	<!-- ISPC-2569 Lore 17.03.2020-->
+	<tr>
+		<td class="tdheader">
+		<?php echo $this->translate("BSNR")?>
+		</td>
+		<td class="tdoptions"> 
+			<div class="radio_opt_div">
+				<input id="bsnr_option_5098" type="radio" value="5098" checked  name="bsnr_option" />
+				<label for="bsnr_option_5098"><?php echo $this->translate("5098")?></label>
+			</div>		
+			
+			<div class="radio_opt_div">	
+				<input id="bsnr_option_0200" type="radio" value="0200" name="bsnr_option" />
+				<label for="bsnr_option_0200"><?php echo $this->translate("0200")?></label>
+			</div>			
+		</td>
+	</tr>
+	
+	
+	<tr>
+		<td colspan="2" width="100%">
+	 
+			<table class="patients">
+				<thead>
+					<tr>
+					
+						<th>epid_number</th>
+						<th>admission_date_full</th>
+						<th>discharge_date_full</th>
+						<th>dob_date_full</th>
+						
+						<th><input type="checkbox" name="all-patients" value="" id="all_patients" /></th>
+						<th><?php echo $this->translate('epid');?></th>
+						<th><?php echo $this->translate('first_name');?></th>
+						<th><?php echo $this->translate('last_name');?></th>
+						<th><?php echo $this->translate('dob');?></th>
+						<th><?php echo $this->translate('admission_date');?></th>
+						<th><?php echo $this->translate('discharge_date');?></th>
+						<th><?php echo $this->translate('health_insurance');?></th>
+						<th><?php echo $this->translate('health_insurance_number_vsnr');?></th>
+						<th><?php echo $this->translate('health_insurance_kassennummer');?></th>
+						<th><?php echo $this->translate('health_insurance_status');?></th>
+						<th><?php echo $this->translate('health_insurance_IK');?></th>
+						<th><?php echo $this->translate('health_insurance_options');?></th>
+					</tr>
+				</thead>
+				<tbody>
+					<!-- content -->
+				</tbody>
+			</table>
+		</td>
+	</tr>
+	<tr>
+		<td colspan="2">
+			<input type="submit" name="generate" value="BDT Datei erstellen" />
+		</td>
+	</tr>
+
+ 
+ 
+	<tr>
+		<td colspan="2" align="left">
+
+		</td>
+	</tr>
+</table>
+<br/>
+<table class="xbdt_files">
+	<thead>
+		<tr>
+			<td><?php echo $this->translate('export_date');?></td>
+			<td><?php echo $this->translate('actions');?></td>
+		</tr>
+	</thead>
+	<tbody>
+		<!-- content -->
+	</tbody>
+</table>
+
+</form>

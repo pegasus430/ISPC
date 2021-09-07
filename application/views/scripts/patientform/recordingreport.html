@@ -1,0 +1,1533 @@
+<?php
+	$this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/page-css/recordingreport.css?'.date('Ymd'));
+	$this->headScript()->appendFile(RES_FILE_PATH . '/javascript/human_body/multi.js?' . date('Ymd'));
+
+	echo $this->patientinfo;
+	echo $this->tabmenus;
+?>
+<script>
+var chks;
+var formid;
+var isdischarged = "<? echo $this->isdischarged ?>";
+//detect touch capable here
+function has_touch() {
+	return (
+	//Detect iPhone
+	(navigator.platform.indexOf("iPhone") != -1) ||
+	//Detect iPad
+	(navigator.platform.indexOf("iPad") != -1) ||
+	// Detect Android
+	(navigator.userAgent.toLowerCase().indexOf("android") != -1) ||
+	// Detect rest of touch enabled devices
+	!!('ontouchstart' in window));
+}
+
+var has_touch = has_touch(); //le global again
+
+function updatePatientInformation(modname,fldname,formid,chk,patid,drp)
+{
+
+        if(chk.checked == true && drp != "kontactnumber" && fldname != 'living_will'){
+                chks = 1;
+        } else {
+                chks = 0;
+        }
+
+
+        if(fldname=="living_will"){
+                togglediv(drp,chk.value);
+                ajaxcall(modname,fldname,chk.value,patid,formid);
+                $("#living_will_from").val('');
+                $("#living_will_deposited").val('');
+        }
+
+
+        if(drp=='drop' || drp=='rad' || drp == 'fam' || drp == 'vig' || drp == 'sta' || drp == "kontactnumber")
+        {
+                chks = chk.value;
+
+                if(drp == "kontactnumber" && chk.checked == false){
+                        chks = "";
+                }
+        }
+
+
+        if(drp == "ern"){
+                var values = new Array();
+                $.each($("input[name='ernahrung[]']:checked"), function() {
+                        values.push($(this).val());
+                        chks = values
+                });
+        }
+        if(drp == "kun"){
+                var values = new Array();
+                $.each($("input[name='kunstliche[]']:checked"), function() {
+                        values.push($(this).val());
+                        chks = values
+                });
+        }
+        if(drp == "ori"){
+                var values = new Array();
+                $.each($("input[name='orientierung[]']:checked"), function() {
+                        values.push($(this).val());
+                        chks = values
+                });
+        }
+        if(drp == "aus"){
+                var values = new Array();
+                $.each($("input[name='ausscheidung[]']:checked"), function() {
+                        values.push($(this).val());
+                        chks = values
+                });
+        }
+        if(drp == "hil"){
+                var values = new Array();
+                $.each($("input[name='hilfsmittel[]']:checked"), function() {
+                        values.push($(this).val());
+                        chks = values
+                });
+        }
+        if(drp == "wun"){
+                var values = new Array();
+                $.each($("input[name='wunsch[]']:checked"), function() {
+                        values.push($(this).val());
+                        chks = values;
+                });
+        }
+
+        if(fldname=="peg" || fldname=="port" || fldname=="bed" || fldname=="walker" || fldname=="wheelchair" || fldname=="goable" || fldname=="nachtstuhl" || fldname=="wechseldruckmatraze")
+        {
+
+                var len = $("#"+fldname+'more').val().length;
+
+
+                if(chks==0 && len >0)
+                {
+                        jConfirm('<? echo $this->translate("wantstouncheck"); ?>', '', function(r) {
+                                if(r)
+                                {
+
+                                        togglediv(drp,chks);
+                                        ajaxcall(modname,fldname,chks,patid,formid);
+                                        $("#"+fldname+'more').val('');
+                                }
+                                else
+                                {
+                                        chk.checked = true;
+                                }
+
+                        });
+                        return false;
+                }
+                else
+                {
+                        togglediv(drp,chks);
+                        ajaxcall(modname,fldname,chks,patid,formid);
+                }
+        }
+        else
+        {
+            if(fldname != 'living_will'){
+                ajaxcall(modname,fldname,chks,patid,formid);
+            }
+
+        }
+
+
+}
+
+function ajaxcall(modname,fldname,chks,patid,formid){
+
+        if(isdischarged==1){
+                jConfirm('<? echo $this->translate("dischargealert"); ?>', '', function(r) {
+                        if(r){
+
+
+                                if (fldname =='ishospiz'){
+                                        if($("#ishospiz").is(":checked")){
+                                                if(hospiz_users_nr > 0){
+                                                        $( "#assignhospizusers" ).dialog('open');
+                                                }
+                                        }else if(!$("#ishospiz").is(":checked")){
+                                                if(hospiz_assusers > 0){
+                                                        $( "#removehospizusers" ).dialog('open');
+                                                }
+                                        }
+
+                                }
+                                if (fldname =='ishospizverein'){
+                                        if($("#ishospizverein").is(":checked")){
+                                                if(hospizverein_users_nr > 0){
+                                                        //						$( "#sethospizverein" ).dialog('open');
+                                                        $( "#assignhospizvereinusers" ).dialog('open');
+                                                }
+                                        }else if(!$("#ishospizverein").is(":checked")){
+                                                if(hospizverein_assusers > 0){
+                                                        $( "#removehospizvereinusers" ).dialog('open');
+                                                }
+                                        }
+
+                                }
+
+                                ajaxCallserver({url:appbase+'patient/updatepatientinfo?modname='+modname+'&fldname='+fldname+'&chkval='+encodeURIComponent(chks)+'&patid='+patid+'&formid='+formid});
+
+                        }
+                });
+
+                return false;
+        } else {
+
+                if (fldname =='ishospiz'){
+                        if($("#ishospiz").is(":checked")){
+                                if(hospiz_users_nr > 0){
+                                        //	$( "#sethospizvis" ).dialog('open');
+                                        $( "#assignhospizusers" ).dialog('open');
+                                }
+                        }else if(!$("#ishospiz").is(":checked")){
+                                if(hospiz_assusers > 0){
+                                        $( "#removehospizusers" ).dialog('open');
+                                }
+                        }
+
+                }
+                if (fldname =='ishospizverein'){
+                        if($("#ishospizverein").is(":checked")){
+                                if(hospizverein_users_nr > 0){
+                                        //			$( "#sethospizverein" ).dialog('open');
+                                        $( "#assignhospizvereinusers" ).dialog('open');
+                                }
+                        }else if(!$("#ishospizverein").is(":checked")){
+                                if(hospizverein_assusers > 0){
+                                        $( "#removehospizvereinusers" ).dialog('open');
+                                }
+                        }
+
+                }
+
+                ajaxCallserver({url:appbase+'patient/updatepatientinfo?modname='+modname+'&fldname='+fldname+'&chkval='+encodeURIComponent(chks)+'&patid='+patid+'&formid='+formid});
+        }
+}
+
+$( document ).ready(function() {
+	$('form').submit(function() {
+		setTimeout(function () {$('input[type=submit]').attr('disabled', true);}, 150);
+		setTimeout(function () {$('input[type=submit]').attr('disabled', false);}, 11000);
+	});
+        $("#vvfreetext").blur(function(){
+                updatePatientInformation('Therapieplanung','freetext','grow37',this,'<? echo $this->patid; ?>','drop');
+        });
+
+        $('.long_input').hide();
+
+        $('.enabler').each(function(){
+            if($(this).is(':checked')){
+                $(this).parent('td').find('.long_input:first').show();
+            } else {
+                $(this).parent('td').find('.long_input:first').hide();
+            }
+        });
+
+        $('.enabler').live('click', function(){
+            if($(this).is(':checked')){
+                $(this).parent('td').find('.long_input:first').show('slow');
+            } else {
+                $(this).parent('td').find('.long_input:first').hide('slow');
+            }
+        });
+
+         $("#contactperson_dialog").dialog({
+                    autoOpen: false,
+                    width: 500,
+                    height: 425,
+                    modal:true,
+                    resizable: false,
+                    title: "Bevollmächtigte(r)",
+                    open: function(){
+                            $('#submit_contact_modal').attr('alt','contactperson_dialog');
+                    }
+            });
+            $('#submit_contact_modal').live('click', function(event){
+
+                    //fix for ie8 ->event.preventDefault() is not working in ie8 so we use event.returnValue=false;
+                    if (event.preventDefault) {
+                            event.preventDefault();
+                    } else {
+                            event.returnValue = true;
+                    }
+                    var curentDialogId = $(this).attr('alt');
+                    $().ajaxStart(function() {
+                            $('#ui-dialog-title-'+curentDialogId).html('<img src="<? echo RES_FILE_PATH; ?>/images/ajax-title-loader.gif" width="14" />&nbsp;&nbsp;Loading...');
+                    }).ajaxStop(function() {
+
+                                    $('#ui-dialog-title-'+curentDialogId).text("Private Pflegeperson");
+
+                    });
+
+                    var dataString = $("#frmcontact").serialize();
+
+                    $.ajax({
+                            type: "POST",
+                            url: '<?php echo APP_BASE; ?>patient/savecontactperson?id=<?php echo $_REQUEST["id"]; ?>&response=1',
+                            data: dataString,
+                            success: function(response) {
+                                    var resp = jQuery.parseJSON(response);
+
+                                    $('#cp_id').val(resp.id);
+                                    $('#contact_person_name').val(resp.name);
+                                    $('#contact_person_lastname').val(resp.last_name);
+
+                                    if($('#cnt_phone').val() == ''){
+                                            alert("<? echo $this->translate('phone_error')?>");
+                                            event.preventDefault();
+                                    } else{
+                                            $('#'+curentDialogId).dialog('close');
+                                    }
+                            },
+                            error: function(xhr, ajaxOptions, thrownError) {
+                            }
+                    });
+            });
+
+	$('#add_contactperson').click(function(){
+		$( "#contactperson_dialog" ).dialog('open');
+		return false;
+	})
+
+	$('#patient_cp').live('change', function(){
+		var selected_value = $(this).val();
+		if(selected_value != '0'){
+			var values = selected_value.split('_');
+
+			$('#cp_id').val(values[2]);
+			$('#contact_person_name').val(values[1]);
+			$('#contact_person_lastname').val(values[0]);
+		} else {
+			$('#cp_id').val('');
+			$('#contact_person_name').val('');
+			$('#contact_person_lastname').val('');
+		}
+	});
+
+	//reset each canvas
+	$('.canvas_reset').click(function() {
+
+		//get canvas id
+		var qid = $(this).attr('rel');
+		var canvas = $('#human_' + qid)[0];
+		var context = canvas.getContext("2d");
+
+		//reset canvas
+		context.clearRect(0, 0, canvas.width, canvas.height);
+
+		return false;
+	});
+
+
+	$('.human_body_canvas').each(function() {
+		var canvas = $(this);
+
+		if($(this).hasClass('human_big')) {
+			var is_big = true;
+			var canvas_width = '850px';
+		} else {
+			var is_big = false;
+			var canvas_width = '332px';
+		}
+
+		var new_human_canvas = new CanvasDrawr({id: $(this).attr('id'), size: 7, pointsize: 15, width: canvas_width});
+
+		var noclip = (/android 4|android 3/i.test(navigator.userAgent.toLowerCase()));
+
+		if(!noclip){ //if no clip supported don't clip anything
+
+			var pen = canvas[0].getContext("2d");
+
+			pen.strokeStyle = 'transparent';
+
+			pen.beginPath();
+
+			if(is_big == true ) {
+				//
+				// NEW BIGGER HUMAN
+				//
+				//left body
+				pen.moveTo(124,12);
+				pen.lineTo(117,12);
+				pen.lineTo(112,13);
+				pen.lineTo(107,16);
+				pen.lineTo(101,21);
+				pen.lineTo(97,28);
+				pen.lineTo(94,37);
+				pen.lineTo(94,50);
+				pen.lineTo(91,47);
+				pen.lineTo(88,48);
+				pen.lineTo(87,52);
+				pen.lineTo(87,57);
+				pen.lineTo(91,63);
+				pen.lineTo(93,72);
+				pen.lineTo(99,72);
+				pen.lineTo(102,79);
+				pen.lineTo(103,82);
+				pen.lineTo(102,95);
+				pen.lineTo(97,102);
+				pen.lineTo(92,105);
+				pen.lineTo(84,107);
+				pen.lineTo(78,109);
+				pen.lineTo(71,114);
+				pen.lineTo(62,114);
+				pen.lineTo(61,116);
+				pen.lineTo(52,120);
+				pen.lineTo(48,124);
+				pen.lineTo(44,132);
+				pen.lineTo(42,136);
+				pen.lineTo(42,159);
+				pen.lineTo(40,177);
+				pen.lineTo(38,193);
+				pen.lineTo(40,207);
+				pen.lineTo(35,220);
+				pen.lineTo(30,236);
+				pen.lineTo(28,261);
+				pen.lineTo(26,282);
+				pen.lineTo(25,300);
+				pen.lineTo(10,313);
+				pen.lineTo(8,317);
+				pen.lineTo(8,342);
+				pen.lineTo(12,342);
+				pen.lineTo(16,356);
+				pen.lineTo(30,356);
+				pen.lineTo(32,353);
+				pen.lineTo(37,353);
+				pen.lineTo(40,321);
+				pen.lineTo(43,341);
+				pen.lineTo(41,307);
+				pen.lineTo(59,260);
+				pen.lineTo(62,242);
+				pen.lineTo(64,220);
+				pen.lineTo(69,215);
+				pen.lineTo(71,226);
+				pen.lineTo(69,245);
+				pen.lineTo(70,254);
+				pen.lineTo(63,266);
+				pen.lineTo(63,304);
+				pen.lineTo(61,311);
+				pen.lineTo(62,338);
+				pen.lineTo(67,370);
+				pen.lineTo(76,420);
+				pen.lineTo(76,421);
+				pen.lineTo(78,434);
+				pen.lineTo(77,478);
+				pen.lineTo(90,524);
+				pen.lineTo(97,543);
+	                        pen.lineTo(97,561);
+				pen.lineTo(92,559);
+				pen.lineTo(88,563);
+				pen.lineTo(90,567);
+				pen.lineTo(107,587);
+				pen.lineTo(115,587);
+				pen.lineTo(120,582);
+
+
+				pen.lineTo(125,588);
+				pen.lineTo(133,588);
+				pen.lineTo(151,564);
+				pen.lineTo(150,560);
+				pen.lineTo(143,559);
+				pen.lineTo(143,541);
+				pen.lineTo(157,504);
+				pen.lineTo(163,475);
+				pen.lineTo(163,449);
+				pen.lineTo(161,434);
+				pen.lineTo(166,415);
+				pen.lineTo(169,382);
+				pen.lineTo(177,348);
+				pen.lineTo(179,312);
+				pen.lineTo(177,293);
+				pen.lineTo(177,266);
+				pen.lineTo(170,254);
+				pen.lineTo(170,236);
+				pen.lineTo(168,224);
+				pen.lineTo(170,215);
+				pen.lineTo(175,221);
+				pen.lineTo(176,239);
+				pen.lineTo(185,272);
+				pen.lineTo(198,308);
+				pen.lineTo(197,316);
+				pen.lineTo(201,333);
+				pen.lineTo(203,352);
+				pen.lineTo(209,355);
+				pen.lineTo(215,356);
+				pen.lineTo(224,355);
+				pen.lineTo(228,342);
+				pen.lineTo(232,342);
+				pen.lineTo(231,313);
+				pen.lineTo(216,300);
+				pen.lineTo(213,269);
+				pen.lineTo(209,234);
+				pen.lineTo(200,208);
+				pen.lineTo(202,186);
+				pen.lineTo(197,158);
+				pen.lineTo(197,135);
+				pen.lineTo(191,123);
+				pen.lineTo(184,118);
+				pen.lineTo(176,115);
+				pen.lineTo(167,114);
+				pen.lineTo(148,101);
+				pen.lineTo(144,92);
+				pen.lineTo(144,75);
+				pen.lineTo(147,71);
+				pen.lineTo(153,71);
+				pen.lineTo(155,63);
+				pen.lineTo(159,56);
+				pen.lineTo(159,48);
+				pen.lineTo(152,42);
+				pen.lineTo(152,34);
+				pen.lineTo(148,25);
+				pen.lineTo(143,19);
+				pen.lineTo(137,14);
+				pen.lineTo(128,12);
+				pen.lineTo(121,12);
+
+
+				//right body
+	                        pen.moveTo(386,12);
+				pen.lineTo(378,13);
+				pen.lineTo(372,15);
+				pen.lineTo(366,19);
+				pen.lineTo(362,24);
+				pen.lineTo(359,33);
+				pen.lineTo(357,39);
+				pen.lineTo(357,47);
+				pen.lineTo(352,46);
+				pen.lineTo(350,49);
+				pen.lineTo(350,56);
+				pen.lineTo(354,62);
+				pen.lineTo(357,70);
+				pen.lineTo(362,70);
+				pen.lineTo(366,79);
+				pen.lineTo(366,81);
+				pen.lineTo(366,97);
+				pen.lineTo(359,104);
+				pen.lineTo(349,111);
+				pen.lineTo(336,118);
+				pen.lineTo(323,123);
+				pen.lineTo(313,130);
+				pen.lineTo(309,136);
+				pen.lineTo(307,142);
+				pen.lineTo(306,169);
+				pen.lineTo(304,173);
+				pen.lineTo(305,207);
+				pen.lineTo(297,227);
+				pen.lineTo(291,247);
+				pen.lineTo(289,267);
+				pen.lineTo(287,293);
+				pen.lineTo(283,302);
+				pen.lineTo(270,305);
+				pen.lineTo(257,320);
+				pen.lineTo(260,324);
+				pen.lineTo(271,313);
+				pen.lineTo(270,330);
+	                        pen.lineTo(262,346);
+				pen.lineTo(267,347);
+				pen.lineTo(276,331);
+				pen.lineTo(270,350);
+				pen.lineTo(269,351);
+				pen.lineTo(273,354);
+				pen.lineTo(281,353);
+				pen.lineTo(289,335);
+				pen.lineTo(289,354);
+				pen.lineTo(294,350);
+				pen.lineTo(299,328);
+				pen.lineTo(303,319);
+				pen.lineTo(302,312);
+				pen.lineTo(307,300);
+				pen.lineTo(327,247);
+				pen.lineTo(328,226);
+				pen.lineTo(335,214);
+				pen.lineTo(338,220);
+				pen.lineTo(337,238);
+				pen.lineTo(334,247);
+				pen.lineTo(336,265);
+				pen.lineTo(333,273);
+				pen.lineTo(330,302);
+				pen.lineTo(332,342);
+				pen.lineTo(338,375);
+				pen.lineTo(343,392);
+				pen.lineTo(345,414);
+				pen.lineTo(347,434);
+				pen.lineTo(346,454);
+				pen.lineTo(349,480);
+				pen.lineTo(366,530);
+				pen.lineTo(366,538);
+				pen.lineTo(364,544);
+	                        pen.lineTo(366,552);
+				pen.lineTo(358,578);
+				pen.lineTo(363,584);
+				pen.lineTo(374,587);
+				pen.lineTo(396,587);
+
+				pen.lineTo(409,584);
+				pen.lineTo(414,578);
+				pen.lineTo(410,571);
+				pen.lineTo(405,552);
+				pen.lineTo(408,543);
+				pen.lineTo(405,530);
+				pen.lineTo(422,479);
+				pen.lineTo(426,453);
+				pen.lineTo(426,414);
+				pen.lineTo(428,393);
+				pen.lineTo(437,358);
+				pen.lineTo(440,311);
+				pen.lineTo(438,277);
+				pen.lineTo(438,264);
+				pen.lineTo(438,246);
+				pen.lineTo(434,229);
+				pen.lineTo(436,214);
+				pen.lineTo(444,227);
+				pen.lineTo(445,248);
+				pen.lineTo(468,308);
+				pen.lineTo(469,315);
+				pen.lineTo(469,321);
+				pen.lineTo(475,335);
+				pen.lineTo(478,351);
+				pen.lineTo(482,353);
+				pen.lineTo(483,335);
+
+				pen.lineTo(493,355);
+				pen.lineTo(503,352);
+				pen.lineTo(496,332);
+	                  	pen.lineTo(507,348);
+				pen.lineTo(510,344);
+				pen.lineTo(500,323);
+				pen.lineTo(500,312);
+	                        pen.lineTo(512,324);
+				pen.lineTo(516,319);
+				pen.lineTo(501,304);
+				pen.lineTo(488,301);
+	                        pen.lineTo(485,291);
+				pen.lineTo(481,247);
+				pen.lineTo(468,212);
+				pen.lineTo(467,169);
+				pen.lineTo(464,161);
+	                        pen.lineTo(464,137);
+	                        pen.lineTo(458,129);
+
+	                        pen.lineTo(443,120);
+	                        pen.lineTo(428,114);
+	                        pen.lineTo(414,105);
+				pen.lineTo(406,96);
+				pen.lineTo(404,93);
+				pen.lineTo(405,79);
+	                        pen.lineTo(409,70);
+				pen.lineTo(415,70);
+				pen.lineTo(416,66);
+				pen.lineTo(417,61);
+				pen.lineTo(421,54);
+				pen.lineTo(420,47);
+				pen.lineTo(418,45);
+				pen.lineTo(414,45);
+				pen.lineTo(414,34);
+				pen.lineTo(411,26);
+				pen.lineTo(407,21);
+				pen.lineTo(402,17);
+				pen.lineTo(396,13);
+				pen.lineTo(391,12);
+				pen.lineTo(386,12);
+
+
+
+
+	                       //head top left
+				pen.moveTo(526,234);
+				pen.lineTo(542,193);
+				pen.lineTo(543,189);
+				pen.lineTo(543,165);
+				pen.lineTo(538,154);
+				pen.lineTo(526,137);
+				pen.lineTo(521,130);
+				pen.lineTo(518,118);
+				pen.lineTo(516,112);
+				pen.lineTo(517,95);
+				pen.lineTo(521,82);
+				pen.lineTo(526,74);
+				pen.lineTo(534,64);
+				pen.lineTo(545,56);
+				pen.lineTo(556,50);
+				pen.lineTo(572,46);
+				pen.lineTo(588,44);
+				pen.lineTo(603,46);
+				pen.lineTo(613,51);
+				pen.lineTo(627,57);
+				pen.lineTo(636,65);
+				pen.lineTo(647,91);
+				pen.lineTo(649,92);
+				pen.lineTo(648,100);
+				pen.lineTo(648,104);
+				pen.lineTo(668,125);
+				pen.lineTo(669,129);
+				pen.lineTo(660,138);
+				pen.lineTo(664,146);
+				pen.lineTo(663,151);
+				pen.lineTo(664,157);
+				pen.lineTo(661,159);
+				pen.lineTo(659,167);
+				pen.lineTo(662,177);
+				pen.lineTo(661,183);
+				pen.lineTo(649,188);
+				pen.lineTo(623,188);
+				pen.lineTo(616,196);
+				pen.lineTo(615,210);
+				pen.lineTo(611,216);
+				pen.lineTo(612,234);
+				pen.lineTo(526,234);
+
+
+
+
+
+
+
+	                        //head top right
+				pen.moveTo(742,233);
+				pen.lineTo(745,218);
+				pen.lineTo(740,209);
+				pen.lineTo(740,199);
+				pen.lineTo(731,189);
+				pen.lineTo(710,189);
+				pen.lineTo(698,185);
+				pen.lineTo(693,180);
+				pen.lineTo(696,168);
+				pen.lineTo(695,159);
+				pen.lineTo(691,155);
+				pen.lineTo(692,151);
+				pen.lineTo(690,146);
+				pen.lineTo(695,138);
+				pen.lineTo(685,128);
+				pen.lineTo(686,124);
+				pen.lineTo(706,103);
+				pen.lineTo(706,91);
+				pen.lineTo(713,78);
+				pen.lineTo(718,66);
+				pen.lineTo(726,58);
+				pen.lineTo(746,48);
+				pen.lineTo(762,45);
+				pen.lineTo(783,46);
+				pen.lineTo(800,51);
+				pen.lineTo(816,60);
+				pen.lineTo(830,76);
+				pen.lineTo(837,92);
+				pen.lineTo(838,115);
+				pen.lineTo(833,132);
+				pen.lineTo(822,147);
+				pen.lineTo(812,164);
+				pen.lineTo(813,192);
+				pen.lineTo(829,235);
+				pen.lineTo(742,233);
+
+
+	                         //head bottom left
+				pen.moveTo(527,482);
+				pen.lineTo(545,474);
+				pen.lineTo(554,461);
+				pen.lineTo(557,444);
+				pen.lineTo(557,431);
+				pen.lineTo(550,414);
+				pen.lineTo(543,416);
+				pen.lineTo(539,411);
+				pen.lineTo(537,400);
+				pen.lineTo(529,388);
+				pen.lineTo(530,374);
+				pen.lineTo(534,371);
+				pen.lineTo(541,373);
+				pen.lineTo(541,356);
+				pen.lineTo(545,342);
+				pen.lineTo(553,329);
+				pen.lineTo(562,319);
+				pen.lineTo(572,313);
+				pen.lineTo(584,310);
+				pen.lineTo(603,310);
+				pen.lineTo(616,314);
+				pen.lineTo(628,322);
+				pen.lineTo(639,336);
+				pen.lineTo(644,350);
+				pen.lineTo(645,376);
+				pen.lineTo(649,371);//
+				pen.lineTo(652,372);
+				pen.lineTo(657,380);
+				pen.lineTo(656,390);
+				pen.lineTo(648,402);
+				pen.lineTo(644,414);
+				pen.lineTo(639,415);
+				pen.lineTo(635,412);
+				pen.lineTo(633,422);
+				pen.lineTo(628,433);
+				pen.lineTo(631,460);
+				pen.lineTo(637,470);
+				pen.lineTo(647,477);
+				pen.lineTo(660,481);
+				pen.lineTo(527,482);
+
+
+	                        //head bottom right
+				pen.moveTo(704,482);
+				pen.lineTo(719,477);
+				pen.lineTo(731,468);
+				pen.lineTo(735,454);
+				pen.lineTo(735,434);
+	                        pen.lineTo(729,416);
+				pen.lineTo(720,418);
+				pen.lineTo(716,408);
+				pen.lineTo(716,402);
+				pen.lineTo(707,389);
+				pen.lineTo(708,378);
+				pen.lineTo(713,373);
+				pen.lineTo(719,376);
+				pen.lineTo(720,354);
+				pen.lineTo(727,336);
+				pen.lineTo(737,322);
+				pen.lineTo(750,314);
+				pen.lineTo(761,310);
+				pen.lineTo(784,310);
+				pen.lineTo(800,316);
+				pen.lineTo(812,327);
+				pen.lineTo(821,341);
+				pen.lineTo(826,357);
+				pen.lineTo(826,378);
+				pen.lineTo(834,372);
+				pen.lineTo(835,375);
+				pen.lineTo(837,385);
+				pen.lineTo(835,395);
+				pen.lineTo(830,402);
+				pen.lineTo(826,417);
+				pen.lineTo(821,418);
+				pen.lineTo(816,414);
+				pen.lineTo(810,428);
+				pen.lineTo(811,457);
+				pen.lineTo(816,469);
+				pen.lineTo(825,477);
+				pen.lineTo(841,482);
+				pen.lineTo(704,482);
+
+			} else {
+
+				//left body
+				pen.moveTo(73,7);
+				pen.lineTo(63,14);
+				pen.lineTo(58,28);
+				pen.lineTo(56,31);
+				pen.lineTo(54,35);
+				pen.lineTo(59,46);
+				pen.lineTo(63,47);
+				pen.lineTo(64,63);
+				pen.lineTo(57,69);
+				pen.lineTo(44,73);
+				pen.lineTo(35,75);
+				pen.lineTo(28,83);
+				pen.lineTo(25,96);
+				pen.lineTo(23,136);
+				pen.lineTo(17,155);
+				pen.lineTo(14,193);
+				pen.lineTo(3,203);
+				pen.lineTo(3,231);
+				pen.lineTo(25,231);
+				pen.lineTo(27,197);
+				pen.lineTo(39,158);
+				pen.lineTo(43,142);
+				pen.lineTo(43,164);
+				pen.lineTo(39,176);
+				pen.lineTo(39,224);
+				pen.lineTo(48,278);
+				pen.lineTo(50,319);
+				pen.lineTo(60,349);
+				pen.lineTo(61,359);
+				pen.lineTo(56,362);
+				pen.lineTo(68,380);
+				pen.lineTo(86,380);
+				pen.lineTo(97,363);
+				pen.lineTo(91,359);
+				pen.lineTo(92,346);
+				pen.lineTo(104,313);
+				pen.lineTo(103,280);
+				pen.lineTo(113,228);
+				pen.lineTo(113,172);
+				pen.lineTo(108,163);
+				pen.lineTo(109,140);
+				pen.lineTo(117,174);
+				pen.lineTo(126,202);
+				pen.lineTo(127,230);
+				pen.lineTo(149,230);
+				pen.lineTo(148,203);
+				pen.lineTo(138,192);
+				pen.lineTo(131,138);
+				pen.lineTo(125,83);
+				pen.lineTo(120,74);
+				pen.lineTo(107,73);
+				pen.lineTo(93,63);
+				pen.lineTo(93,47);
+				pen.lineTo(98,44);
+				pen.lineTo(102,30);
+				pen.lineTo(101,30);
+				pen.lineTo(97,30);
+				pen.lineTo(95,17);
+				pen.lineTo(87,8);
+				pen.lineTo(79,7);
+				pen.lineTo(73,7);
+
+				//right body
+				pen.moveTo(240,7);
+				pen.lineTo(230,18);
+				pen.lineTo(228,29);
+				pen.lineTo(224,32);
+				pen.lineTo(228,45);
+				pen.lineTo(232,45);
+				pen.lineTo(232,66);
+				pen.lineTo(199,85);
+				pen.lineTo(196,107);
+				pen.lineTo(195,136);
+				pen.lineTo(185,161);
+				pen.lineTo(182,193);
+				pen.lineTo(172,196);
+				pen.lineTo(164,206);
+				pen.lineTo(169,228);
+				pen.lineTo(189,228);
+				pen.lineTo(195,204);
+				pen.lineTo(197,190);
+				pen.lineTo(213,147);
+				pen.lineTo(211,220);
+				pen.lineTo(221,268);
+				pen.lineTo(223,309);
+				pen.lineTo(233,344);
+				pen.lineTo(229,376);
+				pen.lineTo(246,382);// go to other
+				pen.lineTo(267,375);
+				pen.lineTo(262,359);
+				pen.lineTo(261,341);
+				pen.lineTo(274,299);
+				pen.lineTo(275,255);
+				pen.lineTo(283,213);
+				pen.lineTo(281,146);
+				pen.lineTo(301,204);
+				pen.lineTo(307,230);
+				pen.lineTo(330,226);
+				pen.lineTo(331,204);
+				pen.lineTo(321,195);
+				pen.lineTo(312,190);
+				pen.lineTo(309,154);
+				pen.lineTo(301,134);
+				pen.lineTo(297,86);
+				pen.lineTo(283,78);
+				pen.lineTo(262,64);
+				pen.lineTo(263,45);
+				pen.lineTo(267,44);
+				pen.lineTo(269,39);
+				pen.lineTo(271,31);
+				pen.lineTo(267,27);
+				pen.lineTo(264,16);
+				pen.lineTo(253,7);
+				pen.lineTo(240,7);
+			}
+
+
+
+			pen.closePath();
+
+			//draw the canvas
+			pen.stroke();
+
+			//clip it body areas
+			pen.clip();
+
+			pen.globalAlpha = 1;
+			pen.strokeStyle = '#c00';
+			pen.lineJoin = 'round';
+			pen.lineWidth = '7';
+		}
+	});
+
+	//load previous saved canvases
+	$('.human_body_canvas').each(function() {
+		//current canvas
+		var canvas = $(this)[0];
+		var context = canvas.getContext("2d");
+
+		//question id
+		var qid = $(this).attr('id').split("_");
+
+		//data loader
+		var answer_loader = '#canvas_load_' + qid[1];
+
+		if($(answer_loader).val()) {
+			//create the iamge object
+			var imageObj = new Image();
+
+			//draw image on canvas once it's loaded
+		    imageObj.onload = function(){
+		        context.drawImage(this, 0, 0);
+		    };
+
+		    //load image from loader
+		    imageObj.src = $(answer_loader).val();
+		}
+	});
+
+	//save canvas in edit page
+	$('#btnsubmit, #pdf').click(function(e){
+		//save canvases to db
+		$('.human_body_canvas').each(function() {
+			//current canvas
+			var canvas = $(this)[0];
+			var image_data = '';
+
+			//question id
+			var qid = $(this).attr('id').split("_");
+
+			//data container
+			var answer_container = '#canvas_container_' + qid[1];
+
+			image_data = canvas.toDataURL("image/png");
+			if(image_data.length < 16 && image_data.length > 0) {
+				// bad Android
+				var canvasWidth = canvas.width;
+				var canvasHeight = canvas.height;
+				var start = 0;
+				var pixelarray = '';
+				var canvastr = 'cmd=6104536&data=';
+				var c = canvas.getContext("2d");
+
+				// get all canvas pixel data
+				imageData = c.getImageData(0, 0, canvasWidth, canvasHeight);
+				pixelarray = imageData.data;
+				for (var y = 0; y < canvasHeight; ++y) {
+					for (var x = 0; x < canvasWidth; ++x) {
+						var index = (y * canvasWidth + x) * 4; // red channel, we don't need the rest
+
+						if(pixelarray[index] > 0) {
+							canvastr += start + ',' + x + ',' + y + ',' + pixelarray[index] + '|';
+							start++;
+						}
+					}
+				}
+
+				if(canvastr.length > 0) {
+					$.ajax({
+						type: "POST",
+						async: false,
+						cache: false,
+						data: canvastr,
+						url: '<?php echo APP_BASE; ?>array2png.php',
+						success: function(response) {
+							image_data = response;
+						}
+					});
+				}
+			}
+
+			//fill data container for server side transport & processing
+			$(answer_container).val(image_data);
+		});
+	});
+});
+</script>
+<div class="clearer"></div>
+<form name="recordingreport" id="recordingreport" action="" method="POST" >
+<table border="0" cellpadding="2" class="datatable_new" width="100%">
+	<tbody>
+		<!--A-->
+		<tr>
+			<td colspan="6"><h3><?php echo $this->translate('Aktuelle Anamnese:');  ?></h3></td>
+		</tr>
+		<tr>
+			<td colspan="6">
+				<textarea name="curent_medical_history" id="curent_medical_history"><?php echo $this->curent_medical_history;  ?></textarea>
+			</td>
+		</tr>
+
+		<!--B-->
+		<tr>
+			<td colspan="6"><h3><?php echo $this->translate('Sozialanamnese:');  ?></h3></td>
+		</tr>
+		<tr>
+			<td colspan="6">
+				<textarea name="social_history" id="social_history"><?php echo $this->social_history;  ?></textarea>
+			</td>
+		</tr>
+		<!--C-->
+		<tr>
+			<td colspan="6"><h3><?php echo $this->translate('Prioritätenliste der Bedürfnisse des Patienten')  ?></h3></td>
+		</tr>
+		<tr>
+			<td colspan="6">
+				1. <input type="text" name="priority_items[]" id="priority_item_1" class="long_input_second" value="<?php echo $this->priority_items_1;  ?>"  />
+			</td>
+		</tr>
+		<tr>
+			<td colspan="6">
+				2. <input type="text" name="priority_items[]" id="priority_item_2" class="long_input_second" value="<?php echo $this->priority_items_2;  ?>"  />
+			</td>
+		</tr>
+		<tr>
+			<td colspan="6">
+				3. <input type="text" name="priority_items[]" id="priority_item_3" class="long_input_second" value="<?php echo $this->priority_items_3;  ?>"  />
+			</td>
+		</tr>
+		<tr>
+			<td colspan="6">
+				4. <input type="text" name="priority_items[]" id="priority_item_4" class="long_input_second" value="<?php echo $this->priority_items_4;  ?>"  />
+			</td>
+		</tr>
+		<tr>
+			<td colspan="6">
+				5. <input type="text" name="priority_items[]" id="priority_item_5" class="long_input_second" value="<?php echo $this->priority_items_5;  ?>" />
+			</td>
+		</tr>
+		<tr>
+			<td colspan="6">
+				6. <input type="text" name="priority_items[]" id="priority_item_6" class="long_input_second" value="<?php echo $this->priority_items_6;  ?>" />
+			</td>
+		</tr>
+		<!--D-->
+		<tr>
+			<td colspan="6"><h3><?php echo $this->translate('Vorabsprachen:');  ?></h3></td>
+		</tr>
+		<tr>
+			<td colspan="3">
+				<?php echo $this->translate('Patientenverfügung');  ?>
+			</td>
+			<td>
+				<input type="radio" name="living_will_option" id="living_will_available" value="1" <?php if($this->living_will_option == '1'):  ?>checked="checked"<?php endif; ?> />
+				<label for="living_will_available" ><?php echo $this->translate('vorhanden');  ?></label>
+			</td>
+			<td>
+				<input type="radio" name="living_will_option" id="living_will_planned" value="2" <?php if($this->living_will_option == '2'):  ?>checked="checked"<?php endif; ?>/>
+				<label for="living_will_planned" ><?php echo $this->translate('angedacht');  ?></label>
+			</td>
+			<td>
+				<input type="radio" name="living_will_option" id="living_will_not_available" value="3" <?php if($this->living_will_option == '3'):  ?>checked="checked"<?php endif; ?>/>
+				<label for="living_will_not_available" ><?php echo $this->translate('nicht vorhanden');  ?></label>
+			</td>
+		</tr>
+		<tr>
+			<td colspan="3">
+				<?php echo $this->translate('Vorsorgevollmacht');  ?>
+			</td>
+			<td>
+				<input type="radio" name="attorney_power_option" id="attorney_power_available" value="1"   <?php if($this->attorney_power_option == '1'):  ?>checked="checked"<?php endif; ?>/>
+				<label for="attorney_power_available" ><?php echo $this->translate('vorhanden');  ?></label>
+			</td>
+			<td>
+				<input type="radio" name="attorney_power_option" id="attorney_power_planned" value="2" <?php if($this->attorney_power_option == '2'):  ?>checked="checked"<?php endif; ?>/>
+				<label for="attorney_power_planned" ><?php echo $this->translate('angedacht');  ?></label>
+			</td>
+			<td>
+				<input type="radio" name="attorney_power_option" id="attorney_power_not_available" value="3" <?php if($this->attorney_power_option == '3'):  ?>checked="checked"<?php endif; ?>/>
+				<label for="attorney_power_not_available" ><?php echo $this->translate('nicht vorhanden');  ?></label>
+			</td>
+		</tr>
+		<!--E-->
+		<tr>
+			<td colspan="6"><h3><?php echo $this->translate('Bevollmächtigte(r):');  ?></h3></td>
+		</tr>
+		<tr>
+			<td>
+				<?php echo $this->translate('select_cp');  ?>
+			</td>
+			<td colspan="5">
+				<select name="patient_cp" id="patient_cp" />
+						<option value="0"><?php echo $this->translate('select_contact_person');  ?></option>
+					<?php foreach($this->contact_person as $k_cp => $v_cp):  ?>
+						<option value="<?php echo $v_cp['last_name'].'_'. $v_cp['first_name']. '_' .$v_cp['id']; ?>" ><?php echo $v_cp['last_name']  ?>, <?php echo $v_cp['first_name']  ?></option>
+					<?php endforeach;  ?>
+				</select>
+			</td>
+		</tr>
+		<tr>
+			<td><?php echo $this->translate('Name');  ?></td>
+			<td colspan="2">
+				<input type="text" name="contact_person_lastname" id="contact_person_lastname" value="<?php echo $this->contact_person_lastname;  ?>" />
+                <input type="hidden" name="contact_person_id" id="cp_id" value="<?php echo $this->contact_person_id;  ?>" />
+
+			</td>
+
+			<td>
+				<?php echo $this->translate('Vorname');  ?>
+			</td>
+			<td colspan="2">
+				<input type="text" name="contact_person_name" id="contact_person_name" value="<?php echo $this->contact_person_name;  ?>" />
+			</td>
+		</tr>
+
+                <tr>
+			<td colspan="6">
+				<a href="javascript:void(0);" id="add_contactperson"><img src="<?php echo RES_FILE_PATH;  ?>/images/edit_add.png" width="20" height="20">Neues Contact Person</a>
+			</td>
+                </tr>
+
+		<!--F-->
+		<tr>
+			<td colspan="6"><h3><?php echo $this->translate('Erklärter Therapieverzicht für:');  ?></h3> </td>
+		</tr>
+                <tr>
+                    <td colspan="6">
+                        <table class="datatable_new_sub">
+                                    <tr>
+                                            <td class="checkbox_cell"><? echo $this->formCheckbox('ernahrungstherapie', $this->ernahrungstherapie, array ('onclick' => 'updatePatientInformation(\'Therapieplanung\',\'ernahrungstherapie\',\'grow37\',this,\'' . $this->enc_patid . '\')'), array ('1')); ?></td>
+                                            <td><label for="ernahrungstherapie"> <? echo $this->translate('ernahrungstherapie') ?></label></td>
+                                    </tr>
+                                    <tr>
+                                            <td class="checkbox_cell"><? echo $this->formCheckbox('infusionstherapie', $this->infusionstherapie, array ('onclick' => 'updatePatientInformation(\'Therapieplanung\',\'infusionstherapie\',\'grow37\',this,\'' . $this->enc_patid . '\')'), array ('1')); ?></td>
+                                            <td><label for="infusionstherapie"> <? echo $this->translate('infusionstherapie') ?></label></td>
+                                    </tr>
+                                    <tr>
+                                            <td class="checkbox_cell"><? echo $this->formCheckbox('antibiose_bei_pneumonie', $this->antibiose_bei_pneumonie, array ('onclick' => 'updatePatientInformation(\'Therapieplanung\',\'antibiose_bei_pneumonie\',\'grow37\',this,\'' . $this->enc_patid . '\')'), array ('1')); ?></td>
+                                            <td><label for="antibiose_bei_pneumonie"> <? echo $this->translate('antibiose_bei_pneumonie') ?></label></td>
+                                    </tr>
+                                    <tr>
+                                            <td class="checkbox_cell"><? echo $this->formCheckbox('antibiose_bei_HWI', $this->antibiose_bei_HWI, array ('onclick' => 'updatePatientInformation(\'Therapieplanung\',\'antibiose_bei_HWI\',\'grow37\',this,\'' . $this->enc_patid . '\')'), array ('1')); ?></td>
+                                            <td ><label for="antibiose_bei_HWI"> <? echo $this->translate('antibiose_bei_HWI') ?></label></td>
+                                    </tr>
+                                    <tr>
+                                            <td class="checkbox_cell"><? echo $this->formCheckbox('tumorreduktionstherapie_chemo', $this->tumorreduktionstherapie_chemo, array ('onclick' => 'updatePatientInformation(\'Therapieplanung\',\'tumorreduktionstherapie_chemo\',\'grow37\',this,\'' . $this->enc_patid . '\')'), array ('1')); ?></td>
+                                            <td ><label for=tumorreduktionstherapie_chemo> <? echo $this->translate('tumorreduktionstherapie_chemo') ?></label></td>
+                                    </tr>
+                                    <tr>
+                                            <td class="checkbox_cell"><? echo $this->formCheckbox('krankenhausverlegung', $this->krankenhausverlegung, array ('onclick' => 'updatePatientInformation(\'Therapieplanung\',\'krankenhausverlegung\',\'grow37\',this,\'' . $this->enc_patid . '\')'), array ('1')); ?></td>
+                                            <td ><label for="krankenhausverlegung"> <? echo $this->translate('krankenhausverlegung') ?></label></td>
+                                    </tr>
+                                    <tr>
+                                            <td class="checkbox_cell"><? echo $this->formCheckbox('lagerung_durch_pflege', $this->lagerung_durch_pflege, array ('onclick' => 'updatePatientInformation(\'Therapieplanung\',\'lagerung_durch_pflege\',\'grow37\',this,\'' . $this->enc_patid . '\')'), array ('1')); ?></td>
+                                            <td ><label for="lagerung_durch_pflege"> <? echo $this->translate('lagerung_durch_pflege') ?></label></td>
+                                    </tr>
+                                    <tr>
+                                            <td class="checkbox_cell"><? echo $this->formCheckbox('orale_medikation_mehr', $this->orale_medikation_mehr, array ('onclick' => 'updatePatientInformation(\'Therapieplanung\',\'orale_medikation_mehr\',\'grow37\',this,\'' . $this->enc_patid . '\')'), array ('1')); ?></td>
+                                            <td ><label for="orale_medikation_mehr"> <? echo $this->translate('orale_medikation_mehr') ?></label></td>
+                                    </tr>
+                                    <tr>
+                                            <td class="checkbox_cell"><? echo $this->formCheckbox('blut_volumenersatztherapie', $this->blut_volumenersatztherapie, array ('onclick' => 'updatePatientInformation(\'Therapieplanung\',\'blut_volumenersatztherapie\',\'grow37\',this,\'' . $this->enc_patid . '\')'), array ('1')); ?></td>
+                                            <td ><label for="blut_volumenersatztherapie"> <? echo $this->translate('blut_volumenersatztherapie') ?></label></td>
+                                    </tr>
+                                    <tr>
+                                            <td class="checkbox_cell"><? echo $this->formCheckbox('palliative', $this->palliative, array ('onclick' => 'updatePatientInformation(\'Therapieplanung\',\'palliative\',\'grow37\',this,\'' . $this->enc_patid . '\')'), array ('1')); ?></td>
+                                            <td ><label for="palliative"> <? echo $this->translate('palliative') ?></label></td>
+                                    </tr>
+                                    <tr>
+                                            <td class="checkbox_cell" colspan="2"><?php echo $this->translate('Sonstiges:');  ?> <input type="text" id="vvfreetext" name="freetext" value="<? echo $this->freetext ?>" /></td>
+                                    </tr>
+                            </table>
+                    </td>
+                </tr>
+
+		<!--G-->
+		<tr>
+			<td colspan="6">
+				<h3><?php echo $this->translate('Körperlicher Untersuchungsbefund:');  ?></h3>
+				<h4>Allgemein</h4>
+			</td>
+		</tr>
+		<!--G1-->
+		<tr>
+			<td colspan="6">
+				<strong><?php echo $this->translate('Körperzustand:');  ?></strong>
+			</td>
+		</tr>
+		<tr>
+			<td>
+				<input type="checkbox" name="body_condition[inconspicuous]" id="inconspicuous" value="1" <?php if($this->body_condition_inconspicuous == '1'):  ?>checked="checked"<?php endif; ?>/>
+				<label for="inconspicuous"><?php echo $this->translate('unauffällig');  ?></label>
+			</td>
+			<td>
+				<input type="checkbox" name="body_condition[red_az]" id="red_az" value="1" <?php if($this->body_condition_red_az == '1'):  ?>checked="checked"<?php endif; ?>/>
+				<label for="red_az"><?php echo $this->translate('red. AZ.');  ?></label>
+			</td>
+			<td>
+				<input type="checkbox" name="body_condition[kachekt]" id="kachekt" value="1" <?php if($this->body_condition_kachekt == '1'):  ?>checked="checked"<?php endif; ?>/>
+				<label for="kachekt"><?php echo $this->translate('kachekt');  ?></label>
+			</td>
+
+			<td colspan="3">
+				<input type="text" name="body_condition_more" id="body_condition_more" style="width:96%;" value="<?php echo $this->body_condition_more;  ?>" />
+			</td>
+
+		</tr>
+		<tr>
+
+			<td>
+				<input type="checkbox" name="body_condition[fear]" id="fear" value="1" <?php if($this->body_condition_fear == '1'):  ?>checked="checked"<?php endif; ?> />
+				<label for="fear"><?php echo $this->translate('Angst');  ?></label>
+			</td>
+			<td>
+				<input type="checkbox" name="body_condition[constipation]" id="constipation" value="1" <?php if($this->body_condition_constipation == '1'):  ?>checked="checked"<?php endif; ?> />
+				<label for="constipation"><?php echo $this->translate('Obstipation');  ?></label>
+			</td>
+			<td>
+				<input type="checkbox" name="body_condition[morning_sickness]" id="morning_sickness" value="1" <?php if($this->body_condition_morning_sickness == '1'):  ?>checked="checked"<?php endif; ?> />
+				<label for="morning_sickness"><?php echo $this->translate('Übelkeit');  ?></label>
+			</td>
+			<td colspan="3">&nbsp;</td>
+		</tr>
+		<!--G2-->
+		<tr>
+			<td colspan="6">
+				<strong><?php echo $this->translate('Bewußtsein:');  ?></strong>
+			</td>
+		</tr>
+		<tr>
+			<td>
+				<input type="checkbox" name="consciousness[inconspicuous]" id="consciousness_inconspicuous" value="1" <?php if($this->consciousness_inconspicuous == '1'):  ?>checked="checked"<?php endif; ?> />
+				<label for="consciousness_inconspicuous"><?php echo $this->translate('unauffällig');  ?></label>
+			</td>
+			<td>
+				<input type="checkbox" name="consciousness[tarnished]" id="tarnished" value="1" <?php if($this->consciousness_tarnished == '1'):  ?>checked="checked"<?php endif; ?> />
+				<label for="tarnished"><?php echo $this->translate('getrübt');  ?></label>
+			</td>
+			<td>
+				<input type="checkbox" name="consciousness[restless]" id="restless" value="1" <?php if($this->consciousness_restless == '1'):  ?>checked="checked"<?php endif; ?>/>
+				<label for="restless"><?php echo $this->translate('unruhig');  ?></label>
+			</td>
+			<td>
+				<input type="checkbox" name="consciousness[stupor]" id="stupor" value="1" <?php if($this->consciousness_stupor == '1'):  ?>checked="checked"<?php endif; ?>/>
+				<label for="stupor"><?php echo $this->translate('Stupor');  ?></label>
+			</td>
+			<td>
+				<input type="checkbox" name="consciousness[coma]" id="coma" value="1" <?php if($this->consciousness_coma == '1'):  ?>checked="checked"<?php endif; ?>/>
+				<label for="coma"><?php echo $this->translate('Koma');  ?></label>
+			</td>
+			<td>
+				<input type="checkbox" name="consciousness[slowed]" id="slowed" value="1" <?php if($this->consciousness_slowed == '1'):  ?>checked="checked"<?php endif; ?> />
+				<label for="slowed"><?php echo $this->translate('verlangsamt');  ?></label>
+			</td>
+
+		</tr>
+		<tr>
+
+			<td colspan="6">
+				<input type="checkbox" name="consciousness[disorientation]" id="disorientation" value="1" <?php if($this->consciousness_disorientation == '1'):  ?>checked="checked"<?php endif; ?> />
+				<label for="disorientation"><?php echo $this->translate('Orientierungsstörungen');  ?></label>
+				&nbsp; &nbsp; &nbsp;
+				<input type="checkbox" name="consciousness[more]" id="consciousness_more" value="1" <?php if($this->consciousness_more == '1'):  ?>checked="checked"<?php endif; ?> />
+				<input type="text" name="consciousness[more_text]" id="consciousness_more_text" style="width:75%;" value="<?php echo $this->consciousness_more_text  ?>" />
+			</td>
+		</tr>
+		<!--G3-->
+		<tr>
+			<td colspan="6">
+				<strong><?php echo $this->translate('Haut:');  ?></strong>
+			</td>
+		</tr>
+		<tr>
+			<td>
+				<input type="checkbox" name="skin[inconspicuous]" id="skin_inconspicuous" value="1" <?php if($this->skin_inconspicuous == '1'):  ?>checked="checked"<?php endif; ?>  />
+				<label for="skin_inconspicuous"><?php echo $this->translate('unauffällig');  ?></label>
+			</td>
+			<td>
+				<input type="checkbox" name="skin[pale]" id="pale" value="1" <?php if($this->skin_pale == '1'):  ?>checked="checked"<?php endif; ?>  />
+				<label for="pale"><?php echo $this->translate('blaß');  ?></label>
+			</td>
+			<td>
+				<input type="checkbox" name="skin[cyanotic]" id="cyanotic" value="1" <?php if($this->skin_cyanotic == '1'):  ?>checked="checked"<?php endif; ?>  />
+				<label for="cyanotic"><?php echo $this->translate('kachekt');  ?></label>
+			</td>
+
+			<td>
+				<input type="checkbox" name="skin[ikter]" id="ikter" value="1" <?php if($this->skin_ikter == '1'):  ?>checked="checked"<?php endif; ?>  />
+				<label for="ikter"><?php echo $this->translate('Ikterus');  ?></label>
+			</td>
+			<td>
+				<input type="checkbox" name="skin[dry]" id="dry" value="1" <?php if($this->skin_dry == '1'):  ?>checked="checked"<?php endif; ?>  />
+				<label for="dry"><?php echo $this->translate('trocken');  ?></label>
+			</td>
+			<td>
+				<input type="checkbox" name="skin[hemoragy]" id="hemoragy" value="1" <?php if($this->skin_hemoragy == '1'):  ?>checked="checked"<?php endif; ?>  />
+				<label for="hemoragy"><?php echo $this->translate('Blutung');  ?></label>
+			</td>
+
+		</tr>
+		<tr>
+			<td colspan="6">
+				<input type="text" name="skin[more_text]" id="skin_more_text" class="long_input" value="<?php echo $this->skin_more_text;  ?>" />
+			</td>
+		</tr>
+
+		<!--G4-->
+		<tr>
+			<td colspan="6">
+				<strong><?php echo $this->translate('Ödeme:');  ?></strong>
+			</td>
+		</tr>
+		<tr>
+			<td>
+				<input type="checkbox" name="edema[u_leg]" id="uleg" value="1" <?php if($this->edema_uleg == '1'):  ?>checked="checked"<?php endif; ?>  />
+				<label for="uleg"><?php echo $this->translate('U. Schenkel');  ?></label>
+			</td>
+			<td>
+				<input type="checkbox" name="edema[o_leg]" id="oleg" value="1" <?php if($this->edema_oleg == '1'):  ?>checked="checked"<?php endif; ?>  />
+				<label for="oleg"><?php echo $this->translate('O. Schenkel');  ?></label>
+			</td>
+			<td>
+				<input type="checkbox" name="edema[hands]" id="hands" value="1" <?php if($this->edema_hands == '1'):  ?>checked="checked"<?php endif; ?>  />
+				<label for="hands"><?php echo $this->translate('Hände');  ?></label>
+			</td>
+
+			<td>
+				<input type="checkbox" name="edema[eyelids]" id="eyelids" value="1" <?php if($this->edema_eyelids == '1'):  ?>checked="checked"<?php endif; ?>  />
+				<label for="eyelids"><?php echo $this->translate('Lider');  ?></label>
+			</td>
+			<td>
+				<input type="checkbox" name="edema[face]" id="face" value="1" <?php if($this->edema_face == '1'):  ?>checked="checked"<?php endif; ?>  />
+				<label for="face"><?php echo $this->translate('Gesicht');  ?></label>
+			</td>
+			<td>
+				<input type="checkbox" name="edema[moving]" id="moving" value="1" <?php if($this->edema_moving == '1'):  ?>checked="checked"<?php endif; ?>  />
+				<label for="moving"><?php echo $this->translate('Rücken');  ?></label>
+			</td>
+
+		</tr>
+		<tr>
+			<td colspan="6">
+				<input type="text" name="edema[more_text]" id="edema_more_text" class="long_input" value="<?php echo $this->edema_more_text;  ?>" />
+			</td>
+		</tr>
+
+		<tr>
+			<td colspan="6"><h3><?php echo $this->translate('Körperliche Untersuchung / Auffällige klinische Befunde');  ?></h3></td>
+		</tr>
+		<tr>
+			<td colspan="6" class="anim_inside">
+				<input type="checkbox" class="enabler" value="1" name="physical_exam[skin_mucous_membran]" id="skin_mucous_membran" <?php if($this->physical_exam_skin_mucous_membran == '1'):  ?>checked="checked"<?php endif; ?> />
+				<label for="skin_mucous_membran" ><?php  echo $this->translate('Haut/Schleimhäute (Mundhöhle, Wunden, Dekubitus, Fisteln, Exanthem, Ödeme):'); ?> </label>
+				<br />
+				<input type="text" name="physical_exam[skin_mucous_membran_more]" id="skin_mucous_membran_more" value="<?php echo $this->physical_exam_skin_mucous_membran_more  ?>" class="long_input" />
+			</td>
+		</tr>
+		<tr>
+			<td colspan="6" class="anim_inside">
+				<input type="checkbox" class="enabler"  value="1" name="physical_exam[heart]" id="heart" <?php if($this->physical_exam_heart == '1'):  ?>checked="checked"<?php endif; ?>/>
+				<label for="heart" ><?php  echo $this->translate('Herz:'); ?> </label>
+				<br />
+				<input type="text" name="physical_exam[heart_more]" id="heart_more" value="<?php echo $this->physical_exam_heart_more  ?>" class="long_input"  />
+			</td>
+		</tr>
+		<tr>
+			<td colspan="6" class="anim_inside">
+				<input type="checkbox" class="enabler"  value="1" name="physical_exam[lungs]" id="lungs" <?php if($this->physical_exam_lungs == '1'):  ?>checked="checked"<?php endif; ?> />
+				<label for="lungs" ><?php  echo $this->translate('Lunge:'); ?> </label>
+				<br />
+				<input type="text" name="physical_exam[lungs_more]" id="lungs" value="<?php echo $this->physical_exam_lungs_more  ?>" class="long_input" />
+			</td>
+		</tr>
+		<tr>
+			<td colspan="6" class="anim_inside">
+				<input type="checkbox" class="enabler" value="1" name="physical_exam[abdomen]" id="abdomen" <?php if($this->physical_exam_abdomen == '1'):  ?>checked="checked"<?php endif; ?> />
+				<label for="abdomen" ><?php  echo $this->translate('Abdomen:'); ?> </label>
+				<br />
+				<input type="text" name="physical_exam[abdomen_more]" id="abdomen_more" value="<?php echo $this->physical_exam_abdomen_more  ?>" class="long_input" />
+			</td>
+		</tr>
+		<tr>
+			<td colspan="6" class="anim_inside">
+				<input type="checkbox" class="enabler" value="1" name="physical_exam[musculo_skeletal]" id="musculo_skeletal" <?php if($this->physical_exam_musculo_skeletal == '1'):  ?>checked="checked"<?php endif; ?> />
+				<label for="musculo_skeletal" ><?php  echo $this->translate('Bewegungsapparat(Extremitäten, Wirbelsäule, Muskeln, funktionelle Einschränkungen):'); ?> </label>
+				<br />
+				<input type="text" name="physical_exam[musculo_skeletal_more]" id="musculo_skeletal_more" value="<?php echo $this->physical_exam_musculo_skeletal_more  ?>" class="long_input" />
+			</td>
+		</tr>
+		<tr>
+			<td colspan="6" class="anim_inside">
+				<input type="checkbox" class="enabler" value="1" name="physical_exam[neurological]" id="neurological" <?php if($this->physical_exam_neurological == '1'):  ?>checked="checked"<?php endif; ?> />
+				<label for="neurological" ><?php  echo $this->translate('Neurologische Untersuchung (inklusive Psychopathologie):'); ?> </label>
+				<br />
+				<input type="text" name="physical_exam[neurological_more]" id="neurological_more" value="<?php echo $this->physical_exam_neurological_more  ?>" class="long_input" />
+			</td>
+		</tr>
+		<tr>
+			<td colspan="6">
+
+			</td>
+		</tr>
+		<tr>
+			<td colspan="2">
+				<canvas id="human_1" class="human_body_canvas" width="333" height="388"></canvas>
+				<input type="hidden" class="canvas_container" id="canvas_container_1" name="human"/>
+				<input type="hidden" class="canvas_load" id="canvas_load_1" value="<?php echo $this->human;?>" />
+				<br />
+				<a href="#" class="canvas_reset" rel="1"><?php echo $this->translate('reset')  ?></a>
+			</td>
+			<td colspan="4">
+				<h3><?php  echo $this->translate('Sonstige Befunde:'); ?></h3>
+				<textarea name="other_findings" id="other_findings" ><?php echo $this->other_findings;  ?></textarea>
+			</td>
+		</tr>
+		<tr>
+			<td></td>
+			<td></td>
+			<td></td>
+			<td></td>
+			<td></td>
+			<td></td>
+		</tr>
+		<tr>
+			<td></td>
+			<td></td>
+			<td></td>
+			<td></td>
+			<td></td>
+			<td></td>
+		</tr>
+	</tbody>
+</table>
+	<input type="submit" value="<?php echo $this->translate('save'); ?>" id="btnsubmit" name="save" />
+	<input type="submit" value="<?php echo $this->translate('generatepdf'); ?>" id="pdf" name="pdf"  class="btnsubmit_usersessions"/>
+</form>
+<div class="contactperson_block" id="contactperson_dialog">
+	<form action="<? echo $this->act ?>" name="frmcontact" id="frmcontact" method="post" class="contactperson_modal">
+		<div>
+			<label><? echo $this->translate('firstname') ?></label>
+			<input type="text" name="cnt_first_name" id="cnt_first_name" value="<? echo $this->cnt_first_name ?>" />
+		</div>
+		<div>
+			<label><? echo $this->translate('lastname') ?></label>
+			<input type="text" name="cnt_last_name" id="cnt_last_name" value="<? echo $this->cnt_last_name ?>" />
+		</div>
+		<div>
+			<label><? echo $this->translate('street') ?></label>
+			<input type="text" name="cnt_street1" id="cnt_street1" value="<? echo $this->cnt_street1 ?>" />
+		</div>
+
+		<div>
+			<label><? echo $this->translate('city') ?></label>
+			<input type="text" name="cnt_city" id="cnt_city" value="<? echo $this->cnt_city ?>" />
+		</div>
+
+		<div>
+			<label><? echo $this->translate('zip') ?></label>
+			<input type="text" name="cnt_zip" id="cnt_zip" value="<? echo $this->cnt_zip ?>" />
+		</div>
+
+		<div>
+			<label><? echo $this->translate('phone1') ?><span class="rederr">*</span></label>
+			<input type="text" name="cnt_phone" id="cnt_phone" value="<? echo $this->cnt_phone ?>" />
+			<span class="error1"><? echo $this->error_cnt_phone ?></span>
+		</div>
+		<div>
+			<label><? echo $this->translate('phone2') ?></label>
+			<input type="text" name="cnt_mobile" id="cnt_mobile" value="<? echo $this->cnt_mobile ?>" />
+		</div>
+		<div>
+			<label><? echo $this->translate('hatversorgungsvollmacht') ?></label>
+			<? echo $this->formCheckbox('cnt_hatversorgungsvollmacht', $_POST['cnt_hatversorgungsvollmacht'], null, array ('1')); ?>
+		</div>
+		<div>
+			<label>Gesetzlicher Betreuer</label>
+			<? echo $this->formCheckbox('cnt_legalguardian', $_POST['cnt_legalguardian'], null, array ('1')); ?>
+		</div>
+		<div>
+			<label><? echo $this->translate('patientrelationship') ?></label>
+			<? echo $this->formSelect('cnt_familydegree_id', $_POST['cnt_familydegree_id'], null, $this->familydegree) ?>
+		</div>
+		<div>
+			<label><? echo $this->translate('comment') ?></label>
+			<textarea name="cnt_comment" id="cnt_comment" cols="25" rows="5"></textarea>
+		</div>
+		<div>
+			<input type="button" name="submit_contact" id="submit_contact_modal" value="<? echo $this->translate('submit') ?>" />
+		</div>
+	</form>
+</div>

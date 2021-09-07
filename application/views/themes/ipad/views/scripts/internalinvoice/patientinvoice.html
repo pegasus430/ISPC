@@ -1,0 +1,761 @@
+<?php
+
+	$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/tinymce3/jscripts/tiny_mce/tiny_mce.js');
+	$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/invoice_sapv.js');
+	$this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/page-css/invoice/internal_invoice_style.css');
+
+
+//IE Freaking hack
+$url = APP_BASE . "internalinvoice/patientinvoice?" . $_SERVER['QUERY_STRING'];
+if (str_replace("&list=" . $_REQUEST['list'] . "", "", str_replace("&user=" . $_REQUEST['user'] . "", "", $url)))
+{
+	$finalJsUrl = str_replace("&list=" . $_REQUEST['list'] . "", "", str_replace("&user=" . $_REQUEST['user'] . "", "", $url));
+}
+else
+{
+	$finalJsUrl = $url;
+}
+
+
+$patient_details = $this->patient_details;
+$invoice_data = $this->invoice_data;
+$product_details = $this->period_pricelist_products;
+$all_products = $this->all_products;
+//$specific_products = $this->specific_products;
+//$day_products = $this->day_products;
+$user_details = $this->user_details;
+
+echo $this->patientinfo;
+echo $this->tabmenus;
+?>
+<script>
+	var res_file_path = '<?php echo RES_FILE_PATH; ?>';
+	var min_number = '0'; //to avoid NaN
+	
+	$(function() {
+		
+		$('input[name="create_invoice_btn"]').click(function(event){
+			event.preventDefault();
+			$(document).userSession().checksession('abort', function(result) { // new function
+			if(result === false) {
+				event.stopImmediatePropagation(); //stop going forward
+			} else {
+				var valid = validate_datepickers();
+
+				if(valid) {
+					$('#create_inv').val('1');
+					$('#internal_invoice').submit();
+				} else { 
+					$('#create_inv').val('0');
+					alert('<?php echo $this->translate('empty_date_field'); ?>');
+				}
+			}
+			});
+		});
+		$('#completed_date').datepicker({
+			dateFormat: 'dd.mm.yy',
+			showOn: "both",
+			buttonImage: $('#calImg').attr('src'),
+			buttonImageOnly: true,
+			changeMonth: true,
+			changeYear: true,
+			nextText: '',
+			prevText: ''
+		});
+		
+		
+		update_total();
+		
+		//remove custom items
+		$('.remove_item_custom').live('click', function(){
+			$(this).parent().parent().hide('slow').remove();
+			update_total();
+	});
+	
+		//remove system normal items
+		$('.remove_item_normal').live('click', function(){
+			var removed_elem_id = $(this).parent().parent().attr('id');
+
+			$(this).parent().parent().hide('slow').remove();
+
+			if($('.'+removed_elem_id))
+			{
+				$('.'+removed_elem_id + '_data').hide('slow').remove();
+			}
+		
+			update_total();
+		});
+		
+		
+
+//		//amount and price
+		$('.inv_it_qty').live('keyup change ', function(){
+			$(this).val($(this).val().replace(/[^0-9\.]/g,''));
+			
+			var row_id = $(this).attr('id').substr(('invoice_item_qty_').length);
+			
+			if($.isNumeric($(this).val()))
+			{
+
+				if($('#invoice_item_price_'+row_id).val().length != '0' && $('#invoice_item_price_'+row_id).val() != '' && $(this).val().length != '0'){
+					$('#invoice_item_total_' + row_id).val(parseFloat(parseFloat($(this).val())*parseFloat($('#invoice_item_price_'+row_id).val())).toFixed(2));
+				} else if($(this).val().length == '0' || $('#invoice_item_price_'+row_id).val().length) {
+					$('#invoice_item_total_' + row_id).val('0,00');
+				}
+				update_total();
+			}
+			else
+			{
+				$('#invoice_item_total_' + row_id).val('0,00');
+				update_total();
+			}
+		});
+
+		$('.inv_it_price').live('keyup change ', function() {
+			$(this).val($(this).val().replace(/[^0-9\.-]/g,''));
+			
+			var row_id = $(this).attr('id').substr(('invoice_item_price_').length);
+			
+			if($.isNumeric($(this).val()))
+			{
+
+				if ($('#invoice_item_qty_' + row_id).val().length != '0' && $('#invoice_item_qty_' + row_id).val() != '' && $(this).val().length != '0') {
+					$('#invoice_item_total_' + row_id).val(parseFloat(parseFloat($(this).val())*parseFloat($('#invoice_item_qty_'+row_id).val())).toFixed(2));
+				} else if($(this).val().length == '0' || $('#invoice_item_qty_'+row_id).val().length) {
+					$('#invoice_item_total_' + row_id).val('0,00');
+				}
+
+				update_total();
+			}
+			else
+			{
+				$('#invoice_item_total_' + row_id).val('0,00');
+				update_total();
+			}
+		});
+		
+	});
+	
+	function changeMonth(data){
+		var url = "<?php echo $finalJsUrl; ?>&list="+data;
+		$(location).attr('href',url);
+	}
+	function changeUser(data){
+		var url = "<?php echo $finalJsUrl; ?>&list="+$('#select_month').val()+"&user="+data;
+		$(location).attr('href',url);
+	}
+ 
+	function update_total()
+	{
+		var custom_total = 0;
+		$('.total').each(function(){
+			if($(this).val() != '')
+			{
+				$(this).val(parseFloat($(this).val()).toFixed(2))
+				custom_total += parseFloat($(this).val());
+			}
+			else
+			{
+				$(this).val('0.00');
+				
+			}
+				
+		});
+
+		var grand_total = parseFloat(parseFloat(custom_total) + parseFloat(min_number)).toFixed(2);
+		$('#grand_total').val(grand_total);
+		$('#grand_total_cell').html(german_format(parseFloat(grand_total)) + ' &euro;');
+	}
+	
+	function german_format(number) {
+		var postComma, preComma, stringReverse, _ref;
+		stringReverse = function(str) {
+			return str.split('').reverse().join('');
+		};
+
+		_ref = number.toFixed(2).split('.'), preComma = _ref[0], postComma = _ref[1];
+
+		//handle - sign
+		var modified_preComma = String(Number(preComma)*(-1)).length;
+
+		var minus_sign = '';
+		if(preComma.length > modified_preComma) {
+			minus_sign = '-';
+			preComma = String(Number(preComma)*(-1));
+		} else {
+			minus_sign = '';
+		}
+
+		preComma = stringReverse(stringReverse(preComma).match(/.{1,3}/g).join('.'));
+
+		return minus_sign + preComma + "," + postComma;
+	}
+	
+	function createnewitem()
+	{
+		var itemcount = $('#counter').val();
+	
+		var trInnerHtml = '<tr id="invoice_item_row_'+itemcount+'">';
+		trInnerHtml += '<td>';
+			trInnerHtml += '<!-- TYPE & DATE -->';
+			trInnerHtml += '<input type="hidden" name="invoice_items[type]['+itemcount+']" value="cu" id="invoice_item_type_'+itemcount+'" />';
+			trInnerHtml +='<input type="text" name="preview_dates[]" value="" id="preview_date_'+itemcount+'" class="inv_it_date"/>';
+			trInnerHtml +='<input type="hidden" name="invoice_items[dates]['+itemcount+'][]" value="" id="invoice_item_dates_'+itemcount+'" class="inv_it_date"/>';
+		trInnerHtml +='</td>';
+		
+		trInnerHtml +='<td>';
+			trInnerHtml +='<!-- CODE -->';
+			trInnerHtml +='<input type="text" name="invoice_items[code]['+itemcount+']" value="" id="invoice_item_code_'+itemcount+'" class="inv_it_code" />';
+			trInnerHtml +='';
+		trInnerHtml +='</td>';
+		
+		trInnerHtml +='<td>';
+			trInnerHtml +='<!-- NAME -->';
+			trInnerHtml +='<input type="text" name="invoice_items[name]['+itemcount+']" value="" id="invoice_item_name_'+itemcount+'" class="inv_it_name"/>';
+			trInnerHtml +='';
+		trInnerHtml +='</td>';
+		
+		trInnerHtml +='<td id="item_amount_cell_'+itemcount+'" class="item_ammount">';
+			trInnerHtml +='<!--QTY-->';
+			trInnerHtml +='<input type="text" name="invoice_items[qty]['+itemcount+']" value="" id="invoice_item_qty_'+itemcount+'" class="inv_it_qty"/>';
+		trInnerHtml +='</td>';
+		
+		trInnerHtml +='<td class="item_price">';
+			trInnerHtml +='<!--PRICE-->';
+			trInnerHtml +='<input type="text" name="invoice_items[price]['+itemcount+']" value="" id="invoice_item_price_'+itemcount+'" class="inv_it_price" />&euro;';
+		trInnerHtml +='</td>';
+		
+		trInnerHtml +='<td class="item_total">';
+			trInnerHtml +='<!--ITEM TOTAL-->';
+			trInnerHtml +='<input type="text" name="invoice_items[total]['+itemcount+']" value="" id="invoice_item_total_'+itemcount+'" class="inv_it_total total" readonly="readonly" />&euro;';
+		trInnerHtml +='</td>';
+		
+		trInnerHtml +='<td>';
+			trInnerHtml +='';
+			trInnerHtml +='<a href="javascript:void(0)" class="remove_item_custom" id="del_'+itemcount+'"><img src="<?php echo RES_FILE_PATH; ?>/images/action_delete.png" border="0"></a>';
+			trInnerHtml +='';
+		trInnerHtml +='</td>';
+		
+		trInnerHtml +='</tr>';		
+			
+		$('#new_item_action').before(trInnerHtml);
+		
+		//initialize chained datepicker
+		$( "#preview_date_"+itemcount ).datepicker({
+			dateFormat: 'dd.mm.yy',			
+			showOn: "both",
+			buttonImage: $('#calImg').attr('src'),
+			buttonImageOnly: true,
+			altField: "#invoice_item_dates_"+itemcount,
+			altFormat: "dd.mm.yy",
+			changeMonth: true,
+			changeYear: true,
+			nextText: '',
+			prevText: ''
+		});
+
+		itemcount++;
+		$('#counter').val(itemcount);
+		update_total();
+	}
+
+	function validate_datepickers()
+	{
+		var valid = true;
+		$('.inv_it_date').each(function(){
+			if($(this).val() == '')
+			{
+				valid = false;
+			}
+		});
+		
+		return valid;
+	}
+
+</script>
+<div style="display: none;"><img id="calImg" src="<?php echo RES_FILE_PATH;  ?>/images/calendar.png" alt="Popup" class="trigger"></div>
+<input type="hidden" value="99999" id="counter" />
+<div class="tab_container">
+
+<h1 class="inv_title" >interne Rechnung erstellen</h1>
+<br/>
+
+<form name="internal_invoice" id="internal_invoice" method="POST" >
+<div class="invoice_options">
+	<div>
+		<label><?php echo $this->translate('Select period: ');?></label>
+		<?php echo $this->months_selector; ?>
+	</div>
+	<div>
+		<label><?php echo $this->translate('Select user: ');?></label>
+		
+		<select id="invoiced_user" name="invoiced_user" onChange="changeUser(this.value);">
+			<?php if($this->products_users): ?>
+				<?php foreach($this->products_users as $k_usr_id => $v_usr): ?>
+			<option value="<?php echo $k_usr_id; ?>" <?php if($this->requested_user == $k_usr_id): ?>selected="selected"<?php endif; ?>><?php echo $v_usr; ?></option>
+				<?php endforeach; ?>
+			<?php else: ?>
+					<option><?php echo $this->translate('no_users_invoices'); ?></option>
+			<?php endif; ?>
+		</select>
+	</div>
+	
+	<div class="generate_btn">
+		<!--<input type="submit" value="<?php echo $this->translate('Erstellen'); ?>" name="get_invoice_data"  class="bigbutton ui-state-default ui-corner-all submit" />-->
+	</div>
+</div>
+	
+<?php if($this->previous_invoices_data): ?>
+<br />
+<table id="previous_invoices">
+	<thead>
+		<tr>
+			<th colspan="3" class="previous_invoice_header">Es wurden bereits Rechnungen für diesen Partner erzeugt.</th>
+		</tr>
+		<tr>
+			<th class="previous_invoice_header left"><?php echo $this->translate('invoice_number'); ?></th>
+			<th class="previous_invoice_header center " colspan="2"><?php echo $this->translate('item_total'); ?></th>
+		</tr>
+	</thead>
+
+	<tbody>
+	<?php foreach($this->previous_invoices_data as $k_inv => $v_inv): ?>
+		<tr class="row">
+			<td class="left">
+				<?php echo $v_inv['prefix'].$v_inv['invoice_number']; ?>
+			</td>
+			<td class="center" colspan="2">
+				<?php echo number_format($v_inv['invoice_total'], 2,',','.'); ?> &euro;
+			</td>
+		<tr>
+	<?php endforeach; ?>
+	</tbody>
+</table>
+<br />
+<?php endif; ?>
+<br/>
+
+	<table class="table" id="health_insurance_invoice_table" cellspacing="5" cellpadding="5" width="98%" style="border-collapse: collapse; border: 1px solid #000;">
+		<tr class="rowa">
+			<td class="col1 cell"></td>
+			<td class="col2 cell"></td>
+			<td class="col3 cell"></td>
+		</tr>
+		<tr class="rowb">
+			<td class="cell" style="width: 635px;height: 50px;">
+				<textarea name="invoice[address]" id="invoice_address" cols="37" rows="7" class="textareawhitehalf"><?php echo $this->address; ?></textarea>
+			</td>
+			<td class="cell" colspan="2" style="vertical-align: top;">
+				<div style="width:100%;height: 100%;">
+					<?php echo $this->user_details; ?>
+			
+					<?php if(strlen($this->control_number)>'0'): ?>
+						<?php echo $this->translate('label_control_number'); ?> <?php echo $this->control_number; ?>
+					<?php endif; ?>
+				</div>
+			</td>
+		</tr>
+
+
+		<tr class="rowb">
+			<td class="col1 cell" colspan="3">
+				&nbsp;
+			</td>
+		</tr>
+
+
+		<tr class="rowb">
+			<td class="col2 cell" style="text-align: left; font-size:14px;" colspan="2"></td>
+			<td class="col1 cell" style="text-align: right; width: 380px;">
+				<?php if($invoice_data['completed_date_sort'] != '0000-00-00 00:00:00' && date('Y', strtotime($invoice_data['completed_date_sort'])) != "1970"): ?> 
+					<?php echo strftime('%A, %d. %B %Y', strtotime($invoice_data['completed_date_sort']));  ?>
+				<?php endif; ?>
+				<br />
+				<?php if($invoice_data['status'] > '1'):  ?>
+					<?php echo $this->translate('complete_date'); ?>
+					<input type="text" id="completed_date" value="<?php if($invoice_data['completed_date'] == '0000-00-00 00:00:00'): echo date('d.m.Y', strtotime($invoice_data['create_date'])); else: echo date('d.m.Y', strtotime($invoice_data['completed_date'])); endif;  ?>" name="completed_date" />
+				<?php else:  ?>
+					<input type="hidden" value="<?php echo date('d.m.Y', time()); ?>" name="completed_date" />
+				<?php endif;  ?>
+			</td>
+		</tr>
+ 
+		<tr class="rowb">
+			<td class="col2 cell" style="text-align: left; font-size:14px;" colspan="2"><b>Rechnung Nr.: &nbsp;<?php echo $invoice_data['prefix'].$invoice_data['invoice_number']; ?></b><br/>
+			<b>für Patient: <?php echo $patient_details['last_name']?>, <?php echo $patient_details['first_name']?></b> 
+			</td>
+			<td class="col1 cell" style="text-align: right; width: 380px;">
+ 
+			</td>
+		</tr>
+ 
+		<tr class="rowb">
+			<td class="col1 cell" colspan="3">
+				&nbsp;
+			</td>
+		</tr>
+		<tr class="rowb">
+			<td class="col1 cell" colspan="3">
+				<table class="invoice_items" width="100%">
+
+					<tr class="tr_invoice_th">
+						<th><?php echo $this->translate('item_date')?></th>
+						<th style="width:80px;"><?php echo $this->translate('item_shortcut')?></th>
+						<th style="width:200px;"><?php echo $this->translate('item_name')?></th>
+						<th class="item_ammount"><?php echo $this->translate('item_ammount')?></th>
+						<th class="item_price"><?php echo $this->translate('item_price')?></th>
+						<th class="item_total"><?php echo $this->translate('item_total')?></th>
+						<th></th>
+					</tr>
+					<?php $i='1'; ?>
+					<?php foreach($all_products as $k_prod => $v_products): ?>
+					<?php if($v_products['p_type'] == 'sp'): ?>
+					<?php // $k_product = $v_products['p_id']; ?>
+					<?php $k_product = $k_prod; ?>
+					<?php $k_product_id = $v_products['p_id']; ?>
+					<tr id="invoice_item_row_<?php echo $k_product; ?>" >
+						<td>
+							<input type="hidden" name="invoice_items[type][<?php echo $i; ?>]" value="sp" id="invoice_item_type_<?php echo $k_product; ?>" />
+							<input type="hidden" name="invoice_items[p_id][<?php echo $i; ?>]" value="<?php echo $k_product_id; ?>" id="invoice_item_type_<?php echo $k_product; ?>" />
+							<?php // foreach($v_products['normal_days'] as $k_v_pr=> $v_v_pr): ?>
+								<?php echo strftime("%a,", strtotime($v_products['normal_days'][0])).' '.date('d.m.Y', strtotime($v_products['normal_days'][0]));?><br />
+								<input type="hidden" name="invoice_items[dates][<?php echo $i; ?>][]" value="<?php echo date('d.m.Y', strtotime($v_products['normal_days'][0])); ?>" id="invoice_item_type_<?php echo $k_product ?>_<?php echo $k_v_pr; ?>" />
+							<?php // endforeach; ?>
+							<?php if(!empty($v_products['contact_forms'])):?>
+							<?php foreach($v_products['contact_forms'] as $k_cf => $v_cf): ?>
+								<?php echo date('H:i', strtotime($v_cf['start_date'])).' - '.date('H:i', strtotime($v_cf['end_date'])); ?> <?php echo $this->translate('hours_label'); ?><br />
+								<input type="hidden" name="invoice_items[start_hours][<?php echo $i; ?>][]" value="<?php echo $v_cf['start_date']; ?>" />
+								<input type="hidden" name="invoice_items[end_hours][<?php echo $i; ?>][]" value="<?php echo $v_cf['end_date']; ?>" />
+							<?php endforeach; ?>
+						<?php endif; ?>
+						</td>
+						<td>
+							<?php echo $product_details['sp'][$k_product_id]['code']; ?>
+							<input type="hidden" name="invoice_items[code][<?php echo $i; ?>]" value="<?php echo $product_details['sp'][$k_product_id]['code']; ?>" id="invoice_item_code_<?php echo $k_product ?>" />
+						</td>
+						<td>
+							<?php echo $product_details['sp'][$k_product_id]['name']; ?>
+							<input type="hidden" name="invoice_items[name][<?php echo $i; ?>]" value="<?php echo $product_details['sp'][$k_product_id]['name']; ?>" id="invoice_item_name_<?php echo $k_product ?>" />
+						</td>
+						<!--QTY-->
+						<td class="item_ammount">
+							<?php echo $v_products['normal']; ?>
+							<input type="hidden" name="invoice_items[qty][<?php echo $i; ?>]" value="<?php echo $v_products['normal']; ?>" id="invoice_item_qty_<?php echo $k_product ?>" />							
+						</td>
+						<!--PRICE-->
+						<td class="item_price">
+							<?php echo number_format($product_details['sp'][$k_product_id]['price'], '2',',','.'); ?> &euro;
+							<input type="hidden" name="invoice_items[price][<?php echo $i; ?>]" value="<?php echo $product_details['sp'][$k_product_id]['price']; ?>" id="invoice_item_price_<?php echo $k_product ?>" />
+						</td> 
+						<!--ITEM TOTAL-->
+						<td class="item_total">
+							<?php echo number_format(($v_products['normal']*$product_details['sp'][$k_product_id]['price']), '2', ',', '.'); ?> &euro;
+							<?php $grand_total += ($v_products['normal']*$product_details['sp'][$k_product_id]['price']);?>
+							<input type="hidden" name='invoice_items[total][<?php echo $i; ?>]' value='<?php echo number_format(($v_products['normal']*$product_details['sp'][$k_product_id]['price']), '2', '.', '');?>' id='invoice_item_total_<?php echo $k_product ?>' class="total" />
+						</td>
+						<td>
+							<a href="javascript:void(0)" class="remove_item_normal" id="del_<?php echo $k_product; ?>"><img src="<?php echo RES_FILE_PATH; ?>/images/action_delete.png" border="0"></a>
+						</td>
+					</tr>
+					<!-- TODO-3012 Ancuta 23.03.2020:: START-->
+					<?php elseif($v_products['p_type'] == 'le'): ?>
+					<?php $k_product = $k_prod; ?>
+					<?php $k_product_id = $v_products['p_id']; ?>
+					<tr id="invoice_item_row_<?php echo $k_product; ?>" >
+						<td>
+							<input type="hidden" name="invoice_items[type][<?php echo $i; ?>]" value="le" id="invoice_item_type_<?php echo $k_product; ?>" />
+							<input type="hidden" name="invoice_items[p_id][<?php echo $i; ?>]" value="<?php echo $k_product_id; ?>" id="invoice_item_type_<?php echo $k_product; ?>" />
+							<?php echo strftime("%a,", strtotime($v_products['normal_days'][0])).' '.date('d.m.Y', strtotime($v_products['normal_days'][0]));?><br />
+							<?php echo date('H:i', strtotime($v_products['start_hours'][0])); ?> <?php echo $this->translate('hours_label'); ?><br />
+							<input type="hidden" name="invoice_items[dates][<?php echo $i; ?>][]" value="<?php echo date('d.m.Y', strtotime($v_products['normal_days'][0])); ?>" id="invoice_item_type_<?php echo $k_product ?>_<?php echo $k_v_pr; ?>" />
+							<input type="hidden" name="invoice_items[start_hours][<?php echo $i; ?>][]" value="<?php echo $v_products['start_hours'][0]; ?>" />
+							<input type="hidden" name="invoice_items[end_hours][<?php echo $i; ?>][]" value="<?php echo $v_products['end_hours'][0]; ?>" />
+						</td>
+						<td>
+							<?php echo $v_products['code']; ?>
+							<input type="hidden" name="invoice_items[code][<?php echo $i; ?>]" value="<?php echo $v_products['code']; ?>" id="invoice_item_code_<?php echo $k_product ?>" />
+						</td>
+						<td>
+							<?php echo $v_products['name']; ?>
+							<input type="hidden" name="invoice_items[name][<?php echo $i; ?>]" value="<?php echo $v_products['name']; ?>" id="invoice_item_name_<?php echo $k_product ?>" />
+						</td>
+						<!--QTY-->
+						<td class="item_ammount">
+							<?php echo $v_products['normal']; ?>
+							<input type="hidden" name="invoice_items[qty][<?php echo $i; ?>]" value="<?php echo $v_products['normal']; ?>" id="invoice_item_qty_<?php echo $k_product ?>" />							
+						</td>
+						<!--PRICE-->
+						<td class="item_price">
+							<?php echo number_format($v_products['price'], '2',',','.'); ?> &euro;
+							<input type="hidden" name="invoice_items[price][<?php echo $i; ?>]" value="<?php echo $v_products['price']; ?>" id="invoice_item_price_<?php echo $k_product ?>" />
+						</td>
+						<!--ITEM TOTAL-->
+						<td class="item_total">
+							<?php echo number_format(($v_products['normal']*$v_products['price']), '2', ',', '.'); ?> &euro;
+							<?php $grand_total += ($v_products['normal']*$v_products['price']);?>
+							<input type="hidden" name='invoice_items[total][<?php echo $i; ?>]' value='<?php echo number_format(($v_products['normal']*$v_products['price']), '2', '.', '');?>' id='invoice_item_total_<?php echo $k_product ?>' class="total" />
+						</td>
+						<td>
+							<a href="javascript:void(0)" class="remove_item_normal" id="del_<?php echo $k_product; ?>"><img src="<?php echo RES_FILE_PATH; ?>/images/action_delete.png" border="0"></a>
+						</td>
+					</tr>
+					<!-- TODO-3012 Ancuta 23.03.2020:: END-->
+					
+					<?php elseif($v_products['p_type'] == 'sv'): ?>
+					<?php // $k_product = $v_products['p_id']; ?>
+					<?php $k_product = $k_prod; ?>
+					<?php $k_product_id = $v_products['p_id']; ?>
+					<tr id="invoice_item_row_<?php echo $k_product; ?>" >
+						<td>
+							<input type="hidden" name="invoice_items[type][<?php echo $i; ?>]" value="sv" id="invoice_item_type_<?php echo $k_product; ?>" />
+							<input type="hidden" name="invoice_items[p_id][<?php echo $i; ?>]" value="<?php echo $k_product_id; ?>" id="invoice_item_type_<?php echo $k_product; ?>" />
+							<?php // foreach($v_products['normal_days'] as $k_v_pr=> $v_v_pr): ?>
+								<?php echo strftime("%a,", strtotime($v_products['normal_days'][0])).' '.date('d.m.Y', strtotime($v_products['normal_days'][0]));?><br />
+								<input type="hidden" name="invoice_items[dates][<?php echo $i; ?>][]" value="<?php echo date('d.m.Y', strtotime($v_products['normal_days'][0])); ?>" id="invoice_item_type_<?php echo $k_product ?>_<?php echo $k_v_pr; ?>" />
+							<?php // endforeach; ?>
+							<?php if(!empty($v_products['visits'])):?>
+							<?php foreach($v_products['visits'] as $k_cf => $v_cf): ?>
+								<?php echo date('H:i', strtotime($v_cf['start_date'])).' - '.date('H:i', strtotime($v_cf['end_date'])); ?> <?php echo $this->translate('hours_label'); ?><br />
+								<input type="hidden" name="invoice_items[start_hours][<?php echo $i; ?>][]" value="<?php echo $v_cf['start_date']; ?>" />
+								<input type="hidden" name="invoice_items[end_hours][<?php echo $i; ?>][]" value="<?php echo $v_cf['end_date']; ?>" />
+							<?php endforeach; ?>
+						<?php endif; ?>
+						</td>
+						<td>
+							<?php echo $product_details['sv'][$k_product_id]['code']; ?>
+							<input type="hidden" name="invoice_items[code][<?php echo $i; ?>]" value="<?php echo $product_details['sv'][$k_product_id]['code']; ?>" id="invoice_item_code_<?php echo $k_product ?>" />
+						</td>
+						<td>
+							<?php echo $product_details['sv'][$k_product_id]['name']; ?>
+							<input type="hidden" name="invoice_items[name][<?php echo $i; ?>]" value="<?php echo $product_details['sv'][$k_product_id]['name']; ?>" id="invoice_item_name_<?php echo $k_product ?>" />
+						</td>
+						<!--QTY-->
+						<td class="item_ammount">
+							<?php echo $v_products['normal']; ?>
+							<input type="hidden" name="invoice_items[qty][<?php echo $i; ?>]" value="<?php echo $v_products['normal']; ?>" id="invoice_item_qty_<?php echo $k_product ?>" />							
+						</td>
+						<!--PRICE-->
+						<td class="item_price">
+							<?php echo number_format($product_details['sv'][$k_product_id]['price'], '2',',','.'); ?> &euro;
+							<input type="hidden" name="invoice_items[price][<?php echo $i; ?>]" value="<?php echo $product_details['sv'][$k_product_id]['price']; ?>" id="invoice_item_price_<?php echo $k_product ?>" />
+						</td>
+						<!--ITEM TOTAL-->
+						<td class="item_total">
+							<?php echo number_format(($v_products['normal']*$product_details['sv'][$k_product_id]['price']), '2', ',', '.'); ?> &euro;
+							<?php $grand_total += ($v_products['normal']*$product_details['sv'][$k_product_id]['price']);?>
+							<input type="hidden" name='invoice_items[total][<?php echo $i; ?>]' value='<?php echo number_format(($v_products['normal']*$product_details['sv'][$k_product_id]['price']), '2', '.', '');?>' id='invoice_item_total_<?php echo $k_product ?>' class="total" />
+						</td>
+						<td>
+							<a href="javascript:void(0)" class="remove_item_normal" id="del_<?php echo $k_product; ?>"><img src="<?php echo RES_FILE_PATH; ?>/images/action_delete.png" border="0"></a>
+						</td>
+					</tr>
+					
+					<?php elseif($v_products['p_type'] == 'dp'): ?>
+						<?php $sub_products_keys = array('normal', 'hosp_adm' ,'hosp' ,'hosp_dis', 'hospiz_adm', 'hospiz', 'hospiz_dis', 'standby', 'hosp_dis_hospiz_adm', 'hospiz_dis_hosp_adm'); ?>
+						<?php 
+							if($v_products['grouped'] == '0'): $k_d_product = $k_prod; else: $k_d_product = $v_products['p_id']; endif;
+							$v_d_subproducts = $v_products;
+						?>
+						<?php if($k_d_product !== 'grouped'): ?>
+						<?php $k_d_product = 'dp_'.$k_d_product; ?>
+						<?php $k_d_product_id = str_replace('dp_', '', $k_d_product); ?>
+						<?php foreach($v_d_subproducts as $k_d_subproduct => $v_d_products): ?>
+						<?php if(in_array($k_d_subproduct, $sub_products_keys) && (($v_d_subproducts['grouped'] != '1' && $this->grouping_option == '1' )  || $this->grouping_option == '0')): ?>
+						<tr id="invoice_item_row_<?php echo $k_d_product.'_'.$k_d_subproduct; ?>">
+							<td>
+								<input type="hidden" name="invoice_items[type][<?php echo $i; ?>]" value="dp" id="invoice_item_type_<?php echo $k_d_product; ?>" />
+								<?php if(count($v_d_subproducts[$k_d_subproduct.'_days_periods']) == '0' && count($v_d_subproducts[$k_d_subproduct.'_days']) > '0' ): ?>
+									<?php foreach($v_d_subproducts[$k_d_subproduct.'_days'] as $k_day => $v_day): ?>
+										<?php echo strftime("%a,", strtotime($v_day)).' '.date('d.m.Y', strtotime($v_day)) ;?><br />
+									<input type="hidden" name="invoice_items[dates][<?php echo $i; ?>][<?php echo $k_d_subproduct; ?>][<?php echo $k_day;?>][]" value="<?php echo date('d.m.Y', strtotime($v_day)); ?>" id="invoice_item_type_<?php echo $k_d_product ?>_<?php echo $k_day; ?>" />
+									<?php endforeach; ?>
+								<?php else: ?>
+								<?php foreach($v_d_subproducts[$k_d_subproduct.'_days_periods'] as $k_vd_pr=> $v_vd_pr): ?>
+									<?php if(strtotime($v_vd_pr[0]) != strtotime(end($v_vd_pr))): ?>
+										<?php echo strftime("%a,", strtotime($v_vd_pr[0])).' '.date('d.m.Y', strtotime($v_vd_pr[0])) ;?> - <?php echo strftime("%a,", strtotime(end($v_vd_pr))).' '.date('d.m.Y', strtotime(end($v_vd_pr))) ;?><br />
+
+																<input type="hidden" name="invoice_items[dates][<?php echo $i; ?>][<?php echo $k_d_subproduct; ?>][<?php echo $k_vd_pr;?>][]" value="<?php echo date('d.m.Y', strtotime($v_vd_pr[0])); ?>" id="invoice_item_type_<?php echo $k_d_product ?>_<?php echo $k_vd_pr; ?>" />
+																<input type="hidden" name="invoice_items[dates][<?php echo $i; ?>][<?php echo $k_d_subproduct; ?>][<?php echo $k_vd_pr;?>][]" value="<?php echo date('d.m.Y', strtotime(end($v_vd_pr))); ?>" id="invoice_item_type_<?php echo $k_d_product ?>_<?php echo $k_vd_pr; ?>" />
+									<?php else: ?>
+										<?php echo strftime("%a,", strtotime($v_vd_pr[0])).' '.date('d.m.Y', strtotime($v_vd_pr[0])) ;?><br />
+
+										<input type="hidden" name="invoice_items[dates][<?php echo $i; ?>][<?php echo $k_d_subproduct; ?>][<?php echo $k_vd_pr;?>][]" value="<?php echo date('d.m.Y', strtotime($v_vd_pr[0])); ?>" id="invoice_item_type_<?php echo $k_d_product ?>_<?php echo $k_vd_pr; ?>" />
+									<?php endif; ?>
+								<?php endforeach; ?>	
+								<?php endif; ?>
+							</td>
+							<td>
+							<?php // echo $v_products['p_id']; ?>
+							<input type="hidden" name="invoice_items[p_id][<?php echo $i; ?>][<?php echo $k_d_subproduct; ?>]" value="<?php echo $v_products['p_id']; ?>" id="invoice_item_name_<?php echo $k_d_product; ?>" />
+							</td>
+							<td>
+							<?php echo $product_details['dp'][$v_products['p_id']][$k_d_subproduct.'_price_name']; ?>							
+							<input type="hidden" name="invoice_items[name][<?php echo $i; ?>][<?php echo $k_d_subproduct; ?>]" value="<?php echo $product_details['dp'][$v_products['p_id']][$k_d_subproduct.'_price_name']; ?>" id="invoice_item_name_<?php echo $k_d_product; ?>" />
+							</td>
+							<!--QTY-->
+							<td class="item_ammount">
+								<?php echo $v_d_products; ?>
+								<input type="hidden" name="invoice_items[qty][<?php echo $i; ?>][<?php echo $k_d_subproduct; ?>]" value="<?php echo $v_d_products; ?>" id="invoice_item_qty_<?php echo $k_d_product ?>" />
+							</td>
+							<!--PRICE-->
+							<td class="item_price">
+							<?php echo number_format($product_details['dp'][$v_products['p_id']][$k_d_subproduct.'_price'], 2, ',', '.'); ?> &euro;
+							<input type="hidden" name="invoice_items[price][<?php echo $i; ?>][<?php echo $k_d_subproduct; ?>]" value="<?php echo $product_details['dp'][$v_products['p_id']][$k_d_subproduct.'_price']; ?>" id="invoice_item_price_<?php echo $k_d_product ?>" />
+							</td>
+							<!--ITEM TOTAL-->
+							<td class="item_total">
+							<?php echo number_format(($v_d_products*$product_details['dp'][$v_products['p_id']][$k_d_subproduct.'_price']), '2', ',', '.'); ?> &euro;
+							<?php $grand_total += ($v_d_products*$product_details['dp'][$v_products['p_id']][$k_d_subproduct.'_price']);?>
+							<input type="hidden" name='invoice_items[total][<?php echo $i; ?>][<?php echo $k_d_subproduct; ?>]' value='<?php echo number_format(($v_d_products*$product_details['dp'][$v_products['p_id']][$k_d_subproduct.'_price']), 2, '.', '');?>' id='invoice_item_total_<?php echo $k_d_product; ?>' class="total" />
+							</td>
+							<td>
+								<a href="javascript:void(0)" class="remove_item_normal" id="del_<?php echo $k_d_product.'_'.$k_d_subproduct; ?>"><img src="<?php echo RES_FILE_PATH; ?>/images/action_delete.png" border="0"></a>
+							</td>
+						</tr>
+						<?php endif; ?>
+						<?php endforeach; ?>
+						<?php else: ?>
+						<!--GROUPED PRODUCT-->
+						<?php $k_d_subproduct = $k_d_product_id = 'grouped'; ?>
+							<?php if(count($v_d_subproducts[$k_d_subproduct.'_days_periods']) == '0' && count($v_d_subproducts[$k_d_subproduct.'_days']) > '0' ): ?>
+								<?php foreach($v_d_subproducts[$k_d_subproduct.'_days'] as $k_day => $v_day): ?>
+									<tr id="invoice_item_row_<?php echo $k_d_product.'_'.$k_d_subproduct; ?>">
+										<td>
+											<!--TYPE & DATE-->
+											<input type="hidden" name="invoice_items[type][<?php echo $i; ?>]" value="gr" id="invoice_item_type_<?php echo $k_d_product; ?>" />
+											<input type="hidden" name="invoice_items[p_id][<?php echo $i; ?>]" value="0" id="invoice_item_id_<?php echo $k_d_product; ?>" />
+											<?php echo strftime("%a,", strtotime($v_day)).' '.date('d.m.Y', strtotime($v_day)) ;?><br />
+											<input type="hidden" name="invoice_items[dates][<?php echo $i; ?>][]" value="<?php echo date('d.m.Y', strtotime($v_day)); ?>" id="invoice_item_type_<?php echo $k_d_product ?>_<?php echo $k_day; ?>" />	
+										</td>
+										<td>
+											&nbsp;
+										</td>
+										<td>
+											<?php echo $v_d_subproducts['name']; ?>
+											<input type="hidden" name="invoice_items[name][<?php echo $i; ?>]" value="<?php echo $v_d_subproducts['name']; ?>" id="invoice_item_name_<?php echo $k_d_product; ?>" />
+										</td>
+										<!--QTY-->
+										<td class="item_ammount">
+											<?php echo $v_d_subproducts['qty']; ?>
+											<input type="hidden" name="invoice_items[qty][<?php echo $i; ?>]" value="<?php echo $v_d_subproducts['qty']; ?>" id="invoice_item_qty_<?php echo $k_d_product ?>" />
+										</td>
+										<!--PRICE-->
+									<td class="item_price">
+									<?php echo number_format($item_total, 2, ',', '.'); ?> &euro;
+									<input type="hidden" name="invoice_items[price][<?php echo $i; ?>]" value="<?php echo number_format($v_d_subproducts['qty'], 2, '.', ''); ?>" id="invoice_item_price_<?php echo $k_d_product ?>" />
+										</td>
+										<!--ITEM TOTAL-->
+									<td class="item_total">
+									<?php $item_total = '0'; ?>
+									<?php $item_total = number_format(($v_d_subproducts['qty']*$v_d_subproducts['price']), 2,',','.'); ?>
+									
+									<?php echo number_format($item_total, '2', ',', '.'); ?> &euro;
+									<?php $grand_total += $item_total; ?>
+									<input type="hidden" name='invoice_items[total][<?php echo $i; ?>]' value='<?php echo number_format($item_total, 2, '.', '');?>' id='invoice_item_total_<?php echo $k_d_product ?>' class="total" />
+										</td>
+										<td>
+									<a href="javascript:void(0);" class="remove_item_normal" id="del_<?php echo $k_d_product.'_'.$k_d_subproduct; ?>"><img src="<?php echo RES_FILE_PATH; ?>/images/action_delete.png" border="0"></a>.
+										</td>
+									</tr>
+								<?php endforeach; ?>
+							<?php else: ?>
+								<?php foreach($v_d_subproducts[$k_d_subproduct.'_days_periods'] as $k_vd_pr=> $v_vd_pr): ?>
+									<tr id="invoice_item_row_<?php echo $k_d_product.'_'.$k_d_subproduct; ?>">
+										<td>
+											<input type="hidden" name="invoice_items[type][<?php echo $i; ?>]" value="gr" id="invoice_item_type_<?php echo $k_d_product; ?>" />
+											<input type="hidden" name="invoice_items[p_id][<?php echo $i; ?>]" value="0" id="invoice_item_id_<?php echo $k_d_product; ?>" />
+											<?php if(strtotime($v_vd_pr[0]) != strtotime(end($v_vd_pr))): ?>
+												<?php echo strftime("%a,", strtotime($v_vd_pr[0])).' '.date('d.m.Y', strtotime($v_vd_pr[0])) ;?> - <?php echo strftime("%a,", strtotime(end($v_vd_pr))).' '.date('d.m.Y', strtotime(end($v_vd_pr))) ;?><br />
+
+													<input type="hidden" name="invoice_items[dates][<?php echo $i; ?>][]" value="<?php echo date('d.m.Y', strtotime($v_vd_pr[0])); ?>" id="invoice_item_type_<?php echo $k_d_product ?>_<?php echo $k_vd_pr; ?>" />
+													<input type="hidden" name="invoice_items[dates][<?php echo $i; ?>][]" value="<?php echo date('d.m.Y', strtotime(end($v_vd_pr))); ?>" id="invoice_item_type_<?php echo $k_d_product ?>_<?php echo $k_vd_pr; ?>" />
+											<?php else: ?>
+												<?php echo strftime("%a,", strtotime($v_vd_pr[0])).' '.date('d.m.Y', strtotime($v_vd_pr[0])) ;?><br />
+
+													<input type="hidden" name="invoice_items[dates][<?php echo $i; ?>][]" value="<?php echo date('d.m.Y', strtotime($v_vd_pr[0])); ?>" id="invoice_item_type_<?php echo $k_d_product ?>_<?php echo $k_vd_pr; ?>" />
+											<?php endif; ?>
+										</td>
+										<td>
+											&nbsp;
+										</td>
+										<td>
+											<?php echo $v_d_subproducts['name']; ?>
+											<input type="hidden" name="invoice_items[name][<?php echo $i; ?>]" value="<?php echo $v_d_subproducts['name']; ?>" id="invoice_item_name_<?php echo $k_d_product; ?>" />
+										</td>
+										<!--QTY-->
+										<td class="item_ammount">
+										<?php echo $v_d_subproducts['grouped_qty'][$k_vd_pr]; ?>
+										<input type="hidden" name="invoice_items[qty][<?php echo $i; ?>]" value="<?php echo $v_d_subproducts['grouped_qty'][$k_vd_pr]; ?>" id="invoice_item_qty_<?php echo $k_d_product ?>" />
+										</td>
+										<!--PRICE-->
+										<td class="item_price">
+										<?php echo number_format($v_d_subproducts['price'], 2, ',', '.'); ?> &euro;
+										<input type="hidden" name="invoice_items[price][<?php echo $i; ?>]" value="<?php echo $v_d_subproducts['price']; ?>" id="invoice_item_price_<?php echo $k_d_product ?>" />
+										</td>
+										<!--ITEM TOTAL-->
+										<td  class="item_total">
+										<?php $item_total = number_format(($v_d_subproducts['grouped_qty'][$k_vd_pr] * $v_d_subproducts['price']), 2,'.',''); ?>
+														<?php echo number_format($item_total, '2', ',', '.'); ?> &euro;
+														<?php $grand_total += $item_total; ?>
+										<input type="hidden" name='invoice_items[total][<?php echo $i; ?>]' value='<?php echo number_format($item_total, 2, '.', '');?>' id='invoice_item_total_<?php echo $k_d_product ?>' class="total" />
+										</td>
+										<td>
+														<a href="javascript:void(0);" class="remove_item_normal" id="del_<?php echo $k_d_product.'_'.$k_d_subproduct; ?>"><img src="<?php echo RES_FILE_PATH; ?>/images/action_delete.png" border="0"></a>
+										</td>
+									</tr>
+								<?php endforeach; ?>	
+							<?php endif; ?>
+						<?php endif; ?>
+					<?php endif; ?>
+					<?php $i++; ?>
+					<?php endforeach; ?>
+					
+					
+					
+					
+					<tr id="new_item_action">
+						<td colspan="6">
+							<div class="add_new_item">
+								<a href="javascript:createnewitem();">
+									<img src="<?php echo RES_FILE_PATH; ?>/images/edit_add.png" width="20" height="20" />
+									<?php echo $this->translate('add_new_item'); ?>
+								</a>
+							</div>
+						</td>
+					</tr>
+ 					<tr class="tr_invoice_tr_total">
+						<td colspan="5" style="text-align: right;"><b><?php echo $this->translate('item_overall_sume')?>:</b>&nbsp;&nbsp;&nbsp;</td>
+						<td style="text-align:right;font-weight: 700;" id="grand_total_cell">
+							<?php echo number_format($grand_total, '2', ',', '.');  ?> 
+						</td>
+						<td>&nbsp;</td>
+					</tr>
+				</table>
+				<input type="hidden" name="grand_total" value="<?php echo $grand_total; ?>" id="grand_total" />
+			</td>
+		</tr>
+		<tr class="rowb">
+			<td class="col1 cell" colspan="3">
+				&nbsp;
+			</td>
+		</tr>
+		<tr class="rowb">
+			<td class="col1 cell" colspan="3">
+				<textarea name="footer" id="sapv_footer" cols="" rows="10" style="width: 100%;"  ><?php echo $invoice_data['footer']; ?></textarea>
+			</td>
+		</tr>
+		<tr class="rowa">
+			<td class="col1 cell" colspan="3">&nbsp;</td>
+		</tr>
+
+	</table>
+
+	<div class="buttonsBar">
+		<input type="hidden" name="create_invoice" value="" id="create_inv" />
+		<input type="submit" value="<?php echo $this->translate('Entwurf'); ?>" name="create_invoice_btn" id="create_invoice" class="bigbutton ui-state-default ui-corner-all submit" />
+ 		<input type="submit" value="<?php echo $this->translate('preview_Pdf'); ?>" name="pdf" id="create_pdf" class="bigbutton ui-state-default ui-corner-all submit" id="pdf"/> 
+ 
+	</div>
+
+</form>
+</div>

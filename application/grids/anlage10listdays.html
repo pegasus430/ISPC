@@ -1,0 +1,901 @@
+<table  width="100%" style="border: 1px solid #000; font-family:Arial,Helvetica,Garuda,sans-serif; font-size: x-small; " cellpadding="2" cellspacing="0" border="1">
+	<tr>
+		<td width="2.5%"><b>Tag</b></td>
+		<td width="3%"><b>&nbsp;</b></td>
+
+		<td width="9.5%"><b>Leistung</b></td>
+		<td width="9.5%"><b>Leistung</b></td>
+		<td width="9.5%"><b>Leistung</b></td>
+		<td width="9.5%"><b>Leistung</b></td>
+		<td width="9.5%"><b>Leistung</b></td>
+		<td width="9.5%"><b>Leistung</b></td>
+		<td width="9.5%"><b>Leistung</b></td>
+		<td width="9.5%"><b>Leistung</b></td>
+		<td width="9.5%"><b>Leistung</b></td>
+
+		<td width="4%"><b>Anzahl</b></td>
+		<td width="5%"><b>Gesamt</b></td>
+	</tr>
+	<gridrow>
+		<phpscript>
+			$dischargedArray = $view->dischargedarr;
+			$count++;
+			//$price_list = array("VV" => "225", "TV" => "40", "BE" => "20", "KO" => "");
+			
+			$hospitalDays = $view->hospitalFinalDays;
+			$deathDate = $view->deathDateHospital;
+			$visit_days  = $view->visit_days;
+			// module related
+			$vv_visit_day  = $view->vv_visit_day;
+			$do_not_bill_after_discharge_time  = $view->do_not_bill_after_discharge_time;
+
+			$totala = 0;
+			$verord_price = 0;
+			$total_g = 0;
+			$total_g_tv = 0;
+			$total_g_be = 0;
+			$total_g_vv = 0;
+			$isDischarged = 1;
+
+			$verordnung = $verordnung[$count];
+
+			$totala = $total_activity;
+			$countedActivities = count($activ);
+
+
+			if($kvno[$day] == 1)
+			{
+				if($kvno_a[$day] == '1' || $kvno_k[$day] == '1' )
+				{
+					if($totala >= 1)
+					{
+						$totala -= "1";
+					}
+				}
+				else
+				{
+					if($totala >= 2)
+					{
+						$totala -= "2";
+					}
+				}
+				
+			}
+			if($start_kvno[$day] == 1)
+			{
+				if($start_kvno_a[$day] == '1' || $start_kvno_k[$day] == '1')
+				{
+					if($totala >= 1)
+					{
+						$totala -= "1";
+					}
+				}
+				else
+				{
+					if($totala >= 2)
+					{
+						$totala -= "2";
+					}
+				}
+				
+			}
+			
+			if($_REQUEST['dbg'] == "1")
+			{
+				print_r("aaaaaaaaaa" . $deathDate);
+			}
+			$lm = explode(".", $view->listmonth);
+			$currentDate = date("Y-m-d", strtotime($lm[0] . "-" . str_pad($lm[1], 2, "0", STR_PAD_LEFT) . "-" . str_pad($day, 2, "0", STR_PAD_LEFT)));
+			$price_list = $view->price_list[$currentDate];
+			if(!in_array($currentDate, $hospitalDays) && strtotime($currentDate) < strtotime($deathDate))
+			{
+				foreach($dischargedArray as $ipid => $data)
+				{
+					if(count($data['admissionDates']) > 0)
+					{
+						foreach($data['admissionDates'] as $aKey => $aData)
+						{
+
+							$admDate = date("Y-m-d", strtotime($aData['date']));
+							if(!empty($data['dischargeDates'][$aKey]))
+							{
+								$disDate = date("Y-m-d", strtotime($data['dischargeDates'][$aKey]['date']));
+								$discharge_date_dmyHi = date("Y-m-d H:i", strtotime($data['dischargeDates'][$aKey]['date']));
+							}
+							else
+							{
+								$disDate = date("Y-m-d");
+								$discharge_date_dmyHi = date("Y-m-d H:i");
+							}
+
+							if(Pms_CommonData::isintersected(strtotime($currentDate), strtotime($currentDate), strtotime($admDate), strtotime($disDate)))
+							{
+								$isDischarged = 0;
+							}
+						}
+					}
+					else
+					{
+						$admDate = date("Y-m-d", strtotime($data['admission_date']));
+						if(empty($data['discharge_date']))
+						{
+							$disDate = date("Y-m-d");
+							$discharge_date_dmyHi = date("Y-m-d H:i");
+						}
+						else
+						{
+							$disDate = date("Y-m-d", strtotime($data['discharge_date']));
+							$discharge_date_dmyHi = date("Y-m-d H:i", strtotime($data['discharge_date']));
+						}
+
+						if(Pms_CommonData::isintersected(strtotime($currentDate), strtotime($currentDate), strtotime($admDate), strtotime($disDate)))
+						{
+							$isDischarged = 0;
+						}
+					}
+				}
+				if($isDischarged == 0)
+				{
+				
+					if((!empty($verordnung) || $kvno[$day] == 0))
+					{
+						if(strlen($verordnung) != 0)
+						{
+							$verord_price = $price_list[$verordnung];
+							$verordungstr = $count . " - " . $day . " - " . $verordnungstring[$day];
+						}
+						else
+						{
+							$verord_price = 0;
+							$verordungstr = "";
+						}
+
+						$verordungs = explode(", ", $verordungstr);
+						
+						
+						if($do_not_bill_after_discharge_time == "1") // ISPC-1652  - Module  - dont bill a visit that was done AFTER the death
+						{ // DO NOT allow billing after discharge time - START
+							// VV - ACTIONS
+							if($vv_visit_day == "1") // ISPC-1556  1) OPTIONAL. if activated VV days are ONLY counted as VV days (=225€) if there is a visit. 
+							{
+								if(in_array('VV', $verordnungstr) && in_array($day,$visit_days))
+								{ //nu e dependent de activity ammount
+									$courseVCnt = "0";
+									$courseUCnt = "0";
+		
+									for($ix = 0; $ix <= $countedActivities; $ix++)
+									{
+										if(($day == date("j", strtotime($activ[$ix]['start_date'])) || $day == date("j", strtotime($activ[$ix]['vizit_date'])) || $day == date("j", strtotime($activ[$ix]['course_date']))) && !empty($verordnung))
+										{
+											if($activ[$ix]['course_type'] == "V" && strtotime($activ[$ix]['course_date_time']) <= strtotime($discharge_date_dmyHi))
+											{
+												$courseVCnt += $activ[$ix]['verlauf'];
+											}
+											else if($activ[$ix]['course_type'] == "U" && strtotime($activ[$ix]['course_date_time']) <= strtotime($discharge_date_dmyHi))
+											{
+												$courseUCnt += $activ[$ix]['verlauf'];
+											}
+										}
+									}
+									$total_g_vv = $verord_price;
+								}
+							} 
+							else
+							{
+								if(in_array('VV', $verordnungstr) )
+								{ //nu e dependent de activity ammount
+									$courseVCnt = "0";
+									$courseUCnt = "0";
+		
+									for($ix = 0; $ix <= $countedActivities; $ix++)
+									{
+										if(( $day == date("j", strtotime($activ[$ix]['start_date'])) ||$day == date("j", strtotime($activ[$ix]['vizit_date'])) || $day == date("j", strtotime($activ[$ix]['course_date']))) && !empty($verordnung))
+										{
+											if($activ[$ix]['course_type'] == "V"  && strtotime($activ[$ix]['course_date_time']) <= strtotime($discharge_date_dmyHi))
+											{
+												$courseVCnt += $activ[$ix]['verlauf'];
+											}
+											else if($activ[$ix]['course_type'] == "U"  && strtotime($activ[$ix]['course_date_time']) <= strtotime($discharge_date_dmyHi))
+											{
+												$courseUCnt += $activ[$ix]['verlauf'];
+											}
+										}
+									}
+									
+									$total_g_vv = $verord_price;
+								}
+							}
+						
+							// TV - ACTIONS 						
+							if(in_array("TV", $verordnungstr) && !in_array("VV", $verordnungstr))
+							{
+								// este dependent de activity ammount and has limit 3 activities(135EUR)
+								$courseVCnt = "0";
+								$courseUCnt = "0";
+								$total_g_tv = "0";
+								$vizits = 0;
+								for($ix = 0; $ix <= $countedActivities; $ix++)
+								{
+	
+									if(($day == date("j", strtotime($activ[$ix]['start_date'])) || $day == date("j", strtotime($activ[$ix]['vizit_date'])) || $day == date("j", strtotime($activ[$ix]['course_date'])))&& !empty($verordnung))
+									{
+										if($activ[$ix]['course_type'] == "V" && strtotime($activ[$ix]['course_date_time']) <= strtotime($discharge_date_dmyHi))
+										{
+											$courseVCnt += $activ[$ix]['verlauf'];
+										}
+										if($activ[$ix]['course_type'] == "U" && strtotime($activ[$ix]['course_date_time']) <= strtotime($discharge_date_dmyHi))
+										{
+											$courseUCnt += $activ[$ix]['verlauf'];
+										}
+										if(( !empty($activ[$ix]['kvno_begin_date_h']) || !empty($activ[$ix]['begin_date_h']) ) && strtotime($activ[$ix]['full_vizit_date_time']) <= strtotime($discharge_date_dmyHi))
+										{
+											$vizits += 1;
+										}
+									}
+								}
+	
+								$total_g_tv = ($vizits * $price_list['TV']);
+							}
+						
+							// BE - ACTIONS 
+							if(in_array("BE", $verordnungstr) && !in_array("VV", $verordnungstr))
+							{ // este dependent de activity ammount and has limit 4 activities(80EUR)
+								$courseUCnt = "0";
+								$courseVCnt = "0";
+								$total_g_be = "0";
+								$activ_tmp = $activ;
+	
+								for($ix = 0; $ix <= $countedActivities; $ix++)
+								{
+									if(($day == date("j", strtotime($activ[$ix]['start_date'])) || $day == date("j", strtotime($activ[$ix]['vizit_date'])) || $day == date("j", strtotime($activ[$ix]['course_date']))) && !empty($verordnung))
+									{
+										if($activ[$ix]['course_type'] == "U" && strtotime($activ[$ix]['course_date_time']) <= strtotime($discharge_date_dmyHi))
+										{
+											$courseUCnt += $activ[$ix]['verlauf'];
+										}
+										if($activ[$ix]['course_type'] == "V"  && strtotime($activ[$ix]['course_date_time']) <= strtotime($discharge_date_dmyHi))
+										{
+											$courseVCnt += $activ[$ix]['verlauf'];
+										}
+									}
+								}
+	
+								$total_g_be = ($courseUCnt * $price_list['BE']);
+							}
+						
+						
+						}// DO NOT allow billing after discharge time - END
+						else
+						{ // allow billing after discharge time -START
+
+							// VV - ACTIONS						
+							if($vv_visit_day == "1") // ISPC-1556  1) OPTIONAL. if activated VV days are ONLY counted as VV days (=225€) if there is a visit. 
+							{
+								if(in_array('VV', $verordnungstr) && in_array($day,$visit_days))
+								{ //nu e dependent de activity ammount
+									$courseVCnt = "0";
+									$courseUCnt = "0";
+		
+									for($ix = 0; $ix <= $countedActivities; $ix++)
+									{
+										if(($day == date("j", strtotime($activ[$ix]['start_date'])) || $day == date("j", strtotime($activ[$ix]['vizit_date'])) || $day == date("j", strtotime($activ[$ix]['course_date']))) && !empty($verordnung))
+										{
+											if($activ[$ix]['course_type'] == "V")
+											{
+												$courseVCnt += $activ[$ix]['verlauf'];
+											}
+											else if($activ[$ix]['course_type'] == "U")
+											{
+												$courseUCnt += $activ[$ix]['verlauf'];
+											}
+										}
+									}
+									$total_g_vv = $verord_price;
+								}
+							} 
+							else
+							{
+								if(in_array('VV', $verordnungstr) )
+								{ //nu e dependent de activity ammount
+									$courseVCnt = "0";
+									$courseUCnt = "0";
+		
+									for($ix = 0; $ix <= $countedActivities; $ix++)
+									{
+										if(( $day == date("j", strtotime($activ[$ix]['start_date'])) ||$day == date("j", strtotime($activ[$ix]['vizit_date'])) || $day == date("j", strtotime($activ[$ix]['course_date']))) && !empty($verordnung))
+										{
+											if($activ[$ix]['course_type'] == "V")
+											{
+												$courseVCnt += $activ[$ix]['verlauf'];
+											}
+											else if($activ[$ix]['course_type'] == "U")
+											{
+												$courseUCnt += $activ[$ix]['verlauf'];
+											}
+										}
+									}
+									
+									$total_g_vv = $verord_price;
+								}
+							}
+						
+							// TV - ACTIONS						
+							if(in_array("TV", $verordnungstr) && !in_array("VV", $verordnungstr))
+							{
+								// este dependent de activity ammount and has limit 3 activities(135EUR)
+								$courseVCnt = "0";
+								$courseUCnt = "0";
+								$total_g_tv = "0";
+								$vizits = 0;
+								for($ix = 0; $ix <= $countedActivities; $ix++)
+								{
+	
+									if(($day == date("j", strtotime($activ[$ix]['start_date'])) || $day == date("j", strtotime($activ[$ix]['vizit_date'])) || $day == date("j", strtotime($activ[$ix]['course_date'])))&& !empty($verordnung))
+									{
+										if($activ[$ix]['course_type'] == "V")
+										{
+											$courseVCnt += $activ[$ix]['verlauf'];
+										}
+										if($activ[$ix]['course_type'] == "U")
+										{
+											$courseUCnt += $activ[$ix]['verlauf'];
+										}
+										if(( !empty($activ[$ix]['kvno_begin_date_h']) || !empty($activ[$ix]['begin_date_h']) ))
+										{
+											$vizits += 1;
+										}
+									}
+								}
+	
+								$total_g_tv = ($vizits * $price_list['TV']);
+							}
+							
+							
+							// BE - ACTIONS 						
+							if(in_array("BE", $verordnungstr) && !in_array("VV", $verordnungstr))
+							{ // este dependent de activity ammount and has limit 4 activities(80EUR)
+								$courseUCnt = "0";
+								$courseVCnt = "0";
+								$total_g_be = "0";
+								$activ_tmp = $activ;
+	
+								for($ix = 0; $ix <= $countedActivities; $ix++)
+								{
+									if(($day == date("j", strtotime($activ[$ix]['start_date'])) || $day == date("j", strtotime($activ[$ix]['vizit_date'])) || $day == date("j", strtotime($activ[$ix]['course_date']))) && !empty($verordnung))
+									{
+										if($activ[$ix]['course_type'] == "U")
+										{
+											$courseUCnt += $activ[$ix]['verlauf'];
+										}
+										if($activ[$ix]['course_type'] == "V")
+										{
+											$courseVCnt += $activ[$ix]['verlauf'];
+										}
+									}
+								}
+	
+								$total_g_be = ($courseUCnt * $price_list['BE']);
+							}
+						} // allow billing after discharge time - END
+
+						//set limits to amounts if total_g_xx is bigger than max  xx amount
+						if((int) $total_g_tv >= $price_list['TVAA'])
+						{
+							//$total_g_tv = "135";
+							$total_g_tv = $price_list['TVAA'];
+						}
+						if((int) $total_g_be >= $price_list['BEAA'])
+						{
+							//$total_g_be = "80";
+							$total_g_be = $price_list['BEAA'];
+						}
+
+						$total_g = (($total_g_vv) + ($total_g_be) + ($total_g_tv));
+					}
+				}
+
+
+				if($kvno[$day] == 1)
+				{
+					if($kvno_a[$day] == '1')
+					{
+						//$total_g += "150";
+						$total_g += $price_list['SAA'];
+					}
+					else if($kvno_k[$day] == '1')
+					{
+						//$total_g += "150";
+						$total_g += $price_list['SAK'];
+					}
+					else
+					{
+						//$total_g += "300";
+						$total_g += $price_list['SA'];;
+					}
+				}
+			}
+			
+			$evenimenteDinZi = array();
+			if(count($activ) > 0)
+			{
+				foreach($activ as $keyactiv => $activity)
+				{
+					if($activity['course_type'] == "U")
+					{ //telefon
+						$evenimenteDinZi['telefoane'][] = $activity;
+					}
+
+					if($activity['course_type'] == "V")
+					{ //koord
+						$evenimenteDinZi['koord'][] = $activity;
+					}
+					
+					if($activity['course_type'] == "XT")
+					{ //telefon special
+						$evenimenteDinZi['telefoane_speciale'][] = $activity;
+					}
+					
+					if(!empty($activity['vizit_date']))
+					{
+						if($activity['type'] == "D")
+						{//doctor visit
+							$evenimenteDinZi['viziteD'][] = $activity;
+						}
+						else if($activity['type'] == "N")
+						{//nurse visit
+							$evenimenteDinZi['viziteN'][] = $activity;
+						}
+					}
+					if(!empty($activity['start_date']))
+					{
+						if($activity['type'] == "C")
+						{//contact forms
+							$evenimenteDinZi['contact_forms'][] = $activity;
+						}
+						
+					}
+					
+					if($activity['type'] == "A")
+					{ //assessment
+						$evenimenteDinZi['assessment'][] = $activity;
+					}
+					
+					if($activity['type'] == "AK")
+					{ //assessment
+						$evenimenteDinZi['assessment'][] = $activity;
+					}
+					
+					if($activity['type'] == "AA")
+					{ //assessment
+						$evenimenteDinZi['assessment'][] = $activity;
+					}
+					
+					if($activity['type'] == "SA")
+					{ //assessment
+						$evenimenteDinZi['start_assessment'][] = $activity;
+					}
+					
+					if($activity['type'] == "SAK")
+					{ //assessment
+						$evenimenteDinZi['start_assessment'][] = $activity;
+					}
+					
+					if($activity['type'] == "SAA")
+					{ //assessment
+						$evenimenteDinZi['start_assessment'][] = $activity;
+					}
+					
+					
+				}
+			}
+			
+			//reset vars
+			$totalActivity = "0";
+			$totalSlots = "9";
+			$minReservedSlots = "0";
+			$finalEventsDay = array("");
+			unset($finalEventsDay);
+
+			if(count($activ) > 9)
+			{
+				$totalActivity = count($activ);
+			}
+			else
+			{
+				$totalActivity = "9";
+			}
+
+			$evenimente['assessment'] = count($evenimenteDinZi['assessment']);
+			$evenimente['start_assessment'] = count($evenimenteDinZi['start_assessment']);
+			$evenimente['telefoane'] = count($evenimenteDinZi['telefoane']);
+			$evenimente['koord'] = count($evenimenteDinZi['koord']);
+			$evenimente['doctorV'] = count($evenimenteDinZi['viziteD']);
+			$evenimente['nurseV'] = count($evenimenteDinZi['viziteN']);
+			$evenimente['telefoanes'] = count($evenimenteDinZi['telefoane_speciale']);
+			$evenimente['contact_forms'] = count($evenimenteDinZi['contact_forms']);
+
+
+			//calculate minimal reserved slots for all events that are bigger than 0 in activities
+			//needed to count how much space is needed to list remaining groups
+			foreach($evenimente as $key => $event)
+			{
+				if($event > 0 && ($key != "assessment" || $key != "start_assessment"))
+				{
+					$minReservedSlots++;
+				}
+			}
+
+			//$total_activity is sent through grid data!
+			//grupare daca depaseste nr slots
+			if($totalActivity > $totalSlots && $minReservedSlots != "0" && $total_activity != 0)
+			{
+				
+				// ASSESSMENT START
+				if($evenimente['start_assessment'] > 0)
+				{
+					//scadere din total slots non grouped events
+					$remainSlots = ($totalSlots - $evenimente['start_assessment'] - 1);
+
+					//insert in final events the assessment events
+					foreach($evenimenteDinZi['start_assessment'] as $key => $evenimentA)
+					{
+						if($day == date("j", strtotime($evenimentA['start_date'])) || $day == date("j", strtotime($evenimentA['vizit_date'])) || $day == date("j", strtotime($evenimentA['course_date'])))
+						{
+							$finalEventsDay[$day][$evenimentA['type'] . $key] = $evenimentA; //added +$key because of overlap in array keys
+						}
+					}
+				}
+				else
+				{
+					$remainSlots = ($totalSlots - 1);
+				}			
+			
+				// ASSESSMENT END
+				if($evenimente['assessment'] > 0)
+				{
+					//scadere din total slots non grouped events
+					$remainSlots = ($totalSlots - $evenimente['assessment'] - 1);
+
+					//insert in final events the assessment events
+					foreach($evenimenteDinZi['assessment'] as $key => $evenimentA)
+					{
+						if($day == date("j", strtotime($evenimentA['start_date'])) || $day == date("j", strtotime($evenimentA['vizit_date'])) || $day == date("j", strtotime($evenimentA['course_date'])))
+						{
+							$finalEventsDay[$day][$evenimentA['type'] . $key] = $evenimentA; //added +$key because of overlap in array keys
+						}
+					}
+				}
+				else
+				{
+					$remainSlots = ($totalSlots - 1);
+				}
+				
+				
+
+				
+				//telefoane U (verlauf)
+				if($evenimente['telefoane'] > 0)
+				{
+					if($remainSlots != 0)
+					{
+						$listCountT = floor($remainSlots / $minReservedSlots);
+					}
+					else
+					{
+						$listCountT = 0;
+					}
+					$lastTelefon = end($evenimenteDinZi['telefoane']);
+					$remainSlots = ($remainSlots - $listCountT);
+
+					for($itt = 1; $itt <= $listCountT; $itt++)
+					{
+						if($day == date("j", strtotime($evenimenteDinZi['telefoane'][($itt - 1)]['vizit_date'])) || $day == date("j", strtotime($evenimenteDinZi['telefoane'][($itt - 1)]['course_date'])))
+						{
+							$finalEventsDay[$day][strtotime($evenimenteDinZi['telefoane'][$itt]['create_date']) + $itt] = $evenimenteDinZi['telefoane'][($itt - 1)];
+							$finalEventsDay[$day][strtotime($evenimenteDinZi['telefoane'][$itt]['create_date']) + $itt]['more'] = 0;
+						}
+					}
+					
+					if(($itt - 1) < $evenimente['telefoane'])
+					{
+						if($day == date("j", strtotime($lastTelefon['vizit_date'])) || $day == date("j", strtotime($lastTelefon['course_date'])))
+						{
+							$finalEventsDay[$day][strtotime(date("Y-m-d H:i:s", strtotime($lastTelefon['course_date'] . " " . date("H:i:s", strtotime($lastTelefon['create_date'])))))] = $lastTelefon;
+							$finalEventsDay[$day][strtotime(date("Y-m-d H:i:s", strtotime($lastTelefon['course_date'] . " " . date("H:i:s", strtotime($lastTelefon['create_date'])))))]['more'] = ($evenimente['telefoane'] - $itt); // <<< Group text more +n
+							$minReservedSlots--;
+							$remainSlots = ($remainSlots - 1);
+						}
+					}
+				}
+
+				//koord V (verlauf)
+				if($evenimente['koord'] > 0)
+				{
+					if($remainSlots != 0)
+					{
+						$listCountK = floor($remainSlots / $minReservedSlots);
+					}
+					else
+					{
+						$listCountK = 0;
+					}
+					
+					$lastKoord = end($evenimenteDinZi['koord']);
+					$remainSlots = ($remainSlots - $listCountK);
+
+					for($ik = 1; $ik <= $listCountK; $ik++)
+					{
+						if($day == date("j", strtotime($evenimenteDinZi['koord'][($ik - 1)]['vizit_date'])) || $day == date("j", strtotime($evenimenteDinZi['koord'][($ik - 1)]['course_date'])))
+						{
+							$finalEventsDay[$day][strtotime($evenimenteDinZi['koord'][$ik]['create_date']) + ($itt + $ik)] = $evenimenteDinZi['koord'][($ik - 1)];
+							$finalEventsDay[$day][strtotime($evenimenteDinZi['koord'][$ik]['create_date']) + ($itt + $ik)]['more'] = 0;
+						}
+					}
+
+					if(($ik - 1) < $evenimente['koord'])
+					{
+						if($day == date("j", strtotime($lastKoord['vizit_date'])) || $day == date("j", strtotime($lastKoord['course_date'])))
+						{
+							$finalEventsDay[$day][strtotime($lastKoord['course_date'] . " " . date("H:i:s", strtotime($lastKoord['create_date'])))] = $lastKoord;
+							$finalEventsDay[$day][strtotime($lastKoord['course_date'] . " " . date("H:i:s", strtotime($lastKoord['create_date'])))]['more'] = ($evenimente['koord'] - $ik); // <<< Group text more +n
+
+							$minReservedSlots--;
+							$remainSlots = ($remainSlots - 1);
+						}
+					}
+				}
+
+				//Contact froms
+				if($evenimente['contact_forms'] > 0)
+				{
+					if($remainSlots != 0)
+					{
+						$list_count_cf = floor($remainSlots / $minReservedSlots);
+					}
+					else
+					{
+						$list_count_cf = 0;
+					}
+					$last_contact_form = end($evenimenteDinZi['contact_forms']);
+					$remainSlots = ($remainSlots - $list_count_cf);
+
+					for($id = 1; $id <= $list_count_cf; $id++)
+					{
+						$finalEventsDay[$day][strtotime($evenimenteDinZi['contact_forms'][$id]['start_date']) + ($i + $ik + $id)] = $evenimenteDinZi['contact_forms'][($id - 1)];
+						$finalEventsDay[$day][strtotime($evenimenteDinZi['contact_forms'][$id]['start_date']) + ($i + $ik + $id)]['more'] = 0;
+					}
+					if(($id - 1) < $evenimente['contact_forms'])
+					{
+						$finalEventsDay[$day][strtotime($last_contact_form['start_date'])] = $last_contact_form;
+						$finalEventsDay[$day][strtotime($last_contact_form['start_date'])]['more'] = ($evenimente['contact_forms'] - $id); // <<< Group text more +n
+						$minReservedSlots--;
+						$remainSlots = ($remainSlots - 1);
+					}
+				}
+				
+				
+				
+				//DoctorVisits
+				if($evenimente['doctorV'] > 0)
+				{
+					if($remainSlots != 0)
+					{
+						$listCountD = floor($remainSlots / $minReservedSlots);
+					}
+					else
+					{
+						$listCountD = 0;
+					}
+					$lastDocVisit = end($evenimenteDinZi['viziteD']);
+					$remainSlots = ($remainSlots - $listCountD);
+
+
+
+					for($id = 1; $id <= $listCountD; $id++)
+					{
+						$finalEventsDay[$day][strtotime($evenimenteDinZi['viziteD'][$id]['create_date']) + ($i + $ik + $id)] = $evenimenteDinZi['viziteD'][($id - 1)];
+						$finalEventsDay[$day][strtotime($evenimenteDinZi['viziteD'][$id]['create_date']) + ($i + $ik + $id)]['more'] = 0;
+					}
+					if(($id - 1) < $evenimente['doctorV'])
+					{
+						$finalEventsDay[$day][strtotime($lastDocVisit['create_date'])] = $lastDocVisit;
+						$finalEventsDay[$day][strtotime($lastDocVisit['create_date'])]['more'] = ($evenimente['doctorV'] - $id); // <<< Group text more +n
+						$minReservedSlots--;
+						$remainSlots = ($remainSlots - 1);
+					}
+				}
+
+				//NurseVisits
+				if($evenimente['nurseV'] > 0)
+				{
+					if($remainSlots != 0)
+					{
+						$listCountN = floor($remainSlots / $minReservedSlots);
+					}
+					else
+					{
+						$listCountN = 0;
+					}
+					$lastNurseVisit = end($evenimenteDinZi['viziteN']);
+
+					$remainSlots = ($remainSlots - $listCountN);
+
+					for($in = 1; $in <= $listCountN; $in++)
+					{
+						$finalEventsDay[$day][strtotime($evenimenteDinZi['viziteN'][$in]['create_date']) + ($i + $ik + $id + $in)] = $evenimenteDinZi['viziteN'][($in - 1)];
+						$finalEventsDay[$day][strtotime($evenimenteDinZi['viziteN'][$in]['create_date']) + ($i + $ik + $id + $in)]['more'] = 0;
+					}
+					
+					if(($in - 1) < $evenimente['nurseV'])
+					{
+						$finalEventsDay[$day][strtotime($lastNurseVisit['create_date'])] = $lastNurseVisit; // <<< Group here +n
+						$finalEventsDay[$day][strtotime($lastNurseVisit['create_date'])]['more'] = ($evenimente['nurseV'] - $in); // <<< Group text more +n
+						$minReservedSlots--;
+						$remainSlots = ($remainSlots - 1);
+					}
+				}
+
+				//Telefoane Speciale(XT - WL clients)
+				if($evenimente['telefoanes'] > 0)
+				{
+					if($remainSlots != 0)
+					{
+						$listCountTs = floor($remainSlots / $minReservedSlots);
+					}
+					else
+					{
+						$listCountTs = 0;
+					}
+					$lastTelefonS = end($evenimenteDinZi['telefoane_speciale']);
+					$remainSlots = ($remainSlots - $listCountTs);
+
+					for($its = 1; $its <= $listCountTs; $its++)
+					{
+						if($day == date("j", strtotime($evenimenteDinZi['telefoane_speciale'][($its - 1)]['vizit_date'])) || $day == date("j", strtotime($evenimenteDinZi['telefoane_speciale'][($its - 1)]['course_date'])))
+						{
+							$finalEventsDay[$day][strtotime($evenimenteDinZi['telefoane_speciale'][$i]['create_date']) + ($i + $ik + $id + $in + $its)] = $evenimenteDinZi['telefoane_speciale'][($its - 1)];
+							$finalEventsDay[$day][strtotime($evenimenteDinZi['telefoane_speciale'][$i]['create_date']) + ($i + $ik + $id + $in + $its)]['more'] = 0;
+						}
+					}
+					
+					if(($its - 1) < $evenimente['telefoanes'])
+					{
+						if($day == date("j", strtotime($lastTelefonS['vizit_date'])) || $day == date("j", strtotime($lastTelefonS['course_date'])))
+						{
+							$finalEventsDay[$day][strtotime(date("Y-m-d H:i:s", strtotime($lastTelefonS['course_date'] . " " . date("H:i:s", strtotime($lastTelefonS['create_date'])))) + ($i + $ik + $id + $in + $its))] = $lastTelefonS;
+							$finalEventsDay[$day][strtotime(date("Y-m-d H:i:s", strtotime($lastTelefonS['course_date'] . " " . date("H:i:s", strtotime($lastTelefonS['create_date'])))) + ($i + $ik + $id + $in + $its))]['more'] = ($evenimente['telefoanes'] - $its); // <<< Group text more +n
+							$minReservedSlots--;
+							$remainSlots = ($remainSlots - 1);
+						}
+					}
+				}
+			}
+			else
+			{
+				foreach($activ as $k => $activity)
+				{
+					if($day == date("j", strtotime($activity['start_date'])) || $day == date("j", strtotime($activity['vizit_date'])) || $day == date("j", strtotime($activity['course_date'])) || $kvno[$day] == 1)
+					{
+						$finalEventsDay[$day] = $activ;
+					}
+				}
+			}
+			asort($finalEventsDay[$day]);
+
+			$act_list = array();
+			$listedCells = 0;
+
+
+			foreach($activ as $keyfed => $finalEventx)
+			//foreach($finalEventsDay[$day] as $keyfed => $finalEventx)
+			{
+				if($day == date("j", strtotime($finalEventx['start_date'])) || $day == date("j", strtotime($finalEventx['vizit_date'])) || $day == date("j", strtotime($finalEventx['course_date'])))
+				{
+					if($finalEventx['more'] > 0)
+					{
+						$moreText = "<br />+" . $finalEventx['more'] . " weitere";
+					}
+					else
+					{
+						$moreText = "";
+					}
+					
+					
+					
+					$act_list[] = '<td  style="text-align: center; height: 25px; vertical-align:middle; border: 1px solid #000;">' . $finalEventx['activity_str'] . '' . $moreText . '</td>';
+					$listedCells++;
+				}
+				/*
+				else
+				{
+					$act_list[] = '<td  style="text-align: center; height: 25px; vertical-align:middle; border: 1px solid #000;">&nbsp; removed since multiline</td>';
+					$listedCells++;
+				}
+				*/
+							
+			}
+			
+
+			for($listedCells; $listedCells <= 8; $listedCells++)
+			{
+				$act_list[] = '<td  style="text-align: center; height: 25px; vertical-align:middle; border: 1px solid #000;">&nbsp;</td>';
+			}
+
+			if($day == "1")
+			{
+				$border_top = "border-top: 3px solid #000;";
+			}
+			else
+			{
+				$border_top = "";
+			}
+			
+			
+			$firts_row_list = "";
+			$second_row_list  = "";
+			
+			$firts_cnt = 0;
+			$second_cnt = 0;
+			
+			//add extra empty tds
+			if ( ($modulo = (count($act_list) % $totalSlots)) != 0 ) {
+				for($iextra = 0; $iextra<($totalSlots-$modulo); $iextra++) {
+				
+				$master_counter_extra ++;
+				
+					$act_list[] = '<td  style="text-align: center; height: 25px; vertical-align:middle; border: 1px solid #000;">&nbsp;</td>';
+				}
+			}
+			
+			foreach ($act_list as $k=>$one_td){
+				
+	
+				if ( $firts_cnt < $totalSlots ) {
+					//first line
+					$firts_row_list .= $one_td;
+					$firts_cnt ++;
+				} else {
+					//any other new line
+					if ( ($second_cnt % $totalSlots ) == 0 ) {
+						$second_row_list .= "<tr>";
+					}
+					
+					$second_row_list .= $one_td;					
+					$second_cnt ++;
+					
+					if ( $totalSlots == $second_cnt ) {
+					
+						$second_cnt = 0;
+					
+						$second_row_list .= "</tr>";
+						
+					}					
+				}
+			}
+			
+			$rowspan = 1;
+			if (!empty($act_list) ) {
+				$rowspan = ceil ( count($act_list) / $totalSlots);
+			}
+						
+			//$act_list = implode("", $act_list);
+				
+			$view->totalgeneral += $total_g;
+
+			$vvstring = $verordnungstring[$day];
+
+		</phpscript>
+		
+		<tr width = "100%">
+			<td rowspan="[[rowspan]]" style = "text-align: center; height: 25px; vertical-align:middle; border: 1px solid #000;" >[[day]]</td>
+			<td rowspan="[[rowspan]]" style="text-align: center; height: 25px; vertical-align:middle; border: 1px solid #000; font-size: 0.9em;" >[[vvstring]]</td>
+			[[firts_row_list]]
+			<td rowspan="[[rowspan]]" style = "text-align: center; height: 25px; vertical-align:middle; border: 1px solid #000; border-left: 3px solid #000; border-right: 2px solid #000; [[border_top]]" >[[totala]]</td>
+			<td rowspan="[[rowspan]]" style="text-align: center; height: 25px; vertical-align:middle; border: 1px solid #000; border-right: 3px solid #000;[[border_top]]" >[[total_g]]</td>
+		</tr>
+		
+		<!-- children -->
+		[[second_row_list]]
+		
+		<?php $act_list = array(); $second_row_list = ''; $finalEventsDay = ""; $total_g = "";?>
+	</gridrow>

@@ -1,0 +1,2077 @@
+<!-- Maria:: Migration ISPC to CISPC 08.08.2020 -->
+<?php
+	$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/page-css/rpassessment.css');
+	$patient_details = $this->patient_details;
+
+	$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/autogrow/jquery.elastic.js');
+
+?>
+
+<script>
+	var jsusers = <?php echo $this->jsusers; ?>;
+	var medcount = '<?php echo $this->mcntr + 1 ?>';
+	var medcount_s = '<?php echo $this->mcntr_s + 1 ?>';
+	var action = '';
+	
+	// required for don't leave page
+	var submited = false;
+	var changes = false;
+	
+	//weird "leave page" function
+	var dontLeave = function(e) {
+		//alert('on leav');
+		//alert(changes);
+		if (changes === true && submited === false) {
+			return "<?php echo $this->translate('no_save_leave_alert'); ?>";
+		}
+	}
+
+	window.onbeforeunload = dontLeave;
+	
+$(document).ready(function() {
+// 	$('input, textarea, select').bind('change', function(){
+// 		 window.onbeforeunload = function() { return "<?php echo $this->translate('no_save_leave_alert'); ?>"; }
+// 	});	
+	
+	//allow submit without "leave page" alert
+	$('#save,#pdf').live('click', function() {
+		submited = true;
+		changes = false;
+	});
+	
+	 $('input,textarea,select').bind('change',function(){
+	//console.log($(this).val());
+// 	alert($(this).val());
+	submited = false;
+	changes = true;
+// 	alert('on change');
+// 	alert(changes);
+// 	alert(submited);
+	}) ;
+	
+	
+	$('#load_last_assessment').click(function() {
+			var url = "<?php echo APP_BASE; ?>patientform/rpassessment?id=<?php echo $_REQUEST['id']; ?>&load_old=1";
+			window.location.href = url;
+	});
+
+	$('.livesearchmedinp').live('change', function() {
+		var input_row = parseInt($(this).attr('id').substr(('medication').length));
+		reset_medications(input_row);
+	}).liveSearch({
+		url: 'ajax/medications?q=',
+		id: 'livesearch_admission_medications',
+		aditionalWidth: '300',
+		noResultsDelay: '900',
+		typeDelay: '900',
+		returnRowId: function (input) {return parseInt($(input).attr('id').substr(('medication').length));}
+	});
+	$('#rp_doc_id').live('change', function() {
+		var doctor_selected = $(this).val();
+		var doctor_user = $(this).find("option:selected").text();
+		if(doctor_selected !== '0')
+			{
+				$('#rp_doctor_details').val(doctor_user);
+				$('#rp_user').html(doctor_user);
+			}
+	//console.log(doctor_selected);
+		
+	})
+	$('input.livesearchmedinp, input.med_date, input.dosage, input.comment, input.med, select.user_selector, select.user_selector_schmerze').live('change keyup', function(){
+		if($(this).hasClass('livesearchmedinp')){
+			var input_row = parseInt($(this).attr('id').substr(('medication').length)); //med name
+		} else if($(this).hasClass('med_date')) {
+			var input_row = parseInt($(this).attr('id').substr(('med_date').length)); //change date
+		} else if($(this).hasClass('dosage')) {
+			var input_row = parseInt($(this).attr('id').substr(('dosage').length)); //dosage
+		} else if($(this).hasClass('comment') || $(this).hasClass('med')) {
+			var input_row = parseInt($(this).attr('id').substr(('comment').length)); //comment
+		} else if ($(this).hasClass('user_selector')) {
+			var input_row = parseInt($(this).attr('id').substr(('verordnetvon-').length)); //user selector
+		} else if ($(this).hasClass('user_selector_schmerze')) {
+			var input_row = parseInt($(this).attr('id').substr(('add_schmerze-verordnetvon-').length)); //user selector schmerzepumpe
+		}
+		$('#edited' + input_row).val('1');
+	});
+//complete checkbox
+	$('.div_completed_date').hide();
+	$('.iscompleted').each(function(){
+		var curent_row = $(this).attr('alt');
+		
+		if($(this).is(':checked')) {
+			$('#div_completed_date_'+curent_row).show();
+		} else {
+			$('#div_completed_date_'+curent_row).hide();
+		}
+	}).live('click', function(){
+		var curent_row = $(this).attr('alt');
+		
+		if($(this).is(':checked')) {
+			$('#div_completed_date_'+curent_row).show();
+		} else {
+			$('#div_completed_date_'+curent_row).hide();
+		}
+	});
+	
+	$('.autohide').each(function(){
+		var parent_element = $('#'+$(this).attr('parent'));
+		
+		if(parent_element.is(':checked')) {
+			$(this).show();
+		} else {
+			$(this).hide();
+		}
+	});
+	
+	$('.has_child_hidden').each(function(){
+		var child_element_id = $(this).attr('id') + '_more';
+		
+		if($('#'+child_element_id)) {
+			if($(this).is(':checked')){
+				$('#'+child_element_id).show();
+			} else {
+				$('#'+child_element_id).hide();
+			}
+		}
+	}).live('click', function(){
+		var child_element_id = $(this).attr('id') + '_more';
+		
+		if($('#'+child_element_id)) {
+			if($(this).is(':checked')){
+				$('#'+child_element_id).show();
+			} else {
+				$('#'+child_element_id).hide();
+			}
+		}
+	});
+	
+	$('#new').click(function() {
+		action = 'new';
+	});
+	
+	$('form').submit(function() {
+		if(action != 'new')
+		{
+			window.onbeforeunload = null;
+		}
+		setTimeout(function () {$('input[type=submit]').attr('disabled', true);}, 150);
+		setTimeout(function () {$('input[type=submit]').attr('disabled', false);}, 8000);
+	});
+
+	$('#rp_start_date_erst, #rp_date_erst, #rp_start_date_folge, #rp_date_folge, #rp_last_day_sapv, #rp_last_hosp_date, #sapv_support_date, .completed_date').not(':disabled').datepicker({
+		dateFormat: 'dd.mm.yy',
+		showOn: "both",
+		buttonImage: $('#calImg').attr('src'),
+		buttonImageOnly: true,
+		changeMonth: true,
+		changeYear: true,
+		nextText: '',
+		prevText: ''
+	}).mask("99.99.9999");
+	
+//remove normal medis
+	$(".remove_tr").live('click', function(){
+		var trid = $(this).closest('tr').attr('id');
+		var cnt = $("#"+trid).attr('alt');
+		var id = trid.split('_');
+		var pid = "<?php echo $_REQUEST['id']; ?>";
+
+		$("#"+trid).each(function() {
+			var date = "<?php echo date('d.m.Y')?>";
+			var meds = $(this).find(".meds_"+trid).val();
+			var dsg = $(this).find(".dsg_"+trid).val();
+			var comm = $(this).find(".comm_"+trid).val();
+			var hidd_medis = $(this).find("#hidd_medication"+cnt).val();
+			var usr_add = $(this).find(".usrname_"+trid).text();
+			var usr = $(this).find("#verordnetvon-"+cnt+" option:selected").text();
+			var usr_id = $(this).find("#verordnetvon-"+cnt+" option:selected").val();
+			var trnou = "<tr class=\"row\" id=\"line_r_"+id[1]+"\"><td height=\"20\" align=\"left\" class=\"datern_"+id[1]+"\" valign=\"top\">"+date+"</td><td height=\"20\" align=\"left\" valign=\"top\" class=\"hidd_medicationrn_"+id[1]+"\" style=\"display: none;\">"+hidd_medis+"</td><td align=\"left\" valign=\"top\" class=\"medsrn_"+id[1]+"\"><font color=\"#777777\">"+meds+"</font> </td><td align=\"left\" valign=\"top\" class=\"dsgrn_"+id[1]+"\">"+dsg+"</td><td align=\"left\" valign=\"top\" class=\"commrn_"+id[1]+"\">"+comm+"</td><td align=\"left\" valign=\"top\"><a href=\"javascript:void(0)\" class=\"renew_ajx\"><img src=\"<?php echo RES_FILE_PATH; ?>/images/action_renew.png\" border=\"0\"></a></td><td height=\"20\" align=\"left\" valign=\"top\" class=\"usrnamern_"+id[1]+"\">"+usr_add+"</td><td height=\"20\" align=\"left\" valign=\"top\">"+usr+"</td><td valign=\"top\" height=\"20\" align=\"left\" class=\"usrid_"+id[1]+"\" style=\"display:none;\">"+usr_id+"</td></tr>";
+			$("#listpatientmedication_contenttabel").append(trnou);
+			removeMedicationKvno(id[1],pid);
+		});
+
+	});
+
+		
+//remove bedarf medis
+	$(".remove_tr_bedarf").live('click', function(){
+		var trid = $(this).closest('tr').attr('id');
+		var cnt = $("#"+trid).attr('alt');
+		var id = trid.split('_');
+		var pid = "<?php echo $_REQUEST['id']; ?>";
+
+		$("#"+trid).each(function() {
+			var date = "<?php echo date('d.m.Y')?>";
+			var meds = $(this).find(".meds_"+trid).val();
+			var dsg = $(this).find(".dsg_"+trid).val();
+			var comm = $(this).find(".comm_"+trid).val();
+			var hidd_medis = $(this).find("#hidd_medication"+cnt).val();
+			var usr_add = $(this).find(".usrname_"+trid).text();
+			var usr = $(this).find("#verordnetvon-"+cnt+" option:selected").text();
+			var usr_id = $(this).find("#verordnetvon-"+cnt+" option:selected").val();
+
+			var trnou = "<tr class=\"row\" id=\"line_r_"+id[1]+"\"><td height=\"20\" align=\"left\" class=\"datern_"+id[1]+"\" valign=\"top\">"+date+"</td><td height=\"20\" align=\"left\" valign=\"top\" class=\"hidd_medicationrn_"+id[1]+"\" style=\"display: none;\">"+hidd_medis+"</td><td align=\"left\" valign=\"top\" class=\"medsrn_"+id[1]+"\"><font color=\"#777777\">"+meds+"</font> </td><td align=\"left\" valign=\"top\" class=\"dsgrn_"+id[1]+"\">"+dsg+"</td><td align=\"left\" valign=\"top\" class=\"commrn_"+id[1]+"\">"+comm+"</td><td align=\"left\" valign=\"top\"><a href=\"javascript:void(0)\" class=\"renew_ajx_bedarfs\"><img src=\"<?php echo RES_FILE_PATH; ?>/images/action_renew.png\" border=\"0\"></a></td><td height=\"20\" align=\"left\" valign=\"top\" class=\"usrnamern_"+id[1]+"\">"+usr_add+"</td><td height=\"20\" align=\"left\" valign=\"top\">"+usr+"</td><td valign=\"top\" height=\"20\" align=\"left\" class=\"usrid_"+id[1]+"\" style=\"display:none;\">"+usr_id+"</td></tr>";
+			$("#listpatientmedication_contenttabel").append(trnou);
+			removeMedicationKvno(id[1],pid);
+		});
+
+	});
+
+
+//remove iv medis
+	$(".remove_tr_iv").live('click', function(){
+		var trid = $(this).closest('tr').attr('id');
+		var cnt = $("#"+trid).attr('alt');
+		var id = trid.split('_');
+		var pid = "<?php echo $_REQUEST['id']; ?>";
+
+		$("#"+trid).each(function() {
+			var date = "<?php echo date('d.m.Y')?>";
+			var meds = $(this).find(".meds_"+trid).val();
+			var dsg = $(this).find(".dsg_"+trid).val();
+			var comm = $(this).find(".comm_"+trid).val();
+			var hidd_medis = $(this).find("#hidd_medication"+cnt).val();
+			var usr_add = $(this).find(".usrname_"+trid).text();
+			var usr = $(this).find("#verordnetvon-"+cnt+" option:selected").text();
+			var usr_id = $(this).find("#verordnetvon-"+cnt+" option:selected").val();
+
+			var trnou = "<tr class=\"row\" id=\"line_r_"+id[1]+"\"><td height=\"20\" align=\"left\" class=\"datern_"+id[1]+"\" valign=\"top\">"+date+"</td><td height=\"20\" align=\"left\" valign=\"top\" class=\"hidd_medicationrn_"+id[1]+"\" style=\"display: none;\">"+hidd_medis+"</td><td align=\"left\" valign=\"top\" class=\"medsrn_"+id[1]+"\"><font color=\"#777777\">"+meds+"</font> </td><td align=\"left\" valign=\"top\" class=\"dsgrn_"+id[1]+"\">"+dsg+"</td><td align=\"left\" valign=\"top\" class=\"commrn_"+id[1]+"\">"+comm+"</td><td align=\"left\" valign=\"top\"><a href=\"javascript:void(0)\" class=\"renew_ajx_ivmeds\"><img src=\"<?php echo RES_FILE_PATH; ?>/images/action_renew.png\" border=\"0\"></a></td><td height=\"20\" align=\"left\" valign=\"top\" class=\"usrnamern_"+id[1]+"\">"+usr_add+"</td><td height=\"20\" align=\"left\" valign=\"top\">"+usr+"</td><td valign=\"top\" height=\"20\" align=\"left\" class=\"usrid_"+id[1]+"\" style=\"display:none;\">"+usr_id+"</td></tr>";
+			$("#listpatientmedication_contenttabel").append(trnou);
+			removeMedicationKvno(id[1],pid);
+		});
+	});
+	
+//remove shmerzpumpe
+	$(".remove_tr_schmerze").live('click', function(){
+		var trid = $(this).closest('tr').attr('id');
+		var cnt = $("#"+trid).attr('alt');
+		var id = trid.split('medadd_schmerze');
+
+		var pid = "<?php echo $_REQUEST['id']; ?>";
+
+
+		$("#"+trid).each(function() {
+			var date = "<?php echo date('d.m.Y')?>";
+			var meds = $(this).find(".meds_"+trid).val();
+			var dsg = $(this).find(".dsg_"+trid).val();
+
+			var comm = '';
+			var hidd_medis = $(this).find("#hidd_medication"+cnt).val();
+			var drid = $(this).find("#drid"+cnt).val();
+			var usr_add = $(this).find(".usrname_"+trid).text();
+			var usr = $(this).find("#add_schmerze-verordnetvon-"+cnt+" option:selected").text();
+			var usr_id = $(this).find("#add_schmerze-verordnetvon-"+cnt+" option:selected").val();
+
+			var trnou = "<tr class=\"row\" id=\"line_r_"+drid+"\"><td height=\"20\" align=\"left\" class=\"datern_"+drid+"\" valign=\"top\">"+date+"</td><td height=\"20\" align=\"left\" valign=\"top\" class=\"hidd_medicationrn_"+drid+"\" style=\"display: none;\">"+hidd_medis+"</td>\n\
+					<td class=\"drid"+drid+"\" style=\"display: none;\">"+drid+"</td>\n\
+					<td align=\"left\" valign=\"top\" class=\"medsrn_"+drid+"\"><font color=\"#777777\">"+meds+"</font> </td><td align=\"left\" valign=\"top\" class=\"dsgrn_"+drid+"\">"+dsg+"</td><td align=\"left\" valign=\"top\" class=\"commrn_"+drid+"\">"+comm+"</td><td align=\"left\" valign=\"top\"><a href=\"javascript:void(0)\" class=\"renew_ajx_schmerz\"><img src=\"<?php echo RES_FILE_PATH; ?>/images/action_renew.png\" border=\"0\"></a></td><td height=\"20\" align=\"left\" valign=\"top\" class=\"usrnamern_"+drid+"\">"+usr_add+"</td><td height=\"20\" align=\"left\" valign=\"top\">"+usr+"</td><td valign=\"top\" height=\"20\" align=\"left\" class=\"usrid_"+drid+"\" style=\"display:none;\">"+usr_id+"</td></tr>";
+			$("#listpatientmedication_contenttabel").append(trnou);
+			$("#medadd_schmerze"+id[1]).remove();
+		});
+	});
+	
+	
+//renew medications	
+	$(".renew_ajx, .renew_ajx_bedarfs, .renew_ajx_ivmeds, .renew_ajx_schmerz").live('click', function(e){
+		e.preventDefault();
+		medcount++;
+		//get row id
+		var tridrn = $(this).closest('tr').attr('id');
+
+		//get medication edit count rows
+		var cntren = Number(medcount) +1;
+		//split row id and get numeric medis id
+		var id = tridrn.split('_');
+		var that = $(this);
+		$("#"+tridrn).each(function() {
+			var dateren = "<?php echo date('d.m.Y')?>";
+			var medsren = $(this).find(".medsrn_"+id[2]).text();
+			var pid = "<?php echo $_REQUEST['id']; ?>";
+			var dsgren = $(this).find(".dsgrn_"+id[2]).text();
+			var commren = $(this).find(".commrn_"+id[2]).text();
+			var usrnameren = $(this).find(".usrnamern_"+id[2]).text();
+			var usr_addren = $(this).find(".usr_id_add_"+id[2]).text();
+			var hidd_medisren = $(this).find(".hidd_medicationrn_"+id[2]).text();
+			var usrren = $(this).find(".usrid_"+id[2]).text();
+			var users = <?php echo  $this->jsusers; ?>;
+			var options = '';
+			var i = 1;
+
+			$.each(users, function(key, value){
+				if(key == usrren){
+					options += "<option selected=\"selected\" value=\""+key+"\">"+value+"</option>"
+				} else {
+					options += "<option value=\""+key+"\">"+value+"</option>"
+				}
+			});
+
+			/*========= MEDICATION RENEW =============*/
+			if($(that).hasClass('renew_ajx')) {
+				var trrenewNou = "<tr id=\"line_"+id[2]+"\" alt=\""+cntren+"\"><td align=\"left\" class=\"date_line_"+id[2]+"\" valign=\"top\">\n\
+						<input name=\"medication_change["+cntren+"]\" id=\"medication_change_"+id[2]+"\" class=\"med_date date_line_"+id[2]+"\" value=\""+dateren+"\"  rel=\"med_date"+cntren+"\" >\n\
+						<input name=\"replace_with["+cntren+"]\"   value=\"change\" type=\"hidden\"></td><td align=\"left\" valign=\"top\">\n\
+						<input name=\"medication["+cntren+"]\" value=\""+medsren+"\" id=\"medication"+cntren+"\" type=\"text\" class=\"livesearchmedinp med meds_line_"+id[2]+"\">\n\
+						<input name=\"hidd_medication["+cntren+"]\" value=\""+hidd_medisren+"\" id=\"hidd_medication"+cntren+"\" type=\"hidden\">\n\
+						<input type=\"hidden\" id=\"drid\" name=\"drid["+cntren+"]\" value=\""+id[2]+"\">\n\
+						<input type=\"hidden\" id=\"edited"+cntren+"\" name=\"edited["+cntren+"]\" value=\"0\" /></td><td align=\"left\" valign=\"top\">\n\
+						<input name=\"dosage["+cntren+"]\" id=\"dosage"+cntren+"\" class=\"dosage dsg_line_"+id[2]+"\" value=\""+dsgren+"\"></td><td align=\"left\" id=\"line_"+id[2]+"_row\" valign=\"top\">\n\
+						<input name=\"comments["+cntren+"]\" class=\"med comm_line_"+id[2]+"\" value=\""+commren+"\" id=\"comment"+cntren+"\"></td><td width=\"120\" id=\"line_"+id[2]+"_row\" align=\"left\" valign=\"top\" class=\"usrname_line_"+id[2]+"\">"+usrnameren+"</td><td align=\"left\" id=\"line_"+id[2]+"_row\" valign=\"top\">\n\
+						<select name=\"verordnetvon["+cntren+"]\" id=\"verordnetvon-"+cntren+"\" class=\"user_selector\">"+options+"</select>\n\
+						</td><td align=\"left\" valign=\"top\"><div style=\"float:left;\"><a href=\"javascript:void(0)\" class=\"remove_tr\"><img src=\"<?php echo RES_FILE_PATH; ?>/images/action_delete.png\"  border=\"0\"></a></div></td></tr>";
+				var ls_field_id = cntren;
+				$("#listpatientmedicationedit_medicationtable").append(trrenewNou);
+				$('#medication_change_'+id[2]).datepicker({
+					dateFormat: 'dd.mm.yy',
+					buttonImageOnly: true,
+					changeMonth: true,
+					changeYear: true,
+					nextText: '',
+					prevText: '',
+					onSelect: function(){
+						var input_row = parseInt($(this).attr('rel').substr(('med_date').length));
+						$('#edited' + input_row).val('1');
+
+					}
+				});
+
+			/*========= BEDARF MEDICATION RENEW =============*/
+
+			} else if($(that).hasClass('renew_ajx_bedarfs')) {
+				var trrenewNou = "<tr id=\"line_"+id[2]+"\" alt=\""+cntren+"\"><td align=\"left\" class=\"date_line_"+id[2]+"\" valign=\"top\">\n\
+				<input name=\"medication_change["+cntren+"]\" id=\"medication_b_change_"+id[2]+"\" class=\"med_date date_line_"+id[2]+"\" value=\""+dateren+"\" rel=\"med_date"+cntren+"\" >\n\
+				<input name=\"replace_with["+cntren+"]\"   value=\"change\" type=\"hidden\"></td><td align=\"left\" valign=\"top\">\n\
+				<input name=\"medication["+cntren+"]\" value=\""+medsren+"\" id=\"medication"+cntren+"\" type=\"text\" class=\"livesearchmedinp med meds_line_"+id[2]+"\">\n\
+				<input name=\"hidd_medication["+cntren+"]\" value=\""+hidd_medisren+"\" id=\"hidd_medication"+cntren+"\" type=\"hidden\">\n\
+				<input type=\"hidden\" id=\"drid\" name=\"drid["+cntren+"]\" value=\""+id[2]+"\">\n\
+				<input type=\"hidden\" id=\"edited"+cntren+"\" name=\"edited["+cntren+"]\" value=\"0\" /></td><td align=\"left\" valign=\"top\">\n\
+				<input name=\"dosage["+cntren+"]\" id=\"dosage"+cntren+"\" class=\"dosage dsg_line_"+id[2]+"\" value=\""+dsgren+"\"></td><td align=\"left\" id=\"line_"+id[2]+"_row\" valign=\"top\">\n\
+				<input name=\"comments["+cntren+"]\" class=\"med comm_line_"+id[2]+"\" value=\""+commren+"\" id=\"comment"+cntren+"\"></td><td width=\"120\" id=\"line_"+id[2]+"_row\" align=\"left\" valign=\"top\" class=\"usrname_line_"+id[2]+"\">"+usrnameren+"</td><td align=\"left\" id=\"line_"+id[2]+"_row\" valign=\"top\">\n\
+				<select name=\"verordnetvon["+cntren+"]\" id=\"verordnetvon-"+cntren+"\" class=\"user_selector\">"+options+"</select></td><td align=\"left\" valign=\"top\"><div style=\"float:left;\"><a href=\"javascript:void(0)\" class=\"remove_tr_bedarf\"><img src=\"<?php echo RES_FILE_PATH; ?>/images/action_delete.png\"  border=\"0\"></a></div></td></tr>";
+				var ls_field_id = cntren;
+
+				$("#listpatientmedicationedit_bedarfsmedicationtable").append(trrenewNou);
+				$('#medication_b_change_'+id[2]).datepicker({
+					dateFormat: 'dd.mm.yy',
+					buttonImageOnly: true,
+					changeMonth: true,
+					changeYear: true,
+					nextText: '',
+					prevText: '',
+					onSelect: function(){
+						var input_row = parseInt($(this).attr('rel').substr(('med_date').length));
+						$('#edited' + input_row).val('1');
+
+					}
+				});
+
+			/*========= SCHMERZ MEDICATION RENEW =============*/
+			} else if($(that).hasClass('renew_ajx_schmerz')) {
+				var trrenewNou = "<tr id=\"medadd_schmerze"+id[2]+"\" alt=\""+id[2]+"\">\n\
+			<td align=\"left\" class=\"date_medadd_schmerze"+id[2]+"\" valign=\"top\">\n\
+			<input name=\"add_schmerze[medication_change]["+id[2]+"]\" id=\"medication_sc_change_"+id[2]+"\" class=\"med_date date_line_"+id[2]+"\" value=\""+dateren+"\" rel=\"med_date"+cntren+"\" >\n\
+			<input name=\"add_schmerze[replace_with]["+id[2]+"]\" value=\"change\" rel=\"med_date"+cntren+"\" type=\"hidden\"></td>\n\
+			<td align=\"left\" valign=\"top\">\n\
+				<input name=\"add_schmerze[medication]["+id[2]+"]\" value=\""+medsren+"\" id=\"medication"+id[2]+"\" type=\"text\" class=\"livesearchmedinp med meds_medadd_schmerze"+id[2]+"\" rel=\""+cntren+"\">\n\
+				<input name=\"add_schmerze[hidd_medication]["+id[2]+"]\" value=\""+hidd_medisren+"\" id=\"hidd_medication"+id[2]+"\" type=\"hidden\">\n\
+				<input type=\"hidden\" id=\"drid"+id[2]+"\" name=\"add_schmerze[drid]["+id[2]+"]\" value=\""+id[2]+"\">\n\
+				<input type=\"hidden\" id=\"edited"+cntren+"\" name=\"edited["+cntren+"]\" value=\"0\" /></td>\n\
+			<td align=\"left\" valign=\"top\">\n\
+				<input name=\"add_schmerze[dosage]["+id[2]+"]\" id=\"dosage"+cntren+"\" class=\"dosage dsg_medadd_schmerze"+id[2]+"\" value=\""+dsgren+"\">\n\
+			</td>\n\
+			<td width=\"120\" align=\"left\" valign=\"top\" class=\"usrname_medadd_schmerze"+id[2]+"\">"+usrnameren+"</td>\n\
+			<td align=\"left\" valign=\"top\"><select name=\"verordnetvon["+id[2]+"]\" id=\"add_schmerze-verordnetvon-"+id[2]+"\" class=\"user_selector\">"+options+"</select></td>\n\<td><a href=\"javascript:void(0)\" onclick=\"delmedicationRow('"+id[2]+"', '"+idpd+"')\"><img src=\"<?php echo RES_FILE_PATH; ?>/images/action_delete.png\" border=\"0\" class=\"remove_tr_schmerze\" /></a>\n\
+			</td>\n\
+			</tr>";
+				$(trrenewNou).insertBefore('#cDetails');
+
+				var ls_field_id = id[2];
+				$('#medication_sc_change_'+id[2]).datepicker({
+					dateFormat: 'dd.mm.yy',
+					buttonImageOnly: true,
+					changeMonth: true,
+					changeYear: true,
+					nextText: '',
+					prevText: '',
+					onSelect: function(){
+						var input_row = parseInt($(this).attr('rel').substr(('med_date').length));
+						$('#edited' + input_row).val('1');
+
+					}
+				});
+
+			/*========= IV MEDICATION RENEW =============*/
+
+
+			} else if($(that).hasClass('renew_ajx_ivmeds')) {
+				var trrenewNou = "<tr id=\"line_"+id[2]+"\" alt=\""+cntren+"\"><td align=\"left\" class=\"date_line_"+id[2]+"\" valign=\"top\">\n\
+						<input name=\"medication_change["+cntren+"]\" id=\"medication_iv_change_"+id[2]+"\" class=\"med_date date_line_"+id[2]+"\" value=\""+dateren+"\"  rel=\"med_date"+cntren+"\" >\n\
+						<input name=\"replace_with["+cntren+"]\"   value=\"change\" type=\"hidden\"></td><td align=\"left\" valign=\"top\">\n\
+						<input name=\"medication["+cntren+"]\" value=\""+medsren+"\" id=\"medication"+cntren+"\" type=\"text\" class=\"livesearchmedinp med meds_line_"+id[2]+"\">\n\
+						<input name=\"hidd_medication["+cntren+"]\" value=\""+hidd_medisren+"\" id=\"hidd_medication"+cntren+"\" type=\"hidden\">\n\
+						<input type=\"hidden\" id=\"drid\" name=\"drid["+cntren+"]\" value=\""+id[2]+"\">\n\
+						<input type=\"hidden\" id=\"edited"+cntren+"\" name=\"edited["+cntren+"]\" value=\"0\" /></td><td align=\"left\" valign=\"top\">\n\
+						<input name=\"dosage["+cntren+"]\" id=\"dosage"+cntren+"\" class=\"dosage dsg_line_"+id[2]+"\" value=\""+dsgren+"\"></td><td align=\"left\" id=\"line_"+id[2]+"_row\" valign=\"top\">\n\
+						<input name=\"comments["+cntren+"]\" class=\"med comm_line_"+id[2]+"\" value=\""+commren+"\" id=\"comment"+cntren+"\" /></td><td width=\"120\" id=\"line_"+id[2]+"_row\" align=\"left\" valign=\"top\" class=\"usrname_line_"+id[2]+"\">"+usrnameren+"</td><td align=\"left\" id=\"line_"+id[2]+"_row\" valign=\"top\">\n\
+						<select name=\"verordnetvon["+cntren+"]\" id=\"verordnetvon-"+cntren+"\" class=\"user_selector\" >"+options+"</select></td><td align=\"left\" valign=\"top\"><div style=\"float:left;\"><a href=\"javascript:void(0)\" class=\"remove_tr_iv\"><img src=\"<?php echo RES_FILE_PATH; ?>/images/action_delete.png\"  border=\"0\"></a></div></td></tr>";
+				$("#listpatientmedicationedit_ivmedicationtable").append(trrenewNou);
+				var ls_field_id = cntren;
+				$('#medication_iv_change_'+id[2]).datepicker({
+					dateFormat: 'dd.mm.yy',
+					buttonImageOnly: true,
+					changeMonth: true,
+					changeYear: true,
+					nextText: '',
+					prevText: '',
+					onSelect: function(){
+						var input_row = parseInt($(this).attr('rel').substr(('med_date').length));
+						$('#edited' + input_row).val('1');
+
+					}
+				});
+			}
+
+			$('#medication'+ls_field_id).bind('keyup keydown change paste',function(){
+				//livesearch medications ls
+				$(this).live('keydown paste', function() {
+					var input_row = parseInt($(this).attr('id').substr(('medication').length));
+					reset_medications(input_row);
+				}).liveSearch({
+					url: 'ajax/medications?q=',
+					id: 'livesearch_admission_medications',
+					aditionalWidth: '300',
+					noResultsDelay: '900',
+					typeDelay: '900',
+					returnRowId: function (input) {return parseInt($(input).attr('id').substr(('medication').length));}
+				});
+			});
+
+			$('#jsmedadd').val(cntren);
+			renewMedicationKvno(id[2], pid);
+			var medsren = '';
+		});
+	});
+	
+	//TODO-1402 elastics for all textarea
+    $("textarea").elastic();
+    
+
+});
+
+//normal medis
+	function createnewmedic() {
+		var usrstr = "";
+		for(var i in jsusers) {
+			usrstr +='<option value="'+i+'">'+jsusers[i]+'</option>';
+		}
+
+		var userdrop = '<select name="add[verordnetvon]['+medcount+']">'+usrstr+'</select>';
+		var trInnerHtml = $('<tr id="medadd'+medcount+'"><td align="left" valign="top"></td><td align="left" valign="top"><input name="add[medication]['+medcount+']" value="" id="medication'+medcount+'" type="text" class="livesearchmedinp med"><input name="add[hidd_medication]['+medcount+']" value="" id="hidd_medication'+medcount+'" type="hidden"></td><td align="left" valign="top"><input  name="add[dosage]['+medcount+']" id="dosage" class="dosage" value=""  /></td><td align="left" valign="top"><input  name="add[comments]['+medcount+']" value=""  id="comment'+medcount+'"  /></td><td></td><td valign="top">'+userdrop+'</td><td align="left" valign="top"><a href="javascript:void(0)" onclick="removeElem(\'#medadd'+medcount+'\')"><img src="<?php echo RES_FILE_PATH; ?>/images/action_delete.png" border="0" /></a></td></tr>');
+
+		$('#listpatientmedicationedit_medicationtable').append(trInnerHtml);
+
+		$('#medication'+medcount).bind('keyup keydown change paste',function(){
+			//livesearch medications ls
+			$(this).live('change', function() {
+				var input_row = parseInt($(this).attr('id').substr(('medication').length));
+				reset_medications(input_row);
+			}).liveSearch({
+				url: 'ajax/medications?q=',
+				id: 'livesearch_admission_medications',
+				aditionalWidth: '300',
+				noResultsDelay: '900',
+				typeDelay: '900',
+				returnRowId: function (input) {return parseInt($(input).attr('id').substr(('medication').length));}
+			});
+		});
+		medcount++;
+	}
+
+//bedarfs medis 
+	function createnewmedicrowbedarf() {
+		var usrstr = "";
+		for(var i in jsusers) {
+			usrstr +='<option value="'+i+'">'+jsusers[i]+'</option>';
+		}
+
+		var userdrop = '<select name="verordnetvon['+medcount+']">'+usrstr+'</select>';
+		var trInnerHtml = $('<tr id="medadd'+medcount+'"><td></td><td align="left" valign="top"><input name="addbedarf[medication]['+medcount+']" value="" id="medication'+medcount+'" type="text" class="livesearchmedinp med"><input name="addbedarf[hidd_medication]['+medcount+']" value="" id="hidd_medication'+medcount+'" type="hidden"><div id="medidropdown'+medcount+'" style="position:absolute;display:none;" class="listPatMedEd livesearchdropdown"></div></td><td align="left" valign="top"><input  name="addbedarf[dosage]['+medcount+']" id="dosage" class="dosage" value=""  /></td><td align="left" valign="top"><input  name="addbedarf[comments]['+medcount+']" value=""  id="comment'+medcount+'"   /></td><td></td><td align="left" valign="top">'+userdrop+'</td><td align="left" valign="top"><a href="javascript:void(0)" onclick="removeElem(\'#medadd'+medcount+'\')"><img src="<?php echo RES_FILE_PATH; ?>/images/action_delete.png" border="0" /></a></td></tr>');
+		
+		$('#listpatientmedicationedit_bedarfsmedicationtable').append(trInnerHtml);
+
+		$('#medication'+medcount).bind('keyup keydown change paste',function(){
+			//livesearch medications ls
+			$(this).live('keydown paste', function() {
+				var input_row = parseInt($(this).attr('id').substr(('medication').length));
+				reset_medications(input_row);
+			}).liveSearch({
+				url: 'ajax/medications?q=',
+				id: 'livesearch_admission_medications',
+				aditionalWidth: '300',
+				noResultsDelay: '900',
+				typeDelay: '900',
+				returnRowId: function (input) {return parseInt($(input).attr('id').substr(('medication').length));}
+			});
+		});
+		medcount++;
+	}
+	
+//iv medis	
+	function createnewmedicrowiv() {
+		var usrstr = "";
+		for(var i in jsusers) {
+			usrstr +='<option value="'+i+'">'+jsusers[i]+'</option>';
+		}
+
+		var userdrop = '<select name="verordnetvon['+medcount+']">'+usrstr+'</select>';
+		var trInnerHtml = $('<tr id="medaddiv'+medcount+'"><td></td><td align="left" valign="top"><input name="addiv[medication]['+medcount+']" value="" id="medication'+medcount+'" type="text" class="livesearchmedinp med"><input name="addiv[hidd_medication]['+medcount+']" value="" id="hidd_medication'+medcount+'" type="hidden"><div id="medidropdown'+medcount+'" style="position:absolute;display:none;" class="listPatMedEd livesearchdropdown"></div></td><td align="left" valign="top"><input  name="addiv[dosage]['+medcount+']" id="dosage" class="dosage" value=""  /></td><td align="left" valign="top"><input  name="addiv[comments]['+medcount+']" value=""   id="comment'+medcount+'"  /></td><td></td><td align="left" valign="top">'+userdrop+'</td><td align="left" valign="top"><a href="javascript:void(0)" onclick="removeElem(\'#medaddiv'+medcount+'\')"><img src="<?php echo RES_FILE_PATH; ?>/images/action_delete.png" border="0" /></a></td></tr>');
+
+		$('#listpatientmedicationedit_ivmedicationtable').append(trInnerHtml);
+
+		$('#medication'+medcount).bind('keyup keydown change paste',function(){
+			//livesearch medications ls
+			$(this).live('change', function() {
+				var input_row = parseInt($(this).attr('id').substr(('medication').length));
+				reset_medications(input_row);
+			}).liveSearch({
+				url: 'ajax/medications?q=',
+				id: 'livesearch_admission_medications',
+				aditionalWidth: '300',
+				noResultsDelay: '900',
+				typeDelay: '900',
+				returnRowId: function (input) {return parseInt($(input).attr('id').substr(('medication').length));}
+			});
+		});
+		medcount++;
+	}
+	
+//Schmerzpumpe medis
+	function createnewschmerzpumpe()	{
+		var usrstr = "";
+		for(var i in jsusers) {
+			usrstr +='<option value="'+i+'">'+jsusers[i]+'</option>';
+		}
+
+		var userdrop = '<select name="add[verordnetvon]['+medcount+']">'+usrstr+'</select>';
+		var trInnerHtml = $('<tr id="medadd_schmerze'+medcount+'"><td align="left" valign="top"><input name="add_schmerze[medication]['+medcount+']" value="" id="medication'+medcount+'" type="text" class="livesearchmedinp med"><input name="add_schmerze[hidd_medication]['+medcount+']" value="" id="hidd_medication'+medcount+'" type="hidden"><div id="medidropdown'+medcount+'" style="position:absolute;display:none;" class="listPatMedEd livesearchdropdown"></div></td><td align="left" valign="top"><input  name="add_schmerze[dosage]['+medcount+']" id="dosage" class="dosage" value=""  /></td><td align="left" valign="top">'+userdrop+'</td><td align="left" valign="top"><a href="javascript:void(0)" onclick="removeElem(\'#medadd_schmerze'+medcount+'\')"><img src="<?php echo RES_FILE_PATH; ?>/images/action_delete.png" border="0" /></a></td></tr>');
+
+		$('#medaddtable_schmerze').append(trInnerHtml);
+
+		$('#medication'+medcount).bind('keyup keydown change paste',function(){
+			//livesearch medications ls
+			$(this).live('change', function() {
+				var input_row = parseInt($(this).attr('id').substr(('medication').length));
+				reset_medications(input_row);
+			}).liveSearch({
+				url: 'ajax/medications?q=',
+				id: 'livesearch_admission_medications',
+				aditionalWidth: '300',
+				noResultsDelay: '900',
+				typeDelay: '900',
+				returnRowId: function (input) {return parseInt($(input).attr('id').substr(('medication').length));}
+			});
+		});
+
+		medcount++;
+	}
+	
+	function createnewschmerzpumpeedit()	{
+		var usrstr = "";
+		for(var i in jsusers) {
+			usrstr +='<option value="'+i+'">'+jsusers[i]+'</option>';
+		}
+
+		var userdrop = '<select name="add_schmerze[verordnetvon]['+medcount_s+']">'+usrstr+'</select>';
+		var trInnerHtml = $('<tr id="medadd_schmerze'+medcount_s+'"><td></td><td align="left" valign="top"><input name="add_schmerze[medication]['+medcount_s+']" value="" id="medication'+medcount_s+'" type="text" class="livesearchmedinp med"><input name="add_schmerze[hidd_medication]['+medcount_s+']" value="" id="hidd_medication'+medcount_s+'" type="hidden"><div id="medidropdown'+medcount_s+'" style="position:absolute;display:none;" class="listPatMedEd livesearchdropdown"></div></td><td align="left" valign="top"><input  name="add_schmerze[dosage]['+medcount_s+']" id="dosage" class="dosage" value=""  /></td><td></td><td align="left" valign="top">'+userdrop+'</td><td align="left" valign="top"><a href="javascript:void(0)" onclick="removeElem(\'#medadd_schmerze'+medcount_s+'\')"><img src="<?php echo RES_FILE_PATH; ?>/images/action_delete.png" border="0" /></a></td></tr>');
+
+		$(trInnerHtml).insertBefore('#cDetails');
+		$('#medication'+medcount_s).bind('keyup keydown change paste',function(){
+			//livesearch medications ls
+			$(this).live('change', function() {
+				var input_row = parseInt($(this).attr('id').substr(('medication').length));
+				reset_medications(input_row);
+			}).liveSearch({
+				url: 'ajax/medications?q=',
+				id: 'livesearch_admission_medications',
+				aditionalWidth: '300',
+				noResultsDelay: '900',
+				typeDelay: '900',
+				returnRowId: function (input) {return parseInt($(input).attr('id').substr(('medication').length));}
+			});
+		});
+		medcount_s++;
+	}
+	
+	
+//all medis
+	function removeElem(ids) {
+		$(ids).remove();
+	}
+	
+	function selectMedications(mid, row)	{
+		$('#medication'+row).val($('#medi_me_'+mid).val());
+		$('#comment'+row).val($('#medi_comment_'+mid).val());
+		$('#hidd_medication'+row).val($('#medi_id_'+mid).val());
+	}
+	
+	function reset_medications(input_row) {
+		if($('#hidd_medication'+input_row).val()) {
+			$('#hidd_medication'+input_row).val('');
+			$('#drid'+input_row).val('');
+		}
+	}
+	
+	//remove medi by ajax
+	function removeMedicationKvno(mid,pid) {
+		if(mid>0)
+		{
+			ajaxCallserver({
+				url:'patient/patientmedication?mid='+mid+'&id='+pid+'&act=del&noredir=1'
+			});
+		}
+		$("#line_"+mid).remove();
+	}
+	
+	function delmedicationRow(did,patidencrypted) {
+		if(did) {
+			ajaxCallserver({
+				url:'patient/patientmedication?id='+patidencrypted+'&delid='+did+'&mid='+did+'&act=del&noredir=1' //mid for trigger when deleteing the row
+			});
+		}
+	}
+	
+	//renew medi by ajax
+	function renewMedicationKvno(mid,pid) {
+		if(mid>0) {
+			ajaxCallserver({
+				url:'patient/patientmedication?mid='+mid+'&id='+pid+'&act=rnw&noredir=1'
+			});
+		}
+		$("#line_r_"+mid).remove();
+	}
+</script>
+<style>
+table, td, th {
+    vertical-align: middle;
+}
+</style>
+<div></div>
+
+<form action="" name="rpassessment" id="rpassessment" method="post">
+	<div style="display: none;">
+		<img id="calImg" src="<?php echo RES_FILE_PATH;  ?>/images/calendar.png"
+			alt="Popup" class="trigger">
+	</div>
+
+	<?php echo $this->patientinfo; ?>
+	<?php echo $this->tabmenus; ?>
+	<br class="clearer"/>&nbsp;
+	<br class="clearer"/>&nbsp;
+	
+	
+		<!-- ISPC-2406 -->
+	<div id="selector_manual_forms_editmode"></div>
+		
+	<div id="rpassessment_container">
+		<div class="doctor_list">
+			<table class="kvnofull">
+				<tr>
+					<td class="grid_10" id="label_doctor_list"><p class="label">Arzt:</p></td>
+					<td class="left_align grid_45" ><?php echo $this->formSelect('rp_doc_id', $this->rp_doc_id, null, $this->doctors); ?></td>
+					<td class="right_align grid_45" >
+						<!-- ISPC-2690 pct.3 Lore 16.10.2020  -->		
+						<?php if($this->iscompleted == '1' && empty($_REQUEST['new'])): //var_dump($this->iscompleted); //exit;?>
+							<input type="submit" name="new" id="new" value="<?php echo $this->translate('new_assessment'); ?>"  class="btnsubmit_usersessions"/>
+						<?php endif; ?>
+					
+						<?php if($_REQUEST['new']): ?>
+							<input type="button" id="load_last_assessment" / value="<?php echo $this->translate('load_last_assessment'); ?>" />
+						<?php endif; ?>
+					</td>
+				</tr>
+			</table>
+		</div>
+			
+		<div class="header_title_rpassessment grid_100">
+			Vertrag gem. § 132d SGB V über die spezialisierte ambulante<br />
+			Palliativversorgung von unheilbar erkrankten Patienten im häuslichen Umfeld
+		</div>
+
+		<br />&nbsp;
+		<div class="grid_100">
+			<div class="grid_25 left">Ergebnis Assessment</div>
+			<div class="grid_75 left">
+				<input type="text" name="rp_health_insurance" id="rp_health_insurance" class="grid_100" value="<?php echo $this->rp_health_insurance; ?>" />
+			</div>
+		</div>
+
+		<br />&nbsp;
+		<div class="grid_100">
+			<table class="grid_100 header_table_rpassessment" id="rp_assessment_header">
+				<!-- last name and insurance number -->
+				<tr>
+					<td class="grid_20 bold"><?php echo $this->translate('name'); ?>:</td>
+					<td class="border_right grid_25">
+						<input type="text" name="rp_pat_last_name" id="rp_pat_last_name" value="<?php echo $this->rp_pat_last_name; ?>" />
+					</td>
+					<td class="grid_20 bold second_header"><?php echo $this->translate('rp_insurance_number'); ?></td>
+					<td class="grid_25">
+						<input type="text" name="rp_insurance_number" id="rp_insurance_number" value="<?php echo $this->rp_insurance_number; ?>" />
+					</td>
+				</tr>
+
+				<!-- first name and date of birth-->
+				<tr>
+					<td class="grid_20 bold"><?php echo $this->translate('firstname'); ?>:</td>
+					<td class="border_right ">
+						<input type="text" name="rp_pat_first_name" id="rp_pat_first_name" value="<?php echo $this->rp_pat_first_name; ?>" />
+					</td>
+					<td class="grid_20 bold second_header"><?php echo $this->translate('rp_dob'); ?></td>
+					<td class="">
+						<input type="text" name="rp_pat_birthd" id="rp_pat_birthd" value="<?php echo $this->rp_pat_birthd; ?>" />
+					</td>
+				</tr>
+
+				<!-- street and sex-->
+				<tr>
+					<td class="grid_20 bold"><?php echo $this->translate('street'); ?>:</td>
+					<td class="border_right ">
+						<input type="text" name="rp_pat_address" id="rp_pat_address" value="<?php echo $this->rp_pat_address; ?>" />
+					</td>
+					<td class="grid_20 bold second_header"><?php echo $this->translate('rp_sex'); ?></td>
+					<td class="border_bottom">
+						<input type="radio" name="rp_sex" id="rp_sex_m" value="1" <?php if($patient_details['sex'] == '1'): ?> checked="checked"<?php endif; ?>/>
+						<label for="rp_sex_m"><?php echo $this->translate('male'); ?></label>
+
+						<input type="radio" name="rp_sex" id="rp_sex_f" value="2" <?php if($patient_details['sex'] == '2'): ?> checked="checked"<?php endif; ?>/>
+						<label for="rp_sex_f"><?php echo $this->translate('female'); ?></label>
+					</td>
+				</tr>
+
+				<!-- zip/city and date erstverordnung-->
+				<tr>
+					<td class="grid_20 bold">
+						<?php echo $this->translate('zip'); ?>/<?php echo $this->translate('city'); ?>:
+					</td>
+					<td class="border_right">
+						<input type="text" name="rp_pat_zip_city" id="rp_pat_zip_city" value="<?php echo $this->rp_pat_zip_city; ?>" />
+					</td>
+					<td class="grid_20 bold second_header"><?php echo $this->translate('rp_date_erst'); ?></td>
+					<td class="">
+						<table>
+							<tr>
+								<td>
+									<?php echo $this->translate('sapv_from'); ?>									
+								</td>
+								<td>
+									<input type="text" name="rp_start_date_erst" id="rp_start_date_erst" value="<?php echo $this->rp_start_date_erst; ?>" />
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<?php echo $this->translate('sapv_till'); ?>
+								</td>
+								<td>
+									<input type="text" name="rp_date_erst" id="rp_date_erst" value="<?php echo $this->rp_date_erst; ?>" />
+								</td>
+							</tr>
+						</table>
+					</td>
+
+				</tr>
+
+				<!-- telephone and sapv scope erstverordnung -->
+				<tr>
+					<td class="grid_20 bold"><?php echo $this->translate('telephone_short'); ?>:</td>
+					<td class="border_right">
+						<input type="text" name="rp_pat_phone" id="rp_pat_phone" value="<?php echo $this->rp_pat_phone; ?>" />
+					</td>
+					<td class="grid_20 bold second_header"><?php echo $this->translate('rp_erst'); ?></td>
+					<td class="border_bottom">
+						<table class="grid_100">
+							<tr>
+								<td class="grid_75"><?php echo $this->translate('sapv_scope'); ?></td>
+							</tr>
+
+							<tr>
+								<td>
+									<input type="checkbox" id="rp_erst_sapv_be" name="rp_sapv_erst[]" value="1" <?php if(in_array("1",$this->rp_sapv_erst)): ?>checked="checked"<?php endif; ?> />
+									<label for="rp_erst_sapv_be"> <?php echo $this->translate('sapv_be_short'); ?></label>
+
+									<input type="checkbox" id="rp_erst_sapv_ko" name="rp_sapv_erst[]" value="2" <?php if(in_array("2",$this->rp_sapv_erst)): ?>checked="checked"<?php endif; ?> />
+									<label for="rp_erst_sapv_ko"> <?php echo $this->translate('sapv_ko_short'); ?></label>
+
+									<input type="checkbox" id="rp_erst_sapv_tv" name="rp_sapv_erst[]" value="3" <?php if(in_array("3",$this->rp_sapv_erst)): ?>checked="checked"<?php endif; ?> />
+									<label for="rp_erst_sapv_tv"> <?php echo $this->translate('sapv_tv_short'); ?></label>
+
+									<input type="checkbox" id="rp_erst_sapv_vv" name="rp_sapv_erst[]" value="4" <?php if(in_array("4",$this->rp_sapv_erst)): ?>checked="checked"<?php endif; ?> />
+									<label for="rp_erst_sapv_vv"> <?php echo $this->translate('sapv_vv_short'); ?></label>
+								</td>
+							</tr>
+						</table>
+					</td>
+
+				</tr>
+
+				<!-- patient number and  date folgeverordnung-->
+				<tr>
+					<td class="grid_20 bold"><?php echo $this->translate('patientnumber'); ?>:</td>
+					<td class="border_right">
+						<input type="text" name="rp_pat_epid" id="rp_pat_epid" value="<?php echo $this->rp_pat_epid; ?>" />
+					</td>
+					<td class="grid_20 bold second_header"><?php echo $this->translate('rp_date_folge'); ?></td>
+					<td class="">
+						<table>
+							<tr>
+								<td>
+									<?php echo $this->translate('sapv_from'); ?>									
+								</td>
+								<td>
+									<input type="text" name="rp_start_date_folge" id="rp_start_date_folge" value="<?php echo $this->rp_start_date_folge; ?>" />
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<?php echo $this->translate('sapv_till'); ?>
+								</td>
+								<td>
+									<input type="text" name="rp_date_folge" id="rp_date_folge" value="<?php echo $this->rp_date_folge; ?>" />
+								</td>
+							</tr>
+						</table>
+					</td>
+				</tr>
+
+				<!-- vat representative and -->
+				<tr>
+					<td class="grid_50 bold border_right" colspan="2">
+						<?php echo $this->translate('vat_representative'); ?>:
+						<br />
+						<input type="text" name="rp_vat_representative" id="vat_representative" value="<?php echo $this->rp_vat_representative; ?>" style="width: 97%">
+						<br />
+					</td>
+					<td class="bold second_header"><?php echo $this->translate('rp_folge'); ?></td>
+					<td class="border_bottom">
+						<table class="grid_100">
+							<tr>
+								<td class="grid_75"><?php echo $this->translate('sapv_scope'); ?></td>
+							</tr>
+
+							<tr>
+								<td>
+									<input type="checkbox" id="rp_folge_sapv_be" name="rp_sapv_folge[]" value="1" <?php if(in_array("1",$this->rp_sapv_folge)): ?>checked="checked"<?php endif; ?> />
+									<label for="rp_folge_sapv_be"> <?php echo $this->translate('sapv_be_short'); ?></label>
+
+									<input type="checkbox" id="rp_folge_sapv_ko" name="rp_sapv_folge[]" value="2"  <?php if(in_array("2",$this->rp_sapv_folge)): ?>checked="checked"<?php endif; ?> />
+									<label for="rp_folge_sapv_ko"> <?php echo $this->translate('sapv_ko_short'); ?></label>
+
+									<input type="checkbox" id="rp_folge_sapv_tv" name="rp_sapv_folge[]" value="3"  <?php if(in_array("3",$this->rp_sapv_folge)): ?>checked="checked"<?php endif; ?>  />
+									<label for="rp_folge_sapv_tv"> <?php echo $this->translate('sapv_tv_short'); ?></label>
+
+									<input type="checkbox" id="rp_folge_sapv_vv" name="rp_sapv_folge[]" value="4"  <?php if(in_array("4",$this->rp_sapv_folge)): ?>checked="checked"<?php endif; ?>  />
+									<label for="rp_folge_sapv_vv"> <?php echo $this->translate('sapv_vv_short'); ?></label>
+								</td>
+							</tr>
+						</table>
+					</td>
+
+				</tr>
+
+				<!-- info dependant and scope folgeverodnung -->
+				<tr>
+					<td class="grid_20 bold border_right" colspan="2">
+						
+					</td>
+					<td class="grid_20 bold second_header"><?php echo $this->translate('rp_date_sapv'); ?></td>
+					<td class=""><?php echo $this->translate('last_day_sapv'); ?></td>
+				</tr>
+
+				<!-- telephone and date erstverordnung -->
+				<tr>
+					<td class="grid_20 bold border_right" colspan="2"></td>
+					<td class="grid_20 bold second_header border_bottom"><?php echo $this->translate('rp_sapv'); ?></td>
+					<td class="border_bottom">
+						<input type="text" name="rp_last_day_sapv" id="rp_last_day_sapv" value="<?php echo $this->rp_last_day_sapv; ?>"/>
+					</td>
+				</tr>
+				<tr>
+					<td class="grid_20 bold border_right" colspan="2"></td>
+					<td class="grid_20 bold" colspan="2"></td>
+				</tr>
+				<tr>
+					<td class="grid_20 bold border_right" colspan="2"></td>
+					<td class="grid_20 bold" colspan="2"><?php echo $this->translate("SAPV-Team"); ?>:</td>
+				</tr>
+				<tr>
+					<td class="grid_20 bold border_right" colspan="2"></td>
+					<td class="grid_20" colspan="2">
+						<input type="text" name="rp_sapv_team" id="rp_sapv_team" value="<?php echo $this->rp_sapv_team; ?>"  style="width: 97%" />
+						<br />
+					</td>
+				</tr>
+
+				<tr>
+					<td class="grid_50 bold border_right" colspan="2">
+						<?php echo $this->translate('info_dependant'); ?>:
+						<br />
+						<input type="text" name="rp_info_dependant" id="info_dependant" value="<?php echo $this->rp_info_dependant; ?>"  style="width: 97%" />
+					</td>
+					<td class="grid_50" colspan="2">
+						<b><?php echo $this->translate("Hausarzt"); ?>:</b>
+						<input type="text" name="rp_hausarzt_details" id="rp_hausarzt_details" value="<?php echo $this->rp_hausarzt_details; ?>"   style="width: 97%"/>
+						<br /> 
+					</td>
+				</tr>
+				<tr>
+					<td class="grid_50 bold border_right" colspan="2">
+					
+					</td>
+					<td class="grid_50" colspan="2">
+					<b>Arzt:</b>
+					<input type="text" name="rp_doctor_user" id="rp_doctor_details" value="<?php echo $this->rp_doctor_user; ?>"   style="width: 97%"/>	
+						<br />
+					</td>
+				</tr>
+
+
+				<tr>
+					<td class="grid_50 bold border_right" colspan="2"></td>
+					<td class="grid_50 bold" colspan="2"><?php echo $this->translate("Häusliche Krankenpflege"); ?>:</td>
+				</tr>
+				<tr>
+					<td class="grid_50 bold border_right" colspan="2"></td>
+					<td class="grid_50" colspan="2">
+						<input type="text" name="rp_home_care" id="rp_home_care" value="<?php echo $this->rp_home_care; ?>"  style="width: 97%"/>
+						<br />
+					</td>
+				</tr>
+			</table>
+		</div>
+
+		<br />
+		<div class="grid_100">
+			<div class="grid_10 left bold">
+				<?php echo $this->translate('icd_10_field'); ?>
+			</div>
+			<div class="grid_90 left">
+				<input type="text" name="rp_icd_values" id="rp_icd_values" value="<?php echo $this->rp_icd_values; ?>" class="grid_100" />
+			</div>
+		</div>
+		
+		<br />
+		<br />
+		
+		<div class="grid_100">
+			<table class="grid_100">
+				<tr>
+					<td class="bold grid_32">
+						<?php echo $this->translate('patient_is'); ?>
+					</td>
+					<td class="grid_35">
+						<input type="checkbox" name="rp_patient_located[]" id="patient_is_own_home" value="1" <?php if(in_array('1', $this->rp_patient_located)): ?>checked="checked"<?php endif; ?> />
+						<label for="patient_is_own_home"><?php echo $this->translate('patient_own_home'); ?></label>
+					</td>
+					<td>
+						<input type="checkbox" name="rp_patient_located[]" id="patient_is_household_home" value="2"  <?php if(in_array('2', $this->rp_patient_located)): ?>checked="checked"<?php endif; ?> />
+						<label for="patient_is_household_home"><?php echo $this->translate('patient_household_home'); ?></label>
+					</td>
+				</tr>
+				<tr>
+					<td></td>
+					<td>
+						<input type="checkbox" name="rp_patient_located[]" id="patient_is_nursing_home" value="3"  <?php if(in_array('3', $this->rp_patient_located)): ?>checked="checked"<?php endif; ?>  />
+						<label for="patient_is_nursing_home"><?php echo $this->translate('patient_nursing_home'); ?></label>
+					</td>
+					<td>
+						<input type="checkbox" name="rp_patient_located[]" id="patient_is_hospiz" value="4" <?php if(in_array('4', $this->rp_patient_located)): ?>checked="checked"<?php endif; ?>  />
+						<label for="patient_is_hospiz"><?php echo $this->translate('patient_hospiz'); ?></label>
+					</td>
+				</tr>
+				<tr>
+					<td></td>
+					<td colspan="2">
+						<input type="checkbox" name="rp_patient_located[]" id="patient_is_institution" value="5" <?php if(in_array('5', $this->rp_patient_located)): ?>checked="checked"<?php endif; ?>  />
+						<label for="patient_is_institution"><?php echo $this->translate('patient_institution'); ?></label>
+					</td>
+				</tr>
+			</table>
+		</div>
+
+
+		<div class="grid_100">
+			<table class="grid_100">
+				<tr>
+					<td colspan="3" class="bold">
+						<?php echo $this->translate('patient_co_supervised'); ?>
+					</td>
+				</tr>
+				<tr>
+					<td class="grid_32">
+						<input type="checkbox" name="rp_patient_supervised[]" id="family_doctor_supervisor" value="1" <?php if(in_array('1', $this->rp_patient_supervised)): ?>checked="checked"<?php endif; ?> />
+						<label for="family_doctor_supervisor"><?php echo $this->translate('family_doctor_supervisor'); ?></label>
+					</td>
+					<td class="grid_35">
+						<input type="checkbox" name="rp_patient_supervised[]" id="patient_care_supervisor" value="2" <?php if(in_array('2', $this->rp_patient_supervised)): ?>checked="checked"<?php endif; ?>/>
+						<label for="patient_care_supervisor"><?php echo $this->translate('patient_care_supervisor'); ?></label>
+					</td>
+					<td>
+						<input type="checkbox" name="rp_patient_supervised[]" id="physiotherapist_supervisor" value="3" <?php if(in_array('3', $this->rp_patient_supervised)): ?>checked="checked"<?php endif; ?> />
+						<label for="physiotherapist_supervisor"><?php echo $this->translate('physiotherapist_supervisor'); ?></label>
+					</td>
+				</tr>
+				<tr>
+					<td>
+						<input type="checkbox" name="rp_patient_supervised[]" id="consultant_supervisor" value="4" <?php if(in_array('4', $this->rp_patient_supervised)): ?>checked="checked"<?php endif; ?> />
+						<label for="consultant_supervisor"><?php echo $this->translate('consultant_supervisor'); ?></label>
+					</td>
+					<td>
+						<input type="checkbox" name="rp_patient_supervised[]" id="house_hold_supervisor" value="5"  <?php if(in_array('5', $this->rp_patient_supervised)): ?>checked="checked"<?php endif; ?> />
+						<label for="house_hold_supervisor"><?php echo $this->translate('house_hold_supervisor'); ?></label>
+					</td>
+					<td>
+						<input type="checkbox" name="rp_patient_supervised[]" id="speech_therapy_supervisor" value="6"  <?php if(in_array('6', $this->rp_patient_supervised)): ?>checked="checked"<?php endif; ?> />
+						<label for="speech_therapy_supervisor"><?php echo $this->translate('speech_therapy_supervisor'); ?></label>
+					</td>
+				</tr>
+				<tr>
+					<td>
+						<input type="checkbox" name="rp_patient_supervised[]" id="pediatrician_supervisor" value="7"  <?php if(in_array('7', $this->rp_patient_supervised)): ?>checked="checked"<?php endif; ?> />
+						<label for="pediatrician_supervisor"><?php echo $this->translate('pediatrician_supervisor'); ?></label>
+					</td>
+					<td>
+						<input type="checkbox" name="rp_patient_supervised[]" id="ambulant_hospice_supervisor" value="8"  <?php if(in_array('8', $this->rp_patient_supervised)): ?>checked="checked"<?php endif; ?> />
+						<label for="ambulant_hospice_supervisor"><?php echo $this->translate('ambulant_hospice_supervisor'); ?></label>
+					</td>
+					<td>
+						<input type="checkbox" name="rp_patient_supervised[]" id="other_supervisor" value="9"  <?php if(in_array('9', $this->rp_patient_supervised)): ?>checked="checked"<?php endif; ?> class="has_child_hidden" />
+						<label for="other_supervisor"><?php echo $this->translate('other_supervisor'); ?></label>
+						<input type="text" name="rp_other_supervisor_more" id="other_supervisor_more" value="<?php echo $this->rp_other_supervisor_more; ?>" class="autohide" />
+					</td>
+				</tr>
+
+				<tr>
+					<td colspan="3"> &nbsp;<br /></td>
+				</tr>
+
+				<tr>
+					<td class="bold">
+						<?php echo $this->translate('last_hosp_treatment'); ?>
+					</td>
+					<td>
+						<?php echo $this->translate('when_treated'); ?>
+						<input type="text" name="rp_last_hosp_date" id="rp_last_hosp_date" value="<?php echo $this->rp_last_hosp_date; ?>" />
+					</td>
+					<td>
+						<?php echo $this->translate('where_treated'); ?>
+						<input type="text" name="rp_last_hosp_name" id="rp_last_hosp_name" value="<?php echo $this->rp_last_hosp_name; ?>" />
+					</td>
+				</tr>
+
+				<tr>
+					<td>
+						<?php echo $this->translate('hospital_discharge_report'); ?>
+					</td>
+					<td>
+						<input type="radio" id="yes_hosp_dis_report" name="rp_hosp_dis_report" value="1"  <?php if($this->rp_hosp_dis_report == '1'): ?>checked="checked"<?php endif; ?>  />
+						<label for="yes_hosp_dis_report"><?php echo $this->translate('yes_hosp_dis_report'); ?></label>
+					</td>
+					<td>
+						<input type="radio" id="no_hosp_dis_report" name="rp_hosp_dis_report" value="2"<?php if($this->rp_hosp_dis_report == '2'): ?>checked="checked"<?php endif; ?>  />
+						<label for="no_hosp_dis_report"><?php echo $this->translate('no_hosp_dis_report'); ?></label>
+					</td>
+				</tr>
+
+
+				<tr>
+					<td colspan="3"> &nbsp;<br /></td>
+				</tr>
+
+				<tr>
+					<td colspan="3" class="bold"><?php echo $this->translate('palliativ_case_diagno'); ?></td>
+				</tr>
+				<tr>
+					<td colspan="3">
+						<textarea id="rp_main_diagnosis" name="rp_main_diagnosis" class="grid_100"><?php echo $this->rp_main_diagnosis; ?></textarea>
+					</td>
+				</tr>
+				<tr>
+					<td colspan="3"> &nbsp;<br /></td>
+				</tr>
+				<tr>
+					<td colspan="3" class="bold"><?php echo $this->translate('palliativ_care_comorbidities'); ?></td>
+				</tr>
+				<tr>
+					<td colspan="3">
+						<textarea id="rp_side_diagnosis" name="rp_side_diagnosis" class="grid_100"><?php echo $this->rp_side_diagnosis; ?></textarea>
+					</td>
+				</tr>
+				<tr>
+					<td colspan="3"> &nbsp;<br /></td>
+				</tr>
+				<tr>
+					<td colspan="3" class=""><?php echo $this->translate('rp_assessment_current_medi'); ?></td>
+				</tr>
+				<tr>
+					<td colspan="3">
+						<!-- Normal Medications START -->
+						<div class="medication_type_block">
+							<div class="medication_container" >
+								<?php echo $this->medications; ?>
+								<div class="add_new_medi">
+									<a href="javascript:createnewmedic()">
+										<img src="<?php echo RES_FILE_PATH; ?>/images/edit_add.png" width="20" height="20" />
+										<div class="add_new_medi_link"><?php echo $this->translate('addnewmedication'); ?></div>
+									</a>
+								</div>
+							</div>
+							<div></div>
+						</div>
+						<!-- Normal Medications END -->
+						<br style="clear:both;"/>
+						<br />
+						<!-- Bedarfs Medications START -->
+						<div class="medication_type_block">
+							<div class="medication_container" >
+								<?php echo $this->bedarfsmedications; ?>
+								<div class="add_new_medi">
+									<a href="javascript:createnewmedicrowbedarf();">
+										<img src="<?php echo RES_FILE_PATH; ?>/images/edit_add.png" width="20" height="20" />
+										<div class="add_new_medi_link"><?php echo $this->translate('addnewmedication'); ?></div>
+									</a>
+								</div>
+							</div>
+							<div></div>
+						</div>
+						<!-- Bedarfs Medications END -->
+						
+						<br style="clear:both;"/>
+						<br />
+						
+						<!-- IV Medications START -->
+						<div class="medication_type_block">
+							<div class="medication_container" >
+								<?php echo $this->ivmedications; ?>
+								<div class="add_new_medi">
+									<a href="javascript:createnewmedicrowiv();">
+										<img src="<?php echo RES_FILE_PATH; ?>/images/edit_add.png" width="20" height="20" />
+										<div class="add_new_medi_link"><?php echo $this->translate('addnewmedication'); ?></div>
+									</a>
+								</div>
+							</div>
+							<div></div>
+						</div>
+						<!-- IV Medications END -->
+						
+						<br style="clear:both;"/>
+						<br />
+						
+						<!-- Schmerzpumpe Medications START -->
+						<div class="medication_type_block">
+							<div class="medication_container" >
+								<p><b>Schmerzpumpe Medikation:</b></p>
+								<?php echo $this->schmerze_medicgrid; ?>
+							</div>
+							<div></div>
+						</div>
+						<!-- Schmerzpumpe Medications END -->
+						
+						<br style="clear:both;"/>
+						<br />
+						
+						<!-- Discontinued Medications START -->
+						<div class="medication_type_block">
+							<div class="medication_container">
+								<p><b><?php echo $this->translate('discontinuedmedlist'); ?></b></p>
+								<input type="hidden" value="<?php echo $this->jsmedadd; ?>" id="jsmedadd" />
+								<?php echo $this->delmedications ?>
+							</div>
+							<div></div>
+						</div>
+						<!-- Discontinued Medications END -->
+						<br />
+					</td>
+				</tr>
+			</table>
+		</div>
+
+		<br/>
+		<div class="grid_100">
+			<table  class="grid_100" cellpadding="2" colpadding="2">
+				<tr>
+					<td style="padding:2px;">
+						<input type="checkbox" name="rp_death_image[]" id="death_image_1" value="1"  <?php if(in_array('1', $this->rp_death_image)): ?>checked="checked"<?php endif; ?>  />
+						<label for="death_image_1">
+							<img src="<?php echo RES_FILE_PATH . "/images/rpassessment_assets/organ_failure.png"; ?>" width="260" />
+						</label>
+					</td>
+					<td>&nbsp;</td>
+					<td style="padding:2px;">
+						<input type="checkbox" name="rp_death_image[]" id="death_image_2" value="2" <?php if(in_array('2', $this->rp_death_image)): ?>checked="checked"<?php endif; ?>  />
+						<label for="death_image_2">
+							<img src="<?php echo RES_FILE_PATH . "/images/rpassessment_assets/terminal_illness.png"; ?>" width="260" />
+						</label>
+					</td>
+					<td>&nbsp;</td>
+					<td style="padding:2px;">
+						<input type="checkbox" name="rp_death_image[]" id="death_image_3" value="3" <?php if(in_array('3', $this->rp_death_image)): ?>checked="checked"<?php endif; ?>  />
+						<label for="death_image_3">
+							<img src="<?php echo RES_FILE_PATH . "/images/rpassessment_assets/frailty.png"; ?>" width="260" />
+						</label>
+					</td>
+				</tr>
+				<tr>
+					<td class="align_center" style="border:1px solid #000;">
+						<?php echo $this->translate('organ_failure_desc'); ?>
+					</td>
+					<td>&nbsp;</td>
+					<td class="align_center" style="border:1px solid #000;">
+						<?php echo $this->translate('terminal_illness_desc'); ?>
+					</td>
+					<td>&nbsp;</td>
+					<td class="align_center" style="border:1px solid #000;">
+						<?php echo $this->translate('frailty_desc'); ?>
+					</td>
+				</tr>
+				<tr>
+					<td colspan="5">
+						<?php echo $this->translate('footnote_images'); ?>
+					</td>
+				</tr>
+			</table>
+		</div>
+
+		<br />
+		<div class="grid_100">
+			<table class="grid_100">
+				<tr>
+					<td colspan="3">
+						<input type="checkbox" name="rp_disease_phase[]" id="misty_crisis_advanced_disease" value="1"  <?php if(in_array('1', $this->rp_disease_phase)): ?>checked="checked"<?php endif; ?>  />
+						<label for="misty_crisis_advanced_disease"><?php echo $this->translate('misty_crisis_advanced_disease'); ?></label>
+					</td>
+				</tr>
+
+				<tr>
+					<td colspan="3">
+						<input type="checkbox" name="rp_disease_phase[]" id="pre_terminal_phase" value="2" <?php if(in_array('2', $this->rp_disease_phase)): ?>checked="checked"<?php endif; ?> />
+						<label for="pre_terminal_phase"><?php echo $this->translate('pre_terminal_phase'); ?></label>
+					</td>
+				</tr>
+
+				<tr>
+					<td colspan="3">
+						<input type="checkbox" name="rp_disease_phase[]" id="terminal_phase" value="3" <?php if(in_array('3', $this->rp_disease_phase)): ?>checked="checked"<?php endif; ?> />
+						<label for="terminal_phase"><?php echo $this->translate('terminal_phase'); ?></label>
+					</td>
+				</tr>
+
+				<tr>
+					<td colspan="3">
+						<input type="checkbox" name="rp_disease_phase[]" id="final_phase" value="4" <?php if(in_array('4', $this->rp_disease_phase)): ?>checked="checked"<?php endif; ?> />
+						<label for="final_phase"><?php echo $this->translate('final_phase'); ?></label>
+					</td>
+				</tr>
+
+				<tr>
+					<td colspan="3">
+						<input type="checkbox" name="rp_disease_phase[]" id="other_phase" value="5" <?php if(in_array('5', $this->rp_disease_phase)): ?>checked="checked"<?php endif; ?> class="has_child_hidden" />
+						<label for="other_phase"><?php echo $this->translate('other_phase'); ?></label>
+					
+						<input type="text" name="rp_other_phase_more" id="other_phase_more" value="<?php echo $this->rp_other_phase_more; ?>" class="autohide grid_50"/>
+					</td>
+				</tr>
+			</table>
+		</div>
+
+
+		<br />
+		<div class="grid_100">
+			<table class="grid_100">
+				<tr>
+					<td class="grid_40 bold"><?php echo $this->translate('curative_treatments_completed'); ?></td>
+					<td colspan="2">
+						<input type="radio" id="curative_tr_yes" name="rp_curative_treatment" value="1" <?php if($this->rp_curative_treatment == '1'): ?>checked="checked"<?php endif; ?>  />
+						<label for="curative_tr_yes"><?php echo $this->translate('yesconfirm') ?></label>
+						<input type="radio" id="curative_tr_no" name="rp_curative_treatment" value="2" <?php if($this->rp_curative_treatment == '2'): ?>checked="checked"<?php endif; ?> />
+						<label for="curative_tr_no"><?php echo $this->translate('noconfirm') ?></label>
+					</td>
+				</tr>
+			</table>
+
+			<br />
+			<table class="grid_100">
+				<tr>
+					<td colspan="3"><?php echo $this->translate('tumor_direct_therapy'); ?></td>
+				</tr>
+				<tr>
+					<td colspan="3">
+						<input type="radio" id="tumor_direct_therapy_yes" name="rp_tumor_direct_therapy" value="1" <?php if($this->rp_tumor_direct_therapy == '1'): ?>checked="checked"<?php endif; ?>  />
+						<label for="tumor_direct_therapy_yes"><?php echo $this->translate('yesconfirm') ?></label>
+
+						<input type="radio" id="tumor_direct_therapy_no" name="rp_tumor_direct_therapy" value="2" <?php if($this->rp_tumor_direct_therapy == '2'): ?>checked="checked"<?php endif; ?>  />
+						<label for="tumor_direct_therapy_no"><?php echo $this->translate('noconfirm') ?></label>
+					</td>
+				</tr>
+			</table>
+
+			<br />
+			<table class="grid_100">
+				<tr>
+					<td colspan="3">
+						<?php echo $this->translate('if_yes_specify_indication'); ?>
+					</td>
+				</tr>
+				<tr>
+					<td colspan="3">
+						<textarea id="tumor_indication" name="rp_tumor_indication"><?php echo $this->rp_tumor_indication; ?></textarea>
+					</td>
+				</tr>
+			</table>
+
+
+			<br />
+			<table class="grid_100">
+				<tr>
+					<td colspan="3">
+						<?php echo $this->translate('care_is_not_enought'); ?>
+					</td>
+				</tr>
+				<tr>
+					<td colspan="3">
+						<textarea id="care_is_not_enought" name="rp_care_is_not_enought"><?php echo $this->rp_care_is_not_enought; ?></textarea>
+					</td>
+				</tr>
+			</table>
+
+
+			<br/>
+			<table class="grid_100">
+				<tr>
+					<td class="grid_45"><?php echo $this->translate('symptom_after_sapv_rl'); ?></td>
+					<td colspan="2">
+						<input type="radio" id="sapv_rl_available" name="rp_sapv_rl" value="1" <?php if($this->rp_sapv_rl == '1'): ?>checked="checked"<?php endif; ?> />
+						<label for="sapv_rl_available"><?php echo $this->translate('sapv_rl_available') ?></label>
+
+						<input type="radio" id="sapv_rl_not_available" name="rp_sapv_rl" value="2" <?php if($this->rp_sapv_rl == '2'): ?>checked="checked"<?php endif; ?> />
+						<label for="sapv_rl_not_available"><?php echo $this->translate('sapv_rl_not_available') ?></label>
+					</td>
+				</tr>
+				<tr>
+					<td colspan="3"><?php echo $this->translate('applicable_areas'); ?></td>
+				</tr>
+				<tr>
+					<td colspan="3">
+						&nbsp;
+					</td>
+				</tr>
+				<tr>
+					<td colspan="3">
+						<input type="checkbox" name="rp_pronounced_pain_symptoms" id="rp_pronounced_pain_symptoms" value="1" <?php if($this->rp_pronounced_pain_symptoms == '1'): ?>checked="checked"<?php endif; ?> class="has_child_hidden" />
+						<label for="rp_pronounced_pain_symptoms"><?php echo $this->translate('pronounced_pain_symptoms'); ?></label>
+					</td>
+				</tr>
+				<tr>
+					<td colspan="3">
+						<textarea id="rp_pronounced_pain_symptoms_more" name="rp_pronounced_pain_symptoms_more" parent="rp_pronounced_pain_symptoms" class="autohide" ><?php echo $this->rp_pronounced_pain_symptoms_more; ?></textarea>
+					</td>
+				</tr>
+				<tr>
+					<td colspan="3">
+						&nbsp;
+					</td>
+				</tr>
+
+				<tr>
+					<td colspan="3">
+						<input type="checkbox" name="rp_pronounced_resp_symptoms" id="rp_pronounced_resp_symptoms" value="1" <?php if($this->rp_pronounced_resp_symptoms == '1'): ?>checked="checked"<?php endif; ?> class="has_child_hidden" />
+						<label for="rp_pronounced_resp_symptoms"><?php echo $this->translate('pronounced_resp_symptoms'); ?></label>
+					</td>
+				</tr>
+				<tr>
+					<td colspan="3">
+						<textarea id="rp_pronounced_resp_symptoms_more" name="rp_pronounced_resp_symptoms_more" parent="rp_pronounced_resp_symptoms" class="autohide"><?php echo $this->rp_pronounced_resp_symptoms_more; ?></textarea>
+					</td>
+				</tr>
+				<tr>
+					<td colspan="3">
+						&nbsp;
+					</td>
+				</tr>
+				<tr>
+					<td colspan="3">
+						<input type="checkbox" name="rp_pronounced_gastro_symptoms" id="rp_pronounced_gastro_symptoms" value="1" <?php if($this->rp_pronounced_gastro_symptoms == '1'): ?>checked="checked"<?php endif; ?> class="has_child_hidden"/>
+						<label for="rp_pronounced_gastro_symptoms"><?php echo $this->translate('pronounced_gastro_symptoms'); ?></label>
+					</td>
+				</tr>
+				<tr>
+					<td colspan="3">
+						<textarea id="rp_pronounced_gastro_symptoms_more" name="rp_pronounced_gastro_symptoms_more" class="autohide"><?php echo $this->rp_pronounced_gastro_symptoms_more; ?></textarea>
+					</td>
+				</tr>
+				<tr>
+					<td colspan="3">
+						&nbsp;
+					</td>
+				</tr>
+				<tr>
+					<td colspan="3">
+						<input type="checkbox" name="rp_pronounced_uro_symptoms" id="rp_pronounced_uro_symptoms" value="1" <?php if($this->rp_pronounced_uro_symptoms == '1'): ?>checked="checked"<?php endif; ?> class="has_child_hidden"/>
+						<label for="rp_pronounced_uro_symptoms"><?php echo $this->translate('pronounced_uro_symptoms'); ?></label>
+					</td>
+				</tr>
+				<tr>
+					<td colspan="3">
+						<textarea id="rp_pronounced_uro_symptoms_more" name="rp_pronounced_uro_symptoms_more" class="autohide"><?php echo $this->rp_pronounced_uro_symptoms_more; ?></textarea>
+					</td>
+				</tr>
+				<tr>
+					<td colspan="3">
+						&nbsp;
+					</td>
+				</tr>
+				<tr>
+					<td colspan="3">
+						<input type="checkbox" name="rp_pronounced_ulcerative_symptoms" id="rp_pronounced_ulcerative_symptoms" value="1" <?php if($this->rp_pronounced_ulcerative_symptoms == '1'): ?>checked="checked"<?php endif; ?> class="has_child_hidden" />
+						<label for="rp_pronounced_ulcerative_symptoms"><?php echo $this->translate('pronounced_ulcerative_symptoms'); ?></label>
+					</td>
+				</tr>
+				<tr>
+					<td colspan="3">
+						<textarea id="rp_pronounced_ulcerative_symptoms_more" name="rp_pronounced_ulcerative_symptoms_more" class="autohide" ><?php echo $this->rp_pronounced_ulcerative_symptoms_more; ?></textarea>
+					</td>
+				</tr>
+				<tr>
+					<td colspan="3">
+						&nbsp;
+					</td>
+				</tr>
+				<tr>
+					<td colspan="3">
+						<input type="checkbox" name="rp_pronounced_neuro_symptoms" id="rp_pronounced_neuro_symptoms" value="1" <?php if($this->rp_pronounced_neuro_symptoms == '1'): ?>checked="checked"<?php endif; ?> class="has_child_hidden" />
+						<label for="rp_pronounced_neuro_symptoms"><?php echo $this->translate('pronounced_neuro_symptoms'); ?></label>
+					</td>
+				</tr>
+				<tr>
+					<td colspan="3">
+						<textarea id="rp_pronounced_neuro_symptoms_more" name="rp_pronounced_neuro_symptoms_more" class="autohide" ><?php echo $this->rp_pronounced_neuro_symptoms_more; ?></textarea>
+					</td>
+				</tr>
+				<tr>
+					<td colspan="3">
+						&nbsp;
+					</td>
+				</tr>
+				<tr>
+					<td colspan="3">
+						<input type="checkbox" name="rp_other_symptoms" id="rp_other_symptoms" value="1" <?php if($this->rp_other_symptoms == '1'): ?>checked="checked"<?php endif; ?> class="has_child_hidden" />
+						<label for="rp_other_symptoms"><?php echo $this->translate('other_symptoms'); ?></label>
+					</td>
+				</tr>
+				<tr>
+					<td colspan="3">
+						<textarea id="rp_other_symptoms_more" name="rp_other_symptoms_more" class="autohide"><?php echo $this->rp_other_symptoms_more; ?></textarea>
+					</td>
+				</tr>
+				<tr>
+					<td colspan="3">
+						&nbsp;
+					</td>
+				</tr>
+				<tr>
+					<td colspan="3" class="bold">
+						<?php echo $this->translate('symptom_factor'); ?>
+					</td>
+				</tr>
+				<tr>
+					<td colspan="3">
+						<input type="checkbox" name="rp_symptom_factor[]" value="1" id="rp_somatic_factor" <?php if(in_array("1",$this->rp_symptom_factor)): ?>checked="checked"<?php endif; ?> class="has_child_hidden" />
+						<label for="rp_somatic_factor"><?php echo $this->translate('somatic_factor'); ?></label>
+					
+						<input type="text" name="rp_somatic_factor" id="rp_somatic_factor_more" value="<?php echo $this->rp_somatic_factor; ?>" class="autohide" style="min-width:400px;" />
+					</td>
+				</tr>
+				<tr>
+					<td colspan="3">
+						<input type="checkbox" name="rp_symptom_factor[]" value="2" id="rp_psychological_factor" <?php if(in_array("2",$this->rp_symptom_factor)): ?>checked="checked"<?php endif; ?> class="has_child_hidden"/>
+						<label for="rp_psychological_factor"><?php echo $this->translate('psychological_factor'); ?></label>					
+						<input type="text" name="rp_psychological_factor" id="rp_psychological_factor_more" value="<?php echo $this->rp_psychological_factor; ?>" class="autohide" style="min-width:400px;"/>
+					</td>
+				</tr>
+				<tr>
+					<td colspan="3">
+						<input type="checkbox" name="rp_symptom_factor[]" value="3" id="rp_social_factor" <?php if(in_array("3",$this->rp_symptom_factor)): ?>checked="checked"<?php endif; ?> class="has_child_hidden" />
+						<label for="rp_social_factor"><?php echo $this->translate('social_factor'); ?></label>
+
+						<input type="text" name="rp_social_factor" id="rp_social_factor_more" value="<?php echo $this->rp_social_factor; ?>" class="autohide" style="min-width:400px;">						
+					</td>
+				</tr>
+				<tr>
+					<td colspan="3">
+						<input type="checkbox" name="rp_symptom_factor[]" value="4" id="rp_spiritual_factor" <?php if(in_array("4",$this->rp_symptom_factor)): ?>checked="checked"<?php endif; ?> class="has_child_hidden"/>
+						<label for="rp_spiritual_factor"><?php echo $this->translate('spiritual_factor'); ?></label>
+
+						<input type="text" name="rp_spiritual_factor" id="rp_spiritual_factor_more" value="<?php echo $this->rp_spiritual_factor; ?>" class="autohide" style="min-width:400px;"/>
+					</td>
+				</tr>
+			</table>
+		</div>
+
+		<div class="grid_100">
+			<table class="grid_100">
+				<tr>
+					<td class="grid_10"></td>
+					<td class="grid_25"></td>
+					<td class="grid_25"></td>
+					<td></td>
+				</tr>
+				<tr>
+					<td colspan="4">&nbsp;</td>
+				</tr>
+				<tr>
+					<td colspan="2" class="bold"><?php echo $this->translate('patient_requires_sapv'); ?></td>
+					<td colspan="2">
+						<input type="radio" name="rp_reqires_sapv" id="require_sapv_no" value="1" <?php if($this->rp_reqires_sapv == '1'): ?>checked="checked"<?php endif; ?> />
+						<label for="require_sapv_no"><?php echo $this->translate('require_sapv_no'); ?></label>
+
+						<input type="radio" name="rp_reqires_sapv" id="require_sapv_yes" value="2" <?php if($this->rp_reqires_sapv == '2'): ?>checked="checked"<?php endif; ?>  />
+						<label for="require_sapv_yes"><?php echo $this->translate('require_sapv_yes'); ?></label>
+					</td>
+				</tr>
+				<tr>
+					<td colspan="4" class="bold"><?php echo $this->translate('necesarely_sapv_service'); ?></td>
+				</tr>
+
+				<tr>
+					<td colspan="4">
+						<input type="checkbox" name="rp_facts_advice[]" id="facts_advice_header" value="1" <?php if(in_array("1",$this->rp_facts_advice)): ?>checked="checked"<?php endif; ?> />
+						<label for="facts_advice_header"><?php echo $this->translate('facts_advice'); ?></label>
+					</td>
+				</tr>
+				<tr>
+					<td class="grid_10"></td>
+					<td colspan="3">
+						<input type="checkbox" name="rp_facts_advice[]" id="advice_patient" value="2" <?php if(in_array("2",$this->rp_facts_advice)): ?>checked="checked"<?php endif; ?> />
+						<label for="advice_patient"><?php echo $this->translate('advice_patient'); ?></label>
+					</td>
+				</tr>
+				<tr>
+					<td class="grid_10"></td>
+					<td colspan="3">
+						<input type="checkbox" name="rp_facts_advice[]" id="advice_pain_management" value="3" <?php if(in_array("3",$this->rp_facts_advice)): ?>checked="checked"<?php endif; ?> />
+						<label for="advice_pain_management"><?php echo $this->translate('advice_pain_management'); ?></label>
+					</td>
+				</tr>
+				<tr>
+					<td class="grid_10"></td>
+					<td colspan="3">
+						<input type="checkbox" name="rp_facts_advice[]" id="advice_wound_management" value="4" <?php if(in_array("4",$this->rp_facts_advice)): ?>checked="checked"<?php endif; ?> />
+						<label for="advice_wound_management"><?php echo $this->translate('advice_wound_management'); ?></label>
+					</td>
+				</tr>
+				<tr>
+					<td class="grid_10"></td>
+					<td colspan="3">
+						<input type="checkbox" name="rp_facts_advice[]" id="advice_medication_adjusted" value="5" <?php if(in_array("5",$this->rp_facts_advice)): ?>checked="checked"<?php endif; ?> />
+						<label for="advice_medication_adjusted"><?php echo $this->translate('advice_medication_adjusted'); ?></label>
+					</td>
+				</tr>
+				<tr>
+					<td class="grid_10"></td>
+					<td colspan="3">
+						<input type="checkbox" name="rp_facts_advice[]" id="advice_proper_equip_use" value="6" <?php if(in_array("6",$this->rp_facts_advice)): ?>checked="checked"<?php endif; ?> />
+						<label for="advice_proper_equip_use"><?php echo $this->translate('advice_proper_equip_use'); ?></label>
+					</td>
+				</tr>
+				<tr>
+					<td class="grid_10"></td>
+					<td colspan="3">
+						<input type="checkbox" name="rp_facts_advice[]" id="advice_disability_aids" value="7" <?php if(in_array("7",$this->rp_facts_advice)): ?>checked="checked"<?php endif; ?> />
+						<label for="advice_disability_aids"><?php echo $this->translate('advice_disability_aids'); ?></label>
+					</td>
+				</tr>
+				<tr>
+					<td class="grid_10"></td>
+					<td colspan="3">
+						<input type="checkbox" name="rp_facts_advice[]" id="advice_comunication" value="8" <?php if(in_array("8",$this->rp_facts_advice)): ?>checked="checked"<?php endif; ?> />
+						<label for="advice_comunication"><?php echo $this->translate('advice_comunication'); ?></label>
+					</td>
+				</tr>
+				<tr>
+					<td class="grid_10"></td>
+					<td colspan="3">
+						<input type="checkbox" name="rp_facts_advice[]" id="advice_social_integration" value="9" <?php if(in_array("9",$this->rp_facts_advice)): ?>checked="checked"<?php endif; ?> />
+						<label for="advice_social_integration"><?php echo $this->translate('advice_social_integration'); ?></label>
+					</td>
+				</tr>
+				<tr>
+					<td class="grid_10"></td>
+					<td colspan="3">
+						<input type="checkbox" name="rp_facts_advice[]" id="advice_deal_death" value="10"  <?php if(in_array("10",$this->rp_facts_advice)): ?>checked="checked"<?php endif; ?> />
+						<label for="advice_deal_death"><?php echo $this->translate('advice_deal_death'); ?></label>
+					</td>
+				</tr>
+				<tr>
+					<td class="grid_10"></td>
+					<td colspan="3">
+						<input type="checkbox" name="rp_facts_advice[]" id="advice_hospice" value="11"  <?php if(in_array("11",$this->rp_facts_advice)): ?>checked="checked"<?php endif; ?> />
+						<label for="advice_hospice"><?php echo $this->translate('advice_hospice'); ?></label>
+					</td>
+				</tr>
+				<tr>
+					<td class="grid_10"></td>
+					<td colspan="3">
+						<input type="checkbox" name="rp_facts_advice[]" id="rp_advice_other" value="12" <?php if(in_array("12",$this->rp_facts_advice)): ?>checked="checked"<?php endif; ?>  class="has_child_hidden"/>
+						<label for="rp_advice_other"><?php echo $this->translate('advice_other'); ?></label>
+						<input type="text" name="rp_advice_other_more" id="rp_advice_other_more" value="<?php echo $this->rp_advice_other_more; ?>" class="autohide" style="min-width:600px;" />
+					</td>
+				</tr>
+			</table>
+		</div>
+
+		<div class="grid_100">
+			<table class="grid_100">
+				<tr>
+					<td colspan="4">&nbsp;</td>
+				</tr>
+				<tr>
+					<td colspan="4"><?php echo $this->translate('involved_consulting_persons'); ?></td>
+				</tr>
+				<tr>
+					<td>
+						<table class="grid_100">
+							<tr>
+								<td>
+									<input type="checkbox" name="rp_involved_options[]" id="inv_patient" value="1" <?php if(in_array("1",$this->rp_involved_options)): ?>checked="checked"<?php endif; ?> />
+									<label for="inv_patient"><?php echo $this->translate('inv_patient'); ?></label>
+								</td>
+
+								<td>
+									<input type="checkbox" name="rp_involved_options[]" id="inv_relatives" value="2" <?php if(in_array("2",$this->rp_involved_options)): ?>checked="checked"<?php endif; ?> />
+									<label for="inv_relatives"><?php echo $this->translate('inv_relatives'); ?></label>
+								</td>
+
+								<td>
+									<input type="checkbox" name="rp_involved_options[]" id="inv_fam_doc" value="3" <?php if(in_array("3",$this->rp_involved_options)): ?>checked="checked"<?php endif; ?> />
+									<label for="inv_fam_doc"><?php echo $this->translate('inv_fam_doc'); ?></label>
+								</td>
+
+								<td>
+									<input type="checkbox" name="rp_involved_options[]" id="inv_nurse" value="4" <?php if(in_array("4",$this->rp_involved_options)): ?>checked="checked"<?php endif; ?> />
+									<label for="inv_nurse"><?php echo $this->translate('inv_nurse'); ?></label>
+								</td>
+
+								<td>
+									<input type="checkbox" name="rp_involved_options[]" id="rp_involved_options" value="5" <?php if(in_array("5",$this->rp_involved_options)): ?>checked="checked"<?php endif; ?> class="has_child_hidden"/>
+									<label for="rp_involved_options"><?php echo $this->translate('inv_other'); ?></label>
+									<input type="text" name="rp_involved_options_more" id="rp_involved_options_more" value="<?php echo $this->rp_involved_options_more; ?>" class="autohide" />
+								</td>
+							</tr>
+							<tr>
+								<td colspan="4"></td>
+							</tr>
+						</table>
+					</td>
+				</tr>
+				<tr>
+					<td colspan="4">&nbsp;</td>
+				</tr>
+			</table>
+		</div>
+
+		
+		<div>
+			<table>
+				<tr>
+					<td colspan="4">
+						<input type="checkbox" name="rp_care_needs[]" id="rp_care_needs" value="1"  <?php if(in_array("1",$this->rp_care_needs)): ?>checked="checked"<?php endif; ?>  />
+						<label for="rp_care_needs"><?php echo $this->translate('care_needs'); ?></label>
+					</td>
+				</tr>
+
+				<tr>
+					<td class="grid_10"></td>
+					<td colspan="3">
+						<input type="checkbox" name="rp_care_needs[]" id="need_homecare_settings" value="2"  <?php if(in_array("2",$this->rp_care_needs)): ?>checked="checked"<?php endif; ?>  />
+						<label for="need_homecare_settings"><?php echo $this->translate('need_homecare_settings'); ?></label>
+					</td>
+				</tr>
+				<tr>
+					<td class="grid_10"></td>
+					<td colspan="3">
+						<input type="checkbox" name="rp_care_needs[]" id="need_intervention_service" value="3" <?php if(in_array("3",$this->rp_care_needs)): ?>checked="checked"<?php endif; ?>  />
+						<label for="need_intervention_service"><?php echo $this->translate('need_intervention_service'); ?></label>
+					</td>
+				</tr>
+				<tr>
+					<td class="grid_10"></td>
+					<td colspan="3">
+						<input type="checkbox" name="rp_care_needs[]" id="need_pcm" value="4" <?php if(in_array("4",$this->rp_care_needs)): ?>checked="checked"<?php endif; ?>  />
+						<label for="need_pcm"><?php echo $this->translate('need_pcm'); ?></label>
+					</td>
+				</tr>
+				<tr>
+					<td class="grid_10"></td>
+					<td colspan="3">
+						<input type="checkbox" name="rp_care_needs[]" id="need_stakeholder_inf" value="5" <?php if(in_array("5",$this->rp_care_needs)): ?>checked="checked"<?php endif; ?>  />
+						<label for="need_stakeholder_inf"><?php echo $this->translate('need_stakeholder_inf'); ?></label>
+					</td>
+				</tr>
+				<tr>
+					<td class="grid_10"></td>
+					<td colspan="3">
+						<input type="checkbox" name="rp_care_needs[]" id="need_legal_services" value="6" <?php if(in_array("6",$this->rp_care_needs)): ?>checked="checked"<?php endif; ?>  />
+						<label for="need_legal_services"><?php echo $this->translate('need_legal_services'); ?></label>
+					</td>
+				</tr>
+				<tr>
+					<td class="grid_10"></td>
+					<td colspan="3">
+						<input type="checkbox" name="rp_care_needs[]" id="need_individulal_treatment_plan" value="7" <?php if(in_array("7",$this->rp_care_needs)): ?>checked="checked"<?php endif; ?>  />
+						<label for="need_individulal_treatment_plan"><?php echo $this->translate('need_individulal_treatment_plan'); ?></label>
+					</td>
+				</tr>
+				<tr>
+					<td class="grid_10"></td>
+					<td colspan="3">
+						<input type="checkbox" name="rp_care_needs[]" id="need_drug_measurement" value="8" <?php if(in_array("8",$this->rp_care_needs)): ?>checked="checked"<?php endif; ?>  />
+						<label for="need_drug_measurement"><?php echo $this->translate('need_drug_measurement'); ?></label>
+					</td>
+				</tr>
+				<tr>
+					<td class="grid_10"></td>
+					<td colspan="3">
+						<input type="checkbox" name="rp_care_needs[]" id="need_evaluation_reeval" value="9" <?php if(in_array("9",$this->rp_care_needs)): ?>checked="checked"<?php endif; ?>  />
+						<label for="need_evaluation_reeval"><?php echo $this->translate('need_evaluation_reeval'); ?></label>
+					</td>
+				</tr>
+				<tr>
+					<td class="grid_10"></td>
+					<td colspan="3">
+						<input type="checkbox" name="rp_care_needs[]" id="need_organise_case_reviews" value="10" <?php if(in_array("10",$this->rp_care_needs)): ?>checked="checked"<?php endif; ?>  />
+						<label for="need_organise_case_reviews"><?php echo $this->translate('need_organise_case_reviews'); ?></label>
+					</td>
+				</tr>
+				<tr>
+					<td class="grid_10"></td>
+					<td colspan="3">
+						<input type="checkbox" name="rp_care_needs[]" id="need_other" value="11" <?php if(in_array("11",$this->rp_care_needs)): ?>checked="checked"<?php endif; ?> class="has_child_hidden" />
+						<label for="need_other"><?php echo $this->translate('need_other'); ?></label>
+						<input type="text" name="rp_need_other_more" id="need_other_more" value="<?php echo $this->rp_need_other_more; ?>" class="autohide" style="width:600x;"/>
+					</td>
+				</tr>
+			</table>
+		</div>
+
+
+		<div>
+			<table class="grid_100" >
+				<tr>
+					<td colspan="4">&nbsp;</td>
+				</tr>
+				<tr>
+					<td colspan="4"><hr /></td>
+				</tr>
+			</table>
+			
+			<table class="grid_100">
+				<tr>
+					<td colspan="4" class="bold">
+						<?php echo $this->translate('treatment_plan_coord_providers') ?>
+					</td>
+				</tr>
+				<tr>
+					<td class="grid_25">
+						<input type="checkbox" name="rp_treatment_plan_providers[]" id="tr_fam_doc" value="1" <?php if(in_array("1",$this->rp_treatment_plan_providers)): ?>checked="checked"<?php endif; ?>  />
+						<label for="tr_fam_doc"><?php echo $this->translate('tr_fam_doc'); ?></label>
+					</td>
+					<td class="grid_25">
+						<input type="checkbox" name="rp_treatment_plan_providers[]" id="tr_pharmacy" value="2"  <?php if(in_array("2",$this->rp_treatment_plan_providers)): ?>checked="checked"<?php endif; ?>  />
+						<label for="tr_pharmacy"><?php echo $this->translate('tr_pharmacy'); ?></label>
+					</td>
+					<td class="grid_25">
+						<input type="checkbox" name="rp_treatment_plan_providers[]" id="tr_care_facility" value="3"  <?php if(in_array("3",$this->rp_treatment_plan_providers)): ?>checked="checked"<?php endif; ?>  />
+						<label for="tr_care_facility"><?php echo $this->translate('tr_care_facility'); ?></label>
+					</td>
+					<td class="grid_25">
+						<input type="checkbox" name="rp_treatment_plan_providers[]" id="tr_physiotherapist" value="4"  <?php if(in_array("4",$this->rp_treatment_plan_providers)): ?>checked="checked"<?php endif; ?>  />
+						<label for="tr_physiotherapist"><?php echo $this->translate('tr_physiotherapist'); ?></label>
+					</td>
+				</tr>
+				<tr>
+					<td class="grid_25">
+						<input type="checkbox" name="rp_treatment_plan_providers[]" id="tr_specialist" value="5"  <?php if(in_array("5",$this->rp_treatment_plan_providers)): ?>checked="checked"<?php endif; ?>  />
+						<label for="tr_specialist"><?php echo $this->translate('tr_specialist'); ?></label>
+					</td>
+					<td class="grid_25">
+						<input type="checkbox" name="rp_treatment_plan_providers[]" id="tr_supply_store" value="6"  <?php if(in_array("6",$this->rp_treatment_plan_providers)): ?>checked="checked"<?php endif; ?>  />
+						<label for="tr_supply_store"><?php echo $this->translate('tr_supply_store'); ?></label>
+					</td>
+					<td class="grid_25">
+						<input type="checkbox" name="rp_treatment_plan_providers[]" id="tr_hospiz" value="7"  <?php if(in_array("7",$this->rp_treatment_plan_providers)): ?>checked="checked"<?php endif; ?>  />
+						<label for="tr_hospiz"><?php echo $this->translate('tr_hospiz'); ?></label>
+					</td>
+					<td class="grid_25">
+						<input type="checkbox" name="rp_treatment_plan_providers[]" id="tr_speech_therapy" value="8"  <?php if(in_array("8",$this->rp_treatment_plan_providers)): ?>checked="checked"<?php endif; ?>  />
+						<label for="tr_speech_therapy"><?php echo $this->translate('tr_speech_therapy'); ?></label>
+					</td>
+				</tr>
+				<tr>
+					<td class="grid_25">
+						<input type="checkbox" name="rp_treatment_plan_providers[]" id="tr_pediatrician" value="9"  <?php if(in_array("9",$this->rp_treatment_plan_providers)): ?>checked="checked"<?php endif; ?>  />
+						<label for="tr_pediatrician"><?php echo $this->translate('tr_pediatrician'); ?></label>
+					</td>
+					<td colspan="3">
+						<input type="checkbox" name="rp_treatment_plan_providers[]" id="tr_other" value="10"  <?php if(in_array("10",$this->rp_treatment_plan_providers)): ?>checked="checked"<?php endif; ?> class="has_child_hidden"  />
+						<label for="tr_other"><?php echo $this->translate('tr_other'); ?></label>
+						<input type="text" id="tr_other_more" name="rp_tp_other_more" value="<?php echo $this->rp_tp_other_more; ?>" class="autohide" />
+					</td>
+				</tr>
+			</table>
+			
+			
+			<table>
+				<tr>
+					<td colspan="4"><hr /></td>
+				</tr>
+			</table>
+
+			
+	
+						<table class="grid_100">
+							<tr>
+						<td class="bold grid_25">
+									<?php echo $this->translate('treatment_plan'); ?>
+								</td>
+						<td class="grid_25">
+									<input type="checkbox" name="rp_treatment_plan[]" id="tr_consented" value="1"  <?php if(in_array("1",$this->rp_treatment_plan)): ?>checked="checked"<?php endif; ?>  />
+									<label for="tr_consented"><?php echo $this->translate('tr_consented'); ?></label>
+								</td>
+						<td class="grid_25">
+									<input type="checkbox" name="rp_treatment_plan[]" id="tr_partial_consented" value="2"  <?php if(in_array("2",$this->rp_treatment_plan)): ?>checked="checked"<?php endif; ?> />
+									<label for="tr_partial_consented"><?php echo $this->translate('tr_partial_consented'); ?></label>
+								</td>
+						<td class="grid_25">
+							<table class="grid_100">
+								<tr>
+									<td><input type="checkbox" name="rp_treatment_plan[]" id="tr_still_tuned" value="3"  <?php if(in_array("3",$this->rp_treatment_plan)): ?>checked="checked"<?php endif; ?> /></td>
+									<td style="padding-left: 3px;"><label for="tr_still_tuned"><?php echo $this->translate('tr_still_tuned'); ?></label></td>
+								</tr>
+							</table>
+								</td>
+							</tr>
+							<tr>
+								<td>&nbsp;</td>
+								<td>
+									<input type="checkbox" name="rp_treatment_plan[]" id="tr_emergency" value="4"  <?php if(in_array("4",$this->rp_treatment_plan)): ?>checked="checked"<?php endif; ?> />
+									<label for="tr_emergency"><?php echo $this->translate('tr_emergency'); ?></label>
+								</td>
+								<td colspan="2">
+									<input type="checkbox" name="rp_treatment_plan[]" id="tr_call_organized" value="5"  <?php if(in_array("5",$this->rp_treatment_plan)): ?>checked="checked"<?php endif; ?> />
+									<label for="tr_call_organized"><?php echo $this->translate('tr_call_organized'); ?></label>
+								</td>
+							</tr>
+						</table>
+				
+				
+				<table>
+				<tr>
+					<td colspan="4"><hr /></td>
+				</tr>
+				</table>
+				
+				<table class="grid_100">
+				<tr>
+					<td colspan="4">
+									<?php echo $this->translate('estimated_effort'); ?>
+								</td>
+							</tr>
+							<tr>
+								<td class="grid_30">
+									<input type="checkbox" name="rp_effort_estimated[]" id="focus_coord" value="1"  <?php if(in_array("1",$this->rp_effort_estimated)): ?>checked="checked"<?php endif; ?>  />
+									<label for="focus_coord"><?php echo $this->translate('focus_coord'); ?></label>
+								</td>
+						<td class="grid_30">
+									<input type="checkbox" name="rp_effort_estimated[]" id="focus_home_visits" value="2"  <?php if(in_array("2",$this->rp_effort_estimated)): ?>checked="checked"<?php endif; ?>  />
+									<label for="focus_home_visits"><?php echo $this->translate('focus_home_visits'); ?></label>
+								</td>
+								<td class="grid_25">
+									&nbsp;
+								</td>
+						<td class="grid_25">
+							&nbsp;
+						</td>
+							</tr>
+							<tr>
+								<td class="grid_25">
+									<input type="checkbox" name="rp_effort_estimated[]" id="1_2_home_visits" value="3" <?php if(in_array("3",$this->rp_effort_estimated)): ?>checked="checked"<?php endif; ?>   />
+									<label for="1_2_home_visits"><?php echo $this->translate('1_2_home_visits'); ?></label>
+								</td>
+						<td class="grid_25">
+									<input type="checkbox" name="rp_effort_estimated[]" id="3_5_home_visits" value="4" <?php if(in_array("4",$this->rp_effort_estimated)): ?>checked="checked"<?php endif; ?>   />
+									<label for="3_5_home_visits"><?php echo $this->translate('3_5_home_visits'); ?></label>
+								</td>
+								<td class="grid_25">
+									<input type="checkbox" name="rp_effort_estimated[]" id="5_home_visits" value="5"  <?php if(in_array("5",$this->rp_effort_estimated)): ?>checked="checked"<?php endif; ?>   />
+									<label for="5_home_visits"><?php echo $this->translate('5_home_visits'); ?></label>
+								</td>
+						<td class="grid_25">
+						</td>
+							</tr>
+						</table>
+				
+				<table>
+				<tr>
+					<td colspan="4"><hr /></td>
+				</tr>
+				
+				<tr>
+					<td colspan="4">&nbsp;</td>
+				</tr>
+				<tr>
+					<td colspan="4" class="bold">
+						<?php echo $this->translate('sapv_reg'); ?>
+					</td>
+				</tr>
+				<tr>
+					<td colspan="4">
+						<input type="checkbox" id="no_sapv_need" name="rp_sapv_reg[]" value="1"  <?php if(in_array("1",$this->rp_sapv_reg)): ?>checked="checked"<?php endif; ?>  />
+						<label for="no_sapv_need"><?php echo $this->translate('no_sapv_need'); ?></label>
+					</td>
+				</tr>
+				<tr>
+					<td colspan="4">
+						<input type="checkbox" id="sapv_claim_demand_before" name="rp_sapv_reg[]" value="2" <?php if(in_array("2",$this->rp_sapv_reg)): ?>checked="checked"<?php endif; ?>  />
+						<label for="sapv_claim_demand_before"><?php echo $this->translate('sapv_claim_demand_before'); ?></label>
+					</td>
+				</tr>
+				<tr>
+					<td colspan="4">
+						<input type="checkbox" id="sapv_adapted_power_req" name="rp_sapv_reg[]" value="3" <?php if(in_array("3",$this->rp_sapv_reg)): ?>checked="checked"<?php endif; ?>  />
+						<label for="sapv_adapted_power_req"><?php echo $this->translate('sapv_adapted_power_req'); ?></label>
+					</td>
+				</tr>
+				<tr>
+					<td colspan="4">
+						<textarea name="rp_sapv_reg_more" id="rp_sapv_reg_more" ><?php echo $this->rp_sapv_reg_more; ?></textarea>
+					</td>
+				</tr>
+				<tr>
+					<td colspan="4">
+						&nbsp;
+					</td>
+				</tr>
+				<tr>
+					<td colspan="4">
+						<b>Hinweis für den Verordner:</b> Wir gehen davon aus, dass Sie mit der Änderung des Verordnungsumfangs einverstanden sind, wenn Sie dem nicht innerhalb von 2 Arbeitstagen nach Zustellung widersprechen.
+					</td>
+				</tr>
+				<tr>
+					<td colspan="4">
+						&nbsp;
+					</td>
+				</tr>
+				<tr>
+					<td colspan="4">
+						<input type="checkbox" id="sapv_support_to" name="sapv_support_to" value="1"  <?php if($this->sapv_support_to == '1'): ?>checked="checked"<?php endif; ?>  />
+						<label for="sapv_support_to">
+							SAPV-Folgeverordnung muss nach dem oben genannten Leistungsbedarf bis zum <input type="text" name="sapv_support_date" id="sapv_support_date" value="<?php echo $this->sapv_support_date; ?>" /> vorliegen.
+						</label>
+					</td>
+				</tr>
+				<tr>
+					<td colspan="4">
+						&nbsp;
+					</td>
+				</tr>
+			</table>
+		</div>
+		
+		<div class="grid_100">
+			<table class="grid_100">
+				<?php if(count($this->all_assessments) > '0'): ?>
+					<?php foreach($this->all_assessments as $k_assessment => $v_assessment): ?>
+						<?php if($v_assessment['iscompleted'] =='1'): $disable_chk = 'disabled="disabled"'; else: $disable_chk = ''; endif; ?>
+						<?php if($v_assessment['id'] != $this->last_assessment_id && !empty($this->last_assessment_id)): $disable_date = 'disabled="disabled"'; else: $disable_date = ''; endif; ?>
+						
+						<tr id="assessment_<?php echo $v_assessment['id']; ?>">
+							<td style="width:360px;height: 30px;">
+								<label for="iscompleted_<?php echo $v_assessment['id']; ?>">Abgeschlossen: </label> <input type="checkbox" name="iscompleted[<?php echo $v_assessment['id']; ?>]" id="iscompleted_<?php echo $v_assessment['id']; ?>" value="1" class="iscompleted" alt="<?php echo $v_assessment['id']; ?>" <?php echo $disable_chk; ?> <?php if($v_assessment['iscompleted'] == '1'): ?>checked="checked"<?php endif; ?> /> &nbsp;&nbsp; <label for="completed_date_<?php echo $v_assessment['id']; ?>">Assessment durchgeführt am:</label> 
+							</td>
+							<td>
+								<div id="div_completed_date_<?php echo $v_assessment['id']; ?>" class="div_completed_date">
+									<input type="text" id="completed_date_<?php echo $v_assessment['id']; ?>" name="completed_date[<?php echo $v_assessment['id']; ?>]" value="<?php if($v_assessment['completed_date'] == '0000-00-00'): echo date('d.m.Y', time()); else: echo date('d.m.Y', strtotime($v_assessment['completed_date'])); endif; ?>" class="completed_date" alt="<?php echo $v_assessment['id']; ?>" <?php echo $disable_date; ?> />
+								</div>
+							</td>
+						</tr>
+						<?php endforeach; ?>
+						<?php if(empty($this->last_assessment_id)): ?>
+						<tr id="assessment_0">
+							<td style="width:360px;height: 30px;">
+								<label for="iscompleted_0">Abgeschlossen: </label><input type="checkbox" name="iscompleted[0]" id="iscompleted_0" value="1" class="iscompleted" alt="0" /> &nbsp;&nbsp; <label for="completed_date_0">Assessment durchgeführt am:</label> 
+							</td>
+							<td>
+								<div id="div_completed_date_0" class="div_completed_date">
+									<input type="text" id="completed_date_0" name="completed_date[0]" value="<?php echo date('d.m.Y', time()); ?>" class="completed_date" alt="0" />
+								</div>
+							</td>
+						</tr>
+						<?php endif; ?>
+				<?php else: ?>
+					<tr id="assessment_0">
+						<td style="width:360px;height: 30px;">
+							<label for="iscompleted_0">Abgeschlossen: </label><input type="checkbox" name="iscompleted[0]" id="iscompleted_0" value="1" class="iscompleted" alt="0" /> &nbsp;&nbsp; <label for="div_completed_date_0">Assessment durchgeführt am:</label>
+						</td>
+						<td>
+							<div id="div_completed_date_0" class="div_completed_date">
+								<input type="text" id="completed_date_0" name="completed_date[0]" value="<?php echo date('d.m.Y', time()); ?>" class="completed_date" alt="0" />
+							</div>
+						</td>
+					</tr>
+				<?php endif; ?>
+				<tr>
+					<td colspan="2">
+						&nbsp;				
+					</td>
+				</tr>
+				<tr>
+					<td colspan="2">
+					<table width="100%"><tr>
+						<td width="35%">Unterschrift der / des Verantwortlichen:</td>
+						<td width="65%" style="border-bottom: 1px solid #000;"> <span id="rp_user"><?php echo $this->rp_doctor_user; ?></span></td>
+						</tr>
+						</table>
+					</td>
+				</tr>
+				<tr>
+					<td colspan="2">
+						<table  width="100%">
+						<tr>
+						<td width="25%">Unterschrift Teamleiter: </td>
+						<td width="75%" style="border-bottom: 1px solid #000;">  </td>
+						</tr>
+						</table>
+					</td>
+				</tr>
+			</table>
+		</div>
+		<br />
+		<br />
+		<br />
+		<div class="grid_100">
+			<input type="hidden" name="fid" id="fid" value="<?php echo $this->last_assessment_id; ?>" />
+			<?php if($_REQUEST['new']): ?>
+				<input type="hidden" name="newvalue" id="newvalue" value="1" />
+			<?php endif; ?>
+				
+			<input type="submit" name="save" id="save" value="<?php echo $this->translate('save'); ?>"  class="btnsubmit_usersessions"/>
+			<input type="submit" name="pdf" id="pdf" value="<?php echo $this->translate('generatepdf'); ?>"  class="btnsubmit_usersessions"/>
+			
+			<!-- ISPC-2690 pct.3 Lore 16.10.2020  -->		
+			<!-- <?php if($this->iscompleted == '1' && empty($_REQUEST['new'])): ?>
+				<input type="submit" name="new" id="new" value="<?php echo $this->translate('new_assessment'); ?>"  class="btnsubmit_usersessions"/>
+			<?php endif; ?>
+			-->
+		</div>
+	</div>
+
+
+
+</form>

@@ -1,0 +1,182 @@
+<!-- Maria:: Migration ISPC to CISPC 08.08.2020 -->
+<link href="<?php echo RES_FILE_PATH; ?>/javascript/jgrowl/fileuploader.css" rel="stylesheet" type="text/css">
+<script src="<?php echo RES_FILE_PATH; ?>/javascript/jgrowl/fileuploader.js" type="text/javascript"></script>
+<link href="<?php echo RES_FILE_PATH; ?>/css/terminalimport.css" rel="stylesheet" type="text/css">
+<?php
+$csv_data = $this->csv_data;
+$mapped_data = $this->mapped_data;
+$csv_labels = $this->csv_labels;
+$session_import_type = $this->import_type;
+$targeted_patients = $this->targeted_patients;
+?>
+
+<script type="text/javascript">
+	var xhr;
+	var autoload_ids = '<?php echo json_encode($targeted_patients); ?>';
+
+
+	function save_session_data(csv_row)
+	{
+		if(xhr)
+		{
+			xhr.abort();
+		}
+		
+		$('#saving_session_'+csv_row).show();
+		var url = '<?php echo APP_BASE ?>ajax/saveimportsession';
+		var data = $('input[name="target_patient['+csv_row+']"]').serialize();
+		var amper = '';
+
+		if(data){
+			amper = '&';
+		} else {
+			amper = '';
+		}
+
+		
+		if($('#load_compare_'+csv_row+' input[type="radio"]').length) {
+			data += amper+$('#load_compare_'+csv_row+' input[type="radio"]').serialize();
+		}
+
+		data += amper+$('input[name="import_type['+csv_row+']"]').serialize();
+
+		xhr = $.ajax({
+			url: url,
+			data:data,
+			success: function(response) {
+				$('#saving_session_'+csv_row).hide();
+			},
+			error: function()
+			{
+				$('#saving_session_'+csv_row).hide();
+			}
+		});
+	}
+</script>
+<h1><?php echo $this->translate('SAPV'); ?></h1>
+<?php if(!empty($this->error)): ?>
+<div class="ErrorDiv">
+	<?php echo $this->translate($this->error); ?>
+</div>
+<?php endif; ?>
+
+<form action="" name="frmimport" id="frmimport" method="post" enctype="multipart/form-data" style="<?php if(count($csv_data)): ?>display:none;<?php endif;?>">
+<fieldset>
+	<?php if($_REQUEST['flg'] == 'suc' && empty($this->error)): ?>
+	<div class="SuccesDiv">
+		<p><?php echo $this->translate('import_complete'); ?></p>
+	</div>
+	<?php endif; ?>
+	<legend> <?php echo $this->translate('uploadfile'); ?></legend>
+		<table border="0" class="import_upload">
+			<tbody>
+				<tr>
+					<td  class="td_label"><?php echo $this->translate('separator'); ?></td>
+					<td>
+						<select name="csvdelimiter" id="csvdelimiter">
+							<option value=";" <?php if($this->delimiter == ';'): ?>selected="selected"<?php endif; ?>>;</option>
+							<option value="," <?php if($this->delimiter == ','): ?>selected="selected"<?php endif; ?>>,</option>
+							<option value="|" <?php if($this->delimiter == '|'): ?>selected="selected"<?php endif; ?>>|</option>
+						</select>
+					</td>
+				</tr>
+				<tr>
+					<td  class="td_label"><?php echo $this->translate('import type'); ?></td>
+					<td>
+						<select name="csv_type" id="csv_type">
+							<option value="" ></option>
+							<option value="patients">patients</option>
+							<option value="falls">falls + locations</option>
+							<option value="stamdaten">stamdaten</option>
+							<option value="sapv">sapv</option>
+<!-- 							<option value="patient_course">patient_course</option> -->
+							<option value="medication_course">medication_course</option>
+							
+							
+							<option value="contact_persons">contact_persons</option>
+							<option value="ahps">ahps</option>
+							
+							<option value="final_anamnese">final_anamnese</option>
+							<option value="final_befunde">final_befunde</option>
+							<option value="final_sonstigeTherapien">final_sonstigeTherapien</option>
+							<option value="final_verlauf">final_verlauf</option>
+							<option value="final_gewicht">final_gewicht</option>
+							
+							<option value="final_gespraeche_special">final_gespraeche_special</option>
+							
+							<option value="diagnosis">diagnosis</option>
+							<option value="medication">medication</option>
+							<option value="bedarf_medication">bedarf_medication</option>
+							<option value="">---------</option>
+							<option value="client_voluntary">client_voluntary</option>
+							<option value="client_specialists">client_specialists</option>
+							<option value="patients_rp">patients_rp</option>
+							<option value="stamdatem_rp">stamdatem_rp</option>
+							<option value="medication_rp">medication_rp</option>
+							<option value="">---------</option>
+							<option value="patients_new_rp">patients_new_rp</option>
+							<option value="">---------</option>
+							<option value="patients_wl_2019_2182">patients_wl_032019_2182</option>
+							<option value="patients_wl_2019_2183">patients_wl_032019_2183</option>
+							<option value="patients_wl_2019_2184">patients_wl_032019_2184</option>
+							<option value="">---------</option>
+							<option value="patients_caritas_2019_TODO-2276">patients_caritas_2019_TODO-2276</option>
+							<option value="patients_rp_2019_TODO-2271">patients_rp_2019_TODO-2271</option>
+							<option value="patients_sl_2019_TODO2363">patients_sl_2019_TODO2363</option>
+							<option value="patients_he_2019_TODO2382">patients_he_2019_TODO2382</option>
+							<option value="patients_nr_2019_TODO2509">patients_nr_2019_TODO2509</option>
+							<option value="patients_rp_2020_2699">patients_rp_2020_2699</option>
+							<!-- TODO-3629 Ancuta 26.11.2020-->
+							<option value="patients_bay_2020_3629">patients_bay_2020_3629</option>
+						</select>
+					</td>
+				</tr>
+				<tr><td colspan="2">&nbsp;</td></tr>
+				<tr>
+					<td  class="td_label"><?php echo $this->translate('browse_file'); ?></td>
+					<td>
+						<div id="file-uploader-demo1">
+							<noscript>
+							Please enable JavaScript to use file uploader.
+							</noscript>
+						</div>
+
+						<script>
+							function createUploader() {
+								var uploader = new qq.FileUploader({
+									element: document.getElementById('file-uploader-demo1'),
+									allowedExtensions: ['csv', 'txt'],
+									action: appbase + 'import/uploadify',
+									params: {'terminal': '1'},
+									onSubmit: function(id, fileName) {
+										$('#btnsubmit').attr("disabled", "true");
+									},
+									onComplete: function(id, fileName, responseJSON) {
+										console.log(responseJSON);
+										$('#btnsubmit').removeAttr("disabled");
+									}
+								});
+							}
+
+							// in your app create uploader as soon as the DOM is ready
+							// don't wait for the window to load
+							window.onload = createUploader;
+						</script>
+					</td>
+				</tr>
+				<tr><td colspan="2">&nbsp;</td></tr>
+				<tr>
+					<td  class="td_label"></td>
+					<td>
+						<input type="submit" name="btnsubmit" id="btnsubmit" value="<?php echo $this->translate('import'); ?>" />
+					</td>
+				</tr>
+				
+			</tbody>
+		</table>
+	
+</fieldset>
+</form>
+ 
+
+ 

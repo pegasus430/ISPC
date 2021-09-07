@@ -1,0 +1,141 @@
+<script type="text/javascript">
+$(function(){
+//     $('#adm_date').datepicker({
+//         dateFormat: 'dd.mm.yy',
+// 		showOn: "both",
+// 		buttonImage: $('#calImg').attr('src'),
+// 		buttonImageOnly: true,
+// 		changeMonth: true,
+// 		changeYear: true,
+// 		nextText: '',
+// 		prevText: '',
+//         maxDate: new Date(<?php date('Y, m, d')?>)
+// 	});
+
+});
+var pl_loading = function()
+{
+	var dlist = '<div class="loadingdiv" align="center"><img src="<?php echo RES_FILE_PATH;  ?>/images/pageloading.gif"><br />	Loading... please wait</div>';
+	document.getElementById('content').innerHTML = dlist;
+}	
+
+function loadpage(ord,clm)
+{
+	if($('#hdnlastpage').val()>=parseInt($('#pageno').val())){
+	if((parseInt($('#pageno').val()))>0){pgno=(parseInt($('#pageno').val()-1));}else{pgno=0;}
+		ajaxCallserver({url:'patient/fetchlist?clm='+clm+'&ord='+ord+'&pgno='+pgno,callLoading:pl_loading});
+	}else{
+		jAlert("<? echo $this->translate('invalidpageno'); ?>");
+	}
+}
+	
+var callBack = function(params)
+{
+	document.getElementById('content').innerHTML = params.patientlist; 
+}
+function getQueryParams( val ) {
+        //Use the window.location.search if we don't have a val.
+        var query = val || window.location.search;
+        query = query.split('?')[1]
+        var pairs = query.split('&');
+        var retval = {};
+        var check = [];
+        for( var i = 0; i < pairs.length; i++ ) {
+                check = pairs[i].split('=');
+                retval[decodeURIComponent(check[0])] = decodeURIComponent(check[1]);
+  }
+  
+        return retval;
+}
+function DoNav(theUrl){	
+//old 	
+$('.modal').live('click', function(){
+    var values = getQueryParams(theUrl);
+    
+    $('#id').val(values['id']);
+    $('#activate').val(values['activate']);
+	$('#last_discharge').val(values['last_discharge']);
+
+	
+	$('#adm_date').datepicker({
+        dateFormat: 'dd.mm.yy',
+		showOn: "both",
+		buttonImage: $('#calImg').attr('src'),
+		buttonImageOnly: true,
+		changeMonth: true,
+		changeYear: true,
+		nextText: '',
+		prevText: '',
+        minDate: values['last_discharge'],
+        maxDate: '<?php echo date('d.m.Y'); ?>'
+	});
+    
+    centerPopup({sr:"inline",ht:400,wt:450});
+    loadPopup();
+});
+}
+  
+  function checkedall(allid)
+  {
+  	checkbox = document.getElementsByName('patient_id[]');
+	if(allid.checked==true)
+	{
+		for(i=0; i<checkbox.length;i++)
+		{
+			checkbox[i].checked = true; 
+		}
+	}else{
+		for(i=0; i<checkbox.length;i++)
+		{
+			checkbox[i].checked = false; 
+		}
+	}
+  }
+  
+  function deleteconfirm(id)
+  {
+  		
+			jConfirm('<? echo $this->translate('confirmdeleterecord_standby'); ?>', '<? echo $this->translate('confirmdeletetitle'); ?>', function(r) {
+			if(r)
+			{	
+				document.frmuser.action = "patient/patientstandbylist?id="+id+"&remove=1";
+				document.frmuser.submit();
+			}
+		
+	});
+	
+	return false;
+	
+  } 
+</script>
+<div style="display: none;"> <img id="calImg" src="<? echo RES_FILE_PATH;  ?>/images/calendar.png" alt="Popup" class="trigger"> </div>
+<form action="" method="post" name="frmuser" id="frmuser" onsubmit="return deleteconfirm();">
+<div class="err"><? echo $this->error_message ?></div>
+<div id="content">
+
+	<? echo $this->patientgrid ?>
+
+</div>
+</form>
+
+<script type="text/javascript">
+ajaxCallserver({callLoading:pl_loading,url:'patient/fetchstandbylist?clm=ln&ord=ASC&pgno=0'});
+</script>
+<div id="popupContact" style="width:270px; height: 100px;"> 
+	<a id="popupContactClose">x</a> 
+	<h1>Patient wird aktiviert am</h1> 
+	<p id="contactArea"> 
+	<form action="" name="readm" id="readm">
+	    <input type="hidden" name="id" id="id" value="" />
+	    <input type="hidden" name="activate" id="activate" value="" />
+	    <input type="hidden" name="last_discharge" id="last_discharge" value="" />
+<!-- 	    <input type="text" name="adm_date" id="adm_date" value="<?php echo $this->today_date; ?>" /> -->
+	    <input type="text" name="adm_date" id="adm_date" value="<?php echo date('d.m.Y'); ?>" style="width: 75px;"/>
+	    <?php echo $this->formSelect('adm_time_h', date('H', time()), array('class'=>'time_sel'), $this->hours); ?>
+		<?php echo $this->formSelect('adm_time_m', date('i', time()), array('class'=>'time_sel'), $this->minutes); ?>
+	    <input type="submit" value="Aufnahme" />
+	</form>
+		
+	</p> 
+</div> 
+<div id="backgroundPopup"></div> 

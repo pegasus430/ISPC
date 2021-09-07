@@ -1,0 +1,921 @@
+<?php
+	$this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/qtip/jquery.qtip.min.css?'.date('Ymd'));
+	$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/qtip/jquery.qtip.min.js?'.date('Ymd'));
+	
+	echo $this->patientinfo;
+	echo $this->tabmenus;
+?>
+
+<script type="text/javascript">
+	var print_users = jQuery.parseJSON('<?php echo $this->print_users; ?>');
+	var fax_users = jQuery.parseJSON('<?php echo $this->fax_users; ?>');
+	var assigned_users = "";
+	var assigned_fax_users = "";
+
+	var pl_loading = function () {
+	    var dlist = '<div class="loadingdiv" align="center"><img src="images/pageloading.gif"><?php echo $this->translate('loading_tables_data'); ?></div>';
+	    document.getElementById('content').innerHTML = dlist;
+		//no parameter => load both print and fax assigned users
+		reload_assigned_users();
+	}
+	
+	var status_loading = function (receiptid) {
+	    var dlist = '<div class="loadingdiv" id="loading_div_'+receiptid+'" align="center"><img src="images/pageloading.gif" width="24"></div>';
+		//hide curent status icon
+		$('#lights_current_'+receiptid).toggle();
+		//append loading icon
+		$('#receipt_icon_'+receiptid).append(dlist);
+	}
+
+	var delCallback = function (params)
+	{
+	    ajaxCallserver({url: '<?php echo APP_BASE ?>patientformnew/fetchreceipts', data: {id: "<?php echo $this->patient_id; ?>", clm: "cdate", ord: "DESC", pgno: "0"}, callLoading: pl_loading});
+	}
+
+	var callBack = function (params)
+	{
+	    document.getElementById('content').innerHTML = params.receiptslist;
+
+	    $(".confirm_button").click(function () {
+			$.confirmdeleteid = $(this).attr('rel');
+			jConfirm('<?php echo $this->translate('confirmdeleterecord'); ?>', '<?php echo $this->translate('confirmdeletetitle'); ?>', function (r) {
+				if(r)
+				{
+					$('#list_receipts_row_' + $.confirmdeleteid).hide();
+// 					ajaxCallserver({url: '<?php echo APP_BASE ?>patientformnew/fetchreceipts', data: {id: "<?php echo $this->patient_id; ?>", clm: "cdate", ord: "DESC", pgno: "0", rpid: $.confirmdeleteid, remove_receipt: "1"}});
+// 					ajaxCallserver({url: '<?php echo APP_BASE ?>patientformnew/receiptsremove', data: {id: "<?php echo $this->patient_id; ?>", clm: "cdate", ord: "DESC", pgno: "0", rpid: $.confirmdeleteid, remove_receipt: "1"}});
+					
+					ajaxCallserver({
+						url : '<?php echo APP_BASE ?>patientformnew/receiptsremove',
+						data : {
+							id : "<?php echo $this->patient_id; ?>",
+							rpid : $.confirmdeleteid,
+							remove_receipt : "1",			
+							success: function(){
+								setTimeout(delCallback, 500);
+							}
+						}
+					});
+				}
+			});
+	    });
+		
+		$(".confirm_duplicate_button").click(function () {
+			$.confirmduplicateid = $(this).attr('rel');
+			jConfirm('<?php echo $this->translate('confirm_duplicate_record'); ?>', '<?php echo $this->translate('confirm_duplicate_title'); ?>', function (r) {
+				if(r)
+				{
+					ajaxCallserver({url: '<?php echo APP_BASE ?>patientformnew/listreceipts',method: "POST", data: {id: "<?php echo $this->patient_id; ?>", clm: "cdate", ord: "DESC", pgno: "0", rpid: $.confirmduplicateid, mode: "duplicate"}});
+					setTimeout(delCallback, 500);
+				}
+			});
+		});
+		
+		$( ".history_log" ).accordion({
+			collapsible: true,
+			active: false,
+			autoHeight: false,
+			heightStyle: "fill",
+			change: function(event, ui) {
+				var receipt = $(this).data('receiptId');
+				var element = $('#history_log_content_'+receipt);
+				if(ui.newContent.length == "1")
+				{
+					ajaxCallserver({url: appbase + 'ajax/loadreceiptlog?id=<?php echo $_REQUEST['id']; ?>&rpid='+receipt+'', callLoading: loader(element)});
+				}
+				else
+				{
+					$('#history_log_content_'+receipt).html('');
+//					$('#history_log_content').html('');
+				}
+			}
+		});
+	}
+	
+	var callback_history = function (params)
+    {
+		$('#history_log_content_'+params.receiptid).html(params.historylog);
+    }
+	
+	var statuscallback = function (params)
+	{
+		$('#loading_div_'+params.receiptid).remove();
+		$('#lights_current_'+params.receiptid).toggle();
+	}
+
+
+	$(document).ready(function () {
+		var previous_status = '';
+		var status_colours = jQuery.parseJSON('<?php echo $this->receipt_status_colours; ?>');
+		$('div.receipt_icon:not(.disabled_status_icon) img').live('click', function() {
+			var receipt_id = $(this).data('receiptId');
+			var current_status = $(this).data('receiptStatus');
+			
+			if($(this).parent().hasClass('receipt_status_cell_file') != true)
+			{
+				if(current_status == previous_status && previous_status !== "")
+				{
+					if($('#lights_colors_'+receipt_id).is(':visible'))
+					{
+						$('#lights_colors_'+receipt_id).hide( "drop", { direction: "down" }, "fast" );
+					}
+					else
+					{
+						$('#lights_colors_'+receipt_id).show( "drop", { direction: "down" }, "fast" );
+					}
+				}
+				else
+				{
+					if($('#lights_colors_'+receipt_id).is(':visible'))
+					{
+						//hide and then open again
+						$('#lights_colors_'+receipt_id).hide( "drop", { direction: "down" }, "fast" ).show( "drop", { direction: "down" }, "fast" );
+					}
+					else
+					{
+						//just show it
+						$('#lights_colors_'+receipt_id).show( "drop", { direction: "down" }, "fast" );
+					}
+				}
+				
+				$('#lights_colors_'+receipt_id+' .receipt_icon_cell_color').each(function() {
+					$(this).data('receipt-status', current_status);
+				});
+
+				previous_status = current_status;
+			}
+		});
+
+		$('.receipt_icon_cell_color').live('click', function() {
+			var selected_status = $(this).data('receiptStatus');
+			var selected_color = $(this).data('receiptColor');
+			var receipt_id = $(this).data('receiptId');
+			
+			var initial_status = $('#current_receipt_status_'+receipt_id).val();
+			var selected_status_arr = [];
+			
+			var new_status = [];
+					
+			//set new data
+			$('#icon_'+selected_status+'_'+receipt_id+' img' ).data('statusCurrentcolour', selected_color);
+			
+			//verify new data
+//			console.log($('#icon_'+selected_status+'_'+receipt_id+' img' ).data('statusCurrentcolour'));
+			
+			//remove all colour classes
+			$('#icon_'+selected_status+'_'+receipt_id).removeClass('receipt_status_color_cell_red receipt_status_color_cell_green receipt_status_color_cell_white');
+			
+			//add coresponding class
+			$('#icon_'+selected_status+'_'+receipt_id).addClass(status_colours.status2css[selected_color]);
+			
+//			console.log("selected_status");
+//			console.log(selected_status);
+//			console.log("selected_Color");
+//			console.log(selected_color);
+			
+			$('#lights_'+receipt_id+' div img').each(function() {
+				selected_status_arr.push($(this).data('statusCurrentcolour'));
+			});
+			new_status = selected_status_arr.join('');
+//			console.log("initial status");
+//			console.log(initial_status);
+//			console.log("new status arr");
+//			console.log(selected_status_arr);
+//			console.log(new_status);
+			
+			
+			//show hide fax icon if status is too low
+//			if($('a#fax_icon_'+receipt_id).length)
+//			{
+//				if(selected_status < '2')
+//				{
+//					//hide fax icon
+//					$('a#fax_icon_'+receipt_id).addClass('hidden_icon');
+//				}
+//				else if( selected_status >= "2")
+//				{
+//					$('a#fax_icon_'+receipt_id).removeClass('hidden_icon');
+//				}
+//			}
+			
+			if(initial_status != new_status) {
+				save_receipt_status(new_status, $(this), receipt_id);
+			}
+			
+			$('#current_receipt_status_'+receipt_id).val(new_status);
+			$('#lights_colors_'+receipt_id).hide( "drop", { direction: "down" }, "fast" );
+		});
+	
+	
+		$('.icon_tip').qtip({
+			style: {
+				name: 'cream',
+				tip: true
+			},
+			position: {
+				my: 'center right',  // Position my top left...
+				at: 'center left' // at the bottom right of...
+			},
+			show: {
+				delay: 0,
+				event: 'mouseenter',
+				solo: true
+			},
+			hide: {
+				event: 'mouseout'
+			}
+		});
+	
+		$('#new_receipt').live('click',function() {
+			var url = '<?php echo APP_BASE; ?>patientformnew/receiptpinew?id=<?php echo $_REQUEST['id']; ?>';
+			window.location.href = url;
+		});
+		$('#new_receipt_mmi').live('click',function() {
+			var url = '<?php echo APP_BASE; ?>patientformnew/receiptmmi?id=<?php echo $_REQUEST['id']; ?>';
+			window.location.href = url;
+		});
+		//assign print user dialog
+	    $('#assign_print_users').dialog({
+			autoOpen: false,
+			modal: true,
+			title: '<?php echo $this->translate('assign_print_users_dlg'); ?>',
+			resizable: false,
+			draggable: false,
+			width: 540,
+			height: 300,
+			show: {
+				effect: "fade",
+				duration: 200
+			},
+			hide: {
+				effect: "fade",
+				duration: 200
+			},
+			buttons: [
+				{
+					text: "<?php echo $this->translate('save'); ?>",
+					click: function () {
+						submit_modal_ajax($(this).find('form'));
+						reload_assigned_users('print');
+					}
+				},
+				{
+					text: "<?php echo $this->translate('cancel'); ?>",
+					click: function () {
+						$(this).dialog("close");
+					}
+				}
+			],
+			open: function () {
+				$('.ui-dialog-titlebar').prepend('<div class="dialog_title_load" style="display:none;"><img src="<?php echo RES_FILE_PATH;  ?>/images/loading-transp.gif"></div>');
+
+				var receipt = $("#assign_print_users").data('receiptid');
+				$('#receiptid').val(receipt);
+				list_print_users(print_users, receipt);
+			},
+			close: function () {
+				$('#receiptid').val("0");
+				$('#print_users').html('');
+			}
+		});
+
+		$('.assign_icon').live('click', function () {
+			var receipt = $(this).data('receiptid');
+
+			$('#assign_print_users').data('receiptid', receipt);
+			$('#assign_print_users').dialog('open');
+		});
+
+	    $('#assign_fax_users').dialog({
+			autoOpen: false,
+			modal: true,
+			title: '<?php echo $this->translate('assign_fax_users_dlg'); ?>',
+			resizable: false,
+			draggable: false,
+			width: 540,
+			height: 300,
+			show: {
+				effect: "fade",
+				duration: 200
+			},
+			hide: {
+				effect: "fade",
+				duration: 200
+			},
+			buttons: [
+				{
+					text: "<?php echo $this->translate('save'); ?>",
+					click: function () {
+						submit_modal_ajax($(this).find('form'));
+						reload_assigned_users('fax');
+//						$("#assign_fax_users_form").submit();
+//						$(this).dialog("close");
+					}
+				},
+				{
+					text: "<?php echo $this->translate('cancel'); ?>",
+					click: function () {
+						$(this).dialog("close");
+					}
+				}
+			],
+			open: function () {
+				$('.ui-dialog-titlebar').prepend('<div class="dialog_title_load" style="display:none;"><img src="<?php echo RES_FILE_PATH;  ?>/images/loading-transp.gif"></div>');
+
+				var receipt = $("#assign_fax_users").data('receiptid');
+				$('#receiptid_fax').val(receipt);
+				list_fax_users(fax_users, receipt);
+			},
+			close: function () {
+				$('.dialog_title_load').remove();
+				$('#receiptid_fax').val("0");
+				$('#fax_users').html('');
+			}
+		});
+
+		$('.fax_assign_icon').live('click', function () {
+			var receipt = $(this).data('receiptid');
+
+			$('#assign_fax_users').data('receiptid', receipt);
+			$('#assign_fax_users').dialog('open');
+		});
+
+		$('.print_button').live('click', function(){
+			var url = appbase+'patientformnew/getprintprofiles';
+			$('#printreceiptid').val($(this).data('receiptId'));
+			
+			xhr = $.ajax({
+				url : url,
+				success : function(response) {
+					
+					if(response != "" && isNaN(response))
+					{
+						$('.print_profiles').html(response);
+						$('.print_profiles').dialog('open');
+					}
+					else if(response != "" && !isNaN(response))
+					{
+						var url = appbase+'patientformnew/receiptpinew';
+
+						var patientid = "<?php echo $_REQUEST['id']; ?>";
+						//var rpid = $(this).data('receiptId');
+						var rpid = $('#printreceiptid').val();
+						
+						var params = 'id=' + patientid + '&rpid=' + rpid+'&mode=pdf&print_profile='+response;
+						
+						$.download(url, params);
+						setTimeout(delCallback, 500);
+					}
+					else
+					{
+						var url = appbase+'patientformnew/receiptpinew';
+						
+						var patientid = "<?php echo $_REQUEST['id']; ?>";
+						//var rpid = $(this).data('receiptId');
+						var rpid = $('#printreceiptid').val();
+
+						var params = 'id=' + patientid + '&rpid=' + rpid+'&mode=pdf';
+						
+						$.download(url, params);
+						setTimeout(delCallback, 500);
+					}
+				}
+			});
+			
+			/* var url = appbase+'patientformnew/receiptpinew';
+
+			var patientid = "<?php echo $_REQUEST['id']; ?>";
+			var rpid = $(this).data('receiptId');
+
+			var params = 'id=' + patientid + '&rpid=' + rpid+'&mode=pdf';
+			
+			$.download(url, params);
+			setTimeout(delCallback, 500); */
+		});
+		
+		//ISPC - 2162
+		$( ".print_profiles" ).dialog({
+			autoOpen: false,
+			resizable: false,
+			title: "<?php echo $this->translate('2162 - print profiles ')?>",
+			height: 380,
+			width: 450,
+			modal: true,
+			open: function() {
+				$(this).dialog( "option", "buttons", 
+						[ 
+							{
+								text: "<?php echo $this->translate('save')?>", 
+								"class": 'cancelButtonClass',
+								click: function() {
+//	 								$( this ).dialog( "close" );
+									var print_profile = $('#select_option').val();
+									
+									$( this ).dialog( "close" );
+									
+									var url = appbase+'patientformnew/receiptpinew';
+
+									var patientid = "<?php echo $_REQUEST['id']; ?>";
+									//var rpid = $(this).data('receiptId');
+									var rpid = $('#printreceiptid').val();
+
+									var params = 'id=' + patientid + '&rpid=' + rpid+'&mode=pdf&print_profile='+print_profile;
+									
+									$.download(url, params);
+									setTimeout(delCallback, 500);
+									
+									//console.log("save changes");
+								}
+							},
+							{
+								text: "<?php echo $this->translate('cancel')?>", 
+								"class": 'cancelButtonClass',
+								click: function() {
+									$( this ).dialog( "close" );
+								}
+							}
+					]
+				);
+			},
+			close: function() {
+				
+			}
+
+		});
+		
+		$('.fax_button').live('click', function(){
+			var url = appbase+'patientformnew/receiptpinew';
+
+			var patientid = "<?php echo $_REQUEST['id']; ?>";
+			var rpid = $(this).data('receiptId');
+
+			ajaxCallserver({url: url, method: 'POST', data: {id: patientid, rpid: rpid, mode: "fax"}});
+			setTimeout(delCallback, 1000);
+		});	
+	}); //end document ready
+
+	var loader = function (element)
+    {
+		var dlist = '<div class="loadingdiv" align="center" style="width: 100%;float: left; height:100%; vertical-align:middle;"><img src="<?php echo RES_FILE_PATH; ?>/images/loader_transparent.gif" width="32"><br /><?php echo $this->translate('loadingpleasewait'); ?></div>';
+		element.html(dlist);
+	}
+	//ISPC-2866,Elena,22.03.2021
+	$('#print_user_all').live('change', function(e){
+		if($( this ).prop( "checked" )){
+			$('#print_usrs li input[type=checkbox]').each(function(ind, elm){
+				if($(elm).attr('id') !== 'print_user_all' ){
+					$(elm).prop('checked', true);
+				}
+			})
+		}
+	})
+
+
+
+
+	function list_print_users(print_users_json, receipt)
+	{
+	    var row;
+	    row = $('<ul class="row"  id="print_usrs" />');
+
+		if(print_users_json.status == "0")
+		{
+			$('div#print_users ').html("<div><?php echo $this->translate("no_print_users_added"); ?></div>");
+		}
+		else
+		{
+			//ISPC-2866,Elena,22.03.2021
+			row.append('<li class=\"cell\">\n\<input type=\"checkbox\"  id=\"print_user_all"\ />\n\<span><label for=\"print_user_all\">Alle auswählen</label></span>\n\</li>');
+			$('div#print_users ').append(row);
+
+			$.each(print_users_json, function (i, item) {
+				var checked = "";
+
+				if($.inArray(item.id, assigned_users[receipt]) > '-1'){
+					checked = 'checked="checked"';
+				}
+
+				row.append("<li class=\"cell\">\n\
+					<input type=\"checkbox\" value=\"" + item.id + "\" id=\"print_user_" + item.id + "\" name=\"assign_users[]\" "+checked+" />\n\
+					<span><label for=\"print_user_" + item.id + "\">" + item.user_title +" "+ item.last_name + ", " + item.first_name + "</label></span>\n\
+					</li>");
+				$('div#print_users ').append(row);
+			});
+			//ISPC-2866,Elena,22.03.2021
+			$('#print_usrs li input[type=checkbox]').each(function(ind, elm){
+				$(elm).on('change', function(){
+					if(!$( elm ).prop( "checked" )){
+						$('#print_user_all').prop('checked', false);
+					}
+				})
+			})
+		}
+	}
+
+	function list_fax_users(fax_users_json, receipt)
+	{
+	    var row;
+	    row = $('<ul class="row" id="fax_usrs" />');
+
+		$('div#fax_users ').html("");
+
+		if(fax_users_json.status == "0")
+		{
+			$('div#fax_users ').html("<div><?php echo $this->translate("no_fax_users_added"); ?></div>");
+		}
+		else
+		{
+			$.each(fax_users_json, function (i, item) {
+				var checked = "";
+
+				if($.inArray(item.id, assigned_fax_users[receipt]) > '-1'){
+					checked = 'checked="checked"';
+				}
+
+				row.append("<li class=\"cell\">\n\
+					<input type=\"checkbox\" value=\"" + item.id + "\" id=\"fax_user_" + item.id + "\" name=\"assign_users[]\" "+checked+" />\n\
+					<span><label for=\"fax_user_" + item.id + "\">" + item.user_title + " " + item.last_name + ", " + item.first_name + "</label></span>\n\
+					</li>");
+				$('div#fax_users ').append(row);
+			});
+		}
+	}
+
+	function submit_modal_ajax(form) {
+		form = $(form);
+		$.ajax({
+			url: appbase+'patientformnew/listreceipts?id=<?php echo $_REQUEST['id']; ?>',
+			data: form.serialize(),
+			type: (form.attr('method')),
+			dataType: 'script',
+			beforeSend: function() { $('div.dialog_title_load').show(); },
+			complete: function() {
+				ajaxCallserver({url: '<?php echo APP_BASE; ?>patientformnew/fetchreceipts', data: {id: "<?php echo $this->patient_id; ?>", clm: "cdate", ord: "DESC", pgno: "0"}, callLoading: pl_loading});
+				$('div.dialog_title_load').hide();
+				//close all ui dialogs
+				$(".ui-dialog-content").dialog("close");
+			}
+		});
+		return false;
+	}
+
+	//assigned type (print users or fax users
+	function reload_assigned_users(assigned_type) {
+		$.ajax({
+			url: appbase+'ajax/receiptsassignedusers',
+			data: {type:assigned_type},
+			type: "POST",
+			dataType: 'json',
+			complete: function(data) {
+				var response = data.responseText;
+
+				if(assigned_type == "print")
+				{
+					assigned_users = jQuery.parseJSON(response.print);
+				}
+				else if(assigned_type == "fax")
+				{
+					assigned_fax_users = jQuery.parseJSON(response.fax);
+				}
+				else
+				{
+					var data_obj = jQuery.parseJSON(data.responseText);
+					assigned_users = data_obj.print;
+					assigned_fax_users = data_obj.fax;
+				}
+			}
+		});
+	}
+	
+	function save_receipt_status(new_status, replacement, receiptid) {
+		if(new_status && receiptid) {
+			ajaxCallserver({url: appbase + 'ajax/changereceiptstatus?rpid='+receiptid+'&status=' + new_status, callLoading: status_loading(receiptid)});
+			
+			$('div#receipt_current_icon_'+receiptid+' img').replaceWith($(replacement).html());
+			$('div#receipt_current_icon_'+receiptid+' img').show();
+		}
+	}
+
+
+	jQuery.download = function(url, data, method) {
+		//url and data options required
+		if (url && data) {
+			//data can be string of parameters or array/object
+			data = typeof data == 'string' ? data : jQuery.param(data);
+			//split params into form inputs
+			var inputs = '';
+			jQuery.each(data.split('&'), function() {
+				var pair = this.split('=');
+				inputs += '<input type="hidden" name="' + pair[0] +'" value="' + pair[1] + '" />';
+			});
+
+			//send request
+			jQuery('<form action="' + url + '" method="' + (method || 'post') + '">' + inputs + '</form>').appendTo('body').submit().remove();
+		};
+	};
+</script>
+<style type="text/css">
+	div#print_users {
+		width: 100%;
+	}
+
+	li.cell {
+		width: 250px;
+		text-align: left;
+		float:left;
+	}
+
+	div#print_users ul, div#fax_users ul {
+		width: 510px;
+		float:left;
+		padding-right: 3px;
+	}
+
+	.datatable tr td {
+		vertical-align: top;
+	}
+	.icon_col {
+		text-align: center;
+	}
+	img.icon_image {
+		padding: 3px;
+	}
+	img.icon_image:hover {
+		padding: 3px;
+		/*border:1px solid #000;*/
+	}
+
+	img.icon_image_actions {
+		padding: 3px;
+	}
+	img.icon_image_actions:hover {
+		padding:2px;
+		border:1px solid #000;
+	}
+
+	.datatable tr td {
+		vertical-align:	top;
+	}
+	
+/*	.datatable tr.row {
+		height:90px;
+	}*/
+	
+	.datatable tr td.icon_col a {
+		float:left;
+	}
+	
+	td.med_col {
+		width:120px;
+	}
+	td.type_col {
+		width: 80px;
+	}
+	td.status_col {
+		width: 89px;
+	}
+	
+
+/*	.container_icn, .icon-image, .text_icn {
+		height:100px; width:100px;
+	}*/
+	.container_icn {
+		position:relative;
+		width:30px;
+		height: 30px;
+	}
+	.text_icn {
+		width: 16px;
+		height: 16px;
+		text-align: center;
+		position: absolute;
+		/* background-color: #B5BFD5; */
+		border: 1px solid #000;
+		color: red;
+		top: 0px;
+		vertical-align: middle;
+		line-height: 16px;
+		font-weight: bold;
+		left: 20px;
+		-webkit-border-radius: 5px;
+		-moz-border-radius: 5px;
+		border-radius: 5px;
+	}
+    table.datatable tr:hover{
+          background-color: #e1e1e1;
+    }
+	.first_half{
+		width:50%;
+		text-align: left;
+		float:left;
+	}
+	.second_half {
+		width:50%;
+		float:left;
+		text-align: right;
+	}
+	input#new_receipt {
+		font-size: 18px;
+		color: #555;
+		padding: 5px;
+	}
+	
+	/* icons */
+	div.receipt_icon {
+		width: 84px;
+		/*height: 31px;*/
+		background-color: #fff;
+		float: left;
+		border: 1px dashed #444444;
+	}
+
+	div.receipt_icon_cell{
+		-webkit-border-radius: 5px;
+		-moz-border-radius: 5px;
+		border-radius: 5px;
+	}
+	div.receipt_icon_cell img {
+		display: block;
+		height: 24px;
+		width: 24px;
+	}
+	div.receipt_history_icon_cell {
+		-webkit-border-radius: 5px;
+		-moz-border-radius: 5px;
+		border-radius: 5px;
+		border: 1px solid #000;
+		margin-left: 3px;
+	}
+	div.receipt_history_icon_cell img {
+		display: block;
+		height: 16px;
+		width: 16px;
+	}
+
+	div.lights {
+		position: relative;
+		/*display: none;*/ 
+		margin: 3px 0 0 3px;
+		height: 28px;
+		background-color: #fff;
+	}
+	div.lights_colors {
+		position: relative;
+		display: none; 
+		margin: 3px 0 0 3px;
+		height: 28px;
+		background-color: transparent;
+		
+	}
+	
+	div.receipt_status_color_cell_red {
+		background-color: red;
+	}
+	
+	div.receipt_status_color_cell_yellow {
+		background-color: yellow;
+	}
+	
+	div.receipt_status_color_cell_white {
+		background-color: white;
+	}
+	
+	div.receipt_status_color_cell_green {
+		background-color: #5bff73;
+	}
+	
+	div.receipt_icon_cell_color {
+		display: block;
+		height: 24px;
+		width: 24px;
+		float: left;
+		margin: 2px 0 0 2px;
+		-webkit-border-radius: 5px;
+		-moz-border-radius: 5px;
+		border-radius: 5px;
+	}
+	
+	div.receipt_icon_cell_color:hover {
+		height: 22px;
+		width: 22px;
+		border-collapse: collapse;
+		border:1px solid #000;
+	}
+/*
+	div.receipt_current_icon {
+		margin: 3px 0 0 3px;
+	}*/
+
+	div.receipt_histoy_status_cell_file {
+		float:left;
+	}
+	div.receipt_status_cell_file {
+		position: absolute;
+	}
+
+	div.receipt_status_cell_print {
+		position: absolute;
+		margin-left: 27px;
+		background-color:auto;
+	}
+
+	div.receipt_status_cell_fax {
+		position: absolute;
+		margin-left: 54px;
+		background-color:auto;
+	}
+	a.fax_button.hidden_icon, a.print_button.hidden_icon {
+		display: none;
+	}
+	
+	table.datatable#receipt_log_table tr:hover {
+		background-color:transparent;
+	}
+	
+	div.history_log_content table {
+		width: 100%;
+	}
+	
+	div.history_log_content table td {
+		vertical-align: top;
+	}
+	
+	div.history_log_content {
+		padding: 5px;
+	}
+	
+	td.time_user_col {
+		width:160px;
+	}
+
+	td.entry_details_col {
+		vertical-align: top;
+	}
+	
+	.ui-accordion .ui-accordion-header a {
+		padding: .2em .2em .2em .5em;
+	}
+	.ui-accordion-icons .ui-accordion-header a {
+		padding-left: 2.2em;
+	}
+	.ui-accordion .ui-accordion-content {
+		padding: .5em 1.2em;
+	}
+	table.datatable#receipt_log_table {
+		margin-top:5px;
+	}
+	.history_log_content{
+		/*height:130px;*/
+	}
+</style>
+<? if($this->mmi_button == "1"):?>
+<input type="button" name="new_receipt_mmi" id="new_receipt_mmi" value="<?php echo $this->translate('OLD VERSION SADMIN ONLY'); ?>" />
+<?php endif; ?>
+<div style="clear:both;"></div>
+<br />
+<h1 class="first_half"><?php echo $this->translate('receipts_list'); ?></h1>
+<div class="second_half"><input type="button" name="new_receipt" id="new_receipt" value="<?php echo $this->translate('new_receipt'); ?>" /></div>
+<br/>
+<br/>
+
+
+<?php if($_REQUEST['flg'] !== "suc"): ?>
+		<?php $msg_type_class = "err"; ?>
+	<?php else: ?>
+		<?php $msg_type_class = "success"; ?>
+<?php endif; ?>
+
+<p><div id="userlisterror" class="<?php echo $msg_type_class; ?>"><?php echo $this->error_message; ?></div></p>
+
+<div id="content">
+	<?php echo $this->usergrid; ?>
+</div>
+
+<script type="text/javascript">
+	ajaxCallserver({url: appbase + 'patientformnew/fetchreceipts', data: {id: "<?php echo $this->patient_id; ?>", clm: 'cdate', ord: 'DESC', pgno: '0'}, callLoading: pl_loading});
+</script>
+
+<div id="assign_print_users">
+	<form id="assign_print_users_form" name="assign_print_users_form" method="POST" action="">
+		<input type="hidden" name="assign_users_frm" id="assign_users_frm" value="1" />
+		<input type="hidden" name="receipt" id="receiptid" value="0" />
+		<input type="hidden" name="printreceiptid" id="printreceiptid" value="" />
+		<div id="print_users">
+			<!--Javascript generated users list-->
+		</div>
+	</form>
+</div>
+
+<div id="assign_fax_users">
+	<form id="assign_fax_users_form" name="assign_fax_users_form" method="POST" action="">
+		<input type="hidden" name="assign_users_frm" id="assign_users_frm" value="2" />
+		<input type="hidden" name="receipt" id="receiptid_fax" value="0" />
+		<div id="fax_users">
+			<!--Javascript generated users list-->
+		</div>
+	</form>
+</div>
+
+<div class="print_profiles">
+
+</div>

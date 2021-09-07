@@ -1,0 +1,375 @@
+<?php $this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/page-css/complaint_form.css');  ?> 
+
+<?php
+$complaintformlist_lang = $this->translate('complaintform_lang');
+
+$form = $this->form_data;
+$form_labels = $this->form_labels;
+$patient_data = $this->patient_data;
+$users_details  = $this->users_details;
+$status_details  = $this->status_details;
+//TODO-2888 Carmen 12.02.2020 add complaint_number, preparation_already_applied, preparation_already_discontinued; remove the special address
+?>
+<script type="text/javascript">
+
+$(function() {
+
+ 
+
+	$('.date_pick').datepicker({
+		dateFormat: 'dd.mm.yy',
+		showOn: "both",
+		buttonImage: $('#calImg').attr('src'),
+		buttonImageOnly: true,
+		changeMonth: true,
+		changeYear: true,
+		nextText: '',
+		prevText: ''
+	});
+	   
+
+	$(".date_pick").mask("99.99.9999");
+ 
+ 
+  
+//ISPC - 2084
+	$('.delete_form').live('click', function() {
+		var form_id = $(this).data('flid');
+		
+		jConfirm('<?php echo $this->translate('confirmdeleterecord'); ?>', '<?php echo $this->translate('confirmdeletetitle'); ?>', function (r) {
+			if(r)
+			{
+				window.location.href = '<?php echo APP_BASE ?>patientformnew/deletecomplaintform?formlar_id='+form_id+'&id=<?php echo $_GET["id"]?>';
+	 
+				ajaxCallserver({url: '<?php echo APP_BASE ?>patientformnew/deletecomplaintform?formlar_id='+form_id+'&id=<?php echo $this->pid?>'});
+			}
+		});
+	});
+}); 
+ 
+</script>
+
+<!-- compaiment form  -->
+<div class="tab_container">
+<div id="stammblatt_CalendarImg" style="display: none;">
+	<img id="calImg" src="<?php echo RES_FILE_PATH;  ?>/images/calendar.png" alt="Popup" class="trigger">
+</div>
+
+<?php if( ! empty($_REQUEST['formular_id']) ):?>
+<div style="display: block; float: left; width: 100%;">
+	<a href="<? echo APP_BASE.'patientformnew/complaintform?id='.$_REQUEST['id'] ?>" class="new_button"><?php echo $complaintformlist_lang['new_form'];?></a>
+</div>
+<?php endif;?>
+<?php if(!empty($this->saved_forms)):?>
+		<fieldset>
+	
+			<legend><?php echo $complaintformlist_lang['legend_saved'];?></legend>
+ 
+<table class="datatable">
+<tr>
+	<th>#</th>
+	<th><?php echo $complaintformlist_lang['form_date'];?></th>
+	<th><?php echo $complaintformlist_lang['form_unique_id'];?></th>
+	<th><?php echo $complaintformlist_lang['form_status'];?></th>
+	<th><?php echo $complaintformlist_lang['create_user'];?></th>
+	<th><?php echo $complaintformlist_lang['create_date'];?></th>
+	<th><?php echo $complaintformlist_lang['actions'];?></th>
+</tr>
+<?php $nr=1; foreach($this->saved_forms as $k=>$fdata):?>
+	
+	<tr  <?php if($fdata['id']==$_GET['formular_id']):?> class="selected_form" <?php endif;?>> 
+		<td><?php echo $nr;?></td>
+		<td><?php echo date("d.m.Y H:i",strtotime($fdata['form_date']));?></td>
+		<td>
+		<?php echo $fdata['id'] >10000 ? $fdata['id']: $fdata['id']+10000     ?>
+		</td>
+		<td><?php echo $complaintformlist_lang['status_'.$fdata['status']];?></td>
+		<td><?php echo $users_details[$fdata['create_user']];?></td>
+		<td><?php echo date("d.m.Y",strtotime($fdata['create_date']));?></td>
+		<td>
+			<a href="<?php echo APP_BASE;  ?>patientformnew/complaintform?id=<?php echo $_GET['id'];?>&formular_id=<?php echo $fdata['id']?>" class="action_edit" ><img src="<?php echo RES_FILE_PATH; ?>/images/edit.png" border="0" /></a>
+			
+			<?php if($fdata['status'] != "closed" ):?>
+				<a href="javascript:void(0);" class="delete_form" data-flid="<?php echo $fdata['id']; ?>" rel="<?php echo $fdata['id']; ?>"  ><img src="<?php echo RES_FILE_PATH; ?>/images/action_delete.png" id="deletePayment-<?php echo $fdata['id']; ?>"  /></a>
+			<?php endif;?>
+			
+		</td>
+	</tr>
+<?php $nr++; endforeach;?>
+
+
+</table>
+</fieldset>
+<?php endif;?>
+
+
+	<form name="complaintform" id="complaintform" method="post" autocomplete="off" >
+		<fieldset>
+			<?php if($form['status'] == "closed"):?>
+			<div class="form_alert_info">
+				<p><?php echo  $complaintformlist_lang['This form is Closed. No changes are alowed!'];?></p>
+			</div>
+			<?php endif;?>
+
+	
+			<legend><?php echo $complaintformlist_lang['legend'];?></legend>
+ 
+			<table border="1" class="form_header">
+				<tr>
+					<td width="50%" style="line-height: 24px; font-size: 12px;">
+						<b>Adresse des Kunden:</b><br/>
+						<?php echo $patient_data['name']; ?><br/>
+						<?php echo $patient_data['street']; ?><br/>
+						<?php echo $patient_data['address_zip_city']; ?><br/>
+					</td>
+					
+					<td>
+						<table class="cp_free">
+							<tr>
+								<td width="20%">
+									<label>Ansprechpartner:</label>
+								</td>
+								<td width="80%">
+									<input type="text" name="form[cp_name]" value="<?php echo $form['cp_name']; ?>" />
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<label>Telefon:</label>
+																	</td>
+								<td>
+									<input type="text" name="form[cp_phone]" value="<?php echo $form['cp_phone']; ?>" />
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<label>Fax:</label>
+																	</td>
+								<td>
+									<input type="text" name="form[cp_fax]" value="<?php echo $form['cp_fax']; ?>" />
+								</td>
+							</tr>
+						</table>	
+					</td>
+				</tr>	
+				<tr>
+					<td>
+						<span class="example_text"><b>Chargenbezeichnung:</b> (z.B. Paclitaxel/250NaCl, PE)</span>
+					</td>
+					<td>
+						<textarea rows="" cols="" name="form[drug]"><?php echo $form['drug']?></textarea>
+					</td>
+				</tr>
+				<tr>
+					<td>
+						<span class="example_text"><b>Produktbezeichnung:</b></span>
+					</td>
+					<td>
+						<textarea rows="" cols="" name="form[product]"><?php echo $form['product']?></textarea>
+					</td>
+				</tr>
+				<tr>
+					<td>
+						<span class="example_text"><b>ZubMixID:</b> (Gekennzeichnet auf dem Zubereitungsetikett oben rechts, z.B.:12345-1)</span>
+					</td>
+					<td>
+						<textarea rows="" cols="" name="form[zubmixid]"><?php echo $form['zubmixid']?></textarea>
+					</td>
+				</tr>
+				<tr>
+					<td>
+						<span class="example_text"><b>Reklamationsnummer:</b></span>
+					</td>
+					<td>
+						<input type="text" name="form[complaint_number]" value="<?php echo $form['complaint_number']; ?>" />
+					</td>
+				</tr>	
+			</table>
+
+			<table>
+				<tr>
+					<td class="big_empty_row"></td>
+				</tr>
+				<tr>
+					<td class="form_row">
+						<h3>Bitte kreuzen Sie an um welche Art der Beanstandung es sich handelt:</h3>
+					</td>
+				</tr>
+				<tr>
+					<td class="big_empty_row"></td>
+				</tr>
+				<tr>
+					<td class="form_row">
+						<h3>Art des reklamierten Produktes:</h3>
+					</td>
+				</tr>
+			 	<tr>
+					<td class="form_row ">
+						<!-- THE BRUTAL VERSION  -->
+						<? foreach($form_labels['complaint_products'] as $cp_id=>$cp_label):?>
+							<div class="special_multi_chk_line">
+								<input type="checkbox" id="form-complaint_products-<?=$cp_id;?>" name="form[complaint_products][]" value="<?=$cp_id?>" <?php if(in_array($cp_id,$form['complaint_products'])): ?>  checked="checked" <?php endif;?>/>
+								<label for="form-complaint_products-<?=$cp_id;?>"><?php echo $cp_label;?></label>
+							</div>
+						<? endforeach?>
+						<!-- THE OK VERSION   -->
+						<?php //echo $this->formMultiCheckbox('form[complaint_products][]', $form['complaint_products'], array ('onclick' => ''), $form_labels['complaint_products'], '<br/>'); ?>
+					</td>	
+				</tr>
+	 			<tr>
+					<td class="medium_empty_row"></td>
+				</tr>
+				<tr>
+					<td class="form_row ">
+						<h3>Grund der Beanstandung:</h3>
+						<!-- THE BRUTAL VERSION  -->
+						<? foreach($form_labels['reason'] as $r_id=>$r_label):?>
+							<div class="special_multi_chk_line">
+								<input type="checkbox" id="form-reason-<?=$r_id;?>" name="form[reason][]" value="<?=$r_id?>" <?php if(in_array($r_id,$form['reason'])): ?>  checked="checked" <?php endif;?>/>
+								<label for="form-reason-<?=$r_id;?>"><?php echo $r_label;?></label>
+							</div>
+						<? endforeach?>
+						<!-- THE OK VERSION   -->
+						<?php // echo $this->formMultiCheckbox('form[reason][]', $form['reason'], array ('onclick' => ''), $form_labels['reason'], '<br/>'); ?>
+					</td>	
+				</tr>
+				<tr>
+					<td class="medium_empty_row"></td>
+				</tr>
+				<tr>
+					<td class="form_row chambers_chk">
+						<h3>Folgende Kammer ist betroffen:</h3>
+						<?php echo $this->formMultiCheckbox('form[chamber][]', $form['chamber'], array ('onclick' => '','class'=>'chambers'), $form_labels['chamber'], '<span></span>'); ?>
+					</td>	
+				</tr>
+				<tr>
+					<td class="medium_empty_row"></td>
+				</tr>
+				<tr>
+					<td class="form_row preparation_chk">
+						<h3>Die Zubereitung wurde bereits appliziert:</h3>
+						<?php echo $this->formRadio('form[preparation_already_applied][]', $form['preparation_already_applied'], array ('onclick' => '','class'=>'preparation'), $form_labels['preparation'], '<span></span>'); ?>
+					</td>	
+				</tr>
+				<tr>
+					<td class="medium_empty_row"></td>
+				</tr>
+				<tr>
+					<td class="form_row preparation_chk">
+						<h3>Die Zubereitung wurde bereits vernichtet:</h3>
+						<?php echo $this->formRadio('form[preparation_already_discontinued][]', $form['preparation_already_discontinued'], array ('onclick' => '','class'=>'preparation'), $form_labels['preparation'], '<span></span>'); ?>
+					</td>	
+				</tr>
+				<tr>
+					<td class="medium_empty_row"></td>
+				</tr>
+				<?php //ISPC-2806 Dragos 27.01.2021 ?>
+				<tr>
+					<td class="form_row complaint_email">
+						<?php if ($this->has249module) : ?>
+						<h3>Die Zubereitung wurde in folgender Einrichtung produziert:</h3>
+						<?php echo $this->formRadio('form[complaint_email_to]', $form['complaint_email_to'], array('onclick' => '', 'class' => 'complaint_email_to'), $form_labels['complaint_email_to'], '<span></span>');
+						endif;?>
+					</td>
+				</tr>
+				<tr>
+					<td class="medium_empty_row"></td>
+				</tr>
+				<?php // -- // ?>
+				<tr>
+					<td class="form_row ">
+						<label>Erläuterung:</label>
+					</td>	
+				</tr>
+					
+				<tr>
+					<td class="form_row other_reason">
+						<textarea cols="" rows="" name="form[other_reason_text]"><?php echo $form['other_reason_text'];?></textarea>
+					</td>	
+				</tr>	
+				<tr>
+					<td class="big_empty_row"></td>
+				</tr>
+				<tr>
+					<td class="form_row ">
+						<label>Kommentar Fallabschluss:</label>
+					</td>	
+				</tr>
+					
+				<tr>
+					<td class="form_row other_reason">
+						<textarea cols="" rows="" name="form[comment]"><?php echo $form['comment'];?></textarea>
+						
+						<?php if(strlen($this->error_comment) > 0 ):?>
+						<div class="err">
+						<?php echo $this->error_comment?>
+						</div>
+						<?php endif;?>
+					</td>	
+				</tr>	
+				<tr>
+					<td class="big_empty_row"></td>
+				</tr>
+			</table>
+			
+			<table class="bottom_table">
+				<tr>
+					<td>Datum</td>
+					<td>Benutzer</td>
+				</tr>
+			
+				<tr>
+					<td><input type="text" name="form[form_date]" value="<?php echo $form['form_date'];?>"  class="date_pick"> </td>
+					<td><input type="text" name="form[user_name]" value="<?php echo $form['user_name']; ?>"> </td>
+				</tr>				
+			</table>
+			<br/>
+			<br/>
+			<br/>
+			<!-- <div class="special_address">
+				<b style="text-decoration: underline;">Rücksendung an:</b><br/>
+				Eurozyto GmbH<br/>
+				Limburger Str. 50<br/>
+				61462 Königstein<br/>
+				Fax: 06174/95587-3<br/>
+			</div> -->
+
+	    	<?php if(!empty($this->form_history)):?>
+    			<fieldset>
+	    			<legend><b><?php echo $complaintformlist_lang['form history log']?></b></legend>
+	    			<table class="datatable">
+	    				<tr>
+	    					<th><?php echo $complaintformlist_lang['changed_user']?></th>
+	    					<th><?php echo $complaintformlist_lang['changed_date']?></th>
+	    				</tr>
+	    				<?php foreach($this->form_history as $k=>$fh):?>
+	    				<tr>
+	    					<td><?php echo $users_details[$fh['create_user']];?></td>
+							<td><?php echo date("d.m.Y H:i",strtotime($fh['create_date']));?></td>
+						</tr>
+	    				<?php endforeach;?>
+	    			</table>
+    			</fieldset>
+	    	<?php endif;?>
+	    	
+    		<fieldset>
+	    		<?php if($form['status'] == "closed"):?>
+			  			<input type="submit" name="generate_pdf" id="generate_pdf" value="<?php echo $complaintformlist_lang['generate_pdf'];?>" class="btnsubmit_usersessions">
+				<?php else:?>
+	
+			 
+			  			<input type="submit" name="save" id="save" value="<?php echo $complaintformlist_lang['save_form'];?>" class="btnsubmit_usersessions">
+			  			<input type="submit" name="save_and_sendTodo" id="save_and_sendTodo" value="<?php echo $complaintformlist_lang['save_and_sendTodo'];?>" class="btnsubmit_usersessions">
+			  			
+			  			<?php // if(isset($_REQUEST['formular_id'])): ?>
+			  				<input type="submit" name="save_and_CloseFile_and_sendTodo" id="save_and_CloseFile_and_sendTodo" value="<?php echo $complaintformlist_lang['save_and_CloseFile_and_sendTodo'];?>" class="btnsubmit_usersessions">
+			  			<?php // endif;?>
+			  			
+			  			<input type="submit" name="generate_pdf" id="generate_pdf" value="<?php echo $complaintformlist_lang['generate_pdf'];?>" class="btnsubmit_usersessions">
+		  		 
+				<?php endif;?>
+			</fieldset>
+
+		</fieldset>
+	</form>
+</div>

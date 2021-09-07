@@ -1,0 +1,212 @@
+<?php
+$users = $this->users;
+$client_shifts_min = $this->client_shifts_min;
+$month_days_array = $this->month_days;
+$roster_saved_data = $this->roster_saved_data;	
+$national_holidays = $this->national_holidays;
+?>
+<?php if($this->groupUsers): ?>
+<ul style="position:relative; z-index:999" id="header_row_ul">
+
+</ul>
+<ul class="sortable" style="position:relative; z-index:0; webkit-transform: translate3d(0,0,0);">
+	
+	<li class="header-row" id="header_row">
+		<span>
+			<div class="col_names header_row_cell">
+				<span>&nbsp;<br />&nbsp;</span>
+			</div>
+			<?php foreach ($month_days_array as $day): $day_type = date('w', strtotime($day)); ?>
+			<div class="col header_row_cell <?php if(in_array($day, $national_holidays)):?> holiday_roster <?php endif; ?> <?php if ($day_type == 0 || $day_type == 6): ?> weekend <?php else: ?> normal_day <?php endif; ?> day_display">
+				<span><?php echo date('d', strtotime($day)); ?> <?php echo strftime('%a', strtotime($day)); ?></span>
+			</div>
+			<?php endforeach; ?>
+		</span>
+	</li>
+	
+	<?php if(empty($this->groupUsers)): ?>
+	<li id="no_users"><div><span><?php echo $this->translate('there_are_no_duty_roster_users'); ?></span></div></li>
+	<?php else: ?>
+	<?php foreach ($this->groupUsers as $group_id => $group_users): ?>
+	<li class="grouped_row master" id="usergroups_<?php echo $group_id; ?>">
+		<?php foreach($group_users as $user_id=>$username): ?>
+			<?php if($user_id == 0):?>
+				<span>
+					<div class="col_group group_cell_names">
+						<?php if($this->usertype == 'SA' || $this->usertype == 'CA'):?>
+						<span class="dragger">&nbsp;&nbsp;</span>
+						<?php endif; ?>
+
+						<span><?php echo $this->groups[$group_id]['groupname'];?></span>
+					</div>
+				</span>
+			<ul class=" sortable2 class_row_<?php echo $group_id;?>" id="grouped-row-users_<?php echo $group_id; ?>">
+			<?php elseif($user_id != 0):?>
+				
+<?php
+	if ($users['all'][$user_id]['isactive'] == "1" 
+		//&& !isset($roster_saved_data[$user_id])
+		&& strtotime($month_days_array[0]) > strtotime( $users['all'][$user_id]['isactive_date'] ) )  
+	{
+		continue;
+	}
+	
+?>
+				
+			<li class="user_data_<?php echo $user_id.'-'.$group_id;?> child" alt="<?php echo $group_id;?>" id="<?php echo $group_id;?>_<?php echo $user_id; ?>">
+<?php 
+
+	if ($users['all'][$user_id]['isactive'] == "1" ){
+		//&& isset($roster_saved_data[$user_id])
+
+		$inactive_date = $users['all'][$user_id]['isactive_date'];
+	
+		foreach ($month_days_array as $k_day => $day){
+						
+			if( strtotime($day) >= strtotime( $inactive_date) )  {
+				$roster_saved_data[$user_id][$day]['isactive'] = "A";
+			}
+						
+		}
+		/*echo "<span class='user_is_inactive_span'>". $this->translate("userinactive") . " von " .  $users['all'][$user_id]['isactive_date'] . "</span>";*/
+	}
+?>
+				<ul class="sortable3" id="grouped-row-users-data-row_<?php echo $user_id.'-'.$group_id;?>">
+					<li class="row_<?php echo $user_id.'-'.$group_id;?>" >
+						<div class="col_names cell_names">
+							<?php if($this->usertype == 'SA' || $this->usertype == 'CA'):?>
+							<span class="dragger name">&nbsp;&nbsp;</span>
+							<?php endif; ?>
+
+							
+							<?php
+								$uinfo = "";
+
+								if($users['all'][$user_id]['phone']){
+									$uinfo ="Telefon: ".$users['all'][$user_id]['phone'].'<br/>';
+								}
+								if($users['all'][$user_id]['mobile']){
+									$uinfo .="Mobiltelefon: ".$users['all'][$user_id]['mobile'];
+								}
+							?>
+							<span   class="user_info" title="<? echo $uinfo; ?>">
+							<?php
+							$user_full_name = mb_substr($username, 0, 15, "UTF-8");
+
+							if(strlen($username) > '15')
+							{
+								$user_full_name = $user_full_name.'...';
+							}
+
+							echo $user_full_name;
+							?>
+							</span>
+						</div>
+
+						<?php foreach ($month_days_array as $k_day => $day): $day_type = date('w', strtotime($day)); ?>
+						<?php 
+								if (isset($roster_saved_data[$user_id][$day]['isactive'])) {
+									$isactive = " strikethrough ";	
+								}else{
+									$isactive = "";
+								}
+						?>
+						<div class="col cell <?php if(in_array($day, $national_holidays)):?> holiday_roster <?php endif; ?> <?php if ($day_type == 0 || $day_type == 6): ?> weekend <?php else: ?> <?php if(strlen($roster_saved_data[$user_id][$day][0]) > '0' && ($day_type == 0 || $day_type == 6)): ?> selected_cell_weekend <?php elseif(strlen($roster_saved_data[$user_id][$day][0]) > '0'): ?> selected_cell <?php endif; ?> <?php endif; ?> <?php echo 'col_' . (date('j', strtotime($day)) - 1); ?>  <?php echo $isactive; ?>" <?php if(strlen($roster_saved_data[$user_id][$day][0]) > '0'): echo 'style="background-color:#'.$client_shifts_min[$roster_saved_data[$user_id][$day][0]]['color'].';"'; endif;  ?> align="center" >
+							<span id="span_<?php echo strtotime($day) . '_' . $user_id; ?>_0"> 
+								<?php echo $this->client_shifts_min[$roster_saved_data[$user_id][$day][0]]['shortcut']; ?>
+							</span>
+							<input type="checkbox" data-strtotime="<?php echo strtotime($day);?>" id="<?php echo strtotime($day) . '_' . $user_id; ?>_0" name="duty[<?php echo $user_id; ?>][<?php echo strtotime($day); ?>][0]" value="<?php echo $roster_saved_data[$user_id][$day][0]; ?>" class="day_checkbox <?php if (strlen($roster_saved_data[$user_id][$day][0]) > '0'): ?> auto_selected <?php endif; ?>" <?php if (strlen($roster_saved_data[$user_id][$day][0]) > '0'): ?>checked="checked"<?php endif; ?> />
+						</div>
+						<?php endforeach; ?>
+					</li>
+
+					<li class="row_<?php echo $user_id.'-'.$group_id;?>" <?php if(!empty($this->user_rows[$user_id]) && $this->user_rows[$user_id] < '2'): ?> style="display:none;" <?php endif; ?>>
+						<div class="col_names cell_names">&nbsp;</div>
+						<?php foreach ($month_days_array as $k_day => $day): $day_type = date('w', strtotime($day)); ?>
+						<?php 
+								if (isset($roster_saved_data[$user_id][$day]['isactive'])) {
+									$isactive = " strikethrough ";	
+								}else{
+									$isactive = "";
+								}
+						?>
+						<div class="col cell <?php if(in_array($day, $national_holidays)):?> holiday_roster <?php endif; ?> <?php if ($day_type == 0 || $day_type == 6): ?> weekend <?else:?> <?php if(strlen($roster_saved_data[$user_id][$day][1]) > '0' && ($day_type == 0 || $day_type == 6)): ?> selected_cell_weekend <?php elseif(strlen($roster_saved_data[$user_id][$day][1]) > '0'): ?> selected_cell <?php endif; ?> <?php endif; ?> <?php echo 'col_' . (date('j', strtotime($day)) - 1); ?>  <?php echo $isactive; ?>" <?php if(strlen($roster_saved_data[$user_id][$day][1]) > '0'): echo 'style="background-color:#'.$client_shifts_min[$roster_saved_data[$user_id][$day][1]]['color'].';"'; endif;  ?> align="center" >
+							<span id="span_<?php echo strtotime($day) . '_' . $user_id; ?>_1"> 
+							 <?php  echo $this->client_shifts_min[$roster_saved_data[$user_id][$day][1]]['shortcut']; ?>
+							</span>
+							<input type="checkbox" data-strtotime="<?php echo strtotime($day);?>" id="<?php echo strtotime($day) . '_' . $user_id; ?>_1" name="duty[<?php echo $user_id; ?>][<?php echo strtotime($day); ?>][1]" value="<?php echo $roster_saved_data[$user_id][$day][1]; ?>" class="day_checkbox <?php if (strlen($roster_saved_data[$user_id][$day][1]) > '0'): ?> auto_selected <?php endif; ?>" <?php if (strlen($roster_saved_data[$user_id][$day][1]) > '0'): ?>checked="checked"<?php endif; ?> />
+						</div>
+						<?php endforeach; ?>
+					</li>
+
+					<li class="row_<?php echo $user_id.'-'.$group_id;?>" <?php if(!empty($this->user_rows[$user_id]) && $this->user_rows[$user_id] < '3'): ?> style="display:none;" <?php endif; ?>>
+						<div class="col_names cell_names">&nbsp;</div>
+						<?php foreach ($month_days_array as $k_day => $day): $day_type = date('w', strtotime($day)); ?>
+						<?php 
+								if (isset($roster_saved_data[$user_id][$day]['isactive'])) {
+									$isactive = " strikethrough ";	
+								}else{
+									$isactive = "";
+								}
+							?>
+							<div class="col last_user_row cell <?php if(in_array($day, $national_holidays)):?> holiday_roster <?php endif; ?> <?php if ($day_type == 0 || $day_type == 6): ?> weekend <?else:?> <?php if(strlen($roster_saved_data[$user_id][$day][2]) > '0' && ($day_type == 0 || $day_type == 6)): ?> selected_cell_weekend <?php elseif(strlen($roster_saved_data[$user_id][$day][2]) > '0'): ?> selected_cell <?php endif; ?> <?php endif; ?> <?php echo 'col_' . (date('j', strtotime($day)) - 1); ?>  <?php echo $isactive; ?>" <?php if(strlen($roster_saved_data[$user_id][$day][2]) > '0'): echo 'style="background-color:#'.$client_shifts_min[$roster_saved_data[$user_id][$day][2]]['color'].';"'; endif;  ?> align="center" >
+								<span id="span_<?php echo strtotime($day) . '_' . $user_id; ?>_2"> 
+								 <?php  echo $this->client_shifts_min[$roster_saved_data[$user_id][$day][2]]['shortcut']; ?>
+								</span>
+								<input type="checkbox" data-strtotime="<?php echo strtotime($day);?>" id="<?php echo strtotime($day) . '_' . $user_id; ?>_2" name="duty[<?php echo $user_id; ?>][<?php echo strtotime($day); ?>][2]" value="<?php echo $roster_saved_data[$user_id][$day][2]; ?>" class="day_checkbox <?php if (strlen($roster_saved_data[$user_id][$day][2]) > '0'): ?> auto_selected <?php endif; ?>" <?php if (strlen($roster_saved_data[$user_id][$day][2]) > '0'): ?>checked="checked"<?php endif; ?> />
+							</div>
+						<?php endforeach; ?>
+					</li>
+
+					<?php if($this->usertype == 'SA' || $this->usertype == 'CA'):?>
+					<!--Control row-->
+					<li class="row_<?php echo $user_id.'-'.$group_id;?> control">
+						<div class="col_names cell_names">
+							<input type="hidden" name="hidden_user_rows[<?php echo $user_id; ?>]" id="user_rows_<?php echo $user_id.'-'.$group_id;?>" value="<?php if(strlen($this->user_rows[$user_id])>'0'): echo $this->user_rows[$user_id]; else: echo '3'; endif;?>"  class="user_rows"/>
+							<img src="<?php echo RES_FILE_PATH; ?>/images/edit_add.png" width="20" height="20" class="add" alt="<?php echo $user_id.'-'.$group_id;?>" />
+							<img src="<?php echo RES_FILE_PATH; ?>/images/action_delete.png" width="20" height="20" class="remove" alt="<?php echo $user_id.'-'.$group_id;?>" />
+						</div>
+
+						<div class="col last_user_row cell <?php echo 'col_' . (date('j', strtotime($day)) - 1); ?>" >&nbsp;</div>
+					</li>
+					<?php endif; ?>
+				</ul>
+			</li>
+			<?php endif;?>	
+		<?php endforeach; ?>
+		</ul>
+	</li>
+		<?php if($this->sum_line == "1"):?>
+		<li>
+			<ul class="">
+				<li>
+				<?php 
+					$height = count($this->group_shifts[$group_id])*24;
+					$height = $height < 25 ? 25 : $height;
+					$height_div = 20;
+					$height_div = $height <= 25 ? 25 : $height_div;
+				?>
+				
+					<div class="col_names cell_names" style="text-align: left;  height: <?php echo $height; ?>px!important;" >
+						 <span><?php echo $this->groups[$group_id]['groupname'];?> -  <?php echo $this->translate('sum'); ?> </span>
+					</div>
+
+					<?php foreach ($month_days_array as $k_day => $day): $day_type = date('w', strtotime($day)); ?>
+					<div class="col cell "  style="text-align: left; padding:0px 0 4px 0px;  height: <?php echo $height; ?>px!important; display: block; width: 28px; float:left;" >
+						<?php foreach($this->group_shifts[$group_id] as $sfid => $zero):?>
+							<?php if(isset($this->group_shifts_count[$group_id][$day][$sfid])):?>
+								<div class="sum_sp" style="font-size:8px;  width: 100%; height: <?php echo $height_div; ?>px; border: 1px solid <? echo '#'.$client_shifts_min[$sfid]['color']; ?>; color: <? echo '#'.$client_shifts_min[$sfid]['color']; ?>" > <?php echo $this->client_shifts_min[$sfid]['shortcut']; ?> <?php echo $this->group_shifts_count[$group_id][$day][$sfid];?></div>
+							<?php else:?>
+								<div class="sum_sp" style="font-size:8px;   width: 100%; height: <?php echo $height_div; ?>px; margin:1px;" >&nbsp;</div>
+							<?php endif;?>
+						<?php endforeach; ?>
+					</div>
+					<?php endforeach; ?>
+				</li>
+			</ul>
+		</li>
+		<?php endif; ?>
+	<?php endforeach; ?>
+	<?php endif; ?>
+</ul>
+<?php endif; exit;?>

@@ -1,0 +1,197 @@
+<?php
+$patientdetails = $this->patientdetails;
+$period_days = $this->period_days;
+$shortcuts = $this->shortcuts;
+$master_data = $this->master_data;
+$national_holidays = $this->national_holidays;
+$group_list = $this->group_list;
+$actions_details = $this->sgbv_actions_details;
+$hospital_days = $this->hospital_days;
+$active_days_in_period = $this->active_days_in_period;
+
+$medipumpedetails = $this->medipumpedetails;
+?>
+<link rel='stylesheet' type='text/css' href='<?php echo RES_FILE_PATH; ?>/css/page-css/medipumpscontrol.css' />
+<?php
+	//IE Freaking hack
+	$url = APP_BASE . "invoice/medipumpscontrol?" . $_SERVER['QUERY_STRING'];
+	if (str_replace("&list=" . $_REQUEST['list'] . "", "", $url))
+	{
+		$finalJsUrl = str_replace("&list=" . $_REQUEST['list'] . "", "", $url);
+	}
+	else
+	{
+		$finalJsUrl = $url;
+	}
+?>
+<script type="text/javascript" >
+	$(function() {
+		$('form').submit(function() {
+			setTimeout(function () {$('input[type=submit]').attr('disabled', true);}, 150);
+			setTimeout(function () {$('input[type=submit]').attr('disabled', false);}, 11000);
+		});	 				
+	});
+	function changeMonth(data){
+		var url = "<?php echo $finalJsUrl; ?>&list="+data;
+		$(location).attr('href',url);
+	}
+</script>
+<?php echo $this->patientinfo ?>
+<?php echo $this->tabmenus ?>
+<h1><?php echo $this->translate('medipumps control sheet')  ?></h1>
+<table id="document_details">
+	<tr>
+		<td style="text-align: left;"><?php echo $this->translate('page_no');  ?>: 1</td>
+	</tr>
+</table>
+
+
+<?php echo $this->months_selector;  ?>
+<table id="patient_healthinsurance_details" class="datatable_new">
+	<tr>
+		<td class="left_col"><b><?php echo $this->translate('sgbv_client');?></b></td>
+		<td><b><?php echo $this->translate('krankenkasse_details');?></b></td>
+		<td class="right_col" colspan="2" width="40%"><b><?php echo $this->translate('sgbv_doctor');?></b></td>
+	</tr>
+	<tr>
+		<td class="left_col">
+			<?php echo $patientdetails['first_name'].', '.$patientdetails['last_name'];  ?><br />
+			<?php echo $patientdetails['street1'].'<br/> '.$patientdetails['zip'].' '.$patientdetails['city']; ?>
+		</td>
+		<td>
+			<?php echo $this->hi_subdiv_address;  ?>
+		</td>
+		<td class="right_col" colspan="2"></td>
+	</tr>
+	<tr>
+		<td class="left_col">
+			<?php echo $this->translate('shtbirthd')?>: <?php echo $patientdetails['birthd'] ?><br/>
+			<?php echo $this->translate('pflegestufe2pflegegrade')?>:<?php echo  $this->patient_pflegestufe; ?>
+		</td>
+		<td>
+			<?php echo $this->translate('krankenkasse_ik')?>: <?php echo $this->health_insurance_ik ?><br/>
+			<?php echo $this->translate('krankenkasse_nr')?>: <?php echo $this->health_insurance_kassenr; ?>
+		</td>
+		<td width="20%" colspan>
+			Beleg-Nr: <?php echo $this->unique_id;  ?><br />
+			Grundlage: Hilfsmittel
+		</td>
+	</tr>
+</table>
+<form action="" method="post" name="medipump_days_record" >
+<table  class="datatable_new">
+	<tr>
+		<th style="text-align:left;width: 190px;">Leistungen <br />&nbsp;</th>
+		<td rowspan="99" id="container" valign="top">
+		<div style="overflow: auto; height: auto;width: 550px; float: left;" >
+			<table id="performance" class="datatable_new" width="2000px">
+
+				<tr>
+					<th><?php echo $this->translate('sgbv_operation');  ?></th>
+					<?php foreach($period_days as $day): $day_type = date('w', strtotime($day)); ?>
+					<th class="<?php if($day_type == 0 || $day_type == 6):  ?> weekend <?php endif; ?> <?php if(in_array(strtotime($day), $national_holidays)): ?> holliday<?php endif;?> <?php if(in_array($day, $hospital_days)): ?> inactive<?php endif;?>">
+						<?php echo date('d', strtotime($day));  ?>
+						<?php echo strftime('%a', strtotime($day));  ?>
+					</th>
+					<?php endforeach;  ?>
+				</tr>
+
+				<?php $current_pump = ''; ?>
+				<?php foreach($medipumpedetails as $pumps=>$pump_values): ?>
+					<tr>
+					<td></td>
+					<?php
+						$mp_start = '';
+						foreach($period_days as $day):
+							$day_type = date('w', strtotime($day));
+					?>
+	 							<td class="inside_container_cell <?php if($day_type == 0 || $day_type == 6):  ?> weekend <?php endif; ?> <?php if(in_array(strtotime($day), $national_holidays)): ?> holliday<?php endif;?>  <?php if(in_array($day, $hospital_days)): ?> inactive<?php endif;?>" style="padding:0px;margin:0px;">
+						<?php
+							$day_has_checkbox = false;
+
+						?>
+						<?php foreach($pump_values as $pump=>$pump_val): ?>
+							<?php if(!in_array($day,$hospital_days) && strtotime($day) <= time()): ?>
+								<?php
+									if(!in_array($day,$hospital_days) && strtotime($day) <= time() && in_array($day,$pump_val['medipump_days']) && in_array($day,$active_days_in_period)):
+									$mp_start = $pump;
+								?>
+									<div class="start_day_overide_color">
+										<input type="checkbox" name="medipump_start[<?php echo $pump_val['medipump_id']?>][<?php echo $pump; ?>][<?php echo $day; ?>]" value="1" <?php if(in_array($day, $pump_val['medipump_start_days'])): ?> checked="checked" <?php endif; ?>/>
+									</div>
+								<?php endif;  ?>
+
+								<?php if(in_array($day,$pump_val['medipump_days']) && !in_array($day,$hospital_days) && in_array($day,$active_days_in_period)): ?>
+									<div class="lent_day_overide_color ">
+										<input type="checkbox" name="medipump[<?php echo $pump_val['medipump_id']?>][<?php echo $pump?>][<?php echo $day; ?>]" value="1" checked="checked"/>
+									</div>
+									<?php $totals['medipumps'][$pump_val['medipump_id']] += '1';?>
+									<?php $day_has_checkbox = true;  ?>
+	 							<?php endif;?>
+							<?php endif;?>
+						<?php endforeach;  ?>
+
+						<?php if(!$day_has_checkbox && !in_array($day,$hospital_days) && strtotime($day) <= time()):  ?>
+							<?php if(strlen($mp_start) == 0): $mp_start = '0'; endif; ?>
+							<div class="start_day_overide_color">
+								<input type="checkbox" name="medipump_start[<?php echo $pump_val['medipump_id']?>][<?php echo $mp_start;  ?>][<?php echo $day; ?>]" value="1" />
+							</div>
+							<div class="lent_day_overide_color">
+								<input type="checkbox" name="medipump[<?php echo $pump_val['medipump_id']?>][<?php echo $mp_start;  ?>][<?php echo $day; ?>]" value="1" />
+							</div>
+						<?php endif;  ?>
+	 							</td>
+					<?php endforeach;  ?>
+					</tr>
+				<?php endforeach;  ?>
+
+
+
+
+
+			</table>
+		</div>
+
+		</td>
+		<th>Anzahl</th>
+	</tr>
+		<?php foreach($medipumpedetails as $k_med_keys => $med_datas):  ?>
+				<tr>
+					<td class="shortcuts" style="padding:0px;">
+
+						<?php $listed[$k_med_keys] = false; ?>
+						<?php foreach($med_datas as $kmed => $med_data): ?>
+							<?php if(!$listed[$k_med_keys]): ?>
+							<table class="label_table" id="label_table">
+								<tr>
+									<td id="overide_start_days"><?php echo $this->translate('overide_start_days');  ?></td>
+								</tr>
+								<tr>
+									<td class="label">
+										<input type="hidden" name="medipump_ids[<?php echo $k_med_keys; ?>]" value="<?php echo $med_data['medipump_id']; ?>" id="medipump_<?php echo $med_data['medipump_id']; ?>" />
+										<?php echo $med_data['medipump_sht']; ?> <?php echo $med_data['medipump_name']; ?>
+									</td>
+								</tr>
+							</table>
+
+							<?php $listed[$k_med_keys]=true;  ?>
+							<?php endif; ?>
+						<?php endforeach;  ?>
+					</td>
+
+					<td class="sums">
+						<?php if($totals['medipumps'][$k_med_keys] > 0): echo $totals['medipumps'][$k_med_keys]; else: echo '0'; endif;  ?>
+					</td>
+
+				</tr>
+		<?php endforeach ?>
+
+		<tr class="no_borders">
+		<td></td>
+		<td></td>
+		</tr>
+</table>
+	<input type="submit" value="<?php echo $this->translate('save'); ?>" name="save" id="btnsubmit" class="bigbutton ui-state-default ui-corner-all submit" />
+	<input type="submit" value="<?php echo $this->translate('reset'); ?>" name="reset" id="reset" class="bigbutton ui-state-default ui-corner-all submit" />
+	<input type="submit" value="<?php echo $this->translate('generatepdf'); ?>" name="pdf" id="pdf" class="bigbutton ui-state-default ui-corner-all submit" />
+</form>

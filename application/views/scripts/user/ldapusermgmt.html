@@ -1,0 +1,189 @@
+<!--  Maria:: Migration CISPC to ISPC 22.07.2020 -->
+<style>
+    #usrmgmnt_quickadd .leg,
+    #usrmgmnt_quicksearch .leg{
+        width:100px;
+    }
+    <?php if($this->ldapsearchmode):?>
+    #usrmgmnt_quickadd .usrmgmnt_quickadd_details{
+        display:none;
+    }
+    <?php endif;?>
+    #usrmgmnt_quicksearch .usrmgmnt_quickadd_addbutt{
+        margin:10px 10px 10px 98px;
+        padding:3px;
+        cursor:pointer;
+        color:#1B346F;
+    }
+
+    #ldapusrmgmnt_userlist .highlight{
+        background-color: #99ff99;
+    }
+    #usrmgmnt_quickadd{
+        margin-left:2em;
+    }
+</style>
+
+<?php if($this->error_message):?>
+    <div class="err">
+        <?php echo $this->error_message;?>
+    </div>
+<?php endif;?>
+
+<div>
+    <h2>Neuen Benutzer hinzufügen</h2>
+
+    <script>
+        $('body').on('click','#usrmgmnt_quickaddsubmit',function(){
+            var probs="";
+            if($('#usrmgmnt_quickadd_search_username').val().length<3){
+                probs=probs + "Benutzername muss 3 Zeichen lang sein!\n";
+                }
+            if($('#usrmgmnt_quickadd_search_lastname').val().length<1){
+                probs=probs + "Nachname muss angegeben werden!\n";
+            }
+            if($('#usrmgmnt_quickadd_search_firstname').val().length<1){
+                probs=probs + "Vorname muss angegeben werden!\n";
+            }
+            if($('#usrmgmnt_quickadd_search_groupname').val()<1){
+                probs=probs + "Gruppe muss ausgewählt werden!\n";
+            }
+            if(probs!=""){
+                alert(probs);
+            }else{
+                $('#usrmgmnt_quickaddform').submit();
+            }
+
+        });
+
+        function usrmgmnt_ldapsearch(){
+            var s=$('#usrmgmnt_quickadd_search_input').val();
+            var d = {'search':s};
+            <?php if ($this->second_input!==false):?>
+                d['search2'] = $('#usrmgmnt_quickadd_search_input2').val();
+            <?php endif;?>
+
+
+            $('#usrmgmnt_quickaddform').hide();
+            $.get( "user/ldapajaxsearch", d,function( data ) {
+                $('#usrmgmnt_quicksearch .ldap_quicksearch').empty();
+
+                for(var i=0; i<data.length; i++) {
+                    var mydata=data[i];
+                    var elem = $('<div class="usrmgmnt_quickadd_addbutt">');
+                    elem.append(mydata.last_name + "," + mydata.first_name + " (Benutzername: " + mydata.accountname + ") hinzufügen");
+                    $(elem).data('mydataindex',i);
+                    elem.click(function () {
+                        var i=$(this).data('mydataindex');
+                        var mydata=data[i];
+                        $('#usrmgmnt_quickadd_search_username').val(mydata.accountname);
+                        $('#usrmgmnt_quickadd_search_ldapid').val(mydata.login_by);
+                        $('#usrmgmnt_quickadd_search_lastname').val(mydata.last_name);
+                        $('#usrmgmnt_quickadd_search_firstname').val(mydata.first_name);
+                        $('.usrmgmnt_quickadd_details').show();
+                        elem.hide();
+                        $('#usrmgmnt_quicksearch .usrmgmnt_quickadd_addbutt').remove();
+                        $('#usrmgmnt_quickaddform').show();
+                    });
+                    $('#usrmgmnt_quicksearch .ldap_quicksearch').append(elem);
+                }
+            },'json');
+
+        }
+    </script>
+
+    <?php if($this->ldapsearchmode):?>
+        <table id="usrmgmnt_quicksearch" style="margin-bottom:2em;">
+            <tr>
+                <td class="leg">Suche</td>
+                <td><input id="usrmgmnt_quickadd_search_input" type="text">
+                    <?php if ($this->second_input!==false):?>
+                        <input id="usrmgmnt_quickadd_search_input2" type="text">
+                    <?php endif;?>
+                    <input id="usrmgmnt_quickadd_search_button" type="button" value="suchen" onClick="usrmgmnt_ldapsearch()">
+
+                    <span><?php echo $this->searchlabel;?></span>
+                </td>
+            </tr>
+            <tr>
+                <td colspan="2" class="ldap_quicksearch">
+
+                </td>
+            </tr>
+        </table>
+    <?php endif;?>
+    <form id="usrmgmnt_quickaddform" method="POST">
+        <table id="usrmgmnt_quickadd">
+            <tr class="usrmgmnt_quickadd_details">
+                <td>Kennung</td>
+                <td><input name="username" id="usrmgmnt_quickadd_search_username" type="text">
+                    <input name="ldapid" id="usrmgmnt_quickadd_search_ldapid" type="hidden">
+                </td>
+            </tr>
+            <tr class="usrmgmnt_quickadd_details">
+                <td class="leg">Name</td>
+                <td><input name="last_name" id="usrmgmnt_quickadd_search_lastname" type="text"></td>
+            </tr>
+            <tr class="usrmgmnt_quickadd_details">
+                <td class="leg">Vorname</td>
+                <td><input name="first_name" id="usrmgmnt_quickadd_search_firstname" type="text"></td>
+            </tr>
+            <tr class="usrmgmnt_quickadd_details">
+                <td class="leg">Gruppe</td>
+                <td>
+                    <select id="usrmgmnt_quickadd_search_groupname" name="groupname">
+                    <?php foreach ($this->groups as $group_id=>$group_name):?>
+                        <option  value="<?php echo $group_id;?>"><?php echo $group_name;?></option>
+                    <?php endforeach;?>
+                    </select>
+                </td>
+            </tr>
+            <tr class="usrmgmnt_quickadd_details">
+                <td class="leg"></td>
+                <td>
+                    <input id="usrmgmnt_quickaddsubmit" type="button" value="Benutzer anlegen">
+                </td>
+            </tr>
+        </table>
+    </form>
+</div>
+
+
+
+<br><br>
+<h2>Aktuelle Benutzer im System</h2>
+
+<?php if (!$this->local_users && count($this->local_users)<1):?>
+    <p>Es gibt noch keine Benutzer.</p>
+<?php else:?>
+
+    <table id="ldapusrmgmnt_userlist" class="datatable">
+    <tr>
+        <th>Name</th>
+        <th>Vorname</th>
+        <th>Kennung</th>
+        <?php if($this->ldapid !== false):?>
+            <th>ldapid</th>
+        <?php endif;?>
+        <th>Gruppe</th>
+
+    </tr>
+
+    <?php foreach ($this->local_users as $localuser):?>
+        <?php if($this->inserted_id>0 && ($this->inserted_id == $localuser['id'])):?>
+            <tr class="highlight">
+        <?php else:?>
+            <tr>
+        <?php endif;?>
+            <td><a href="user/edituser?id=<?php echo $localuser['id'];?>"><?php echo $localuser['last_name'];?></a></td>
+            <td><a href="user/edituser?id=<?php echo $localuser['id'];?>"><?php echo $localuser['first_name'];?></a></td>
+            <td><a href="user/edituser?id=<?php echo $localuser['id'];?>"><?php echo $localuser['username'];?></a></td>
+            <?php if($this->ldapid !== false):?>
+                <td><a href="user/edituser?id=<?php echo $localuser['id'];?>"><?php echo $localuser[$this->ldapid];?></a></td>
+            <?php endif;?>
+            <td><a href="user/edituser?id=<?php echo $localuser['id'];?>"><?php echo $this->groups[$localuser['groupid']];?></a></td>
+
+        </tr>
+    <?php endforeach;?>
+    </table>
+<?php endif;?>

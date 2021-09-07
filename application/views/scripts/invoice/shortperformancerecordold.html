@@ -1,0 +1,183 @@
+<?php
+$patientdetails = $this->patientdetails;
+$period_days = $this->period_days;
+$shortcuts = $this->shortcuts;
+$master_data = $this->master_data;
+$classification_box = $this->classification_box;
+$client_details = $this->client_details;
+?>
+<link rel='stylesheet' type='text/css' href='<?php echo RES_FILE_PATH; ?>/css/page-css/performancerecord.css' />
+<?php
+	//IE Freaking hack
+	$url = APP_BASE . "invoice/shortperformancerecord?" . $_SERVER['QUERY_STRING'];
+	if (str_replace("&list=" . $_REQUEST['list'] . "", "", $url))
+	{
+		$finalJsUrl = str_replace("&list=" . $_REQUEST['list'] . "", "", $url);
+	}
+	else
+	{
+		$finalJsUrl = $url;
+	}
+?>
+<script type="text/javascript" >
+	$(function() {
+		$('form').submit(function() {
+			setTimeout(function () {$('input[type=submit]').attr('disabled', true);}, 150);
+			setTimeout(function () {$('input[type=submit]').attr('disabled', false);}, 11000);
+		});	 				
+	});
+	function changeMonth(data){
+		var url = "<?php echo $finalJsUrl; ?>&list="+data;
+		$(location).attr('href',url);
+	}
+</script>
+<?php echo $this->patientinfo ?>
+<?php echo $this->tabmenus ?>
+<table id="document_details">
+	<tr>
+		<td style="width:510px;">
+			<h1><?php echo $this->translate('short_performance_record')  ?></h1>
+		</td>
+		<td style="width:200px;font-size: 8pt;line-height: 110%;">			
+			<?php echo $client_details['team_name'];  ?><br />
+			<?php echo $client_details['street1'];  ?> <?php echo $client_details['street2'];  ?><br />
+			<?php echo $client_details['postcode'];  ?> <?php echo $client_details['city'];  ?><br />
+			<?php echo $client_details['phone'];  ?><br />
+			<?php echo 'IK: '.$client_details['institutskennzeichen'];  ?><br />
+			<?php echo 'BSNR: '. $client_details['betriebsstattennummer'];  ?><br />
+
+		</td>
+	</tr>
+	<tr>
+		<td style="text-align: left;" colspan="2"><?php echo $this->translate('period_of_time');  ?>:  <?php if($this->first_active_day != "0000-00-00 00:00:00" && date('Y-m-d', strtotime($this->first_active_day)) != '1970-01-01' ): echo $this->first_active_day; endif; ?> - <?php if($this->last_active_day != "0000-00-00 00:00:00" && date('Y-m-d', strtotime($this->last_active_day)) != '1970-01-01'): echo $this->last_active_day; endif; ?> </td>
+	</tr>
+	<tr>
+		<td style="text-align: left;" colspan="2"><?php echo $this->translate('page_no');  ?>: 1</td>
+	</tr>
+</table>
+
+
+<?php echo $this->months_selector;  ?>
+<table id="patient_healthinsurance_details" class="datatable_new">
+	<tr>
+		<td class="left_col"><b><?php echo $this->translate('Klient'); ?></b></td>
+		<td><b><?php echo $this->translate('krankenkasse_details'); ?></b></td>
+		<td class="right_col" colspan="2" width="40%">&nbsp;</td>
+	</tr>
+	<tr>
+		<td class="left_col">
+			<?php echo $patientdetails['first_name'].' '.$patientdetails['last_name'];  ?><br />
+			<?php echo $patientdetails['street1'].'<br/> '.$patientdetails['zip'].' '.$patientdetails['city']; ?>
+		</td>
+		<td>
+			<?php echo $this->hi_subdiv_address;  ?>
+		</td>
+		<td class="right_col" colspan="2"></td>
+	</tr>
+	<tr>
+		<td id="clear_td">
+			<table id="inside_table" class="inside_table">
+				<tr>
+					<td id="clear_td">
+						<?php echo $this->translate('shtbirthd')?>: <?php echo $patientdetails['birthd'] ?><br/>
+						<?php echo $this->translate('pflegestufe2pflegegrade')?>:<?php echo  $this->patient_pflegestufe; ?>
+					</td>
+					<td id="clear_td">
+						&nbsp;<?php echo $this->translate('versnr')?>: <?php echo $this->insurance_no; ?><br/>						
+					</td>
+				</tr>
+			</table>
+		</td>
+		
+		<td>
+			<?php echo $this->translate('krankenkasse_ik')?>: <?php echo $this->health_insurance_ik ?><br/>
+			<?php echo $this->translate('krankenkasse_nr')?>: <?php echo $this->health_insurance_kassenr; ?>
+		</td>
+		<td width="20%">Grundlage:<?php echo  $action; ?> § 37b SGB V</td>
+		<td width="22%">
+			<?php echo $this->translate('sapv_approve_date')?>: <?php if(date('Y-m-d', strtotime($this->sapv_approve_date)) != '1970-01-01'): echo $this->sapv_approve_date; endif;?><br/>
+ 			<?php echo $this->translate('sapv_approve_nr')?>: <?php echo $this->sapv_approve_nr;  ?>
+		</td>
+	</tr>
+</table>
+<table  class="datatable_new">
+	<tr>
+		<th style="text-align:left;">Leistungen <br />&nbsp;</th>
+		<td rowspan="11" id="container">
+		<div style="overflow: auto; height: auto;width: 450px;" >
+			<table id="performance" class="datatable_new" width="2000px">
+
+				<tr>
+					<?php foreach($period_days as $day): $day_type = date('w', strtotime($day)); ?>
+					<th class="<?php if($day_type == 0 || $day_type == 6):  ?> weekend <?php endif; ?>">
+						<?php echo date('d', strtotime($day));  ?>
+						<?php echo strftime('%a', strtotime($day));  ?>
+					</th>
+					<?php endforeach;  ?>
+				</tr>
+				<tr>
+					<?php foreach($period_days as $day): $day_type = date('w', strtotime($day)); ?>
+					<td class="<?php if($day_type == 0 || $day_type == 6):  ?> weekend <?php endif; ?>">
+						<?php if($classification_box[$day]['home_visit'] != '0'):  ?>
+						<?php echo $classification_box[$day]['home_visit']; $totals['home_visit'] += $classification_box[$day]['home_visit'];  ?>
+						<?php endif;  ?>
+					</td>
+					<?php endforeach;  ?>
+				</tr>
+				<tr>
+					<?php foreach($period_days as $day): $day_type = date('w', strtotime($day)); ?>
+					<td class="<?php if($day_type == 0 || $day_type == 6):  ?> weekend <?php endif; ?>">
+						<?php if($classification_box[$day]['beratung'] != '0'):  ?>
+						<?php echo $classification_box[$day]['beratung']; $totals['beratung'] += $classification_box[$day]['beratung']; ?>
+						<?php endif;  ?>
+					</td>
+					<?php endforeach;  ?>
+				</tr>
+				<tr>
+					<?php foreach($period_days as $day): $day_type = date('w', strtotime($day)); ?>
+					<td class="<?php if($day_type == 0 || $day_type == 6):  ?> weekend <?php endif; ?>">
+						<?php if($classification_box[$day]['koordination'] != '0'):  ?>
+						<?php echo $classification_box[$day]['koordination']; $totals['koordination'] += $classification_box[$day]['koordination'];  ?>
+						<?php endif;  ?>
+					</td>
+					<?php endforeach;  ?>
+				</tr>
+			</table>
+		</div>
+
+		</td>
+		<th>Anzahl</th>
+	</tr>
+	<tr>
+		<td class="shortcuts">
+			<?php echo $this->translate('performange_home_visit_shortcut');  ?>
+		</td>
+		<td class="sums">
+			<?php echo $totals['home_visit'];  ?>
+		</td>
+	</tr>
+	<tr>
+		<td class="shortcuts">
+			<?php echo $this->translate('performange_beratung_shortcut');  ?>
+		</td>
+		<td class="sums">
+			<?php echo $totals['beratung'];  ?>
+		</td>
+	</tr>
+	<tr>
+		<td class="shortcuts">
+			<?php echo $this->translate('performange_koordination_shortcut');  ?>
+		</td>
+		<td class="sums">
+			<?php echo $totals['koordination'];  ?>
+		</td>
+	</tr>
+
+	<tr>
+		<td style="height: 5px!important; border:0; padding:0;clear:both;line-height: 2px;">&nbsp;</td>
+		<td style="height: 5px!important; border:0; padding:0;clear:both;line-height: 2px;">&nbsp;</td>
+	</tr>
+</table>
+<form action="" method="post" name="" >
+	<input type="submit" value="<?php echo $this->translate('generatepdf'); ?>" name="pdf" class="bigbutton ui-state-default ui-corner-all submit" />
+</form>

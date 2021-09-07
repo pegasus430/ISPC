@@ -1,0 +1,246 @@
+<!-- Maria:: Migration ISPC to CISPC 08.08.2020 -->
+<?php 
+// ISPC-2440  Lore 04.09.2019
+ 
+$this->headScript()->appendScript($head_script, $type = 'text/javascript', $attrs = array());
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/data_tables/jquery.dataTables.js?'.date('Ymd'));
+$this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/custom_jQueryDialog.css?'.date('Ymd'));
+?>
+<script type="text/javascript">
+//pass PHP variable declared above to JavaScript variable
+var lastcontactupdate = <?php echo json_encode($this->lastcontactupdate) ?>;
+	
+$(document).ready(function() { /*------ Start $(document).ready --------------------*/
+
+
+	$('.sh_filters').on('click',function () {
+		$('.filters_block').toggle();
+		
+	});
+	
+	$('.f_actions').on('click',function () {
+		
+		if ($(this).is(":checked")) {
+ 			$('#shortcut_all').val('0');
+		    $('#shortcut_all').prop('checked', false);	      
+	    }
+		    
+	    get_data();  
+	})
+
+	$('#shortcut_all').on('click',function () {
+		
+		if ($(this).is(":checked")) {
+ 			$('#shortcut_all').val('1');
+ 			$('.f_actions').removeAttr('checked');
+	    }
+		    
+	    get_data();  
+	})
+
+
+	$('.f_time').on('change',function () {
+	    get_data();
+	})
+    //ISPC-2727,elena,21.01.2020
+    var cloned = false;
+    var isShown = true;
+    $('#last_contact_actions').on('scroll', function(){
+        var scrollTop = $(this).scrollTop();
+        //ISPC-2727,elena,03.02.2021 fix
+        console.log('scrolltop',scrollTop);
+        var marginTop = scrollTop - 3;
+        console.log('margintop', marginTop);
+        marginTop = marginTop.toString() + 'px';
+        console.log(marginTop);
+        $('#table_header').css('margin-top', marginTop);
+        if(!cloned){
+            var table_clone = $('#last_contact_action').clone().attr('id', 'last_contact_action_clone');
+            $(table_clone).width($('#last_contact_action').width());
+
+            $(table_clone).appendTo('#table_header');
+            cloned = true;
+        }
+
+        if((scrollTop == 0) && isShown){
+            $('#table_header').hide();
+            //console.log('to hide');
+            isShown = false;
+        }else if((scrollTop > 0) && !isShown){
+            //console.log('to show')
+            $('#table_header').show();
+            isShown = true;
+        }
+
+
+    })
+
+
+
+
+	
+});/*-- END  $(document).ready ----------- --*/
+
+function get_data(){
+	var _post_data = {
+			"filters_data" : $('#filters_form').serialize(),
+	};
+//console.log(_post_data);
+	$.ajax({
+		"type" : "POST",
+		"url" :  appbase + "overview/lastcontacts",
+		"data" : _post_data,
+		"success" : function(data) {
+			var visitdata = jQuery.parseJSON(data);
+				$('.ddd').html(visitdata.htmlx);
+		}
+	});
+}
+
+//Lore 12.03.2020
+function save_filter(chkbx,valshcut)
+{ 
+		var shortcut_details = {};
+		
+		if(!chkbx.checked) {
+			var value  = 0;
+		} else {
+			var value  = 1;
+		}
+		shortcut_details = value;
+		
+		var array_shortcuts = JSON.stringify(shortcut_details)
+		
+		ajaxCallserver({
+			url : appbase + 'ajax/saveuserlastcontactfilter',
+			method : 'POST',
+			data : {
+				value: array_shortcuts,
+				shortcut: valshcut
+			}
+		}); 
+}
+	
+
+</script>
+<style>
+    /* ISPC-2727,elena,21.01.2020 */
+    #table_header{
+        position:absolute; /*ISPC-2727,elena,03.02.2021 fix */
+        z-index: 10000; /*ISPC-2727,elena,03.02.2021 fix */
+        max-height : 60px;
+        overflow:hidden;
+        margin-top: -4px;
+    }
+
+</style>
+<!--//ISPC-2727,elena,21.01.2020 -->
+<div id="table_header">
+</div>
+
+<div class="sh_filters" style="cursor: pointer;"  ><?php echo $this->translate("show_hide_filters");?>  </div>
+<div class="filters_block" style="display: none">
+    <form action="" method="post" id="filters_form" class="filters_form">
+    <div class="lc_filter_label" ><span style="font-weight:bold"><?php echo $this->translate('filter_actions')?></span></div>
+    
+    <ul class="allignchk" >
+    <li>
+    	<input type="checkbox" name="actions" value="1" id="shortcut_all"   <?php if( $this->all_sh_filter == 1) {?> checked="checked" <?php } ?>  onclick="save_filter(this,'all_sh')"/>
+    	<label for="shortcut_all" ><?php echo $this->translate('all')?></label>
+    </li>
+    <li>	
+    	<input type="checkbox" name="shortcuts[]" value="U"  id="shortcut_U"  class="f_actions"  <?php if($this->all_sh_filter == 0 && in_array('U', $this->shortcuts_sh_filter)) {?> checked="checked" <?php } ?>  onclick="save_filter(this,'U')"  />
+    	<label for="shortcut_U" >U</label>
+    </li>
+    <li>	
+    	
+    	<input type="checkbox" name="shortcuts[]" value="V"  id="shortcut_V"  class="f_actions"  <?php if($this->all_sh_filter == 0 && in_array('V', $this->shortcuts_sh_filter)) {?> checked="checked" <?php } ?>  onclick="save_filter(this,'V')" />
+    	<label for="shortcut_V" >V</label>
+    </li>
+    <li>	
+    	
+    	<input type="checkbox" name="shortcuts[]" value="XT" id="shortcut_XT" class="f_actions"  <?php if($this->all_sh_filter == 0 && in_array('XT', $this->shortcuts_sh_filter)) {?> checked="checked" <?php } ?>  onclick="save_filter(this,'XT')" />
+    	<label for="shortcut_XT" >XT</label>
+    </li>
+    	
+    	<?php foreach ($this->form_typess as $formtypes => $name_ftypes):?>
+    	 
+    		<li><input type="checkbox" name="form_types[]" value=<?php echo $formtypes; ?>   id="ft_<?php echo $formtypes; ?>"  class="f_actions" <?php if($this->all_sh_filter == 0 && in_array($formtypes, $this->form_type_sh_filter)) {?> checked="checked" <?php } ?>  onclick="save_filter(this,'<?php echo $formtypes ?>')" />
+    		<label for="ft_<?php echo $formtypes; ?>" ><span><?php echo $name_ftypes.'&nbsp;&nbsp;&nbsp;'; ?> </span></label></li>
+    		
+    	<?php endforeach;?>	
+    </ul>
+    </br>
+    
+    <div class="lc_filterbytime">
+    
+    <div class="lc_filter_label" >
+    	<span style="font-weight:bold"><?php echo $this->translate('time_filters')?></span>
+    </div>
+    
+    	<input type="radio" name="time_period" value="1"  id="time_all"  class="f_time" <?php if( $this->all_time_filter == 1 ) {?> checked="checked" <?php } ?>   onclick="save_filter(this,'all_time')"/>
+    	<label for="time_all"><span><?php echo $this->translate('all')?> &nbsp;&nbsp;</span></label>
+    	
+    	<input type="radio" name="time_period" value="2"  id="time_12h" class="f_time"  <?php if($this->all_time_filter == 0 && in_array('12h', $this->times_sh_filter)) {?> checked="checked" <?php } ?>  onclick="save_filter(this,'12h')" />
+    	<label for="time_12h" ><span><?php echo $this->translate('last_12h')?> &nbsp;&nbsp;</span></label>
+    	
+    	<input type="radio" name="time_period" value="3"  id="time_24h"  class="f_time" <?php if($this->all_time_filter == 0 && in_array('24h', $this->times_sh_filter)) {?> checked="checked" <?php } ?>  onclick="save_filter(this,'24h')"  />
+    	<label for="time_24h" ><span><?php echo $this->translate('last_24h')?> &nbsp;&nbsp;</span></label>
+    </div>
+    </form>
+</div>
+</br>
+
+
+<div class="ddd">
+<table class="last_contact_action" id="last_contact_action">
+ 	<thead >
+ 		<tr>
+ 			<th width="1%" rowspan="2"><?php echo $this->translate('no');?> </th>
+ 			<th width="1%" rowspan="2"><?php echo $this->translate('firstname');?></th>
+ 			<th width="1%" rowspan="2"><?php echo $this->translate('lastname');?></th>
+ 			<th width="1%"  colspan="5"><?php echo $this->translate('Contact details');?></th>
+ 		</tr>
+ 		 <tr>
+ 			<th width="1%"  ><?php echo $this->translate('user_name');?> </th>
+ 			<th width="1%"  ><?php echo $this->translate('action_type_user');?></th>
+ 			<th width="1%"  ><?php echo $this->translate('date_of_action');?></th>
+ 			<th width="1%"  ><?php echo $this->translate('time_of_action');?></th>
+ 			<th width="1%"  ><?php echo $this->translate('duration'); ?></th>
+ 		</tr>
+    		
+ 	</thead>
+ 		<tbody>
+ 			<?php $rowcount = 1;?>
+	 		<?php foreach($this->lastcontactupdate as $k => $lcu):?>
+	 			<?php foreach($lcu['patient_actions'] as $sec_key => $sec_row):?>
+	 			<?php $rowspan = 1; $rowspan = count($lcu['patient_actions']);?>
+	 				<?php if($sec_key == min(array_keys($lcu['patient_actions']))) { ?>
+	 					<tr>
+	 						<td rowspan="<?php echo $rowspan;?>"><?php echo $rowcount;?></td>
+	 						<td rowspan="<?php echo $rowspan;?>"><?php echo $lcu['firstname'];?></td>
+		 					<td rowspan="<?php echo $rowspan;?>"><?php echo $lcu['lastname'];?></td>
+		 			
+		 					<td><?php echo $sec_row['user_name'];?></td>
+	 						<td><?php echo $sec_row['action_type_user'];?></td>
+	 						<td><?php echo $sec_row['date_of_action'];?></td>
+		 					<td><?php echo $sec_row['time_of_action'];?></td>
+		 					<td><?php echo $sec_row['time_duration'];?></td>
+		 				</tr>	
+		 			<?php } else { ?>	
+	 					<tr>	 	
+	 			 
+		 					<td><?php echo $sec_row['user_name'];?></td>
+	 						<td><?php echo $sec_row['action_type_user'];?></td>
+	 						<td><?php echo $sec_row['date_of_action'];?></td>
+		 					<td><?php echo $sec_row['time_of_action'];?></td>
+		 					<td><?php echo $sec_row['time_duration'];?></td>
+		 				</tr>	
+		 			<?php } ?>			 				
+		 		<?php endforeach;?>	
+		 		<?php $rowcount++;?>	
+	 		<?php endforeach;?>			
+			
+ 		</tbody>
+ </table>	
+ </div>

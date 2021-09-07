@@ -1,0 +1,302 @@
+<?php
+//TODO-3843 Ancuta 11.02.2021 - added js for colorpicker
+$this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/color_picker/colorpicker.css');
+$this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/color_picker/layout.css');
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/colorpicker/colorpicker.js');
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/colorpicker/eye.js');
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/colorpicker/utils.js');
+?>
+<!--  Maria:: Migration CISPC to ISPC 22.07.2020 -->
+<script>
+    $(document).on('click', '.hoverinfo img', function(){
+        $('.hoverinfo').remove();
+    });
+    $(document).on('mouseout','.blockname_hoveraction', function(){
+        $('.hoverinfo').remove();
+    });
+    $(document).on('click mouseover','.blockname_hoveraction', function(){
+        var blockname=$(this).attr('id');
+        blockname=blockname.substr(3);
+        $('.hoverinfo').remove();
+        var posx=event.pageX+20;
+        var path="<? echo RES_FILE_PATH;?>/images/cfblockpreview/"+blockname+".png";
+        $.ajax({
+            url: path,
+            type: "HEAD",
+            error: function () { },
+            success: function(){
+                var box=$('<div class="hoverinfo" style="left:'+posx+'px; "><img src="'+path+'"></div>');
+                $('body').append(box);
+            }
+        });
+    });
+
+	$(document).ready(function() {
+		
+		//  //TODO-3843 Ancuta 11.02.2021
+		$( ".color_select_div" ).each(function( index ) {
+			var block = $(this).data('block');	
+			
+			$('#colorSelector_'+block).ColorPicker({
+				onShow: function (colpkr) {
+					$(colpkr).fadeIn(500);
+					return false;
+				},
+				onHide: function (colpkr) {
+					$(colpkr).fadeOut(500);
+					return false;
+				},
+				onChange: function (hsb, hex, rgb) {
+	
+					$('#course_color_'+block).val(hex);
+					$('#colorSelector_'+block+' div').css('backgroundColor', '#' + hex);
+				}
+			});
+			
+		});
+
+			
+		
+		$('#assign_all').click(function(){
+			if($(this).is(':checked')){
+				$('.assign').attr('checked', true);
+			} else {
+				$('.assign').removeAttr('checked');
+			}
+		});
+		
+		$('#open_all').click(function(){
+			if($(this).is(':checked')){
+				$('.open').attr('checked', true);
+			} else {
+				$('.open').removeAttr('checked');
+			}
+		});
+		
+		
+		//TODO-3843 Ancuta 11.02.2021
+		$('#write2recorddata_all').click(function(){
+			if($(this).is(':checked')){
+				$('.write2recorddata').attr('checked', true);
+			} else {
+				$('.write2recorddata').removeAttr('checked');
+			}
+		});
+		//--
+		
+		
+		
+		
+		var fix_helper = function(e, ui) {
+			ui.children().each(function() {
+				$(this).width($(this).width());
+			});
+			return ui;
+		};
+
+		$('table.datatable tbody').sortable({
+			placeholder: "ui-state-highlight",
+			helper: fix_helper,
+			items: "tr:not(.disabled)",
+			update: function(event,ui){
+				var item = ui.item;
+				var container = item.parent();
+				var reorder = [];
+				container.children('tr').each(function(i){
+					// save the item id order in array
+					reorder[i] = $(this).attr('id');
+				});
+
+				$.ajax({
+					method:'post',
+					url:'<?php echo APP_BASE . 'socialcode/assignblocks?mode=save'; ?>',
+					data:{
+						'ftid':"<?php echo $_REQUEST['ftid']; ?>",
+						'order':reorder
+					}
+				});
+
+			}
+		}).disableSelection();
+	});
+</script>
+<style type="text/css">
+    .hoverinfo{
+        position:fixed;
+        left:655px;
+        top:20px;
+        border:1px solid #6ae;
+        padding:1px;
+        background-color: #cdf1ff;
+    }
+    .hoverinfo img{
+        width:100%;
+    }
+
+    a.cflink, a.cflink:visited, a.cflink:hover{
+        color:blue;
+        text-decoration:underline;
+    }
+</style>
+<?php
+	$form_type_details = $this->curent_form_type_details;
+	$assigned_form_blocks = $this->form_types_blocks;
+	$opened_blocks = $this->opened_blocks;
+	//TODO-3843 Ancuta 11.02.2021
+	$write2course = $this->write2course;
+	//--	
+?>
+<table width="100%">
+	<tr>
+		<td colspan="6" valign="top">&nbsp;</td>
+
+	</tr>
+	<tr>
+		<td valign="top">&nbsp;</td>
+		<td valign="top"><b><?php echo $this->translate('form_type_name'); ?> :</b></td>
+		<td valign="top"><?php echo $form_type_details[0]['name']; ?></td>
+		<td valign="top"><b><?php echo $this->translate('clientname'); ?> :</b></td>
+		<td valign="top"><?php echo $this->client_name; ?>&nbsp;</td>
+		<td valign="top">&nbsp;</td>
+	</tr>
+	<tr>
+		<td colspan="6" valign="top">&nbsp;</td>
+
+	</tr>
+</table>
+<form action="" method="post" name="frmcourse" id="frmcourse" >
+	<div class="grid">
+		<table id="sort_blocks" class="datatable" border="0">
+			<thead>
+			<tr>
+				<th style="width: 50px;">#</th>
+				<th><?php echo $this->translate('block_name'); ?></th>
+				<th><input type="checkbox" id="assign_all" value="" />&nbsp;<?php echo $this->translate("assign"); ?></th>
+				<th><input type="checkbox" id="open_all" value="" />&nbsp;<?php echo $this->translate("boxselect"); ?></th>
+				<th><input type="checkbox" id="write2recorddata_all" value="" />&nbsp;<?php echo $this->translate("Write to course"); ?></th>
+			</tr>
+			</thead>
+			<tbody>
+			<?php if($this->blocks):  ?>
+			<?php $i = '1'; foreach($this->blocks as $k_block => $v_block):  ?>
+			
+
+			<tr id="<?php echo $v_block; ?>" class="sort">
+				<td  id="bh_<?php echo $v_block; ?>" class="blockname_hoveraction">
+
+					<?php echo $i;  ?>
+					<input type="hidden" name="order[]" value="<?php echo $v_block; ?>" />
+
+				</td>
+				<td>
+					<?php
+						if(!in_array($v_block, $this->custom_abbrev))
+						{
+							echo $this->translate('block_'.$v_block);
+						}
+						else
+						{
+							$cbkey = array_search($v_block, array_column($this->custom_blocks, 'block_abbrev'));
+							echo $this->custom_blocks[$cbkey]['block_name'];
+						}
+				 	?>
+				 </td>
+
+				<td>
+				<?php if( $v_block == 'time' ): ?>
+					<input name="assign[<?php echo $v_block; ?>]" type="checkbox" value="1" checked="checked" disabled="disabled"/>
+				<?php else: ?>
+					<input name="assign[<?php echo $v_block; ?>]" type="checkbox" class="assign" value="1" <?php if($assigned_form_blocks[$v_block]['form_block'] == $v_block  ): ?>checked="checked"<?php endif; ?>/>
+				<?php endif; ?>
+				</td>
+				<td>
+					<?php if( $v_block == 'time' ): ?>
+					<input name=" " type="checkbox" value="1"  checked="checked" disabled="disabled" />
+					<input name="open[<?php echo $v_block; ?>]" type="hidden" value="1"  />
+
+				<?php else: ?>
+					<input name="open[<?php echo $v_block; ?>]" type="checkbox" value="1"  class="open"  <?php if($opened_blocks[$v_block] == "1"  ): ?>checked="checked"<?php endif; ?> />
+				<?php endif; ?>
+					<span class="ui-icon ui-icon-arrowthick-2-n-s" style="display:inline-block; float: right;"></span>
+				</td>
+				
+				<!-- TODO-3843 Ancuta 11.02.2021 START-->
+				<td>
+				<?php if(in_array($v_block, $this->blocks2recorddata)):?>
+					<input name="write2course_recorddata[<?php echo $v_block; ?>][write2recorddata]" type="checkbox" value="1"  class="write2recorddata"  <?php if($write2course[$v_block]['write2recorddata'] == "1"  ): ?>checked="checked"<?php endif; ?> />
+					<div class="color_select_div" data-block ="<?php echo $v_block; ?>">
+						#<input name="write2course_recorddata[<?php echo $v_block; ?>][write2recorddata_color]" id="course_color_<?php echo $v_block; ?>" type="text" value="<?php if(strlen($write2course[$v_block]['write2recorddata_color'])> 0 ): echo  $write2course[$v_block]['write2recorddata_color']; else:  echo '000000'; endif; ?>" style="width: 100px;" />
+						<div id="colorSelector_<?php echo $v_block; ?>" style="float: right; display: block; border: 2px solid black; height: 30px; width: 30px;">
+							<div style="display: block;  height: 100%; width: 100%; background-color: <?php if(strlen($write2course[$v_block]['write2recorddata_color'])> 0 ): echo  '#'.$write2course[$v_block]['write2recorddata_color']; else:  echo '#000000'; endif; ?>"></div>
+						</div>
+					</div>
+				<?php
+                    //TODO-4035 Nico 12.04.2021
+                    if(in_array($v_block, $this->blocks2shortcut)):?>
+                    <div class="shortcut_select_div">
+                        Shortcut: <input name="write2course_recorddata[<?php echo $v_block; ?>][write2shortcut]" type="text" value="<?php echo $write2course[$v_block]['write2shortcut'];?>"  class="write2shortcut"   />
+                    </div>
+                    <?php endif;?>
+					
+				<?php endif;?>
+				</td>
+				<!-- TODO-3843 Ancuta 11.02.2021 END-->				
+			</tr>
+			<?php $i++; endforeach;  ?>
+			<?php else:  ?>
+
+			<tr>
+				<td colspan="3">
+					<?php echo $this->translate('no_blocks_found');  ?>
+				</td>
+			</tr>
+			<?php endif  ?>
+			<tr class="disabled">
+				<td colspan="8" valign="top" align="left">
+					<a class="button"  href="<?php echo APP_BASE . 'socialcode/formtypes'; ?>" style="padding: 0;"><?php echo $this->translate('backtolist') ?></a>
+					<input name="submit" id="submit" type="submit" class="button" value="<?php echo $this->translate('submit') ?>" />
+				</td>
+			</tr>
+			</tbody>
+		</table>
+	</div>
+</form>
+
+<script>
+    function get_assigned(){
+        var outstr="";
+        $('input.assign:checked').each(function(){
+            var myname=$(this).prop('name');
+            myname=myname.replace('assign[','');
+            myname=myname.replace(']','');
+            outstr = outstr + myname + ";";
+        });
+        $('#cf_quickassign').val(outstr).text(outstr);
+    }
+
+    function set_assigned(){
+        var enabled=$('#cf_quickassign').val();
+        enabled=enabled.split(';');
+        $('input.assign:checked').prop('checked',false);
+        for(var i=enabled.length-1; i>=0; i--){
+            var myname='assign[' + enabled[i] + ']';
+            console.log(myname);
+            var myelem=$('input.assign[name="'+myname+'"]');
+            $(myelem).prop('checked',true);
+            $('.ui-sortable tr#time').after($(myelem).parents('tr'));
+        }
+
+    }
+
+    $('document').ready(function(){
+        get_assigned();
+    });
+</script>
+
+
+    <div style="margin-top:40px;">
+        <h2>Schnellkonfiguration (für Copy&Paste)</h2>
+        <input type="button" onClick="get_assigned()" value="Ermitteln"> &nbsp;&nbsp;<input type="button" onClick="set_assigned()" value="übernehmen"><br>
+        <textarea style="width: 100%" id="cf_quickassign" name="quickassign"></textarea><br>
+        <input type="hidden" name="quickchange" value="1">
+    </div>

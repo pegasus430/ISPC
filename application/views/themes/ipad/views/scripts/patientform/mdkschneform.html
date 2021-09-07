@@ -1,0 +1,609 @@
+<?php 
+$this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/page-css/mdkschneform_style.css');
+$new_instance = $this->new_instance;
+?>
+
+
+<script type="text/javascript">
+$(document).ready(function() {
+				
+	
+//	$('form').submit(function() {
+//		setTimeout(function () {$('input[type=submit]').attr('disabled', true);}, 150);
+//		setTimeout(function () {$('input[type=submit]').attr('disabled', false);}, 8000);
+//	});
+
+	
+	
+	$('#btnsave').live('click', function(event){
+		$(this).attr('disabled', true);
+		
+		event.preventDefault();
+		
+		$('#btnsubmit_value').val('');
+		$('#btnsave_value').val('1');
+		$('#mdkschneform').submit();
+	});
+	
+	$('#btnsubmit').live('click', function(event){
+		$(this).attr('disabled', true);
+	
+		event.preventDefault();
+		$('#btnsubmit_value').val('1');
+		$('#btnsave_value').val('');
+		$('#mdkschneform').submit();
+	});
+	
+	$('#entlasung_date, #datum_der_erfassung1, #datum_der_erfassung2').datepicker({
+		dateFormat: 'dd.mm.yy',
+		showOn: "both",
+		buttonImage: $('#calImg').attr('src'),
+		buttonImageOnly: true,
+		changeMonth: true,
+		changeYear: true,
+		nextText: '',
+		prevText: ''
+				 });
+ 
+	$('#btnnew').bind('click', function(e) {
+		e.preventDefault();
+	    $('#confirmDialog').dialog('open');
+	});
+				
+	$('#confirmDialog').dialog({
+	    autoOpen: false,
+	    modal: true,
+	    buttons:{
+		"<?php echo $this->translate('yesconfirm'); ?>": function(){
+		    $('#create_new').val('1');
+			$('#mdkschneform').submit();
+		    $('#confirmDialog').dialog('close');
+
+		},
+		"<?php echo $this->translate('noconfirm'); ?>": function(){
+		    $('#create_new').val('0');
+		    $('#confirmDialog').dialog('close');
+		}
+	    }
+	});
+				
+ 
+});
+
+
+
+var isdischarged = '<?php echo $this->isdischarged ?>';
+
+var carediv = function(params)
+{
+	var listcarelevel;
+	if( listcarelevel = document.getElementById('listcarelevel')) {
+		listcarelevel.innerHTML=params.carelist;
+	}
+}
+
+
+var chks;
+var formid;
+
+function updatePatientInformation(modname,fldname,formid,chk,patid,drp){
+	if(patid == "") {
+		patid = window.idpd;
+	}
+	
+	if(chk.checked == true){
+		chks = 1;
+	} else {
+		chks = 0;
+	}
+	if(drp=='drop')
+	{
+		chks = chk.value;
+	}
+	
+	if ("MaintainanceStage" == modname && chk.id == "pflegeversicherung-keine") {
+		
+		$(".pflegeversicherung-other").prop("checked", false);
+		
+	} else if ("MaintainanceStage" == modname && ~chk.className.indexOf("pflegeversicherung-other")){
+		
+		document.getElementById("pflegeversicherung-keine").checked = false;
+	}
+				
+	if ("MaintainanceStage" == modname && ~chk.className.indexOf("carelevel_other")){
+		//document.getElementById("erstantrag").checked = false;
+		document.getElementById("horherstufung").checked = false;
+	}
+	
+	ajaxcall(modname,fldname,chks,patid,formid);
+}
+
+function ajaxcall(modname,fldname,chks,patid,formid){
+
+	if(isdischarged==1){
+		jConfirm('<?php echo $this->translate('dischargealert'); ?>', '', function(r) {
+			if(r){
+				ajaxCallserver({url:appbase+'patient/updatepatientinfo?modname='+modname+'&fldname='+fldname+'&chkval='+encodeURIComponent(chks)+'&patid='+patid+'&formid='+formid});
+			}
+		});
+
+		return false;
+	} else {
+		ajaxCallserver({url:appbase+'patient/updatepatientinfo?modname='+modname+'&fldname='+fldname+'&chkval='+encodeURIComponent(chks)+'&patid='+patid+'&formid='+formid});
+	}
+}
+
+</script>
+ <form action="" method="post" name="mdkschneform" id="mdkschneform">
+    <div id="stammblatt_CalendarImg" style="display: none;">
+	<img id="calImg" src="<?php echo RES_FILE_PATH;  ?>/images/calendar.png" alt="Popup" class="trigger">
+</div>
+<?php echo $this->patientinfo ?>
+<?php echo $this->tabmenus ?>
+<div id="stammblatt_tabContainer" class="tab_container">
+
+<table class="mdk_table">
+<tr><th class="bigtitle" colspan="2">MDK-Schnellbegutachtungsbogen für die SAPV nach § 37 b SGB V</th></tr>
+<tr><th class="smalltitle" colspan="2">- wird vom Palliative-Care-Team ausgefüllt -</th></tr>
+<tr><th class="partheader" colspan="2">A. Basisdaten Patient, Aktuelle Versorgungssituation</th></tr>
+<tr>
+		<td width="50%">
+		<table class="top_smalltable">
+			<tr>
+				<td>AOK</td>
+				<td>BKK</td>
+				<td>IKK</td>
+				<td>LKK</td>
+				<td>Vdek</td>
+				<td>Knapp</td>
+				<td></td>
+			</tr>
+		</table>
+		</td>
+		<td width="50%" class="palliative_title">Palliative-Care-Team</td>
+</tr>
+
+<tr>
+<td>
+<span class="healthins_name bd_bottom"> <?php echo  $this->insurance_company_name;?> &nbsp;</span>
+<span class="indice">(Name der Kasse)</span>
+</td>
+<td class="right-title">Der Schnellbegutachtungsbogen ist mit der
+vertragsärztlichen Verordnung direkt an die jeweils
+zuständige Krankenkasse zu senden.
+</td>
+</tr>
+
+<tr>
+<td class="hghtall" valign="baseline"><span class="lblspan">Name, Vorname:</span><span class="blockspanall"><?php echo $this->lastname.', '.$this->firstname;?></span> </td>
+<td><span class="lblspan">Name: </span><span class="blockspanall"><?php echo $this->client_name;?></span></td>
+</tr>
+<tr>
+<td  class="hghtall"><span class="lblspan">Addresse:</span> <span class="blockspanall"><?php echo $this->street;?></span></td>
+<td><span class="lblspan">Addresse:</span><span class="blockspanall"><?php echo $this->client_street;?></span> </td>
+</tr>
+<tr>
+<td  class="hghtall"> <span class="blockspanall"><?php echo $this->zip.' '.$this->patcity;?></span> </td>
+<td><span class="blockspanall">&nbsp; <?php echo $this->client_zip.' '.$this->client_city;?></span> </td>
+</tr>
+<tr>
+<td  class="hghtall"><span class="lblspan">Telefon-Nr:</span> <span class="blockspan"> <?php echo  $this->phone;?></span><span class="lblspan">Geburtsdatum:</span> <span class="blockspan_small"><?php echo $this->birth;?></span></td>
+<td  class="hghtall"><span class="lblspan">Telefon-Nr:</span> <span class="blockspan"><?php echo  $this->client_phone;?></span><span class="lblspan">Fax:</span> <span class="blockspan"><?php echo  $this->client_fax;?></span></td>
+</tr>
+<tr>
+<td  class="hghtall">  <span class="blockspanall">&nbsp;</span></td>
+<td><span class="lblspan">Email:</span> <span class="blockspanall"><?php echo  $this->client_email;?></span></td>
+</tr>
+<tr>
+<td class="hghtall" rowspan="3">
+	<div class="pflegenduste">
+	<label><b>Pflegeversicherung</b> </label>
+			<table>
+			<!--
+			<tr>
+			<td><input type="checkbox" id="pfle_keine" name="pflegeversicherung[]"       value="keine" <?php if(in_array('keine',$this->pflegeversicherung)){ echo 'checked="checked"'; }?>/></td>
+			<td><label for="pfle_keine">keine</label></td>
+			<td><input type="checkbox"  id="pfle_beantragt" name="pflegeversicherung[]"  value="7" <?php if(in_array('7',$this->pflegeversicherung)){ echo 'checked="checked"'; }?> /></td>
+			<td><label for="pfle_beantragt">beantragt</label></td>
+			<td><input type="checkbox" id="pfle_stufeI" name="pflegeversicherung[]"      value="1" <?php if(in_array('1',$this->pflegeversicherung)){ echo 'checked="checked"'; }?> /></td>
+			<td><label for="pfle_stufeI">Stufe I</label></td>
+			<td><input type="checkbox"  id="pfle_stufeII" name="pflegeversicherung[]"    value="2" <?php if(in_array('2',$this->pflegeversicherung)){ echo 'checked="checked"'; }?> /></td>
+			<td><label for="pfle_stufeII">Stufe II</label></td>
+			<td><input type="checkbox"  id="pfle_stufeIII" name="pflegeversicherung[]"   value="3" <?php if(in_array('3',$this->pflegeversicherung)){ echo 'checked="checked"'; }?>/></td>
+			<td><label for="pfle_stufeIII">Stufe III</label></td>
+			
+			</tr>
+			 -->
+			<tr>
+			
+			<td  width="90px;">
+				<input type="checkbox"  id="pfle_unbekannt" name="pflegeversicherung[]"  value="unbekannt" <?php if(in_array('unbekannt',$this->pflegeversicherung)){ echo 'checked="checked"'; }?> />
+				<label for="pfle_unbekannt">unbekannt</label>
+			</td>
+			
+			<td width="180px;">
+				<?php
+				echo  $this->formCheckbox("pflegeversicherung[]", $this->stage, array("id"=>"pflegeversicherung-keine", "class"=>"carelevel_other", "style"=>"margin-left:10px;", "onclick"=>"updatePatientInformation('MaintainanceStage','stage','grow7',this,'','drop')"), array("keine"=>"keine"));
+				?>
+				<label for="pflegeversicherung-keine">keine Pflegegrad</label>
+			</td>
+			
+			<!--
+			<td><input type="checkbox"   id="pfle_hartefall" name="pflegeversicherung[]" value="4" <?php if(in_array('4',$this->pflegeversicherung)){ echo 'checked="checked"'; }?> /></td>
+			<td><label for="pfle_hartefall">Härtefall</label></td>
+			-->
+			
+			<td>
+				<input type="checkbox"   id="erstantrag" name="pflegeversicherung[]"   value="7" <?php if( in_array('7',$this->pflegeversicherung)){ echo 'checked="checked"'; }?>  onclick="updatePatientInformation('MaintainanceStage','erstantrag','grow7',this,'')" />
+				<label for="erstantrag">beantragt</label>
+			</td>
+			
+			</tr>
+			
+			<tr >
+				<td colspan="2" style="vertical-align: middle;">
+					<label style="padding-right:2px;"><?php echo $this->translate('carelevel');?>: </label>
+					<?php
+						$set_values = array(1=>"1",  2=>"2",  3=>"3",  4=>"4",  5=>"5");
+						echo  $this->formRadio("pflegeversicherung[]", $this->stage, array("class"=>"pflegeversicherung-other carelevel_other", "label_style"=>"margin-left:0px;", "onclick"=>"updatePatientInformation('MaintainanceStage','stage','grow7',this,'','drop')"), $set_values, "");
+					?>
+				</td>
+				
+				
+				<td style="vertical-align: middle;">
+					<label> 
+					<input type="checkbox"   id="horherstufung" name="pflegeversicherung[]"     value="horherstufung" <?php if($this->horherstufung == '1' ){ echo 'checked="checked"'; }?>   onclick="updatePatientInformation('MaintainanceStage','horherstufung','grow7',this,'')" />
+					Höherstufung beantragt
+					</label>
+				</td>
+				
+				
+			</tr>
+				 
+			
+			
+			</table>
+	</div><br/><br/><br/>&nbsp;<br/>
+</td>
+<td style="vertical-align: top">
+	<div class="bd_bottom left_total">
+		<span class="lblspan">Datum:</span>
+		<span class="blockspan_small"><?php echo date('d.m.Y');?></span>
+		<span class="lblspan">Stempel/Unterschrift:</span>
+		<span class="blockspanall">&nbsp;</span>
+	</div>
+	<div class="bd_bottom left_total">
+		<span class="lblspan">IK:</span>
+		<span class="blockspan"><?php echo $this->client_ik;?></span>
+		<span class="lblspan">BSNR:</span>
+		<span class="blockspan"><?php echo $this->client_bsnr;?></span>
+	</div>
+</td>
+</tr>
+
+<tr>
+</tr>
+<tr>
+</tr>
+<tr>
+<td colspan="2" class="hghtall">
+<span class="pv_per">
+Angehörige / private Pflegepersonen<br/>
+(bitte jeweils Namen, Adresse und Tel.-Nr. angeben )
+</span>
+</td>
+</tr>
+<tr>
+<td colspan="2">
+<table class="contactpers">
+
+ 
+<tr>
+<td width="50px">1</td>
+<?php if (!empty($this->contactperson1)):?>
+<td><input type="text" name="cntpers1" value="<?php echo $this->contactperson1;?>" style="width: 98% " /></td>
+<?php else: ?>
+<td><input type="text" name="cntpers1" value=""   style="width: 98% " /></td>
+<?php endif;?>
+</tr>
+<tr>
+<td width="50px">2</td>
+<?php if (!empty($this->contactperson2)):?>
+<td><input type="text" name="cntpers2" value="<?php echo $this->contactperson2;?>" style="width: 98% " /></td>
+<?php else: ?>
+<td><input type="text" name="cntpers2" value=""   style="width: 98% " /></td>
+<?php endif;?>
+</tr>
+</table>
+
+</td>
+
+</tr> 
+ <tr>
+ <td colspan="2" class="hghtall"><span class="beteiligen">Beteiligen sich die Angehörigen / private Pflegepersonen an der Versorgung?</span> 
+ <div class="beteiligenchk">
+ <input type="radio" name="pflegeperson" value="1" <?php if($this->pflegeperson == '1'){echo  'checked="checked"';}?> /> <label>Ja</label>
+ <input type="radio" name="pflegeperson" value="2" <?php if($this->pflegeperson == '2'){echo  'checked="checked"';}?> />  <label>Nein</label></div><br/>
+ <span class="pflege_benefits">Falls ja, welche Leistungen werden übernommen: </span><input type="text" name="pflege_benefits" value="<?php echo $this->pflege_benefits;?>" id="pflege_benefits"/>
+ <br/>&nbsp;
+ </td>
+ 
+ </tr>
+ 
+ <tr>
+ <td colspan="2" ><div class="bd_bottom left_total"><span class="lblspan st_normal">Hauptdiagnose: </span><input type="text" name="maindiagnosis" value="<?php echo $this->maindiagnosis;?>" id="maindiagnosis"/></div>
+ <br/>&nbsp; 
+ <span class="bitte">(bitte umfassend angeben mit Stadium der Erkrankung)</span>
+  <br/>&nbsp; 
+ </td>
+ </tr>
+ <tr>
+ <td colspan="2">
+ <div class="ambulante">
+ <span class="ambulante_title">ambulante Versorgungssituation</span><br/>
+ <span class="ambulante_subtitle">(alles Zutreffende ankreuzen)</span>
+ <table>
+ <tr><td><input type="checkbox" name="ambulante[]" value="1" <?php if(in_array(1,$this->ambulante)) { echo 'checked="checked"';} ?> id="hausarzt"/></td><td><label for="hausarzt">Hausarzt</label></td></tr>
+ <tr><td><input type="checkbox" name="ambulante[]" value="2" <?php if(in_array(2,$this->ambulante)) { echo 'checked="checked"';} ?> id="facharzt"/></td><td><label for="facharzt">Facharzt/Palliativarzt</label></td></tr>
+ <tr><td><input type="checkbox" name="ambulante[]" value="3" <?php if(in_array(3,$this->ambulante)) { echo 'checked="checked"';} ?> id="sozial"/></td><td><label for="sozial">Sozialstation / Pflegedienst</label></td></tr>
+ <tr><td><input type="checkbox" name="ambulante[]" value="4" <?php if(in_array(4,$this->ambulante)) { echo 'checked="checked"';} ?> id="careteam"/></td><td><label for="careteam">Palliative-Care-Team</label></td></tr>
+ <tr><td><input type="checkbox" name="ambulante[]" value="5" <?php if(in_array(5,$this->ambulante)) { echo 'checked="checked"';} ?> id="privatepfle"/></td><td><label for="privatepfle">private Pflegeperson(en)</label></td></tr>
+ <tr><td><input type="checkbox" name="ambulante[]" value="6" <?php if(in_array(6,$this->ambulante)) { echo 'checked="checked"';} ?> id="ambulanter"/></td><td><label for="ambulanter">Ambulanter Hospizdienst</label></td></tr>
+ </table>
+ 
+ </div>
+ <div class="kurativeplus">
+<table>
+<tr>
+<td colspan="6"><b>Kurative Behandlungen abgeschlossen?</b></td>
+</tr>
+<tr>
+<td><input type="radio" name="kurative" value="1" <?php if($this->kurative == '1') {echo 'checked="checked"';}?>   /></td><td>Ja</td>
+<td><input type="radio" name="kurative" value="2" <?php if($this->kurative == '2') {echo 'checked="checked"';}?>    /></td><td>Nein</td>
+<td><input type="radio" name="kurative" value="3" <?php if($this->kurative == '3') {echo 'checked="checked"';}?>    /></td><td>Unklar</td>
+</tr>
+<tr>
+<td colspan="6"><b>Behandlungsansatz jetzt rein palliativ?</b></td>
+</tr>
+<tr>
+<td><input type="radio" name="behandlungsansatz" value="1" <?php if($this->behandlungsansatz == '1') {echo 'checked="checked"';}?>    /></td><td>Ja</td>
+<td><input type="radio" name="behandlungsansatz" value="2" <?php if($this->behandlungsansatz == '2') {echo 'checked="checked"';}?>    /></td><td>Nein</td>
+<td><input type="radio" name="behandlungsansatz" value="3" <?php if($this->behandlungsansatz == '3') {echo 'checked="checked"';}?>    /></td><td>Unklar</td>
+</tr>
+<tr>
+<td colspan="6"><b>Aufklärung über begrenzte Lebenserwartung?</b></td>
+</tr>
+<tr>
+<td><input type="radio" name="aufklarung" value="1" <?php if($this->aufklarung == '1') {echo 'checked="checked"';}?> /></td><td>Ja</td>
+<td><input type="radio" name="aufklarung" value="2" <?php if($this->aufklarung == '2') {echo 'checked="checked"';}?> /></td><td>Nein</td>
+<td><input type="radio" name="aufklarung" value="3" <?php if($this->aufklarung == '3') {echo 'checked="checked"';}?> /></td><td>Unklar</td>
+</tr>
+</table>
+ 
+ 
+ </div>
+ <div class="livingwillplus">
+ <table>
+ <tr> <td colspan="5"><b>Patientenverfügung</b></td> </tr>
+ <tr>
+ <td class="wd35px">&nbsp;</td>
+ <td width="25px"><input type="radio" name="livingwill" id="livingwill_ja"  value="1" <?php if($this->livingwill == '1') {echo 'checked="checked"';}?>/></td>
+ <td width="60px"><label for="livingwill_ja">Ja</label></td>
+ <td  width="25px"><input type="radio" name="livingwill" id="livingwill_nein" value="2" <?php if($this->livingwill == '2') {echo 'checked="checked"';}?> /></td>
+ <td><label for="livingwill_nein">Nein</label></td>
+ </tr>
+ <tr>
+ <td>&nbsp;</td>
+ <td><input type="checkbox" name="livingwill_wird"  value="1" <?php if($this->livingwill_wird == '1') {echo 'checked="checked"';}?>/></td>
+ <td colspan="3">Wird noch bis zum <input type="text" style="width:65px;" name="livingwill_txt" value="<?php echo $this->livingwill_txt; ?>" /> erarbeitet.
+ </td>
+ </tr>
+ <tr> <td colspan="5"><b>Palliativer Behandlungsplan</b></td> </tr>
+ <tr>
+ <td class="wd35px">&nbsp;</td>
+ <td width="25px"><input type="radio" name="palliativer" id="palliativer_ja" value="1" <?php if($this->palliativer == '1') {echo 'checked="checked"';}?>/></td>
+ <td width="60px"><label for="palliativer_ja">Ja</label></td>
+ <td  width="25px"><input type="radio" name="palliativer" id="palliativer_nein" value="2" <?php if($this->palliativer == '2') {echo 'checked="checked"';}?>  /></td>
+ <td><label for="palliativer_nein">Nein</label></td>
+ </tr>
+ <tr>
+ <td>&nbsp;</td>
+ <td><input type="checkbox" name="palliativer_wird" id="palliativer_txt"   value="1" <?php if($this->palliativer_wird == '1') {echo 'checked="checked"';}?> /></td>
+ <td colspan="3">Wird noch bis zum <input type="text" style="width:65px;" name="palliativer_txt" value="<?php echo $this->palliativer_txt?>" /> erarbeitet.
+ </td>
+ </tr>
+ <tr> <td colspan="5"><b>Erfolgen bei Bedarf auch nachts Einsätze?</b></td> </tr>
+ <tr>
+ <td class="wd35px">&nbsp;</td>
+ <td width="25px"><input type="radio" name="erfolgen" id="erfolgen_ja" value="1" <?php if($this->erfolgen == '1') {echo 'checked="checked"';}?>/></td>
+ <td width="60px"><label for="erfolgen_ja">Ja</label></td>
+ <td  width="25px"><input type="radio" name="erfolgen" id="erfolgen_nein" value="2" <?php if($this->erfolgen == '2') {echo 'checked="checked"';}?>/></td>
+ <td><label for="erfolgen_nein">Nein</label></td>
+ </tr>
+ </table>
+ 
+ 
+ 
+ </div><br/><br/>&nbsp;<br/>
+ </td>
+ 
+ </tr>
+<tr><th class="partheader" colspan="2">B. Schmerzsymptomatik</th></tr> 
+<tr>
+<td colspan="2">
+<div class="schm">
+<span>Besteht ein ausgeprägtes Schmerzsymptomgeschehen, welches eine Schmerztherapie mit multidimensionaler Therapiekontrolle erforderlich macht?</span><br/>
+<input type="radio" name="schem_symptomatik" id="schm_ja" value="1"   <?php if($this->schem_symptomatik == '1') {echo 'checked="checked"';}?> /><label for="schm_ja">Ja</label>
+<input type="radio" name="schem_symptomatik" id="schm_nein" value="2" <?php if($this->schem_symptomatik == '2') {echo 'checked="checked"';}?> /><label for="schm_nein">Nein</label>
+
+<br/>&nbsp;<br/></div>
+</td>
+</tr>
+<tr><th class="partheader" colspan="2">C.  Weitere ausgeprägte und extreme Symptome</th></tr> 
+<tr>
+<td colspan="2">
+<table class="extreme_symp">
+<tr>
+<td><input type="checkbox" name="extreme_symptome[]" id="angst" value="1"  <?php if(in_array(1,$this->extreme_symptome)) { echo 'checked="checked"';} ?> /></td>
+<td><label for="angst">Angst</label></td>
+<td><input type="checkbox" name="extreme_symptome[]" id="motor" value="2"   <?php if(in_array(2,$this->extreme_symptome)) { echo 'checked="checked"';} ?> /></td>
+<td><label for="motor">Motorische Unruhe</label></td>
+<td><input type="checkbox" name="extreme_symptome[]" id="atemnot" value="3"   <?php if(in_array(3,$this->extreme_symptome)) { echo 'checked="checked"';} ?> /></td>
+<td><label for="atemnot">Atemnot</label></td>
+<td><input type="checkbox" name="extreme_symptome[]" id="blutun" value="4"   <?php if(in_array(4,$this->extreme_symptome)) { echo 'checked="checked"';} ?> /></td>
+<td><label for="blutun">Blutungen</label></td>
+<td><input type="checkbox" name="extreme_symptome[]" id="ubelkeit" value="5"   <?php if(in_array(5,$this->extreme_symptome)) { echo 'checked="checked"';} ?> /></td>
+<td><label for="ubelkeit">Übelkeit / Erbrechen</label></td>
+<td><input type="checkbox" name="extreme_symptome[]" id="durchfall" value="6"   <?php if(in_array(6,$this->extreme_symptome)) { echo 'checked="checked"';} ?> /></td>
+<td><label for="durchfall">Durchfall</label></td>
+<td><input type="checkbox" name="extreme_symptome[]" id="exclude" value="7"   <?php if(in_array(7,$this->extreme_symptome)) { echo 'checked="checked"';} ?> /></td>
+<td><label for="exclude">Exulcerationen</label></td>
+</tr>
+<tr>
+<td><br/><input type="checkbox" name="extreme_symptome[]" id="exclude" value="8"   <?php if(in_array(8,$this->extreme_symptome)) { echo 'checked="checked"';} ?> /></td>
+<td colspan="13"><br/><input type="text" name="extreme_symptome_txt" value="<?php echo $this->extreme_symptome_txt;?>" style="width: 98%;"/><br/>&nbsp;</td>
+</tr>
+</table>
+
+</td>
+</tr>
+<tr><th class="partheader" colspan="2">D. Psychosoziale Unterstützung</th></tr> 
+<tr>
+<td colspan="2">
+<table class="psycho">
+<tr>
+<td><input type="checkbox" name="psychosoziale_a" id="psychosoziale_a" value="1"  <?php if($this->psychosoziale_a == '1') {echo 'checked="checked"';}?>  /> <label for="psychosoziale_a">Psychosoziale Unterstützung durch</label><input type="text" name="psychosoziale_a_txt" value="<?php echo $this->psychosoziale_a_txt ;?>" /></td>
+</tr>
+<tr>
+<td><input type="checkbox" name="psychosoziale_b" id="psychosoziale_b" value="1"  <?php if($this->psychosoziale_b == '1') {echo 'checked="checked"';}?>  /> <label for="psychosoziale_b">Beratung in ethischen Fragen durch </label><input type="text" name="psychosoziale_b_txt" value="<?php echo $this->psychosoziale_b_txt ;?>" /></td>
+</tr>
+<tr>
+<td><input type="checkbox" name="psychosoziale_c" id="psychosoziale_c" value="1"  <?php if($this->psychosoziale_c == '1') {echo 'checked="checked"';}?>  /> <label for="psychosoziale_c">Psychosoziale Unterstützung ist nicht erforderlich, da</label><input type="text" name="psychosoziale_c_txt" value="<?php echo $this->psychosoziale_c_txt ;?>" /></td>
+</tr>
+</table>
+</td>
+
+</tr>
+</table>
+<span>&nbsp;<b>Anlage: Kopie der vertragsärztlichen Verordnung</b></span>
+<br/>
+
+<table class="mdk_table">
+<tr><th class="bigtitle" colspan="2">MDK -Stellungnahme<br/>
+zum<br/>
+MDK -Schnellbegutachtungsbogen für die SAPV nach § 37 b SGB V
+</th></tr>
+<tr>
+<td class="hghtall" valign="baseline" colspan="2"> <span class="lblspan">Name, Vorname:</span> <span class="blockspanall"><?php echo $this->lastname.', '.$this->firstname;?></span> </td>
+</tr>
+<tr>
+<td class="hghtall" valign="baseline" colspan="2"> <span class="lblspan">Adresse:</span> <span class="blockspanall"><?php echo $this->street.', '.$this->zip.' '.$this->patcity;?></span> </td>
+</tr>
+<tr>
+<td class="hghtall" valign="baseline" colspan="2"> <span class="lblspan">Geb.-Datum:</span> <span class="blockspan"><?php echo $this->birth;?></span> </td>
+</tr>
+<tr>
+<td class="hghtall" valign="baseline" colspan="2"> </td>
+</tr>
+<tr>
+<td class="hghtall"  colspan="2">
+<div class="private_prs">
+<span>Angehörige/private Pflegepersonen  sind vorhanden und beteiligen sich an der Versorgung:</span> <br/>
+<input type="radio" name="angehorige" id="private_pers_ja" value="1"   <?php if($this->angehorige == '1') {echo 'checked="checked"';}?>   disabled="disabled"  />
+<label for="private_pers_ja">Ja</label>
+<input type="radio" name="angehorige"   id="private_pers_nein" value="2"   <?php if($this->angehorige == '2') {echo 'checked="checked"';}?>   disabled="disabled" />
+<label for="private_pers_nein">Nein</label>
+<br/><br/>
+<span class="st_normal">falls ja, welche Leistungen werden übernommen:</span> <input type="text" name="angehorige_txt" value="<?php echo $this->angehorige_txt; ?>" disabled="disabled" />
+</div>
+<br/>&nbsp;
+</td>
+</tr>
+<tr><td class="hghtall" colspan="2"></td></tr>
+
+<tr>
+<td class="hghtall" colspan="2">
+<div class="private_prs">
+<span>Sind häusliche Krankenpflege und/oder andere Leistungen (z. B. ärztliche Leistungen) im Rahmen der allgemeinen Palliativversorgung ausreichend?</span> <br/>
+<input type="radio" name="krakenpflege" value="1" id="private_pers_ja"  <?php if($this->krakenpflege == '1') {echo 'checked="checked"';}?>  disabled="disabled"  />
+<label for="private_pers_ja">Ja</label>
+<input type="radio" name="krakenpflege" value="2" id="private_pers_nein"  <?php if($this->krakenpflege == '2') {echo 'checked="checked"';}?> disabled="disabled"  />
+<label for="private_pers_nein">Nein</label>
+<br/><br/>
+<span class="st_normal">falls ja, welche Leistungen sind für welchen Zeitraum erforderlich: </span> <input type="text" name="krakenpflege_txt" value="<?php echo $this->krakenpflege_txt;?>" disabled="disabled"  />
+</div>
+<br/>&nbsp;
+</td>
+</tr>
+<tr><td class="hghtall" colspan="2"></td></tr>
+
+<tr>
+<td class="hghtall"  colspan="2">
+<div class="private_prs">
+<span>Liegen die besonderen Voraussetzungen für die Erbringung der SAPV vor?</span> <br/>
+<input type="radio" name="liegen_sapv" value="1" id="private_pers_ja"  <?php if($this->liegen_sapv == '1') {echo 'checked="checked"';}?>  disabled="disabled" />
+<label for="private_pers_ja">Ja</label>
+<input type="radio" name="liegen_sapv" value="2" id="private_pers_nein"  <?php if($this->liegen_sapv == '2') {echo 'checked="checked"';}?>  disabled="disabled"  />
+<label for="private_pers_nein">Nein</label>
+<br/><br/>
+<span class="st_normal">falls ja, ab wann:</span> <input type="text" name="liegen_sapv_txt" value="<?php echo $this->liegen_sapv_txt; ?>" disabled="disabled" />
+<br/><br/>
+<span class="st_normal">medizinische Begründung: (bitte immer angeben) </span> <input type="text" name="medizinische_txt" value="<?php echo $this->medizinische_txt;?>" disabled="disabled" />
+</div>
+<br/>&nbsp;
+</td>
+</tr>
+<tr><td class="hghtall"  colspan="2"></td></tr>
+
+<tr>
+<td class="hghtall"  colspan="2">
+<div class="private_prs">
+<span>Weitere Unterlagen sind notwendig:</span> <br/>
+<input type="radio" name="weitere" value="1" id="private_pers_ja"  <?php if($this->weitere == '1') {echo 'checked="checked"';}?>  disabled="disabled"  />
+<label for="private_pers_ja">Ja</label>
+<input type="radio" name="weitere" value="2" id="private_pers_nein"  <?php if($this->weitere == '2') {echo 'checked="checked"';}?>  disabled="disabled"  />
+<label for="private_pers_nein">Nein</label>
+<br/><br/>
+<span class="st_normal">falls ja, welche: </span> <input type="text" name="weitere_txt" value="<?php echo $this->weitere_txt;?>" disabled="disabled"  />
+<br/><br/>
+<span>Sonstiges:  </span><br/>
+<textarea name="sonstiges" disabled="disabled" ><?php echo $this->sonstiges;?></textarea>
+</div>
+<br/>&nbsp;
+</td>
+</tr>
+<tr>
+<td width="50%">&nbsp;<span><b>Datum</b></span><br/><br/>
+&nbsp;<?php echo date('d.m.Y');?><br/>&nbsp;
+</td>
+<td>&nbsp;<span><b>Stempel / Unterschrift:</b></span><br/>
+
+<br/>&nbsp;
+</td>
+</tr>
+
+
+</table>
+
+  <div class="kvno_buttons">
+<input name="mdk_id" type="hidden" value="<?php echo $this->mdk_id; ?>" />
+<input name="create_new" id="create_new" type="hidden" value="0" />
+
+
+<input name="btnsave" type="hidden" value="" id="btnsave_value" />&nbsp;&nbsp;
+<input name="btnsubmit" type="hidden" value=""  id="btnsubmit_value" />
+
+<button id="btnsave" type="button" class="submit_form btnsubmit_usersessions"><?php echo $this->translate('save') ?></button>&nbsp;&nbsp;
+<button id="btnsubmit" type="button" class="submit_form"><?php echo $this->translate('generatepdf') ?></button>
+
+
+<?php if($new_instance == '1'):?>
+	<input name="btnnew" id="btnnew" type="submit" value="<?php echo $this->translate('neuen Bogen anlegen') ?>" class="btnsubmit_usersessions"/>
+
+<?php endif;?>
+ </div>
+</div>
+</form>
+<div id="confirmDialog">
+    <?php echo $this->translate('areyousure'); ?>
+</div>

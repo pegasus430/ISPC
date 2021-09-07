@@ -1,0 +1,173 @@
+
+<?php
+	$post_data = $this->post_data;
+	$master_price_list = $this->master_price_list;
+	$current_period = $this->current_period;
+	$totals = array();
+	$totals = array_merge($totals, $this->totals);
+	//required for col colors
+	$active_days = $this->active_days;
+	$hospital_days = $this->full_hospital_days;
+	$hospiz_days = $this->full_hospiz_days;
+
+	$days2verordnet = $this->days2verordnet;
+	$verordnet2shortcuts = $this->verordnet2shortcuts;
+	$week_price_shortcuts = $this->week_price_shortcuts;
+
+	$different_width = array(
+		'28'=>'980px',
+		'29'=>'1015px',
+		'30'=>'1050px',
+		'31'=>'1085px',
+	);
+?>
+<table style="float:left; font-size: 10;" border="0" width="1250">
+	<tr>
+		<td>&nbsp;</td>
+		<td>&nbsp;</td>
+	</tr>
+	<tr>
+		<td colspan="2">
+			<h1>Sapv Leistungsübersicht</h1>
+			<h4>Monat: <?php echo date('m-Y', strtotime($post_data['select_month'].'-01'));  ?></h4>
+		</td>
+	</tr>
+	<tr>
+		<td colspan="2">&nbsp;</td>
+	</tr>
+	<tr>
+		<td colspan="2">&nbsp;</td>
+	</tr>
+	<tr>
+		<td colspan="2">
+			<table style="float:left; font-size: 10;" border="1" width="1250">
+				<tbody>
+					<tr>
+						<td width="100" style="background-color: #ccc;line-height:25px;"></td>
+						<td rowspan="15" style="padding:0;margin:0;font-size: 7;width:<?php echo $different_width[count($this->month_days)];?>;">
+							<table border="1" style="font-size: 10; line-height: 25px;margin:0;padding:0;width:100%;">
+								<!-- Days row -->
+								<tr>
+								<?php foreach($this->month_days as $k_month => $v_month):  ?>
+								<?php
+									if(!in_array($v_month, $active_days) || in_array($v_month, $hospital_days) || in_array($v_month, $hospiz_days)) //inactive day
+									{
+										$color[$v_month] = '#FFCCCC';
+										$color_grid[$v_month] = '#FFCCCC';
+									}
+									else if($v_month == date('Y-m-d', time())) //current day
+									{
+										$color[$v_month] = '#FFFDD0';
+										$color_grid[$v_month] = '#FFFDD0';
+									}
+									else //everything else
+									{
+										$color[$v_month] = '#ccc';
+										$color_grid[$v_month] = '#fff';
+									}
+
+								?>
+									<td style="width:35px;font-size:9;text-align:center;background-color:<?php echo $color[$v_month]; ?>;">
+										<br />
+										<br />
+										<br />
+										&nbsp;<?php echo date('d', strtotime($v_month));  ?>
+									</td>
+								<?php endforeach;  ?>
+								</tr>
+
+
+								<?php foreach($this->shortcuts as $k_short_a => $v_short_a):  ?>
+								<tr>
+									<?php foreach ($this->month_days as $k_month => $v_month): ?>
+										<td style="text-align:center;height:25px;line-height:25px;background-color:<?php echo $color_grid[$v_month]; ?>" >
+											<?php $current_day = date('d', strtotime($v_month));  ?>
+
+											<?php if(array_key_exists($current_day, $post_data[$v_short_a]) && in_array($v_month, $active_days) && !in_array($v_month, $hospital_days) && !in_array($v_month, $hospiz_days)): ?>
+
+												<?php if(array_key_exists($current_day, $post_data[$v_short_a."_qty"]) && in_array($v_month, $active_days) && !in_array($v_month, $hospital_days) && !in_array($v_month, $hospiz_days)):   ?>
+													<?php $totals[$v_short_a] += $post_data[$v_short_a."_qty"][$current_day];  ?>
+												<?php else:  ?>
+													<?php $totals[$v_short_a] += '1';  ?>
+												<?php endif;  ?>
+
+												<img src="<?php echo PUBLIC_PATH;?>/images/check02.jpg" width="12" height="12" border="2"/>
+											<?php elseif (array_key_exists($current_day, $this->post_data[$v_short_a.'_start_days']) && in_array($v_month, $active_days) && !in_array($v_month, $hospital_days) && !in_array($v_month, $hospiz_days)):?>
+												<img src="<?php echo PUBLIC_PATH;?>/images/check02.jpg" width="12" height="12" border="0"/>
+											<?php else:  ?>
+												<img src="<?php echo PUBLIC_PATH;?>/images/check01.jpg" width="12" height="12" border="0"/>
+											<?php endif;  ?>
+										</td>
+									<?php endforeach; ?>
+								</tr>
+								<?php endforeach;  ?>
+							</table>
+						</td>
+						<td style="width:75px;font-size:9;background-color: #ccc;"><br /><br />&nbsp;Anzahl <br />&nbsp;ingesamt</td>
+					</tr>
+
+
+				<?php foreach ($this->shortcuts as $k_short_a => $v_short_a): ?>
+					<tr>
+						<td style="text-align: left;font-size:9;height:25px;line-height:25px;" width="100" height="25"><strong>&nbsp;&nbsp;<?php echo $this->translate('shortcut_name_'.$v_short_a); ?></strong></td>
+						<td style="text-align: center;font-size:9;height:25px;line-height:25px;">&nbsp; <?php echo $totals[$v_short_a];  ?></td>
+					</tr>
+				<?php endforeach; ?>
+				</tbody>
+			</table>
+		</td>
+	</tr>
+
+	<tr>
+		<td colspan="2">
+			&nbsp;
+		</td>
+	</tr>
+	<tr>
+		<td colspan="2">
+			&nbsp;
+		</td>
+	</tr>
+	<tr>
+		<td colspan="2">
+			<table id="totals" class="datatable" style="width: 500px; font-size: 10;" border="1">
+				<tbody>
+					<tr>
+						<th style="background-color:#ccc;font-size: 10;">Abkürzung</th>
+						<th style="background-color:#ccc;text-align:center;width:90px;font-size: 10;">Anzahl</th>
+						<th style="background-color:#ccc;text-align:right;width:130px;font-size: 10;">x Vergütung &nbsp;&nbsp;</th>
+						<th style="background-color:#ccc;text-align:right;font-weight:400;width:200px;font-size: 10;">=  Rechnungssumme &nbsp;&nbsp;</th>
+					</tr>
+
+					<?php foreach($this->shortcuts as $k_short_a => $v_short_a):  ?>
+					<tr>
+						<td>
+							&nbsp;&nbsp;&nbsp;<strong><?php echo $this->translate('shortcut_name_'.$v_short_a); ?></strong>
+						</td>
+						<td style="text-align: center;width:90px;font-size: 10;">
+							<?php echo $totals[$v_short_a]; ?>
+						</td>
+						<td style="text-align: right;width:130px;font-size: 10;">
+							<?php echo number_format($master_price_list[$current_period['start']][0][$v_short_a]['price'], '2', ',', '.'); ?> &euro; &nbsp;&nbsp;
+						</td>
+						<td style="text-align: right; font-weight: 400; width: 200px;font-size: 10;">
+							<?php $total = ($totals[$v_short_a] * $master_price_list[$current_period['start']][0][$v_short_a]['price']); $total_general += $total; echo number_format($total, '2', ',', '.'); ?> &euro; &nbsp;&nbsp;
+						</td>
+					</tr>
+					<?php endforeach;  ?>
+					<tr>
+						<td colspan="3" style="text-align: right;font-weight: bold;font-size: 10;">Insgesamt = &nbsp;&nbsp;</td>
+						<td style="text-align: right;font-weight: bold;font-size: 10;"><?php echo number_format($total_general, '2', ',', '.'); ?> &nbsp;&euro; &nbsp;&nbsp;</td>
+					</tr>
+				</tbody>
+			</table>
+		</td>
+	</tr>
+	<tr>
+		<td colspan="2">
+			&nbsp;
+		</td>
+	</tr>
+</table>
+
+

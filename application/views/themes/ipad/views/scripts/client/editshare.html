@@ -1,0 +1,274 @@
+<?php
+$this->headScript()->appendFile(RES_FILE_PATH . '/javascript/livesearch/patientsearch_share.js');
+
+$marked = $this->marked;
+$copy_options = explode(',', $marked[0]['copy_options']);
+//print_r($marked);exit;
+$marked_shortcuts = explode(',', $marked[0]['shortcuts']);
+$patient_details = $this->patient_details;
+$client_details = $this->clients_details;
+$sel = '';
+?>
+<script type="text/javascript">
+	function toggle_shortcuts(){
+		if($('#patientid').val() == ''){
+			$('#shortcuts_list input[type=checkbox]').attr('disabled', true);
+		} else {
+			$('#shortcuts_list input[type=checkbox]').attr('disabled', false);
+		}
+	}
+	function newsearch_share(ltrval){
+		ajaxCallserver({url:'client/patientsearch',
+			callLoading:search_loading_share,
+			method:'POST',
+			data:{ltr:ltrval}
+		});
+	}
+	$(document).ready(function() {
+		
+		// new changes 16.06.2016
+		$('#shortcuts_list').load(
+				'<?php  echo APP_BASE."ajax/editsharingshortcutlist?sid=".$marked[0]["id"]; ?>',
+						function(){
+							if($('#patientid').val() != ''){
+								$('.shortcut_chk').each(function(){
+									if($(this).data('status') == "available"){
+										$(this).prop('disabled', false);
+									} else{
+										$(this).prop('disabled', true);
+									}
+								});
+							}
+						}
+				);
+		
+		
+		$('#target_client').on("change",function(){
+			if($(this).val() != "0"){
+				$('#shortcuts_list').load('<?php  echo APP_BASE."ajax/editsharingshortcutlist?clid='+$(this).val()+'&sid=".$marked[0]["id"]; ?>',
+						function(){
+					if($('#patientid').val() != ''){
+						$('.shortcut_chk').each(function(){
+							if($(this).data('status') == "available"){
+								$(this).prop('disabled', false);
+							} else{
+								$(this).prop('disabled', true);
+							}
+						});
+					}
+				}		
+				);
+ 	
+			}
+
+		})
+		$('#select_patient_dialog').dialog({
+			modal: true,
+			autoOpen: false,
+			draggable: false,
+			resizable: false,
+			title: '<?php echo $this->translate('Alert Dialog'); ?>',
+			buttons: {
+				"<?php echo $this->translate('Ok'); ?>": function() {
+					$( this ).dialog( "close" );
+				}
+			}
+
+		});
+		$('#select_client_dialog').dialog({
+			modal: true,
+			autoOpen: false,
+			draggable: false,
+			resizable: false,
+			title: '<?php echo $this->translate('Alert Dialog'); ?>',
+			buttons: {
+				"<?php echo $this->translate('Ok'); ?>": function() {
+					$( this ).dialog( "close" );
+				}
+			}
+
+		});
+
+		$('#share_patient_sumbit').click(function(e){
+			e.preventDefault();
+			var error = 0;
+
+			if($('#patientid').val() == ''){
+				$('#select_patient_dialog').dialog('open');
+				error = 1;
+			}
+
+			if($('#target_client').val() == '0'){
+				$('#select_client_dialog').dialog('open');
+				error = 1;
+			}
+
+			if(error == '0'){
+				$('#share_patient').submit();
+			}
+		});
+		if($('input[name=allow_copy]:checked').val() == '1'){
+			$('#copy_options_row').show();
+		} else {
+			$('#copy_options_row').hide();
+
+			$('#stammdaten').attr('checked', false);
+			$('#diagnosis').attr('checked', false);
+			$('#medications').attr('checked', false);
+		}
+
+
+		$('input[name=allow_copy]').live('change', function(){
+			if($(this).val() == '1'){
+				$('#copy_options_row').show();
+			} else {
+				$('#copy_options_row').hide();
+
+				$('#stammdaten').attr('checked', false);
+				$('#diagnosis').attr('checked', false);
+				$('#medications').attr('checked', false);
+
+			}
+		});
+
+	});
+</script>
+<h1><?php echo $this->translate('edit_share_patient') ?></h1>
+
+<table id="assignmodules_clientNameTable">
+	<tr id="tableTrOne">
+		<td id="tableTrOne_tdOne" colspan="3" valign="top">&nbsp;</td>
+
+	</tr>
+	<tr id="tableTrTwo">
+		<td id="tableTrTwo_tdOne" valign="top">&nbsp;</td>
+		<td id="tableTrTwo_tdTwo" valign="top"><b><? echo $this->translate('clientname') ?> :</b></td>
+		<td id="tableTrTwo_tdThree" valign="top"><? echo $this->client_name ?></td>
+	</tr>
+	<tr id="tableTrThree" >
+		<td id="tableTrThree_tdOne" colspan="3" valign="top">&nbsp;</td>
+
+	</tr>
+</table>
+<!-- "Share patient" Table & Form start	-->
+<form name="share_patient" id="share_patient" action="" method="post">
+	<table border="0" cellspacing="2" cellpadding="2" width="100%" class="datatable">
+		<tbody>
+			<tr>
+				<td style="width:80px;"><label  class="bigger_label"><?php echo $this->translate('step1'); ?></label> </td>
+				<td><label class="bigger_label_second"><?php echo $this->translate('search_patient_share'); ?> </label></td>
+			</tr>
+			<tr>
+				<td style="width:35px;"></td>
+				<td colspan="2">
+					<input type="text" name="patientsearch_share" id="patientsearch_share" class="patientsearch_share" value="<?php echo strtoupper($patient_details[0]['EpidIpidMapping']['epid']); ?>" autocomplete="off"/>
+				</td>
+			</tr>
+			<tr>
+				<td colspan="2">
+					<div class="patsearchdropdown">
+						<div id="searchdropdown_share" style="display:none;"></div>
+						<div id="searchdropdown_share_selected" style="display:none;">
+						</div>
+						<input type="hidden" name="patientid" id="patientid"  value="<?php echo Pms_Uuid::encrypt($patient_details[0]['id']);  ?>" />
+					</div>
+				</td>
+			</tr>
+			<tr>
+				<td style="width:80px;"><label  class="bigger_label"><?php echo $this->translate('step2'); ?></label> </td>
+				<td><label class="bigger_label_second"><?php echo $this->translate('select_target_client'); ?> </label></td>
+			</tr>
+			<tr>
+				<td style="width: 35px;"></td>
+				<td>
+					<select name="target_client" id="target_client">
+						<?php if (!empty($this->associated_clients)): ?>
+							<option value="0"><?php echo $this->translate('selectclient'); ?></option>
+							<?php foreach ($this->associated_clients as $group_client => $client_data): ?>
+								<optgroup label="Group #<?php echo $group_client; ?>">
+									<?php foreach ($client_data as $k_client => $v_client): ?>
+										<option value="<?php echo $v_client['client']; ?>" <?php if ($v_client['client'] == $marked[0]['target'] && $sel != '1'): $sel = '1' ?> selected="selected" <?php endif; ?> > <?php echo $client_details[$v_client['client']]['client_name']; ?></option>
+									<?php endforeach; ?>
+								</optgroup>
+							<?php endforeach; ?>
+						<?php else: ?>
+							<option><?php echo $this->translate('no_associated_clients'); ?></option>
+						<?php endif; ?>
+					</select>
+				</td>
+			</tr>
+			<tr>
+				<td style="width:80px;"><label  class="bigger_label"><?php echo $this->translate('step3'); ?></label> </td>
+				<td style="vertical-align: top;"><label class="bigger_label_second"><?php echo $this->translate('shortcuts_to_share'); ?> </label></td>
+			</tr>
+			<tr>
+
+				<td style="width:35px; vertical-align: top;"></td>
+				<td>
+					<div class="shortcutlist_patientshare" id="shortcuts_list">
+
+					</div>
+				</td>
+			</tr>
+			<tr>
+				<td style="width:80px;"><label  class="bigger_label"><?php echo $this->translate('step4'); ?></label> </td>
+				<td><label class="bigger_label_second"><?php echo $this->translate('request_share'); ?> </label></td>
+			</tr>
+			<tr>
+				<td style="width:35px;"></td>
+				<td>
+					<label for="request_share_yes"><input type="radio" name="request_share" id="request_share_yes" value="1" <?php if ($marked[0]['request'] == '1'): ?> checked="checked" <?php endif; ?> /><?php echo $this->translate('yes_radio') ?></label>
+					<label for="request_share_no"><input type="radio" name="request_share" id="request_share_no" value="0" <?php if ($marked[0]['request'] == '0'): ?> checked="checked" <?php endif; ?> /><?php echo $this->translate('no_radio') ?></label>
+				</td>
+			</tr>
+			<tr>
+				<td style="width:80px;"><label  class="bigger_label"><?php echo $this->translate('step5'); ?></label> </td>
+				<td><label class="bigger_label_second"><?php echo $this->translate('copy_patient_data'); ?> </label></td>
+			</tr>
+			<tr>
+				<td style="width: 35px;"></td>
+				<td>
+					<label for="allow_copy_yes"><input type="radio" name="allow_copy" id="allow_copy_yes" value="1" <?php if ($marked[0]['copy'] == '1'): ?> checked="checked" <?php endif; ?> /><?php echo $this->translate('yes_radio') ?></label>
+					<label for="allow_copy_no"><input type="radio" name="allow_copy" id="allow_copy_no" value="0" <?php if ($marked[0]['copy'] == '0'): ?> checked="checked" <?php endif; ?> /><?php echo $this->translate('no_radio') ?></label>
+				</td>
+			</tr>
+			<tr>
+				<td colspan="2"><label class="bigger_label_second"><?php echo $this->translate('data_to_copy'); ?> </label></td>
+			</tr>
+			<tr id="copy_options_row">
+
+				<td style="width: 35px;"></td>
+				<td>
+					<label for="stammdaten"><input type="checkbox" name="copy_options[]" id="stammdaten" value="1" <?php if(in_array('1', $copy_options)):  ?>checked="checked"<?php endif;  ?> /><?php echo $this->translate('copy_masterdata') ?></label>
+					<label for="diagnosis"><input type="checkbox" name="copy_options[]" id="diagnosis" value="2" <?php if(in_array('2', $copy_options)):  ?>checked="checked"<?php endif;  ?> /><?php echo $this->translate('copy_diagnosis') ?></label>
+					<label for="medications"><input type="checkbox" name="copy_options[]" id="medications" value="3" <?php if(in_array('3', $copy_options)):  ?>checked="checked"<?php endif;  ?> /><?php echo $this->translate('copy_medications') ?></label>
+				</td>
+			</tr>
+			
+			<tr>
+				<td style="width:80px;"><label  class="bigger_label"><?php echo $this->translate('step6'); ?></label> </td>
+				<td><label class="bigger_label_second"><?php echo $this->translate('copy_patient_documents'); ?> </label></td>
+			</tr>
+			<tr>
+				<td style="width: 35px;"></td>
+				<td>
+					<label for="copy_files_yes"><input type="radio" name="copy_files" id="copy_files_yes" value="1" <?php if ($marked[0]['copy_files'] == '1'): ?> checked="checked" <?php endif; ?> /><?php echo $this->translate('yes_radio') ?></label>
+					<label for="copy_files_no"><input type="radio" name="copy_files" id="copy_files_no" value="0" <?php if ($marked[0]['copy_files'] == '0'): ?> checked="checked" <?php endif; ?> /><?php echo $this->translate('no_radio') ?></label>
+				</td>
+			</tr>
+			
+			<tr>
+				<td colspan="2" style="text-align: center;">
+					<input type="submit" value="<?php echo $this->translate('share'); ?>" name="share_patient_sumbit" id="share_patient_sumbit" />
+				</td>
+			</tr>
+		</tbody>
+	</table>
+</form>
+<!-- "Share patient" Table & Form end	-->
+<div id="select_patient_dialog">
+	<p><?php echo $this->translate('must_select_target_patient'); ?></p>
+</div>
+<div id="select_client_dialog">
+	<p><?php echo $this->translate('must_select_target_client'); ?></p>
+</div>

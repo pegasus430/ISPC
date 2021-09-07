@@ -1,0 +1,277 @@
+<script type="text/javascript">
+	var jarr = <? echo $this->jdarr ?>;
+	var jscount = "";
+	var jsdiagnosismeta = <? echo $this->jsdiagnosismeta ?>;
+	var jcount = <? echo $this->jscount + 1 ?>;
+	var dcntr = <? echo $this->dcntr ?>;
+	var diagnosisblur = Array();
+	var icddiagnosisblur = Array();
+	var diagnosisblur_ed = Array();
+	var isdischarged = '<? echo $this->isdischarged ?>';
+	<?php if($this->has_hs_module):?>
+	var hs_type_value = '<?php echo $this->hs_type_value; ?>';
+	<?php endif; ?>
+
+
+	$(document).ready(function(){
+		
+		$('#diagsync_drop').load('<?php echo APP_BASE;?>ajax/diagsyncwidget?id='+idpd );
+		
+		<?php if($this->has_hs_module):?>
+		//Hauptsymptomlast verification
+		$('input[value="'+hs_type_value+'"]').live('click', function(){
+			$selected_checkbox = $(this);
+
+			$('input[value="'+hs_type_value+'"]:not(#' + $selected_checkbox.attr('id') + ')').each(function() {
+				//check previous checkbox
+//				if($(this).attr('checked') == "checked" && $(this).parent().prev().children('input').length > '0') {
+//					$(this).parent().prev().children('input').attr('checked', $selected_checkbox.attr('checked'));
+//				}
+
+				//then deselect the other selected hauptsymptomlast 
+				$(this).attr('checked', !$selected_checkbox.attr('checked'));
+			});
+		});
+		<?php endif; ?>
+		
+		//livesearch diagnosis icd ls
+		$('.livesearchicdinp').live('change', function() {
+			var input_row = parseInt($(this).attr('id').substr(('icdnumber').length));
+			reset_diagnosis(input_row);
+		}).liveSearch({
+			url: 'ajax/diagnosis?mode=icdnumber&q=',
+			id: 'livesearch_admission_diagnosis',
+			aditionalWidth: '300',
+			noResultsDelay: '900',
+			typeDelay: '900',
+			returnRowId: function (input) {return parseInt($(input).attr('id').substr(('icdnumber').length));}
+		});
+
+		//livesearch diagnosis description ls
+		$('.livesearchinp').live('change keyup keydown', function() {
+			var input_row = parseInt($(this).attr('id').substr(('diagnosis').length));
+			reset_diagnosis(input_row);
+		}).liveSearch({
+			url: 'ajax/diagnosis?q=',
+			id: 'livesearch_admission_diagnosis',
+			aditionalWidth: '50',
+			noResultsDelay: '900',
+			typeDelay: '900',
+			returnRowId: function (input) {return parseInt($(input).attr('id').substr(('diagnosis').length));}
+		});
+		
+		var fix_helper = function(e, ui) {
+			ui.children().each(function() {
+				$(this).width($(this).width());
+			});
+			return ui;
+		};
+		
+		$('#samtab tbody').sortable({
+			handle: '.handle',
+			placeholder: "ui-state-highlight",
+			helper: fix_helper,
+			//items: "tr:not(.disabled)",
+			update: function(event,ui){
+				var item = ui.item;
+				var container = item.parent();
+				var reorder = [];
+				container.children('tr').each(function(i){
+					// save the item id order in array
+					reorder[i] = $(this).attr('id');
+				});
+			}
+		}).disableSelection();
+	});
+
+	function reset_diagnosis(input_row){
+//		if($('#hidd_tab'+input_row).val() != 'text'){
+			$('#hidd_icdnumber'+input_row).val('');
+			$('#hidd_diagnosis'+input_row).val('');
+			$('#hidd_tab'+input_row).val('text');
+//		}
+	}
+	
+	function selectDiagnosis(did, row)
+	{
+		$('#icdnumber'+row).val($('#diag_icd_'+did).val());
+		$('#diagnosis'+row).val($('#diag_de_'+did).val());
+		$('#hidd_icdnumber'+row).val($('#diag_id_'+did).val());
+		$('#hidd_diagnosis'+row).val($('#diag_id_'+did).val());
+		$('#hidd_tab'+row).val('dig');
+	}
+
+	function checkDiagnosisTypeSelected()
+	{
+		var err = "";
+		var finalc = 0;
+		
+		setTimeout(function () {$('#frmuser input[type=button]').attr('disabled', true);}, 150);
+		setTimeout(function () {$('#frmuser input[type=button]').attr('disabled', false);}, 33000);
+		
+	
+		for(var j=1;j<=dcntr;j++)
+		{
+			var ct = 0;
+
+			if(document.getElementById("diagnosis"+j) && $("#diagnosis"+j).val().length>0)
+			{
+				var ltrs = document.getElementsByName('dtype['+j+']');
+
+				for(var i=0;i<ltrs.length;i++)
+				{
+					if(ltrs[i].checked==true)
+					{
+						ct++;
+					}
+				}
+
+				if(ct==0)
+				{
+					finalc++;
+					//err+= "Select Diagnosis Type For :"+document.getElementById('diagnosis'+j).value+"\n";
+				}
+			}
+		}
+
+		if(finalc>0)
+		{
+			jAlert('<? echo $this->translate('selectdiagnosisfor'); ?>','',function(r){
+				setTimeout(function () {$('#frmuser input[type=button]').attr('disabled', false);}, 10);
+			});
+		}
+		else
+		{
+			checkdischargednew('frmuser');
+		}
+	}
+
+	function removeElem(ids)
+	{
+		$(ids).remove();
+	}
+
+	function removeElements(id1,id2)
+	{
+		$(id1).remove();
+		$(id2).remove();
+	}
+	function delmedicationRow(did,patidencrypted)
+	{
+		if(did && patidencrypted)
+		{
+
+			ajaxCallserver({
+				url:'patient/patientmedication?id='+patidencrypted+'&delid='+did+'&mid='+did+'&act=del' //mid for trigger when deleteing the row
+			});
+		}
+	}
+	function removeElementsfromTab(id1,id2,rid)
+	{		
+		var pid = "<?php echo $_REQUEST['id'];?>";
+		if(rid>0)
+		{
+			if (! checkclientchanged()) {
+				return false;
+			}
+			
+		   ajaxCallserver({url:'patient/patdiagnoremove?id='+pid+'&delid='+rid});
+		}
+		$(id1).remove();
+		$(id2).remove();
+	}
+
+	function newdiagnosisrow()
+	{
+
+		var radiostr = "";
+
+		for(var i=0;i<jarr.length;i++)
+		{
+			radiostr += '<td><input type="radio" name="dtype['+jcount+']" id="dtype'+jcount+'" value="'+jarr[i].id+'"></td>';
+		}
+
+		var trInnerHtml = $('<tr id="stab'+jcount+'"><td valign="top" id="listadmissiondiagnosistd_i'+jcount+'"><input name="icdnumber['+jcount+']" id="icdnumber'+jcount+'" value="" size="10"  class="livesearchicdinp diagicd" type="text" /><div id="icddiagnodropdown'+jcount+'" style="position: absolute; display:none;" class="medicationDiagnDrp icdlivesearchdropdown"></div> <input name="diagnosis['+jcount+']" id="diagnosis'+jcount+'" value="" size="33" class="livesearchinp diagdesc" type="text" /><br /><span style="width: 50%; display: inline-block;"><textarea placeholder="von" name="diagnosis_from['+jcount+']" id="diagnosis_from'+jcount+'" value="" rows="1" cols="" style="width: 95%;"></textarea></span><span style="width: 50%; display: inline-block;"><textarea placeholder="Kommentar" name="comments['+jcount+']" id="comments'+jcount+'" value="" rows="1" cols="" style="width: 95%;"></textarea></span><input name="hidd_icdnumber['+jcount+']" value="" id="hidd_icdnumber'+jcount+'" type="hidden"><input name="hidd_diagnosis['+jcount+']" value="" id="hidd_diagnosis'+jcount+'" type="hidden"><input type="hidden" id="hidd_tab'+jcount+'" name="hidd_tab['+jcount+']" value="" /><div id="diagnodropdown'+jcount+'" style="position: absolute; display:none;" class="medicationDiagnDrp livesearchdropdown"></div></td>'+radiostr+'<td  valign="middle" align="center"><a href="javascript:void(0)" onclick="removeElements(\'#stab'+jcount+'\',\'#meta_'+jcount+'\')"><img src="_ipad/images/action_delete.png" border="0" /></a></td><td  valign="middle" align="center"><img class="handle" src="images/arrow_updown_icon.png" border="0" /></td></tr>');
+		
+		
+		$('#samtab').append(trInnerHtml);
+
+
+		$('#icdnumber'+jcount).bind('keyup keydown change paste',function(){
+			$(this).live('change', function() {
+				var input_row = parseInt($(this).attr('id').substr(('icdnumber').length));
+				reset_diagnosis(input_row);
+			}).liveSearch({
+				url: 'ajax/diagnosis?mode=icdnumber&q=',
+				id: 'livesearch_admission_diagnosis',
+				aditionalWidth: '300',
+				noResultsDelay: '900',
+				typeDelay: '900',
+				returnRowId: function (input) {return parseInt($(input).attr('id').substr(('icdnumber').length));}
+			});
+		});
+
+
+		$('#diagnosis'+jcount).bind('keydown paste',function(e){
+			$(this).live('keydown paste', function() {
+				var input_row = parseInt($(this).attr('id').substr(('diagnosis').length));
+				reset_diagnosis(input_row);
+			}).liveSearch({
+				url: 'ajax/diagnosis?q=',
+				id: 'livesearch_admission_diagnosis',
+				aditionalWidth: '50',
+				noResultsDelay: '900',
+				typeDelay: '900',
+				returnRowId: function (input) {return parseInt($(input).attr('id').substr(('diagnosis').length));}
+			});
+		});
+
+		jcount++;
+		dcntr = jcount;
+	}
+
+</script>
+<style>
+	.handle {
+		width: 32px;
+		height: 32px;
+	}
+</style>
+<form action="<? echo $this->act ?>" method="post" name="frmuser" id="frmuser" autocomplete="off" >
+
+	<div class="ispc_fieldset">
+		
+		<? //echo $this->patientinfo ?>
+		<? //echo $this->tabmenus ?>
+		
+		<div class="tab_container">
+			<br />
+			<fieldset>
+		
+				<legend><? echo $this->translate('diagnosis_grid'); ?></legend>
+				<div class="diagno_wrapper">
+				<label><strong><? echo $this->translate('diagnose_headline') ?></strong></label>
+				<? echo $this->diagno ?> <? echo $this->diagnogrid ?>
+				<br />
+				<div class="add_new_medi"><a href="javascript:newdiagnosisrow()"><img src="<? echo RES_FILE_PATH; ?>/images/edit_add.png" width="20" height="20" /><div class="add_new_medi_link"><? echo $this->translate('diagnose_add') ?></div></a></div><div class="clearer"></div>
+				</div>
+				<?php if($this->act_module):?>
+				<div class="diagnosis_act">
+					<label class="label_class50px">ACT:</label>
+					<select name="act_value">
+						<option value=""><?php echo $this->translate('select')?></option>
+						<option value="1" <?php if($this->act_value == "1"): ?>  selected="selected" <? endif;?>> I </option>
+						<option value="2"  <?php if($this->act_value == "2"): ?>  selected="selected" <? endif;?>> II </option>
+						<option value="3" <?php if($this->act_value == "3"): ?>  selected="selected" <? endif;?>> III </option>
+						<option value="4" <?php if($this->act_value == "4"): ?>  selected="selected" <? endif;?>> IV </option>
+					</select>
+				</div>
+				<?php endif; ?>
+				
+				<input type="button" name="btnsubmit" id="btnsubmit-save" value="<? echo $this->translate('submit') ?>" class="button" onclick="checkDiagnosisTypeSelected()">
+				
+			</fieldset>
+		</div>
+	</div>
+</form>
+<div id="diagsync_drop" ></div>

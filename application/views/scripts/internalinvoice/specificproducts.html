@@ -1,0 +1,328 @@
+<?php
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/page-css/invoice/ii_specific_products.css?' . date('Ymd'));
+
+$colspan_value = '11';
+?>
+<script type="text/javascript">
+
+	//user groups
+	var groups_ids = '<?php echo json_encode($this->group_ids); ?>';
+	var groups_names = '<?php echo json_encode($this->group_names); ?>';
+
+	//contact forms
+	var contact_form_ids = '<?php echo json_encode($this->cf_ids); ?>';
+	var contact_form_names = '<?php echo json_encode($this->cf_names); ?>';
+
+	$(document).ready(function() {
+
+		$('#add_new_product').bind('click', function(){
+			add_product();
+		});
+
+		$('a.remove_row').live('click', function(){
+			remove_product($(this).attr('id'));
+		});
+
+		$('.time_text').timepicker({
+			minutes: {
+				interval: 5
+			},
+			showPeriodLabels: false,
+			rows: 4,
+			hourText: 'Stunde',
+			minuteText: 'Minute'
+		});
+	});
+
+	function add_product() {
+		var itemcount_nr = $('#counter').val();
+		itemcount = 'g_'+itemcount_nr;
+
+		var users_groups = generate_selctor(itemcount, groups_ids, groups_names, '<?php echo json_encode(array('name','id')); ?>', '<?php echo json_encode(array('user_group','user_group')); ?>');
+		var form_types = generate_selctor(itemcount, contact_form_ids, contact_form_names, '<?php echo json_encode(array('name','id')); ?>', '<?php echo json_encode(array('form_type','form_type')); ?>')
+
+
+		var tr_html = $('<tr id="product_row_'+itemcount+'" class="product_row">\n\
+			<td><input type="hidden" name="new_product['+itemcount+']" value="'+itemcount+'" id="new_product_'+itemcount+'" />'+users_groups+'</td>\n\
+			<td>'+form_types+'</td>\n\
+			<td>\n\
+				<table class="range_inside" border="0">\n\
+					<tr>\n\
+						<td>\n\
+							<input type="text" name="range_start['+itemcount+']" id="range_start_'+itemcount+'" value="" class="range_text" />\n\
+						</td>\n\
+						<td>\n\
+							<input type="text" name="range_end['+itemcount+']" id="range_end_'+itemcount+'" value="" class="range_text" />\n\
+						</td>\n\
+						<td>\n\
+							<select name="range_type['+itemcount+']" id="range_type_'+itemcount+'">\n\
+								<option value=""><?php echo $this->translate('select_option?'); ?></option>\n\
+								<option value="min"><?php echo $this->translate('option_minutes'); ?></option>\n\
+								<option value="km"><?php echo $this->translate('option_km'); ?></option>\n\
+							</select>\n\
+						</td>\n\
+					</tr>\n\
+				</table>\n\
+			</td>\n\
+			<td>\n\
+				<table class="time_inside" border="0">\n\
+					<tr>\n\
+						<td>\n\
+							<input type="text" name="time_start['+itemcount+']" id="time_start_'+itemcount+'" value="" class="time_text" />\n\
+						</td>\n\
+						<td>\n\
+							<input type="text" name="time_end['+itemcount+']" id="time_end_'+itemcount+'" value="" class="time_text" />\n\
+						</td>\n\
+					</tr>\n\
+				</table>\n\
+			</td>\n\
+			<td>\n\
+				<input type="text" name="price['+itemcount+']" value="" id="price_'+itemcount+'" class="price_text" />\n\
+			</td>\n\
+			<td>\n\
+				<input type="text" name="name['+itemcount+']" value="" id="name_'+itemcount+'" class="name_text" />\n\
+			</td>\n\
+			<td>\n\
+				<input type="text" name="code['+itemcount+']" value="" id="code_'+itemcount+'" class="code_text" />\n\
+			</td>\n\
+			<td>\n\
+				<select name="trigger['+itemcount+']" id="trigger_'+itemcount+'">\n\
+					<option value=""><?php echo $this->translate('select_trigger'); ?></option>\n\
+					<option value="time_start"><?php echo $this->translate('visit_start'); ?></option>\n\
+					<option value="time_end"><?php echo $this->translate('visit_end'); ?></option>\n\
+				</select>\n\
+			</td>\n\
+			<td>\n\
+				<input type="checkbox" value="1" name="related_users['+itemcount+']" id="related_users_'+itemcount+'" />\n\
+			</td>\n\
+			<td>\n\
+				<select name="holiday['+itemcount+']" id="holiday_'+itemcount+'">\n\
+					<option value="0"><?php echo $this->translate('option_no'); ?></option>\n\
+					<option value="1"><?php echo $this->translate('option_yes'); ?></option>\n\
+				</select>\n\
+			</td>\n\\n\
+			<?php if($this->showtime_option): ?>
+			<td>\n\
+				<input type="checkbox" value="1" name="showtime['+itemcount+']" id="show_time_'+itemcount+'" />\n\
+			</td>\n\
+			<?php endif; ?>
+			<td>\n\
+				<a href="javascript:void(0);" id="remove_row_'+itemcount+'" class="remove_row"><img src="<?php echo RES_FILE_PATH; ?>/images/cross.png" width="16px" /></a>\n\
+			</td>\n\
+		</tr>');
+
+
+		$('#add_product_row').before(tr_html);
+
+		//reinitialize timepicker
+		$('.time_text').timepicker({
+			minutes: {
+				interval: 5
+			},
+			showPeriodLabels: false,
+			rows: 4,
+			hourText: 'Stunde',
+			minuteText: 'Minute'
+		});
+
+		itemcount_nr++;
+		$('#counter').val(itemcount_nr);
+	}
+
+	function remove_product(element_id) {
+		var row_id = element_id.replace('remove_row_', '');
+		$('#product_row_'+row_id).remove();
+	}
+
+	function generate_selctor(cnt, ids, names, attrs, attrs_val)
+	{
+		var ids_obj = jQuery.parseJSON(ids);
+		var names_obj = jQuery.parseJSON(names);
+		var attrs_obj = jQuery.parseJSON(attrs);
+		var attrs_val_obj = jQuery.parseJSON(attrs_val);
+
+		//build options
+		var select = "";
+		for(var i in ids_obj)
+		{
+			select +='<option value="'+ids_obj[i]+'">'+names_obj[i]+'</option>';
+		}
+
+		//build attrs
+		var attribs = "";
+		for(var ix in attrs_obj)
+		{
+			if (attrs_obj[ix] == 'name')
+			{
+				attribs += ' ' + attrs_obj[ix] + '="' + attrs_val_obj[ix] + '[' + cnt + ']" ';
+			}
+			else if (attrs_obj[ix] == 'id')
+			{
+				attribs += ' ' + attrs_obj[ix] + '="' + attrs_val_obj[ix] + '_' + cnt + '" ';
+			}
+			else
+			{
+				attribs += ' ' + attrs_obj[ix] + '="' + attrs_val_obj[ix] + '" ';
+			}
+		}
+
+		//build selector
+		select = '<select ' + attribs + '>' + select + '</select>';
+
+		return select;
+	}
+
+	function existing_rows() {
+		return $('tbody tr.product_row').length;
+	}
+</script>
+
+
+<?php if($this->showtime_option): ?>
+	<?php $colspan_value = ($colspan_value+1);  ?>
+<?php endif; ?>
+
+<h1><?php echo $this->translate('specific_products_title'); ?></h1>
+<form name="save_specific_products" method="POST" id="save_specific_products">
+<table border="0" class="datatable">
+	<thead>
+		<tr>
+			<th class="user_group"><?php echo $this->translate('user_group'); ?></th>
+			<th class="form_types"><?php echo $this->translate('contact_form_type'); ?></th>
+			<th class="range"><?php echo $this->translate('min_km_label'); ?></th>
+			<th class="time"><?php echo $this->translate('time_period'); ?></th>
+			<th class="price"><?php echo $this->translate('product_price'); ?></th>
+			<th class="name"><?php echo $this->translate('product_name'); ?></th>
+			<th class="code"><?php echo $this->translate('product_code'); ?></th>
+			<th class="trigger"><?php echo $this->translate('product_calculation_triger'); ?></th>
+			<th class="related"><?php echo $this->translate('related_users'); ?></th>
+			<th class="holiday" <?php if(!$this->showtime_option): ?>colspan="2"<?php endif; ?>><?php echo $this->translate('holiday'); ?></th>
+			
+			<?php if($this->showtime_option): ?>
+			<th class="holiday" colspan="2"><?php echo $this->translate('show_product_time'); ?></th>
+			<?php endif; ?>
+		</tr>
+	</thead>
+	<tbody>
+
+	<?php if(!empty($this->products)>'0'): ?>
+	<?php foreach($this->products as $k_product=>$v_product): ?>
+		<?php if(strlen($this->{'error_'.$k_product}) > '0'): $class=" row_error "; else: $class=""; endif; ?>
+		<tr class="product_row" id="product_row_<?php echo $k_product; ?>">
+			<td class="<?php echo $class; ?>">
+			<?php if(in_array($v_product['id'], $_POST['new_product'])): ?>
+				<input type="hidden" name="new_product[<?php echo $v_product['id']; ?>]" value="<?php echo $v_product['id']; ?>" id="new_product_<?php echo $v_product['id']; ?>" />
+			<?php else: ?>
+				<input type="hidden" name="update_pid[<?php echo $v_product['id']; ?>]" value="<?php echo $v_product['id']; ?>" id="update_pid_<?php echo $v_product['id']; ?>" />
+			<?php endif; ?>
+			<?php if(count($this->users_groups) > '1'): ?>
+				<select name="user_group[<?php echo $k_product; ?>]" id="user_group_<?php echo $k_product; ?>">
+				<?php foreach($this->users_groups as $k_usergr_id => $v_usergr_name): ?>
+					<option value="<?php echo $k_usergr_id; ?>" <?php if($k_usergr_id == $v_product['usergroup']): ?> selected="selected"<?php endif; ?>><?php echo $v_usergr_name; ?></option>
+				<?php endforeach; ?>
+				</select>
+			<?php endif ?>
+			</td>
+
+			<td class="<?php echo $class; ?>">
+			<?php if(count($this->form_types) > '1'): ?>
+				<select name="form_type[<?php echo $k_product; ?>]" id="form_type_<?php echo $k_product; ?>">
+				<?php foreach($this->form_types as $k_ft_id => $v_ft_name): ?>
+					<option value="<?php echo $k_ft_id; ?>" <?php if($k_ft_id == $v_product['contactform_type']): ?> selected="selected"<?php endif; ?>><?php echo $v_ft_name; ?></option>
+				<?php endforeach; ?>
+				</select>
+			<?php endif ?>
+			</td>
+
+			<td class="<?php echo $class; ?>">
+				<table class="range_inside" border="0">
+					<tr>
+						<td>
+							<input type="text" name="range_start[<?php echo $k_product; ?>]" id="range_start_<?php echo $k_product; ?>" value="<?php echo $v_product['range_start']; ?>" class="range_text" />
+						</td>
+						<td>
+							<input type="text" name="range_end[<?php echo $k_product; ?>]" id="range_end_<?php echo $k_product; ?>" value="<?php echo $v_product['range_end']; ?>" class="range_text" />
+						</td>
+						<td>
+							<select name="range_type[<?php echo $k_product; ?>]" id="range_type_<?php echo $k_product; ?>">
+								<option value="" <?php if(strlen($v_product['range_type'])==0): ?> selected="selected"<?php endif; ?>><?php echo $this->translate('select_option'); ?></option>
+								<option value="min" <?php if($v_product['range_type'] == 'min'): ?> selected="selected"<?php endif; ?>><?php echo $this->translate('option_minutes'); ?></option>
+								<option value="km" <?php if($v_product['range_type'] == 'km'): ?> selected="selected"<?php endif; ?>><?php echo $this->translate('option_km'); ?></option>
+							</select>
+						</td>
+					</tr>
+				</table>
+			</td>
+			<td class="<?php echo $class; ?>">
+				<table class="time_inside" border="0">
+					<tr>
+						<td>
+							<input type="text" name="time_start[<?php echo $k_product; ?>]" id="time_start_<?php echo $k_product; ?>" value="<?php echo $v_product['time_start']; ?>" class="time_text" />
+						</td>
+						<td>
+							<input type="text" name="time_end[<?php echo $k_product; ?>]" id="time_end_<?php echo $k_product; ?>" value="<?php echo $v_product['time_end']; ?>" class="time_text" />
+						</td>
+					</tr>
+				</table>
+			</td>
+			<td class="<?php echo $class; ?>">
+				<input type="text" name="price[<?php echo $k_product; ?>]" value="<?php echo number_format(Pms_CommonData::str2num($v_product['price']), '2', ',', '.'); ?>" id="price_<?php echo $k_product; ?>" class="price_text" />
+			</td>
+			<td class="<?php echo $class; ?>">
+				<input type="text" name="name[<?php echo $k_product; ?>]" value="<?php echo $v_product['name']; ?>" id="name_<?php echo $k_product; ?>" class="name_text" />
+			</td>
+			<td class="<?php echo $class; ?>">
+				<input type="text" name="code[<?php echo $k_product; ?>]" value="<?php echo $v_product['code']; ?>" id="code_<?php echo $k_product; ?>" class="code_text" />
+			</td>
+			<td class="<?php echo $class; ?>">
+				<select name="trigger[<?php echo $k_product; ?>]" id="trigger_<?php echo $k_product; ?>">
+					<option value=""><?php echo $this->translate('select_trigger'); ?></option>
+					<option value="time_start" <?php if($v_product['calculation_trigger'] == 'time_start'): ?> selected="selected"<?php endif; ?>><?php echo $this->translate('visit_start'); ?></option>
+					<option value="time_end" <?php if($v_product['calculation_trigger'] == 'time_end'): ?> selected="selected"<?php endif; ?>><?php echo $this->translate('visit_end'); ?></option>
+				</select>
+			</td>
+			<td class="<?php echo $class; ?>">
+				<input type="checkbox" value="1" name="related_users[<?php echo $k_product; ?>]" id="related_users_<?php echo $k_product; ?>" <?php if($v_product['asigned_users'] == '1'): ?> checked="checked" <?php endif; ?>/>
+			</td>
+			<td class="<?php echo $class; ?>">
+				<select name="holiday[<?php echo $k_product; ?>]" id="holiday_<?php echo $k_product; ?>">
+					<option value="0" <?php if($v_product['holiday'] == '0'): ?> selected="selected" <?php endif; ?>><?php echo $this->translate('option_no'); ?></option>
+					<option value="1"  <?php if($v_product['holiday'] == '1'): ?> selected="selected" <?php endif; ?>><?php echo $this->translate('option_yes'); ?></option>
+				</select>
+			</td>
+			<?php if($this->showtime_option): ?>
+			<td class="<?php echo $class; ?>">
+				<input type="checkbox" name="showtime[<?php echo $k_product; ?>]" id="show_time_<?php echo $k_product; ?>" value="1" <?php if($v_product['showtime'] == '1'): ?> checked="checked" <?php endif; ?>>
+			</td>
+			<?php endif; ?>
+			<td class="<?php echo $class; ?>">
+				<a href="javascript:void(0);" id="remove_row_<?php echo $k_product; ?>"  class="remove_row"><img src="<?php echo RES_FILE_PATH; ?>/images/cross.png" width="16px" /></a>
+			</td>
+		</tr>
+		<?php if($this->error_{$k_product}): ?>
+		<tr>
+			<td colspan="<?php echo $colspan_value; ?>"><?php echo $this->error_{$k_product}; ?></td>
+		</tr>
+		<?php endif; ?>
+	<?php endforeach; ?>
+	<?php else: ?>
+		<tr class="product_row">
+			<td colspan="<?php echo $colspan_value; ?>"><?php echo $this->translate('no_products_found'); ?></td>
+		</tr>
+	<?php endif; ?>
+		<tr id="add_product_row">
+			<td colspan="<?php echo $colspan_value; ?>">
+				<div style="width:50%; float:left;">
+					<a href="javascript:void(0);" id="add_new_product"><img src="<?php echo RES_FILE_PATH; ?>/images/edit_add.png" width="16px"/>&nbsp;<span><?php echo $this->translate('add_product'); ?></span></a>
+				</div>
+				<div style="width:50%;float:left;text-align: right;">
+					<input type="submit" name="save_products" id="save_products" value="<?php echo $this->translate('save'); ?>" />
+				</div>
+			</td>
+		</tr>
+	</tbody>
+</table>
+
+</form>
+
+<input type="hidden" id="counter" value="<?php echo (count($this->products)+1); ?>"  />

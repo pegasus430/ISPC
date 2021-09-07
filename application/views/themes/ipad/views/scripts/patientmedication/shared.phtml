@@ -1,0 +1,280 @@
+<!-- Maria:: Migration ISPC to CISPC 08.08.2020 -->
+
+<?php 
+$patients_details = $this->patients_details;
+$medications_array = $this->medications_array;
+$medication_blocks = $this->medication_blocks;;
+//TODO-2982 - change the sharing of dosage for medication between patients Carmen 20.03.2020
+?>
+
+<script type="text/javascript">
+$(document).ready(function() { /*------ Start $(document).ready --------------------*/
+
+	var $tabs = $( "#tabs" ).tabs({
+		show: function(event, ui) {},
+		select: function(event, ui) {
+			var selected_tab = ui.index;
+			$("#tabs_selected_id").val(selected_tab);
+		}
+	});	
+});	/*------ END $(document).ready --------------------*/
+
+</script>
+ 
+<form action="<?php echo  APP_BASE.'patientmedication/shared?id='.$_REQUEST['id'] ;?>" name="share_medications" id="share_medications" method="post" >
+<div id="tabs">
+	<ul>
+	<?php $tab = 1; foreach($medications_array as $sipid => $medication_type_array):?>
+		<li><a href="#tabs-<?php echo $tab;?>"><?php echo $patients_details[$sipid]['client_name'].'> '.$patients_details[$sipid]['epid'];?></a></li>
+	<?php $tab++; endforeach;?>
+	</ul>
+	
+	<?php $tabs = 1; foreach($medications_array as $sipid => $medication_type_array):?>
+	<?php $p_id = $patients_details[$sipid]['pat_id']?>
+	<div id="tabs-<?php echo $tabs;?>" >
+	<?php foreach($medication_type_array as $medication_type=>$medication_data):?>
+	
+	<?php if($medication_type != "isschmerzpumpe"):?>
+		<table class="datatable">
+			<tbody>
+			<!-- TODO-2982 -->
+				<!-- <tr>
+					<th colspan="3"><?php //echo $this->translate($medication_type." medication title");?></th>
+				</tr>
+				<tr>
+					<th>#</th>
+					<th><?php //echo $this->translate("medication_name");?></th>
+					 <th><?php //echo $this->translate("medication_dosage");?></th> -->
+					
+					<?php if(in_array($medication_type,$medication_blocks)):?>
+						<?php foreach($medication_data as $dr=>$drug_data): ?>
+						<?php if($dr === 'interval') { 
+							$interval[$medication_type] = $drug_data;
+							unset($medication_data[$dr]);
+						} 
+						if($dr === 'dif_time_scheme') { 
+							$dif_time_scheme[$medication_type] = $drug_data;							
+							unset($medication_data[$dr]);							
+						} 
+						if($dr === 'target_interval') { 
+							$target_interval[$medication_type] = $drug_data;							
+							unset($medication_data[$dr]);							
+						} ?>
+						
+						<!-- TODO-2982 -->
+						<?php endforeach; ?>
+						<input type="hidden" name="drugs[<?php echo $p_id;?>][<?php echo $medication_type;?>][interval]" value="<?php if($interval[$medication_type]) { echo "1"; } ?>" />
+					 	<input type="hidden" name="drugs[<?php echo $p_id;?>][<?php echo $medication_type;?>][dif_time_scheme]" value="<?php echo $dif_time_scheme[$medication_type]?>" />
+					 	<!-- TODO-2982 -->
+						<?php if($dif_time_scheme[$medication_type]) { ?>
+							<tr>
+								<th colspan="<?php if($interval[$medication_type]) { echo count($interval[$medication_type])+3; } else { echo 4; } ?>"><?php echo $this->translate($medication_type." medication title") . ' <font class="notcompatible">' . $this->translate('This block does not have compatible dosage intervals') . '</font>';?></th>
+							</tr>
+						<?php } else { ?>
+							<tr>
+								<th colspan="<?php if($interval[$medication_type]) { echo count($interval[$medication_type])+3; } else { echo 4; } ?>"><?php echo $this->translate($medication_type." medication title");?></th>
+							</tr>
+						<?php } ?>
+						<tr>
+						<th>#</th>
+						<th><?php echo $this->translate("medication_name");?></th>
+						<?php if($medication_type != "treatment_care"):?>
+						
+						
+						<?php if($interval[$medication_type]) { ?>
+						<th colspan="<?php echo count($interval[$medication_type]); ?>"><?php echo $this->translate("medication_dosage");?></th>
+						<th><?php echo $this->translate("medication_comments");?></th>
+						</tr>
+						<tr> 
+							<th colspan="2"></th>
+						<?php foreach($interval[$medication_type] as $ki => $vi)
+						{ ?>
+						
+						<?php if($dif_time_scheme[$medication_type])
+							{
+								if(in_array($vi['time'], $target_interval[$medication_type]))
+								{ ?>
+									<th><?php echo $vi['time'];?></th>
+							<?php } else { ?>
+									<th class="notcompatible"><?php echo $vi['time'];?></th>
+							<?php } } else {							
+							?>
+							<th><?php echo $vi['time'];?></th>
+							<?php } } ?>
+							<th></th>
+						
+							<?php  } else { ?> 
+						
+								<?php if($dif_time_scheme[$medication_type]) { ?>
+									<th class="notcompatible"><?php echo $this->translate("medication_dosage");?></th>
+									<th><?php echo $this->translate("medication_comments");?></th>
+								<?php }	else { ?>
+									<th><?php echo $this->translate("medication_dosage");?></th>
+									<th><?php echo $this->translate("medication_comments");?></th>
+								<?php }	} ?>
+								<?php else: ?> 
+									<th><?php echo $this->translate("medication_comments");?></th>
+							</tr>
+							<?php endif; ?>
+						<!-- TODO-2982 -->
+						<?php $cnt = 0; ?>
+						<?php foreach($medication_data as $dr=>$drug_data):?>
+						<?php 
+							if($drug_data['connected'] == "1"){
+						  	$connected_class = "connected"; 
+						} else {
+							$connected_class = ""; 
+						}
+						if($drug_data['source_changed'] == "1"){
+						  	$changed_class = "source_changed";
+ 							$drug_data['edited'] = "1";
+						} else {
+ 							$drug_data['edited'] = "0";
+							$changed_class = ""; 
+						}
+				
+						 ?>
+						<tr class="mrow <?php echo $changed_class; ?> <?php echo $connected_class; ?>">
+							<td>
+								<?php if($drug_data['connected'] != "1" || ($drug_data['connected'] == "1" && $drug_data['source_changed'] =="1" ) ):?>
+								<input type="checkbox"  id="source_<?php echo $drug_data['id']?>" class="drugs" value="<?php echo $drug_data['id'];?>" name="drugs[<?php echo $p_id;?>][<?php echo $medication_type;?>][use][<?php echo $cnt;?>]">
+								<?php endif;?>
+							</td>
+							
+							<td>
+								
+								<input type="hidden" name="drugs[<?php echo $p_id;?>][<?php echo $medication_type;?>][medication][<?php echo $cnt;?>]" value="<?php echo $drug_data['medication']?>" />
+								<input type="hidden" name="drugs[<?php echo $p_id;?>][<?php echo $medication_type;?>][hidd_medication][<?php echo $cnt;?>]" value="<?php echo $drug_data['hidd_medication']?>" />
+								<input type="hidden" name="drugs[<?php echo $p_id;?>][<?php echo $medication_type;?>][drid][<?php echo $cnt;?>]" value="<?php echo $drug_data['drid']?>" />
+								<input type="hidden" name="drugs[<?php echo $p_id;?>][<?php echo $medication_type;?>][edited][<?php echo $cnt;?>]" value="<?php echo $drug_data['edited']?>" />
+								<input type="hidden" name="drugs[<?php echo $p_id;?>][<?php echo $medication_type;?>][source_drugplan_id][<?php echo $cnt;?>]" value="<?php echo $drug_data['id']?>" />
+								<?php if(!empty($drug_data['source_patient'])):?>
+									<input type="hidden" name="drugs[<?php echo $p_id;?>][<?php echo $medication_type;?>][source_patient][<?php echo $cnt;?>]" value="<?php echo $drug_data['source_patient']?>" />
+								<?php else: ?>
+									<input type="hidden" name="drugs[<?php echo $p_id;?>][<?php echo $medication_type;?>][source_patient][<?php echo $cnt;?>]" value="<?php echo $p_id;?>" />
+								<?endif;?>
+								<?php echo $drug_data['medication']?>
+							</td>
+							<?php if($medication_type != "treatment_care"):?>
+						<!-- TODO-2982 -->
+						<?php if($interval[$medication_type]) { ?>
+						<?php foreach($drug_data['dosage'] as $ki => $vi)
+						{ ?>
+						<input type="hidden" name="drugs[<?php echo $p_id;?>][<?php echo $medication_type;?>][dosage][<?php echo $cnt;?>][<?php echo $ki;?>]" value="<?php echo $vi?>" />
+						<?php if($dif_time_scheme[$medication_type])
+							{
+								if(in_array($ki, $target_interval[$medication_type]))
+								{ ?>
+									<td><?php echo $vi;?></td>
+								<?php } else { ?>
+									<td class="notcompatible"><?php echo $vi;?></td>
+								<?php } } else {							
+								?>
+					
+								<td><?php echo $vi;?></td>
+								<?php } } ?>
+					
+						
+								<?php  } else { ?> 
+								<input type="hidden" name="drugs[<?php echo $p_id;?>][<?php echo $medication_type;?>][dosage][<?php echo $cnt;?>]" value="<?php echo $drug_data['dosage']?>" />
+								<?php if($dif_time_scheme[$medication_type]) { ?>
+						
+								<td class="notcompatible"><?php echo $drug_data['dosage']?></td>
+								<?php }
+								else 
+								{ ?>
+								<td><?php echo $drug_data['dosage']?></td>
+								<?php }
+								} ?>
+							<!-- TODO-2982 -->
+							<?php endif;?>
+							<td>
+							<input type="hidden" name="drugs[<?php echo $p_id;?>][<?php echo $medication_type;?>][comments][<?php echo $cnt;?>]" value="<?php echo $drug_data['comments']?>" />
+								<?php echo $drug_data['comments']?>
+							</td>
+						</tr>
+						<?php $cnt++; endforeach;?>
+					<?php endif;?>
+			</tbody>
+		</table>
+	<?php else: ?>
+		<table class="datatable">
+			<tbody>
+				<tr>
+					<th colspan="3"><?php echo $this->translate($medication_type." medication title");?></th>
+				</tr>
+				<tr>
+					<th>#</th>
+					<th><?php echo $this->translate("medication_name");?></th>
+					<th><?php echo $this->translate("medication_dosage");?></th>
+  
+				</tr>
+					<?php if(in_array($medication_type,$medication_blocks)):?>
+						<?php $cnt = 0; ?>
+						<?php foreach($medication_data as $dr=>$drug_data):?>
+						<?php 
+							if($drug_data['connected'] == "1"){
+						  	$connected_class = "connected"; 
+						} else {
+							$connected_class = ""; 
+						}
+						if($drug_data['source_changed'] == "1"){
+						  	$changed_class = "source_changed";
+ 							$drug_data['edited'] = "1";
+						} else {
+ 							$drug_data['edited'] = "0";
+							$changed_class = ""; 
+						}
+				
+						 ?>
+						<tr class="mrow <?php echo $changed_class; ?> <?php echo $connected_class; ?>">
+							<td>
+								<?php if($drug_data['connected'] != "1" || ($drug_data['connected'] == "1" && $drug_data['source_changed'] =="1" ) ):?>
+								<input type="checkbox"  id="source_<?php echo $drug_data['id']?>" class="drugs" value="<?php echo $drug_data['id'];?>" name="drugs[<?php echo $p_id;?>][<?php echo $medication_type;?>][use][<?php echo $cnt;?>]">
+								<?php endif;?>
+							</td>
+							
+							<td>
+								<input type="hidden" name="drugs[<?php echo $p_id;?>][<?php echo $medication_type;?>][medication][<?php echo $cnt;?>]" value="<?php echo $drug_data['medication']?>" />
+								<input type="hidden" name="drugs[<?php echo $p_id;?>][<?php echo $medication_type;?>][hidd_medication][<?php echo $cnt;?>]" value="<?php echo $drug_data['hidd_medication']?>" />
+								<input type="hidden" name="drugs[<?php echo $p_id;?>][<?php echo $medication_type;?>][drid][<?php echo $cnt;?>]" value="<?php echo $drug_data['drid']?>" />
+								<input type="hidden" name="drugs[<?php echo $p_id;?>][<?php echo $medication_type;?>][edited][<?php echo $cnt;?>]" value="<?php echo $drug_data['edited']?>" />
+								<input type="hidden" name="drugs[<?php echo $p_id;?>][<?php echo $medication_type;?>][source_drugplan_id][<?php echo $cnt;?>]" value="<?php echo $drug_data['id']?>" />
+								
+								<?php if(!empty($drug_data['source_patient'])):?>
+									<input type="hidden" name="drugs[<?php echo $p_id;?>][<?php echo $medication_type;?>][source_patient][<?php echo $cnt;?>]" value="<?php echo $drug_data['source_patient']?>" />
+								<?php else: ?>
+									<input type="hidden" name="drugs[<?php echo $p_id;?>][<?php echo $medication_type;?>][source_patient][<?php echo $cnt;?>]" value="<?php echo $p_id;?>" />
+								<?endif;?>
+								<input type="hidden" name="drugs[<?php echo $p_id;?>][<?php echo $medication_type;?>][cocktailid][<?php echo $cnt;?>]" value="<?php echo $drug_data['cocktailid']; ?>" />
+								
+								<?php echo $drug_data['medication']?>
+							</td>
+							<?php if($medication_type != "treatment_care"):?>
+							<td>
+								<input type="hidden" name="drugs[<?php echo $p_id;?>][<?php echo $medication_type;?>][dosage][<?php echo $cnt;?>]" value="<?php echo $drug_data['dosage']?>" />
+								<?php echo $drug_data['dosage']?>
+							</td>
+							<?php endif;?>
+							<?php if($medication_type != "isschmerzpumpe"):?>
+							<td>
+							<input type="hidden" name="drugs[<?php echo $p_id;?>][<?php echo $medication_type;?>][comments][<?php echo $cnt;?>]" value="<?php echo $drug_data['comments']?>" />
+								<?php echo $drug_data['comments']?>
+							</td>
+							<?php endif;?>
+						</tr>
+						<?php $cnt++; endforeach;?>
+					<?php endif;?>
+			</tbody>
+		</table>
+	
+	
+	<?php endif;?>
+	
+	
+	
+	<?php endforeach;?>
+	</div>
+<?php $tabs++;endforeach;?>
+</div>
+</form>

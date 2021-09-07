@@ -1,0 +1,202 @@
+<?php
+
+$this->headScript()->appendFile(RES_FILE_PATH . '/javascript/jquery.blockUI.js');
+
+$this->headScript()->appendFile(RES_FILE_PATH . '/javascript/fullcalendar_1.6/fullcalendar.js');
+
+//$this->headScript()->appendFile(RES_FILE_PATH . '/javascript/html2canvas/html2canvas.min.js');
+
+// !!! the has a default bgcolor 3366cc ..
+// $this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/fullcalendar_1.6/fullcalendar.css');
+// $this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/fullcalendar/fullcalendar.css'); 
+// also the layout does NOT echo in head the Links :( so it's included below
+
+
+?>
+<script type="text/javascript">
+var roster_page = 0;
+var national_holidays = '<?php echo $this->national_holidays_js; ?>';
+</script>
+
+<link rel='stylesheet' type='text/css' href='<? echo RES_FILE_PATH; ?>/css/fullcalendar_1.6/fullcalendar.css?<?php echo date('Ymd'); ?>' />
+
+<link rel='stylesheet' type='text/css' href='<? echo RES_FILE_PATH; ?>/css/cupertino/jquery-ui-1.8.23.custom.css?<?php echo date('Ymd'); ?>' />
+
+<script type="text/javascript" src="<? echo RES_FILE_PATH;  ?>/javascript/calendars.js"></script>
+
+<script type="text/javascript" src="<? echo RES_FILE_PATH;  ?>/javascript/jquery.uiforms.js"></script>
+
+
+
+
+<!-- 
+ -->
+<link rel='stylesheet' type='text/css' href='<? echo RES_FILE_PATH; ?>/css/smoothness/jquery-ui-1.8.23.custom.css?<?php echo date('Ymd'); ?>' />
+
+
+
+
+<style type="text/css">
+	.fc{
+		width:800px;
+	}
+</style>
+
+<?php
+	$title = ' | ';
+    if (in_array('calendar', $this->tabs)) {
+        $title .= $this->translate('user') . "; ";
+    }
+    if (in_array('teamCalendar', $this->tabs)) {
+        $title .=  $this->translate('Team') . "; ";
+    }
+    if (in_array('todosFullCalendar', $this->tabs)) {
+        $title .=  $this->translate('TODO tab') . "; ";
+    }
+    if (in_array('allPatientsCalendar', $this->tabs)) {
+        $title .=  $this->translate('All Patient tab') . "; ";
+    }
+?>
+<script type="text/javascript">
+
+	$(document).ready(function() {
+		
+		
+		$('#print_allCalendarTypes').fullCalendar({
+		    editable: false,
+		    
+		    defaultView: "<?= (isset($_GET['viewName'])) ? $_GET['viewName'] : 'month' ?>",
+		    		
+		    allDayText: 'ganztags',
+		    header: {
+    			left: '',
+    			center: 'title',
+    			right: ''
+		    },
+		    
+		    /* loading: function(isLoading, view) {
+    			if(isLoading) {
+    				
+    			} else {
+    			    setTimeout('window.print()', 2500);
+    			}
+		    }, */
+		    
+		    eventAfterAllRender : function(view) {
+				//png to pdf.... abandoned until we do svg2png	
+		    	//calendarToPdf();
+				$("span.fc-header-title>h2").text($("span.fc-header-title>h2").text() + '<?=$title;?>' );
+				
+				window.print();
+			},
+		    
+		    year	: '<?=$this->startYear?>',
+    		month	: '<?=$this->startMonth?>',
+			date	: '<?=$this->startDay?>',
+		    
+		    events: {
+				url: 'calendar/fetchallCalendarTypes',
+				type: 'GET', // if you change into POST, multiple
+				// changes needed
+				data: function() { // add params
+					
+					return {
+						'tabs': <?=$this->tabs_json?>
+					};
+
+				}
+			},
+			
+		    
+		    timeFormat: 'HH:mm{ - HH:mm}\n', //H pt 24h
+		    axisFormat: 'HH:mm',
+		    aspectRatio: 1,
+		    disableResizing: true,
+		    weekMode: 'liquid',
+		    firstDay: 1,
+		    slotMinutes: 30,
+		    theme: true,
+		    monthNames: ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"],
+		    monthNamesShort: ['Jän', 'Feb', 'März', 'Apr', 'Mai', 'Juni', 'Juli', 'Aug', 'Sept', 'Okt', 'Nov', 'Dez'],
+		    dayNames: ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'],
+		    dayNamesShort: ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'],
+		    
+		    buttonText: {
+    			today: 'heute',
+    			month: 'monat',
+    			week: 'woche',
+    			day: 'tag'
+		    },
+		    
+		    columnFormat: {
+    			month: 'ddd', // Mon
+    			week: 'ddd d.M', // Mon 9/7
+    			day: 'dddd d.M.yyyy'  // Monday 9/7
+		    },
+		    
+		    titleFormat: {
+    			month: 'MMMM yyyy', // September 2009
+    			week: "MMM d[ yyyy]{ '&#8212;'[ MMM] d yyyy}", // Sep 7 - 13 2009
+    			//		    day: 'dddd, MMM d, yyyy'                  // Tuesday, Sep 8, 2009
+    			day: 'dddd d.M.yyyy'                  // Tuesday, Sep 8, 2009
+		    }
+		});
+		
+		
+				
+	});
+
+	
+	
+	
+function drawCanvas(ctx) {
+    ctx.fillStyle = "#FF0000";
+    ctx.fillRect(0,0,150,75);
+}
+
+function calendarToPdf() {
+	/* 
+	var c = document.getElementById("myCanvas");
+	var canvasSVGContext = new CanvasSVG.Deferred();	canvasSVGContext.wrapCanvas(c);
+	var canvasContext = c.getContext("2d");
+	 */
+	/**
+	html2canvas(document.querySelector("#print_allCalendarTypes"), {
+		//canvas : canvasContext
+		
+	}).then(canvas => {
+		
+	    //document.body.appendChild(canvas);
+	    
+	    var _canvas64 = canvas.toDataURL("image/png");
+	    
+	   
+	    //console.log(canvas.getSVG());
+	    
+	    
+	    $.ajax({
+			type: "POST",
+			data: {
+				"pdf" : true,
+				"canvas64": _canvas64 
+			},
+			async: true,
+			cache: false,
+			url: appbase + 'calendar/printallcalendartypes',
+			success: function(response) {
+				console.log(response);
+			}
+		});
+	    
+	});
+	*/
+}
+
+
+
+	
+</script>
+
+<div id="print_allCalendarTypes" ></div>
+<div class='footer'><?=date('d.m.Y H:i');?></div>
+<canvas id='myCanvas'></canvas>

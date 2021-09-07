@@ -1,0 +1,338 @@
+<?php //ISPC-2831 Dragos 15.03.2021 //ISPC-2832 Dragos ?>
+<?php
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/Highcharts-8.0.4/modules/timeline.js?');
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/page-css/efadiagnosis.css');
+
+?>
+
+<style>
+    #chart-container {
+        height: 840px !important;
+        <?php/* if (count($this->chartEvents) < 15) :?>
+            height: calc(100vh - 175px);
+        <?php else :?>
+            height: <?=60*count($this->chartEvents)?>px;
+        <?php endif; */?>
+    }
+    .highcharts-anchor {
+        font-weight: bold;
+        text-decoration: underline;
+    }
+
+    .date-filter input.datepicker {
+        position: relative;
+        background-image: url(<? echo RES_FILE_PATH;  ?>/images/pacient_location_img/calendar.svg);
+        background-repeat: no-repeat;
+        background-size: 17px 17px;
+        background-position: 97% center;
+        box-sizing: border-box;
+        border: 1px solid #bbb !important;
+        background-color: #f2f2f2 !important;
+        padding: 2px;
+    }
+    .date-filter .ui-datepicker-trigger {
+        display: none;
+    }
+    .filters {
+        float: left;
+        position: absolute;
+        left: 10px;
+        top: 10px;
+        z-index: +1;
+    }
+
+    #tabs-6 {
+        position: relative;
+    }
+    .ui-datepicker table {
+        background: white;
+    }
+
+</style>
+
+<div style="display: none;"><img id="calImg" src="<? echo RES_FILE_PATH;  ?>/images/calendar.png" alt="Popup" class="trigger"></div>
+<div id="diagnosis_and_findings_tabs" class="ui-tabs ui-widget ui-widget-content ui-corner-all">
+    <ul class="ui-tabs-nav ui-helper-reset ui-helper-clearfix ui-widget-header ui-corner-all">
+        <li class="ui-state-default ui-corner-top"><a href="<?=APP_BASE?>efa/diagnosis?id=<?=$_REQUEST['id']?>">Diagnosen</a></li>
+        <li class="ui-state-default ui-corner-top"><a href="<?=APP_BASE?>patient/patientfileupload?id=<?=$_REQUEST['id']?>&efa=1">Befunde</a></li>
+        <li class="ui-state-default ui-corner-top"><a href="<?=APP_BASE?>efa/interventions?id=<?=$_REQUEST['id']?>">Interventionen</a></li>
+        <li class="ui-state-default ui-corner-top"><a href="<?=APP_BASE?>efa/reactions?id=<?=$_REQUEST['id']?>">Reaktionen</a></li>
+        <li class="ui-state-default ui-corner-top"><a href="<?=APP_BASE?>efa/vaccinations?id=<?=$_REQUEST['id']?>">Impfstatus</a></li>
+        <li class="ui-state-default ui-corner-top ui-tabs-selected ui-state-active"><a href="<?=APP_BASE?>efa/history?id=<?=$_REQUEST['id']?>">bisherige Krankengeschichte</a></li>
+    </ul>
+    <div id="tabs-6">
+        <div class="filters">
+            <div class="date-filter">
+                <input class="datepicker" type="text" name="start_date" id="from" value="<?php echo date("d.m.Y",$this->start_date); ?>">
+                -
+                <input class="datepicker" type="text" name="start_date" id="to" value="<?php echo date("d.m.Y",$this->end_date); ?>">
+            </div>
+            <div class="event-filter">
+                <ul class="chart-events">
+                <?php foreach ($this->eventTypes as $key => $eventType):?>
+                    <li class="chart-event"><label><input type="checkbox" name="eventTypes[<?=$key?>]" data-evtype="<?=$key?>" class="event-type" value="1" <?=$eventType['visible'] ? 'checked' :''?> /><span style="color:<?=$eventType['color']?>">● </span><?=$eventType['name']?></label></li>
+                <?php endforeach; ?>
+                </ul>
+            </div>
+        </div>
+        <div id="chart-container"></div>
+    </div>
+</div>
+<script>
+    $(function () {
+        var pid = '<?php echo $_REQUEST['id']; ?>';
+        let ajaxCall = null;
+        Highcharts.setOptions({
+            lang: {
+                loading: 'Bitte warten...',
+                thousandsSep: ".",
+                decimalPoint: ",",
+                resetZoom: "<?=$this->translate('Reset zoom')?>",
+                months: [ "Januar" , "Februar" , "März" , "April" , "Mai" , "Juni" , "Juli" , "August" , "September" , "Oktober" , "November" , "Dezember" ],
+                shortMonths: [ "Jan" , "Feb" , "März" , "Apr" , "Mai" , "Juni" , "Juli" , "Aug" , "Sept" , "Okt" , "Nov" , "Dez" ],
+                weekdays: [ "Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag" ],
+                shortWeekdays: [ "So", "Mo", "Di", "Mi", "Do", "Fr", "Sa" ]
+            },
+        })
+        let chart_events = <?=json_encode($this->chartEvents)?>;
+        let chart = Highcharts.chart('chart-container', {
+            chart: {
+                inverted: true,
+                zoomType: 'x',
+                type: 'timeline',
+            },
+            credits: {
+                enabled: false
+            },
+            xAxis: {
+                type: 'datetime',
+                visible: false,
+            },
+            yAxis: {
+                gridLineWidth: 1,
+                title: null,
+                labels: {
+                    enabled: false
+                }
+            },
+            legend: {
+                enabled: false,
+            },
+            loading: {
+                labelStyle: {
+                    "position": "relative",
+                    "top": "0",
+                    fontSize: "2em",
+                },
+            },
+            title: {
+                text: '<?=date('d.m.Y',$this->start_date)?> - <?=date('d.m.Y',$this->end_date)?>'
+            },
+            subtitle: {
+                text: ''
+            },
+            tooltip: {
+                enabled: false,
+                style: {
+                    width: 300
+                }
+            },
+            exporting: {
+                enabled:false,
+            },
+            time: {
+                timezone: "Europe/Berlin"
+            },
+            series: [{
+                getExtremesFromAll: true,
+                label: '',
+                //turboThreshold: 0,
+                dataLabels: {
+                    allowOverlap: false,
+                    format: '<span style="color:{point.color}">● </span>{point.label}'
+                },
+                enableMouseTracking:true,
+                marker: {
+                    symbol: 'circle',
+                    // height: 10,
+                    // width: 10,
+                },
+                data: chart_events.slice(),
+            }]
+        });
+
+        Date.isLeapYear = function (year) {
+            return (((year % 4 === 0) && (year % 100 !== 0)) || (year % 400 === 0));
+        };
+
+        Date.getDaysInMonth = function (year, month) {
+            return [31, (Date.isLeapYear(year) ? 29 : 28), 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month];
+        };
+
+        Date.prototype.isLeapYear = function () {
+            return Date.isLeapYear(this.getFullYear());
+        };
+
+        Date.prototype.getDaysInMonth = function () {
+            return Date.getDaysInMonth(this.getFullYear(), this.getMonth());
+        };
+
+        Date.prototype.addMonths = function (value) {
+            var n = this.getDate();
+            this.setDate(1);
+            this.setMonth(this.getMonth() + value);
+            this.setDate(Math.min(n, this.getDaysInMonth()));
+            return this;
+        };
+
+        Date.prototype.subMonths = function (value) {
+            var n = this.getDate();
+            this.setDate(1);
+            this.setMonth(this.getMonth() - value);
+            this.setDate(Math.min(n, this.getDaysInMonth()));
+            return this;
+        };
+
+        let today = new Date();
+
+        $( "#from" ).datepicker({
+            changeMonth: true,
+            changeYear: true,
+            showOn: "both",
+            buttonImage: $('#calImg').attr('src'),
+            buttonImageOnly: true,
+            onClose: function( selectedDate ) {
+                $( "#to" ).datepicker( "option", "minDate", selectedDate );
+            },
+            onSelect:function( selectedDate ) {
+                var d1Parts = selectedDate.split('.')
+                var d2Parts =  $( "#to" ).val().split('.')
+
+                var d1 = new Date(d1Parts[2], d1Parts[1]-1, d1Parts[0])
+                var d2 = new Date(d2Parts[2], d2Parts[1]-1, d2Parts[0])
+
+                if (monthDiff(d1,d2) > 3) {
+                    $('#to').datepicker('setDate',d1.addMonths(3))
+                }
+                reload_chart_data();
+            }
+        });
+        $( "#to" ).datepicker({
+            showOn: "both",
+            buttonImage: $('#calImg').attr('src'),
+            buttonImageOnly: true,
+            changeMonth: true,
+            changeYear: true,
+            onClose: function( selectedDate ) {
+                $( "#from" ).datepicker( "option", "maxDate", selectedDate );
+            },
+            onSelect:function( selectedDate ) {
+                var d1Parts = $('#from').val().split('.')
+                var d2Parts =  selectedDate.split('.')
+
+                var d1 = new Date(d1Parts[2], d1Parts[1]-1, d1Parts[0])
+                var d2 = new Date(d2Parts[2], d2Parts[1]-1, d2Parts[0])
+
+                if (monthDiff(d1,d2) > 3) {
+                    $('#from').datepicker('setDate',d2.subMonths(3))
+                }
+
+                reload_chart_data();
+            }
+        });
+
+        function monthDiff(d1, d2) {
+            var months = (d2.getFullYear() - d1.getFullYear()) * 12
+            months -= d1.getMonth()
+            months += d2.getMonth()
+            return months <= 0 ? 0 : months
+        }
+
+        $( "#from" ).mask("99.99.9999");
+        $( "#to" ).mask("99.99.9999");
+
+        $( "#from" ).on('change',function() {
+            if( $(this).val().length > 0 ){
+                var d1Parts = $(this).val().split('.')
+                var d2Parts = $('#to').val().split('.')
+
+                var d1 = new Date(d1Parts[2], d1Parts[1]-1, d1Parts[0])
+                var d2 = new Date(d2Parts[2], d2Parts[1]-1, d2Parts[0])
+
+                if (monthDiff(d1,d2) > 3) {
+                    $('#from').datepicker('setDate',d2.subMonths(3))
+                }
+                reload_chart_data()
+            }
+        });
+        $( "#to" ).on('change',function() {
+            if( $(this).val().length > 0 ){
+                var d1Parts = $('#from').val().split('.')
+                var d2Parts =  $(this).val().split('.')
+
+                var d1 = new Date(d1Parts[2], d1Parts[1]-1, d1Parts[0])
+                var d2 = new Date(d2Parts[2], d2Parts[1]-1, d2Parts[0])
+
+                if (monthDiff(d1,d2) > 3) {
+                    $('#from').datepicker('setDate',d2.subMonths(3))
+                }
+                reload_chart_data()
+            }
+        });
+
+        $('.event-type').on('change', function () {
+            filter_chart_data()
+        })
+
+        function filter_chart_data() {
+            let selectedEventTypes = [] //$('.event-type').filter(() => console.log($(this)))
+            $('.event-type').each(function () {
+                if($(this).is(':checked')) selectedEventTypes.push($(this).data('evtype'))
+            })
+            // console.log(selectedEventTypes)
+            // console.log(chart_events)
+            // console.log(chart_events.filter(event => selectedEventTypes.includes(event.event_type)))
+            chart.series[0].setData(chart_events.filter(event => selectedEventTypes.includes(event.event_type)))
+        }
+
+        function reload_chart_data() {
+            chart.showLoading()
+            let eventTypesArray = [],
+                urlEncodedTypes = "";
+
+            $('.event-type').each(function () {
+                eventTypesArray.push(encodeURIComponent(this.name) + '=' + encodeURIComponent($(this).is(':checked') ? 1 : 0 ))
+            })
+            urlEncodedTypes = eventTypesArray.join('&').replace(/%20/g, '+')
+            if (ajaxCall != null) {
+                ajaxCall.abort()
+            }
+            ajaxCall = ajaxCall =$.ajax({
+                url: appbase+'efa/history?id=<?=$this->encid?>&start_date='+$('#from').val()+'&end_date='+$('#to').val()+'&'+urlEncodedTypes,
+            }).done(function (newChartData) {
+                try {
+                    newChartData = JSON.parse(newChartData.trim())
+                    let start_date = new Date(newChartData.start_date * 1000)
+                    let end_date = new Date(newChartData.end_date * 1000)
+                    if (newChartData.chartEvents.length) {
+                        //let newHeight = ((newChartData.chartEvents.length * 60));
+                        // if (newHeight < 840 ) newHeight = 840
+                        newHeight = 840
+                        $('#chart-container').height(newHeight+ 'px')
+                    }
+                    chart_events = newChartData.chartEvents.slice();
+                    //avoid timezone convertion when converting to JSON below
+                    start_date.setHours(10,0,0)
+                    end_date.setHours(10,0,0)
+                    chart.setTitle({text: start_date.toJSON().slice(0,10).split('-').reverse().join('.') + ' - ' + end_date.toJSON().slice(0,10).split('-').reverse().join('.')})
+                    chart.series[0].setData(newChartData.chartEvents)
+                    chart.reflow()
+                    chart.hideLoading()
+                } catch(err) {
+                    chart.hideLoading()
+                    console.log( err.message )
+                }
+            })
+        }
+    })
+</script>

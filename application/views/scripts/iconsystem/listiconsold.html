@@ -1,0 +1,239 @@
+<?php
+	$icons = $this->icons_list;
+	$system_icons = $this->system_icons_list;
+?>
+<script type="text/javascript">
+	$(document).ready(function()
+	{
+		var url = '<?php echo APP_BASE; ?>iconsystem/listicons';
+
+		$('#icon_delete_dialog').dialog({
+			autoOpen: false,
+			modal: true,
+			title: "<?php echo $this->translate('Delete Icon'); ?>",
+			buttons: {
+				"<?php echo $this->translate('delete yes'); ?>": function() {
+					var icon_id = $('#now_del_id').val();
+					var filters = 'id='+icon_id + '&op=del';
+
+					//ajax request
+					xhr = $.ajax({
+						url : url + '?' + filters,
+						success : function(response) {
+							var response_obj = jQuery.parseJSON(response);
+							if(response_obj['status'] == 'ok'){
+								window.location = '<?php echo APP_BASE; ?>iconsystem/listicons';
+							}
+
+						}
+					});
+				},
+				"<?php echo $this->translate('cancel'); ?>": function() {
+					$( this ).dialog( "close" );
+				}
+			}
+		});
+
+
+		$('#icon_delete_system_dialog').dialog({
+			autoOpen: false,
+			modal: true,
+			title: "<?php echo $this->translate('Delete Custom System Icon'); ?>",
+			buttons: {
+				"<?php echo $this->translate('delete yes'); ?>": function() {
+					var icon_id = $('#now_del_id').val();
+					var filters = 'id='+icon_id + '&op=del';
+
+					//ajax request
+					xhr = $.ajax({
+						url : url + '?' + filters,
+						success : function(response) {
+							var response_obj = jQuery.parseJSON(response);
+							if(response_obj['status'] == 'ok'){
+								window.location = '<?php echo APP_BASE; ?>iconsystem/listicons';
+							}
+
+						}
+					});
+				},
+				"<?php echo $this->translate('cancel'); ?>": function() {
+					$( this ).dialog( "close" );
+				}
+			}
+		});
+		$('.action_delete').click(function(){
+			$('#icon_delete_dialog').dialog('open');
+			$('#now_del_id').val($(this).attr('rel'));
+		});
+
+		$('.action_delete_system').click(function(){
+			$('#icon_delete_system_dialog').dialog('open');
+			$('#now_del_id').val($(this).attr('rel'));
+		});
+})
+</script>
+<div id="patientMsterAd_ErrorMsg" class="err">
+	<?php if ($this->dir_created == 'no'):  ?>
+		<p><?php echo $this->translate('icon_dir_not_exists'); ?></p>
+	<?php endif; ?>
+
+	<?php if ($_REQUEST['flg'] == 'suc_add'):  ?>
+		<p><?php echo $this->translate('iconaddedsuccessfully');  ?></p>
+	<?php elseif ($_REQUEST['flg'] == 'suc_ed'):  ?>
+		<p><?php echo $this->translate('iconupdatedsuccessfully');  ?></p>
+	<?php elseif ($_REQUEST['flg'] == 'limit'):  ?>
+		<p><?php echo $this->translate('iconlimitadd');  ?></p>
+	<?php endif;  ?>
+
+</div>
+<h1><?php echo $this->translate('system_icon_list');  ?></h1>
+<table width="100%" border="0" cellspacing="0" cellpadding="0" id="icons_list" class="datatable">
+	<thead>
+		<tr>
+			<th id="incr"><? echo $this->translate('nr') ?></th>
+			<th id="icon_col" height="28" align="left" valign="top"><? echo $this->translate('icon') ?></th>
+			<th id="name_col" height="28" align="left" valign="top"><? echo $this->translate('icon_name') ?></th>
+			<th id="color_col" height="28" align="left" valign="top"><? echo $this->translate('icon_color') ?></th>
+			<th id="date_col" height="28" align="left" valign="top"><? echo $this->translate('icon_date') ?></th>
+			<th id="action_col" height="28" align="left" valign="top"><? echo $this->translate('action') ?></th>
+		</tr>
+	</thead>
+	<tbody>
+		<?php if ($system_icons): ?>
+			<?php
+			//print_r($system_icons);exit;
+				$i = 1;
+				foreach ($system_icons as $k_sys_icon => $v_sys_icon):
+			?>
+			<?php 
+				if(
+					 (($v_sys_icon['id'] != '3' && $v_sys_icon['id'] != '2' &&  $v_sys_icon['id'] < '11') || (  $v_sys_icon['id'] > '22'   &&  $v_sys_icon['id'] != '43') ) || // here are taken all icons for wl and non wl clients 
+                     ($v_sys_icon['id'] == '2' && $this->wlpermission) ||  // for wl clients - show volversorgung icon
+					 ($v_sys_icon['id'] >= '11' && $v_sys_icon['id'] <= '22' && !$this->wlpermission) || // no wl clients - show all sapv icons
+					 ($v_sys_icon['id'] != '43' &&( in_array($v_sys_icon['id'],array('44','45','46','47')) && $this->diagno_act_permission) )
+				  ): z 
+			?>
+			<tr id="row-<?php echo $v_sys_icon['id']; ?>">
+				<td id="incr"><?php echo $i; ?></td>
+				<td id="icon_col">
+				<?php
+				if (!empty($v_sys_icon['custom'])):
+					//set custom icon and color
+					$has_custom = true;
+					$icon_image = $v_sys_icon['custom']['image'];
+					$icon_color = $v_sys_icon['custom']['color'];
+					$icon_date = date('d.m.Y', strtotime($v_sys_icon['custom']['create_date']));
+				else:
+
+					//get default icon and color
+					$has_custom = false;
+					$icon_image = $v_sys_icon['image'];
+					$icon_color = $v_sys_icon['color'];
+					$icon_date = '-';
+				endif;
+				?>
+				<?php if(strlen(trim(rtrim($icon_image))) >'0' && is_file(APPLICATION_PATH . '/../public/icons_system/' . $icon_image)): ?>
+					<img src="<?php echo APP_BASE . 'icons_system/' . $icon_image; ?>" id="icon_image" />
+				<?php else: ?>
+					<span> - </span>
+				<?php endif; ?>
+
+				</td>
+				<td id="name_col" valign="top"><?php echo $this->translate($v_sys_icon['name']); ?></td>
+				<td id="color_col"> <div style="background: #<?php echo $icon_color; ?>;" class="icon_color_placeholder">&nbsp;</div> </td>
+				<td id="date_col"><?php echo $icon_date;  ?></td>
+				<td id="action_col">
+					<div id="icons_action_bar">
+						<?php if($has_custom):  ?>
+							<a href="<?php echo APP_BASE;  ?>iconsystem/editsysicon?sid=<?php echo $v_sys_icon['id']; ?>&cid=<?php echo $v_sys_icon['custom']['id']; ?>" class="action_edit" ><img src="<?php echo RES_FILE_PATH; ?>/images/edit.png" border="0" width="16" /></a>
+							&nbsp;
+							<a href="javascript:void(0);" class="action_delete_system" rel="<?php echo $v_sys_icon['custom']['id']; ?>" ><img src="<?php echo RES_FILE_PATH; ?>/images/action_delete.png" border="0" width="16" /></a>
+						<?php else:  ?>
+							<a href="<?php echo APP_BASE;  ?>iconsystem/editsysicon?sid=<?php echo $v_sys_icon['id']; ?>&cid=<?php echo $v_sys_icon['custom']['id']; ?>" class="action_add_system" ><img src="<?php echo RES_FILE_PATH; ?>/images/add.png" border="0" width="16"/></a>
+						<?php endif;  ?>
+					</div>
+				</td>
+			</tr>
+
+	 
+			<?php $i++; endif;  ?>
+			<?php
+
+				endforeach;
+			?>
+		<?php else: ?>
+			<tr>
+				<td colspan="6" id="noresults"><?php echo $this->translate('icons_no_results'); ?></td>
+			</tr>
+		<?php endif; ?>
+	</tbody>
+</table>
+<br />
+
+
+
+<h1><?php echo $this->translate('custom_icon_list');  ?></h1>
+<?php // if (count($icons) < '10'):  ?>
+	
+	<div class="add_link">
+		<a href="<?php echo APP_BASE;  ?>iconsystem/addicon"><? echo $this->translate('addicons') ?></a>
+	</div>
+<?php // endif;  ?>
+<p><?php // echo $this->translate('max_10_icons');  ?></p>
+<table width="100%" border="0" cellspacing="0" cellpadding="0" id="icons_list" class="datatable">
+	<thead>
+		<tr>
+			<th id="incr"><? echo $this->translate('nr') ?></th>
+			<th id="icon_col" height="28" align="left" valign="top"><? echo $this->translate('icon') ?></th>
+			<th id="name_col" height="28" align="left" valign="top"><? echo $this->translate('icon_name') ?></th>
+			<th id="color_col" height="28" align="left" valign="top"><? echo $this->translate('icon_color') ?></th>
+			<th id="date_col" height="28" align="left" valign="top"><? echo $this->translate('icon_date') ?></th>
+			<th id="action_col" height="28" align="left" valign="top"><? echo $this->translate('action') ?></th>
+		</tr>
+	</thead>
+	<tbody>
+		<?php if ($icons): ?>
+			<?php
+				$i = 1;
+				foreach ($icons as $k_icon => $v_icon):
+			?>
+			<tr id="row-<?php echo $v_icon['id']; ?>">
+				<td id="incr"><?php echo $i; ?></td>
+				<td id="icon_col">
+					<?php if(strlen(trim(rtrim($v_icon['image']))) >'0' && is_file(APPLICATION_PATH . '/../public/icons_system/' . $v_icon['image'])): ?>
+						<img src="<?php echo APP_BASE . 'icons_system/' . $v_icon['image']; ?>" id="icon_image" />
+					<?php else: ?>
+						<span> - </span>
+					<?php endif; ?>
+				</td>
+				<td id="name_col" valign="top"><?php echo $v_icon['name']; ?></td>
+				<td id="color_col"> <div style="background: #<?php echo $v_icon['color']; ?>;" class="icon_color_placeholder">&nbsp;</div> </td>
+				<td id="date_col"><?php echo date('d.m.Y', strtotime($v_icon['create_date']));  ?></td>
+				<td id="action_col">
+					<div id="icons_action_bar">
+						<a href="<?php echo APP_BASE;  ?>iconsystem/editicon?id=<?php echo $v_icon['id']; ?>" class="action_edit" ><img src="<?php echo RES_FILE_PATH; ?>/images/edit.png" border="0" /></a>
+						&nbsp;
+						<!--<a href="icons/listicons?id=<?php echo $v_icon['id']; ?>&op=del" class="action_delete" ><img src="<?php echo RES_FILE_PATH; ?>/images/action_delete.png" border="0" /></a>-->
+						<a href="javascript:void(0);" class="action_delete" rel="<?php echo $v_icon['id']; ?>" ><img src="<?php echo RES_FILE_PATH; ?>/images/action_delete.png" border="0" /></a>
+					</div>
+				</td>
+			</tr>
+			<?php
+				$i++;
+				endforeach;
+			?>
+		<?php else: ?>
+			<tr>
+				<td colspan="6" id="noresults"><?php echo $this->translate('icons_no_results'); ?></td>
+			</tr>
+		<?php endif; ?>
+	</tbody>
+</table>
+<input type="hidden" value="" id="now_del_id" />
+<div id="icon_delete_dialog">
+	<span><?php echo $this->translate('delete_custom_icon');  ?></span>
+</div>
+
+<div id="icon_delete_system_dialog">
+	<span><?php echo $this->translate('delete_custom_system_icon');  ?></span>
+</div>

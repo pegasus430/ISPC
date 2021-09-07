@@ -1,0 +1,429 @@
+
+
+<?php $this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/page-css/receipt_form_style.css');  ?>
+<?php $this->headScript()->appendFile(RES_FILE_PATH.'/javascript/jquery.blockUI.js');?>
+
+<?php $this->headScript()->appendFile(RES_FILE_PATH.'/javascript/jquery.tablesorter.js?'.date('Ymd'));?>
+
+<?php $this->headScript()->appendFile(RES_FILE_PATH.'/javascript/pharmaindex/pharmaindex.js?'.date('Ymd'));?>
+<?php $this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/pharmaindex/pharmaindex.css?'.date('Ymd'));?>
+
+
+
+
+<script type="text/javascript">
+    function selectReceiptMedi(mid, row)
+    {
+        $('#med'+row).val($('#medi_me_'+mid).val());
+    }
+
+
+    /*----------------------------------------------------------------------------------------------------------*/
+    /*---------------------------------------- Stamp Info ------------------------------------------------------*/
+    /*----------------------------------------------------------------------------------------------------------*/
+    $('#stampusers').live('change',function(){
+
+        $.get(appbase+ 'ajax/userstampinfo?stamp-info=' + $(this).val(), function(result) {
+
+            if (result != 0){
+                var resultx = jQuery.parseJSON(result);
+
+                var user_lanr = resultx.lanr;
+                var user_bsnr = resultx.bsnr;
+
+                $('#rceipt_form_VertagsNrinpt').val(user_bsnr);
+                $('#rceipt_form_VkgulbisInpt').val(user_lanr);
+            } else{
+
+            }
+
+        });
+        return false;
+    });
+</script>
+
+<style>
+    .receipt_background{
+        background:url('images/pharmaindex/kv_blank.png') no-repeat;
+        width:820px;
+        height:575px;
+        position:relative;
+    }
+    .receipt_background .rcb_dummy{
+        width:20px;
+        height:20px;
+        border: 0;
+        position:absolute;
+        background:none;
+        background-repeat:no-repeat;
+        cursor: pointer;
+    }
+    .receipt_background .rtx{
+        height:20px;
+        border: 1px solid #a3a3a3;
+        position:absolute;
+        background:none;
+        padding:0;
+        font-family: monospace;
+        font-size: 11px;
+        padding-left:2px;
+    }
+
+    .receipt_background .userstamps #stampusers{
+        float:none;
+        display: inline;
+        padding: 2px;
+    }
+
+    .receipt_background .rcbutt{
+        position: absolute;
+        height:22px;
+        padding:2px;
+    }
+    #mediplan_dialog td{
+        padding:2px;
+    }
+</style>
+
+<script>
+    $(document).ready(function(){
+        var markx_img = $('<img src="images/pharmaindex/checkboxmark.png">');
+        $('.receipt_background .rcb').each(function(){
+            var css=$(this).attr('style');
+            $(this).hide();
+            var that=this;
+            var newel=$("<span></span>");
+            newel.attr('style',css);
+            newel.addClass('rcb_dummy');
+            $(this).parent().append(newel);
+
+            if($(this).attr('checked') == 'checked'){
+                $(newel).css('background','url(images/pharmaindex/checkboxmark.png) no-repeat');
+            }
+
+            $(newel).click(function(){
+                if($(that).attr('checked')){
+                    $(that).removeAttr('checked');
+                    $(this).css('background','none');
+                } else{
+                    $(that).attr('checked','checked');
+                    $(this).css('background','url(images/pharmaindex/checkboxmark.png) no-repeat');
+                }
+            });
+
+			
+			<?php if($this->show_mmi == "1"): ?>
+			var healthinsuranceik = $('input[name=\"kassenno\"]').val();
+			
+			$('.livesearchmedinp').live('change', function() {
+				var input_row = parseInt($(this).attr('id').substr(('medication').length));
+				//not used
+//				reset_medications(input_row);
+			}).liveSearch({
+				url: 'pharmaindex/getproductsmedils?ik_no='+healthinsuranceik+'&sm=0&searchtext=',
+				id: 'livesearch_admission_medications',
+				aditionalWidth: '300',
+				noResultsDelay: '900',
+				typeDelay: '900',
+				returnRowId: function (input) {return parseInt($(input).attr('id').substr(('medication').length));}
+			});
+			<?php endif; ?>
+        });
+
+        //INSTALL MEDIINDEX-WIDGET
+        <?php if($this->show_pi):?>
+        var pi = new pharmaindex();
+        pi.input_medname = ".medication";
+        pi.input_rowparent = "tr";
+        pi.input_receipe_butt = "#mediplan_dialog .takeover_butt";
+        pi.input_select_medi_butt = "#mediplan_dialog .select_medi";
+        pi.input_to_recipe = ".to_recipe";
+        pi.mode="recipe";
+        pi.ikno="input[name=\"kassenno\"]";
+		pi.use_suggestions = '0';
+		pi.otcWarningSw = '0';
+
+        //PATH FOR THE AJAX SCRIPTS
+        pi.ajaxPath = "pharmaindex";
+
+        //PATH FOR THE IMAGE FOLDER
+        pi.imagePath="images/pharmaindex";
+
+        pi.callback = function(recipe){
+            $(active_recipe_row).val(recipe);
+        };
+
+        pi.install();
+        <?php endif;?>
+
+        <?php if(!$this->show_pi):?>
+        $(document).on('click','.takeover_butt',function(){
+            var v = $(($(this).parents('tr').find('input'))).val();
+            $(active_recipe_row).val(v);
+            $('#mediplan_dialog').dialog('close');
+        });
+		$(document).on('click','.select_medi',function(){
+            var v = $(($(this).parents('tr').find('input'))).val();
+            $(active_recipe_row).val(v);
+            $('#mediplan_dialog').dialog('close');
+        });
+        <?php else: ?>
+		$(document).on('click','.select_medi',function(){
+            var v = $(($(this).parents('tr').find('input'))).val();
+            $(active_recipe_row).val(v);
+            $('#mediplan_dialog').dialog('close');
+        });
+        <?php endif;?>
+
+
+
+        //preload patients medics
+        $.get("ajax/getpatientmedics?id=<?php echo $this->encid;?>", function(data){
+            actual_mediplan = jQuery.parseJSON(data);
+            actual_mediplan.push({'medication':"", 'empty_dummytype':1});
+            mediplan_dialog=$("<div id='mediplan_dialog'>");
+            mediplan_dialog.hide();
+            $('body').append(mediplan_dialog);
+            var meditable=$("<table>");
+
+            var row=$("<tr>");
+            $(meditable).append(row);
+            $(row).append('<th></th>');
+            $(row).append('<th>Medikament</th>');
+            $(row).append('<th>Dosierung</th>');
+            $(row).append('<th>DE</th>');
+            $(row).append('<th>Kommentar</th>');
+
+            $(mediplan_dialog).append(meditable);
+
+            for (var i=0; i<actual_mediplan.length; i++){
+                var row=$("<tr>");
+
+                var medname=actual_mediplan[i]['medication'];
+                if (medname=="") medname=actual_mediplan[i]['beispiel'];
+
+                if (medname!="" || actual_mediplan[i]['empty_dummytype']==1){
+                    $(meditable).append(row);
+
+//                    var el0=$('<input type="button" class="takeover_butt" value="übernehmen">');
+					<?php if($this->show_pi): ?>
+						var el0=$('<button class="select_medi"><?php echo $this->translate("select_medication"); ?></button><button class="takeover_butt">MMI</button>');
+					<?php else: ?>
+						var el0=$('<button class="select_medi"><?php echo $this->translate("select_medication"); ?></button>');
+					<?php endif; ?>
+                    el0=$('<td>').append(el0);
+                    $(row).append(el0);
+
+					$( ".select_medi" ).button({
+						text: false,
+						icons: {
+							primary: "ui-icon-circle-arrow-w"
+						}
+					});
+					$( ".takeover_butt" ).button({
+						text: true,
+						label: "MMI"
+					});
+					
+                    var el1=$('<input style="width:210px;  padding: 5px;">');
+                    $(el1).val(medname).attr('disabled','disabled').addClass('medication');
+                    el1=$('<td>').append(el1);
+                    $(row).append(el1);
+                    var el1=$('<input type="hidden" class="to_recipe">');
+                    $(row).append(el1);
+                    var el2=$('<input style="width:80px;">');
+                    $(el2).val(actual_mediplan[i]['dosage']).attr('disabled','disabled');;
+                    el2=$('<td>').append(el2);
+                    $(row).append(el2);
+
+                    var el3=$('<input style="width:70px;">');
+                    $(el3).val(actual_mediplan[i]['dosage_unit']).attr('disabled','disabled');;
+                    el3=$('<td>').append(el3);
+                    $(row).append(el3);
+
+                    var el4=$('<input style="width:220px;">');
+                    $(el4).val(actual_mediplan[i]['comments']).attr('disabled','disabled');;
+                    el4=$('<td>').append(el4);
+                    $(row).append(el4);
+                }
+            }
+        });
+
+
+    var mediplan_dialog=null;
+    var active_recipe_row=null;
+    $(document).on('click', '.receipt_background .rcbutt', function(){
+        var receipt_field = $(this).prev();
+        active_recipe_row = receipt_field;
+        $(mediplan_dialog).dialog({'width':'auto','height':'auto', 'title':'Aktuelle Medikamente des Patienten'});
+    });
+
+		$('.lsearch').live('change', function() {
+//			var input_row = parseInt($(this).attr('id').substr(('line').length));
+//			$('#line'+input_row).val('');
+		}).liveSearch({
+			url: 'ajax/mmitext?q=',
+			id: 'livesearch_receipt_mmi',
+//			aditionalWidth: '300',
+			allowSameValue: true,
+			noResultsDelay: '700',
+			typeDelay: '900',
+			returnRowId: function (input) {return parseInt($(input).attr('id').substr(('line').length));}
+		});
+
+    });
+
+
+	function selectText(did, row)
+	{
+		$('#line'+row).val($('#text_'+did).val());
+	}
+	
+    var active_recipe_row=null;
+
+    $(document).on('click', '.receipt_background .rcbutt', function(){
+        var receipt_field = $(this).prev();
+        active_recipe_row = receipt_field;
+    });
+
+    $('.form_btnsubmit').click(function() {
+        var status = $(this).attr('rel');
+        $('#post_status').val(status);
+
+        if(status == 'save_receipt'){
+            $(this).attr('disabled', true);
+            $('#CreTtemFurthFrm').submit();
+        } else {
+            $(this).attr('disabled', true);
+            var self = this;
+        }
+    });
+	
+	function selectMedications(mid, row)
+	{
+		$('#medication'+row).val($('#medi_me_'+mid).val());
+	}
+
+</script>
+
+
+<?php echo $this->patientinfo;?>
+<?php echo $this->tabmenus;?>
+
+
+<?php
+$that = $this->fdata;
+?>
+
+
+<form id="CreTtemFurthFrm" action="" method="post">
+    <div class="tab_container" style="width: 815px;">
+        <div class="receipt_background" >
+            <input type="hidden" name="receipt_type" value="kv" />
+            <!-- topright-->
+            <input type="checkbox" class="rcb" name="bvg" value="6" style=" left:512px; top:48px;" <? if ($that['bvg'] == 1) { echo "checked='checked'"; } ?>/>
+            <input type="checkbox" class="rcb" name="mttel" value="7" style=" left:540px; top:48px;" />
+            <input type="checkbox" class="rcb" name="soff" value="8" style=" left:568px; top:48px;" />
+            <input type="checkbox" class="rcb" name="bedaf" value="9" style=" left:596px; top:48px;" />
+            <input type="checkbox" class="rcb" name="pricht" value="10" style=" left:636px; top:48px;" />
+
+            <!-- leftcol-->
+            <input type="checkbox" class="rcb" style="left:11px; top: 42px; background: none repeat scroll 0% 0% transparent;" name="getiuhrfrei[]" value="1" id="rceipt_form_chek1" <? if ($that['getiuval'] == 1) { echo "checked='checked'"; } ?> />
+            <input type="checkbox" class="rcb" style="left:11px; top: 78px; background: none repeat scroll 0% 0% transparent;" name="getiuhrfrei[]" value="2" id="rceipt_form_chek2" <? if ($that['getiuval'] == 2) { echo "checked='checked'"; } ?> />
+            <input type="checkbox" class="rcb" style="left:11px; top:115px; background: none repeat scroll 0% 0% transparent;" name="getiuhrfrei[]" value="3" id="rceipt_form_chek3"  />
+            <input type="checkbox" class="rcb" style="left:11px; top:163px; background: none repeat scroll 0% 0% transparent;" name="getiuhrfrei[]" value="4" id="rceipt_form_chek4"  />
+            <input type="checkbox" class="rcb" style="left:11px; top:212px; background: none repeat scroll 0% 0% transparent;" name="getiuhrfrei[]" value="5" id="rceipt_form_chek5"  />
+            <input type="checkbox" class="rcb" style="left:11px; top:260px; background: none repeat scroll 0% 0% transparent;" name="getiuhrfrei[]" value="6" id="rceipt_form_chek6"  />
+            <!-- insu-->
+            <input type="text" class="rtx" style=" left:48px; top:38px; width:435px;" name="insurancecomname" id="rceipt_form_NameGebInpt" value="<? echo $that['insurance_com_name'] ?>" />
+            <!-- name-->
+            <input type="text" class="rtx" style=" left: 48px; top:86px; width:300px;" name="patientlastname"  value="<? echo $that['patientlastname']  ?>" />
+            <input type="text" class="rtx" style=" left: 48px; top:110px; width:300px;" name="patientfirstname" value="<? echo $that['patientfirstname'] ?>" />
+            <input type="text" class="rtx" style=" left: 48px; top:134px; width:300px;" name="street"           value="<? echo $that['street'] ?>"           />
+            <input type="text" class="rtx" style=" left: 48px; top:158px; width: 60px;" name="zipcode"          value="<? echo $that['zip'] ?>"              />
+            <input type="text" class="rtx" style=" left:114px; top:158px; width:234px;" name="city"             value="<? echo $that['city'] ?>"             />
+
+            <!-- bdate-->
+            <input type="text" class="rtx" style=" left:380px; top:120px; width:103px; text-align:center;" name="birthdate" id="rceipt_form_NameGebInpt"  value="<? echo $that['bdate'] ?>" />
+            <!-- kassennr, versnr, status-->
+            <input type="text" class="rtx" style=" left: 48px; top:205px; width:110px;" name="kassenno"    id="rceipt_form_NameKassennrinpt"  value="<? echo $that['kassen_no'] ?>"        />
+            <input type="text" class="rtx" style=" left:169px; top:205px; width:181px;" name="insuranceno" id="Pallnet_VersichenInpt"         value="<? echo $that['insurance_no'] ?>"     />
+            <input type="text" class="rtx" style=" left:364px; top:205px; width:119px;" name="status"      id="rceipt_form_StatusInpt"        value="<? echo $that['insurance_status'] ?>" />
+            <!-- bsnr, arztnr, datum-->
+            <input type="text" class="rtx" style=" left: 48px; top:252px; width:144px;" name="betriebsstatten_nr" id="rceipt_form_VertagsNrinpt"   value="<? echo $that['betriebsstatten_nr'] ?>"/>
+            <input type="text" class="rtx" style=" left:203px; top:252px; width:147px;" name="lanr"               id="rceipt_form_VkgulbisInpt"    value="<? echo $that['lanr'] ?>"/>
+            <input type="text" class="rtx" style=" left:364px; top:252px; width:119px;" name="datum"              id="rceipt_form_VkGutBisinpt"    value="<? echo date('d.m.Y'); ?>"/>
+
+
+
+                <div class="userstamps" style="position:absolute; left:610px; top:310px; text-align:right; width:190px;">
+
+                    <input type="hidden" name="userstamp1" id="userstamp1" value="<? echo $this->userstamp1 ?>" />
+                    <input type="hidden" name="userstamp2" id="userstamp2" value="<? echo $this->userstamp2 ?>" />
+                    <input type="hidden" name="userstamp3" id="userstamp3" value="<? echo $this->userstamp3 ?>" />
+                    <input type="hidden" name="userstamp4" id="userstamp4" value="<? echo $this->userstamp4 ?>" />
+                    <input type="hidden" name="userstamp5" id="userstamp5" value="<? echo $this->userstamp5 ?>" />
+                    <input type="hidden" name="userstamp6" id="userstamp6" value="<? echo $this->userstamp6 ?>" />
+                    <input type="hidden" name="userstamp7" id="userstamp7" value="<? echo $this->userstamp7 ?>" />
+                    <div class="ClrBoth"></div>
+                    <? if ($this->showselect == 1): ?>
+
+                        <?php if($this->multiplestamps_option === true): ?>
+                            <div class="userstamps">
+                                <label>Stempeldaten</label>
+                                <select id="stampusers" name="stampusers">
+                                    <option value=""><? echo $this->translate('selectuserstamp')?></option>
+                                    <? foreach($this->users_mstamps as $user=>$stamp):?>
+                                        <optgroup label="<? echo $stamp['user_name'];?>" value="<? echo $stamp['user_id'];?>">
+                                            <? foreach( $stamp['user_stamps'] as  $stamp_id => $stamp_name):?>
+                                                <option value="<? echo $stamp['user_id'];?>-<? echo $stamp_id;?>" ><? echo $stamp_name;?></option>
+                                            <? endforeach;?>
+                                        </optgroup>
+                                    <? endforeach;?>
+                                </select>
+                            </div>
+                        <? else: ?>
+                            <div class="userstamps">
+                                <label>Stempeldaten</label>
+                                <? echo $this->formSelect('stampusers', $this->users, null, $this->users); ?>
+                            </div>
+                        <? endif; ?>
+
+                    <? endif; ?>
+                </div>
+            <?PHP
+            $rcbuttval="MMI Suche";
+            if(!$this->show_pi){
+                $rcbuttval="Medplan";
+            }
+
+            ?>
+
+            <input type="checkbox" class="rcb" style="left:11px; top:332px; background: none repeat scroll 0% 0% transparent;" name="getiuhrfrei[]" value="8"  id="rceipt_form_chek8" />
+            <input type="text" class="rtx livesearchmedinp" style="left:48px; top:307px; width:440px;" name="med1" id="medication1" maxlength="46" autocomplete="off" />
+            <input type="button" class="rcbutt" style=" left:500px; top:307px;" value="<?php echo $rcbuttval;?>" />
+
+            <input type="text" class="rtx lsearch" style=" left:48px; top:331px; width:515px;" name="line1" id="line1" maxlength="46" />
+			
+            <input type="checkbox" class="rcb" style="left:11px; top:381px; background: none repeat scroll 0% 0% transparent;" name="getiuhrfrei[]" value="9"  id="rceipt_form_chek9" />
+            <input type="text" class="rtx livesearchmedinp" style=" left:48px; top:356px; width:440px;" name="med4" id="medication4" maxlength="46" autocomplete="off"  />
+            <input type="button" class="rcbutt" style=" left:500px; top:356px;" value="<?php echo $rcbuttval;?>" />
+
+			<input type="text" class="rtx lsearch" style=" left:48px; top:379px; width:515px;" name="line2" id="line2" maxlength="46" />
+			
+            <input type="checkbox" class="rcb" style="left:11px; top:430px; background: none repeat scroll 0% 0% transparent;" name="getiuhrfrei[]" value="10" id="rceipt_form_chek10" />
+            <input type="text" class="rtx livesearchmedinp" style=" left:48px; top:405px; width:440px;" name="med7" id="medication7" maxlength="46" autocomplete="off"  />
+            <input type="button" class="rcbutt" style=" left:500px; top:405px;" value="<?php echo $rcbuttval;?>" />
+			
+			<input type="text" class="rtx lsearch" style=" left:48px; top:428px; width:515px;" name="line3" id="line3" maxlength="46" />
+        </div>
+
+		<input type="hidden" name="receipt_type" id="receipt_type" value="kv_blank" />
+        <div align="center" style="margin-top:36px;">
+            <input class="form_btnsubmit btnsubmit_usersessions" name="btnsubmit" type="submit" value="Drucken" rel="print_receipt"/>&nbsp;&nbsp;&nbsp;&nbsp;
+
+            <input class="form_btnsubmit btnsubmit_usersessions" name="btnsavepdf" type="submit" value="speichern und in Dokumente ablegen" rel="save_receipt"/>&nbsp;&nbsp;&nbsp;&nbsp;
+
+        </div>
+
+</form>

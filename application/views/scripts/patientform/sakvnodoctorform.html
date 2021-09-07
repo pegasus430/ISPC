@@ -1,0 +1,1412 @@
+<?
+$this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/page-css/kvno_doctorform_style.css');
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/autogrow/jquery.elastic.js');
+$this->headScript()->appendFile(RES_FILE_PATH . '/javascript/dragdiv/dragdivpatient.js');
+?>
+<script type="text/javascript">
+	var jscount = '0';
+	var jsmedcount = '0';
+	var medcount = '<?php echo $this->mcntr + 1 ?>';
+	var jcount = '<?php echo $this->jscount + 1 ?>';
+	var dcntr = '<?php echo $this->dcntr ?>';
+	var medblur = Array();
+	var jsusers = <?php echo $this->jsusers; ?>;
+	var detailscookies = '<?php echo $this->detailscookies; ?>';
+	var route_error = "<?php echo $this->route_error; ?>";// TODO-1211
+
+//medications
+	function selectMedications(mid, row)
+	{
+		$('#medication'+row).val($('#medi_me_'+mid).val());
+		$('#comment'+row).val($('#medi_comment_'+mid).val());
+		$('#hidd_medication'+row).val($('#medi_id_'+mid).val());
+	}
+	function reset_medications(input_row)
+	{
+		if($('#hidd_medication'+input_row).val()){
+			$('#hidd_medication'+input_row).val('');
+			$('#drid'+input_row).val('');
+		}
+	}
+
+	function createnewmedic()
+	{
+		var usrstr = "";
+		for(var i in jsusers)
+		{
+			usrstr +='<option value="'+i+'">'+jsusers[i]+'</option>';
+		}
+
+		var userdrop = '<select name="add[verordnetvon]['+medcount+']">'+usrstr+'</select>';
+		var trInnerHtml = $('<tr id="medadd'+medcount+'"><td align="left" valign="top"><input name="add[medication]['+medcount+']" value="" id="medication'+medcount+'" type="text" class="livesearchmedinp med"><input name="add[hidd_medication]['+medcount+']" value="" id="hidd_medication'+medcount+'" type="hidden"></td><td align="left" valign="top"><input  name="add[dosage]['+medcount+']" id="dosage" class="dosage" value=""  /></td><td align="left" valign="top"><input  name="add[comments]['+medcount+']" value=""   id="comment'+medcount+'"  /></td><td align="left" valign="top">'+userdrop+'</td><td width="60" align="left" valign="top"><a href="javascript:void(0)" onclick="removeElem(\'#medadd'+medcount+'\')"><img src="<?php echo RES_FILE_PATH; ?>/images/action_delete.png" border="0" /></a></td></tr>');
+
+		$('#medaddtable').append(trInnerHtml);
+
+		$('#medication'+medcount).bind('keyup keydown change paste',function(){
+			//livesearch medications ls
+			$(this).live('change', function() {
+				var input_row = parseInt($(this).attr('id').substr(('medication').length));
+				reset_medications(input_row);
+			}).liveSearch({
+				url: 'ajax/medications?q=',
+				id: 'livesearch_admission_medications',
+				aditionalWidth: '300',
+				noResultsDelay: '900',
+				typeDelay: '900',
+				returnRowId: function (input) {return parseInt($(input).attr('id').substr(('medication').length));}
+			});
+		});
+		medcount++;
+	}
+
+	function createnewmedicrowbedarf()
+	{
+
+		var usrstr = "";
+		for(var i in jsusers)
+		{
+			usrstr +='<option value="'+i+'">'+jsusers[i]+'</option>';
+		}
+
+
+
+		var userdrop = '<select name="verordnetvon['+medcount+']">'+usrstr+'</select>';
+
+		var trInnerHtml = $('<tr id="medadd'+medcount+'"><td align="left" valign="top"><input name="addbedarf[medication]['+medcount+']" value="" id="medication'+medcount+'" type="text" class="livesearchmedinp med"><input name="addbedarf[hidd_medication]['+medcount+']" value="" id="hidd_medication'+medcount+'" type="hidden"><div id="medidropdown'+medcount+'" style="position:absolute;display:none;" class="listPatMedEd livesearchdropdown"></div></td><td align="left" valign="top"><input  name="addbedarf[dosage]['+medcount+']" id="dosage" class="dosage" value=""  /></td><td align="left" valign="top"><input  name="addbedarf[comments]['+medcount+']" value=""   id="comment'+medcount+'" /></td><td align="left" valign="top">'+userdrop+'</td><td width="60" align="left" valign="top"><a href="javascript:void(0)" onclick="delmedicationRow('+medcount+');removeElem(\'#medadd'+medcount+'\')"><img src="<?php echo RES_FILE_PATH; ?>/images/action_delete.png" border="0" /></a></td></tr>');
+
+		$('#medbedarfaddtable').append(trInnerHtml);
+
+		$('#medication'+medcount).bind('keyup keydown change paste',function(){
+			//livesearch medications ls
+			$(this).live('change', function() {
+				var input_row = parseInt($(this).attr('id').substr(('medication').length));
+				reset_medications(input_row);
+			}).liveSearch({
+				url: 'ajax/medications?q=',
+				id: 'livesearch_admission_medications',
+				aditionalWidth: '300',
+				noResultsDelay: '900',
+				typeDelay: '900',
+				returnRowId: function (input) {return parseInt($(input).attr('id').substr(('medication').length));}
+			});
+		});
+		medcount++;
+	}
+
+	function removeElem(ids) {
+		$(ids).remove();
+	}
+
+	function removeMedicationKvno(mid,pid)
+	{
+		if(mid>0)
+		{
+			ajaxCallserver({
+				url:'patient/patientmedication?mid='+mid+'&id='+pid+'&act=del&noredir=1'
+			});
+		}
+		$("#line_"+mid).remove();
+	}
+	function delmedicationRow(did,patidencrypted)
+	{
+
+		if(did && $('#hidd_medication'+did).val())
+		{
+
+			ajaxCallserver({
+				url:'patient/patientmedication?id='+patidencrypted+'&delid='+did+'&mid='+did+'&act=del&noredir=1' //mid for trigger when deleteing the row
+			});
+		}
+	}
+	function renewMedicationKvno(mid,pid)
+	{
+		if(mid>0){
+			ajaxCallserver({
+				url:'patient/patientmedication?mid='+mid+'&id='+pid+'&act=rnw&noredir=1'
+			});
+		}
+		$("#line_r_"+mid).remove();
+	}
+
+$(function() {//MEDICATION - SEARCH, REMOVE, RENEW -----------Start
+		$('input.livesearchmedinp, input.med_date, input.dosage, input.med, input.comment, select.user_selector').live('change keyup', function() {
+			if ($(this).hasClass('livesearchmedinp')) {
+				var input_row = parseInt($(this).attr('id').substr(('medication').length)); //med name
+			} else if ($(this).hasClass('med_date')) {
+				var input_row = parseInt($(this).attr('rel').substr(('med_date').length)); //change date
+			} else if ($(this).hasClass('dosage')) {
+				var input_row = parseInt($(this).attr('id').substr(('dosage').length)); //dosage
+			} else if ($(this).hasClass('med') || $(this).hasClass('comment')) {
+				var input_row = parseInt($(this).attr('id').substr(('comment').length)); //comment
+			} else if ($(this).hasClass('user_selector')) {
+				var input_row = parseInt($(this).attr('id').substr(('verordnetvon-').length)); //doctor
+			}
+
+			$('#edited' + input_row).val('1');
+		});
+
+	   /*======================= LIVESEARCH MEDICATIONS  ======================================*/
+		$('.livesearchmedinp').live('change', function() {
+			var input_row = parseInt($(this).attr('id').substr(('medication').length));
+			reset_medications(input_row);
+		}).liveSearch({
+			url: 'ajax/medications?q=',
+			id: 'livesearch_admission_medications',
+			aditionalWidth: '300',
+			noResultsDelay: '900',
+			typeDelay: '900',
+			returnRowId: function (input) {return parseInt($(input).attr('id').substr(('medication').length));}
+		});
+
+		/*======================= MEDICATIONS DATE PICKER ======================================*/
+	   $('.med_date').datepicker({
+			dateFormat: 'dd.mm.yy',
+			buttonImageOnly: true,
+			changeMonth: true,
+			changeYear: true,
+			nextText: '',
+			prevText: '',
+			onSelect: function(){
+				var input_row = parseInt($(this).attr('rel').substr(('med_date').length));
+				$('#edited' + input_row).val('1');
+
+			}
+		});
+
+		$(".med_date").mask("99.99.9999");
+
+		/*======================= RENEW MEDICATION  ======================================*/
+		$(".renew_ajx, .renew_ajx_bedarfs").live('click', function(e){
+			e.preventDefault();
+			//get row id
+			var tridrn = $(this).closest('tr').attr('id');
+			//get medication edit count rows
+			var cntren = Number($('#jsmedadd').val()) +1;
+
+			//split row id and get numeric medis id
+			var id = tridrn.split('_');
+			var that = $(this);
+			$("#"+tridrn).each(function() {
+				var dateren = $(this).find(".datern_"+id[2]).text();
+				var medsren = $(this).find(".medsrn_"+id[2]).text();
+				var pid = "<?php echo $_GET['id']; ?>";
+				var dsgren = $(this).find(".dsgrn_"+id[2]).text();
+				var commren = $(this).find(".commrn_"+id[2]).text();
+				var usrnameren = $(this).find(".usrnamern_"+id[2]).text();
+				var usr_addren = $(this).find(".usr_id_add_"+id[2]).text();
+				var hidd_medisren = $(this).find(".hidd_medicationrn_"+id[2]).text();
+				var usrren = $(this).find(".usrid_"+id[2]).text();
+				var users = <?php echo  json_encode($this->users); ?>;
+				var options = '';
+				var i = 1;
+
+				$.each(users, function(key, value){
+					if(key == usrren){
+						options += "<option selected=\"selected\" value=\""+key+"\">"+value+"</option>"
+					} else {
+						options += "<option value=\""+key+"\">"+value+"</option>"
+					}
+				});
+
+				if($(that).hasClass('renew_ajx')) {
+					var date_now = "<?php echo date('d.m.Y')?>";
+					var trrenewNou = '<tr id="line_'+id[2]+'" alt="'+cntren+'">';
+					  trrenewNou += '<td align="left" valign="top"><input name="medication_change['+cntren+']" value="'+date_now+'" id="renew_change_date_'+cntren+'" type="text" class="med_date date_line_'+id[2]+' "><input name="replace_with['+cntren+']" value="change" type="hidden"></td>';
+					  trrenewNou += '<td align="left" valign="top"><input name="medication['+cntren+']" value="'+medsren+'" id="medication'+cntren+'" type="text" class="livesearchmedinp med meds_line_'+id[2]+'"><input name="hidd_medication['+cntren+']" value="'+hidd_medisren+'" id="hidd_medication'+cntren+'" type="hidden"><input type="hidden" id="drid" name="drid['+cntren+']" value="'+id[2]+'"><div id="medidropdown'+cntren+'" style="position:absolute;display:none;" class="listPatMedEd livesearchdropdown"></div></td>';
+					  trrenewNou += '<td align="left" valign="top"><input name="dosage['+cntren+']" id="dosage" class="dosage dsg_line_'+id[2]+'" value="'+dsgren+'"></td>';
+					  trrenewNou += '<td align="left" id="line_'+id[2]+'_row" valign="top"><!--<textarea name="comments['+cntren+']" cols="25 " rows="6" id="comment"></textarea>--><input name="comments['+cntren+']" class="med comm_line_'+id[2]+'" value="'+commren+'"></td>';
+					  trrenewNou += '<td width="120" id="line_'+id[2]+'_row" align="left" valign="top" class="usrname_line_'+id[2]+'">'+usrnameren+'</td>';
+					  trrenewNou += '<td align="left" id="line_'+id[2]+'_row" valign="top"><select name="verordnetvon['+cntren+']" id="verordnetvon-'+cntren+'">'+options+'</select></td>';
+					  trrenewNou += '<td align="left" valign="top"><a href="javascript:void(0)" class="remove_tr" ><img src="images/action_delete.png" border="0" /></a></td>';
+					  trrenewNou += '</tr>';
+
+					$("#listpatientmedicationedit_medicationtable").append(trrenewNou);
+
+					$('#renew_change_date_'+cntren).datepicker({
+						dateFormat: 'dd.mm.yy',
+						buttonImageOnly: true,
+						changeMonth: true,
+						changeYear: true,
+						nextText: '',
+						prevText: ''
+					});
+
+				} else if($(that).hasClass('renew_ajx_bedarfs')) {
+
+					var date_now = "<?php echo date('d.m.Y')?>";
+
+					var trrenewNou = '<tr id="line_'+id[2]+'" alt="'+cntren+'">';
+					trrenewNou += '<td align="left" valign="top"><input name="medication_change['+cntren+']" value="'+date_now+'" id="renew_bedarf_change_date_'+cntren+'" type="text" class="med_date date_line_'+id[2]+' "><input name="replace_with['+cntren+']" value="change" type="hidden"></td>';
+					trrenewNou += '<td align="left" valign="top"><input name="medication['+cntren+']" value="'+medsren+'" id="medication'+cntren+'" type="text" class="livesearchmedinp med meds_line_'+id[2]+'"><input name="hidd_medication['+cntren+']" value="'+hidd_medisren+'" id="hidd_medication'+cntren+'" type="hidden"><input type="hidden" id="drid" name="drid['+cntren+']" value="'+id[2]+'"><div id="medidropdown'+cntren+'" style="position:absolute;display:none;" class="listPatMedEd livesearchdropdown"></div></td>';
+					trrenewNou += '<td align="left" valign="top"><input name="dosage['+cntren+']" id="dosage" class="dosage dsg_line_'+id[2]+'" value="'+dsgren+'"></td>';
+					trrenewNou += '<td align="left" id="line_'+id[2]+'_row" valign="top"><!--<textarea name="comments['+cntren+']" cols="25 " rows="6" id="comment"></textarea>--><input name="comments['+cntren+']" class="med comm_line_'+id[2]+'" value="'+commren+'"></td>';
+					trrenewNou += '<td width="120" id="line_'+id[2]+'_row" align="left" valign="top" class="usrname_line_'+id[2]+'">'+usrnameren+'</td>';
+					trrenewNou += '<td align="left" id="line_'+id[2]+'_row" valign="top"><select name="verordnetvon['+cntren+']" id="verordnetvon-'+cntren+'">'+options+'</select></td>';
+					trrenewNou += '</tr>';
+
+					$("#listpatientmedicationedit_bedarfsmedicationtable").append(trrenewNou);
+
+					$('#renew_bedarf_change_date_'+cntren).datepicker({
+						dateFormat: 'dd.mm.yy',
+						buttonImageOnly: true,
+						changeMonth: true,
+						changeYear: true,
+						nextText: '',
+						prevText: ''
+					});
+				}
+
+				$('#jsmedadd').val(cntren);
+				renewMedicationKvno(id[2], pid);
+				var medsren = '';
+
+
+			});
+		});
+
+		/*======================= REMOVE MEDICATION ROW ======================================*/
+		$(".remove_tr").live('click', function(){
+			var trid = $(this).closest('tr').attr('id');
+			var cnt = $("#"+trid).attr('alt');
+			var id = trid.split('_');
+			var pid = "<?php echo $_GET['id']; ?>";
+
+			$("#"+trid).each(function() {
+				var date = "<?php echo date('d.m.Y'); ?>";
+				var meds = $(this).find(".meds_"+trid).val();
+				var dsg = $(this).find(".dsg_"+trid).val();
+				var comm = $(this).find(".comm_"+trid).val();
+				var hidd_medis = $(this).find("#hidd_medication"+cnt).val();
+				var usr_add = $(this).find(".usrname_"+trid).text();
+				var usr = $(this).find("#verordnetvon-"+cnt+" option:selected").text();
+				var usr_id = $(this).find("#verordnetvon-"+cnt+" option:selected").val();
+
+				var trnou = '<tr class="row" id="line_r_'+id[1]+'">';
+					trnou +='<td height="20" align="left" class="datern_'+id[1]+'" valign="top">'+date+'</td>';
+					trnou +='<td height="20" align="left" valign="top" class="hidd_medicationrn_'+cnt+'" style="display: none;">'+hidd_medis+'</td>';
+					trnou +='<td align="left" valign="top" class="medsrn_'+id[1]+'"><font color="#777777">'+meds+'</font> </td>';
+					trnou +='<td align="left" valign="top" class="dsgrn_'+id[1]+'">'+dsg+'</td><td align="left" valign="top" class="commrn_'+id[1]+'">'+comm+'</td>';
+					trnou +='<td align="left" valign="top"><a href="javascript:void(0)" class="renew_ajx"><img src="<?php echo RES_FILE_PATH; ?>/images/action_renew.png" border="0"></a></td>';
+					trnou +='<td height="20" align="left" valign="top" class="usrnamern_'+id[1]+'">'+usr_add+'</td><td height="20" align="left" valign="top">'+usr+'</td>';
+					trnou +='<td valign="top" height="20" align="left" class="usrid_'+id[1]+'" style="display:none;">'+usr_id+'</td>';
+					trnou +='</tr>';
+
+				$("#listpatientmedication_contenttabel").append(trnou);
+				removeMedicationKvno(id[1],pid);
+			});
+
+		});
+}); //MEDICATION - SEARCH, REMOVE, RENEW -----------End
+
+
+	// make the textarea grow
+	  $(function() {
+	        $('textarea').elastic();
+	    });
+
+	function getSelected(dbvalue,fieldname)
+	{
+		var fieldarray = document.getElementsByName(fieldname);
+		for(i=0; i<fieldarray.length;i++)
+		{
+			if(fieldarray[i].value==dbvalue)
+			{
+				fieldarray[i].checked = true;
+			}
+		}
+	}
+	function showbox(val)
+	{
+		if(val.value=="4")
+		{
+			$("#otherdivid").show();
+		}else{
+			$("#otherdivid").hide();
+		}
+	}
+
+	 function isInteger(k)
+	 {
+	 	var s = document.getElementById('input_value'+k).value;
+	 	var chars = "0123456789";
+
+	 	if(s>10)
+	 	{
+	 	  document.getElementById('input_value'+k).value = "";
+	 	  return false;
+	 	}
+
+	 	var i;
+	 	s = s.toString();
+	     for (i = 0; i < s.length; i++)
+	     {
+	     	var c = s.charAt(i);
+	         if (chars.indexOf(c)==-1)
+	 	    {
+	 			document.getElementById('input_value'+k).value = "";
+	 			return false;
+	 	    }
+	     }
+	       return true;
+	 }
+
+		$(document).ready(function(){
+			
+			// TODO-1211
+	 		if(route_error == 1){
+	 			alert('<?php echo $this->translate('route_calculation_error'); ?>')
+	 		}
+			$("#vizit_date").mask("99.99.9999");
+			 $('*').keypress(function(event){
+		        if(event.keyCode == 13 && event.target.nodeName!='TEXTAREA')
+		        {
+		          event.preventDefault();
+		          return false;
+		        }
+		    });
+
+			//**********************last checkbox row ***********************//
+
+			var somatisch   =   ["1","2","4","5","6","7","8","10"];
+			var koord   =   ["11","16","17"];
+			var psycho   =   ["9","12","13","14","15"];
+			var checkme = '';
+
+			<?php if(empty($this->kvno_doc_id)): ?>
+				$('#koord').attr('checked', true);
+			<?php endif; ?>
+
+			$(".kvnosymp_input").blur(function(){
+				var sympid = $(this).attr('id').replace('input_value','');
+				var somatisch_chk = 0;
+				var koord_chk = 0;
+				var psycho_chk = 0;
+
+				$.each(somatisch, function(i, obj) {
+					if($('#input_value' + obj).val() > 2){
+						somatisch_chk = 1;
+					}
+				});
+
+				$.each(psycho, function(i, obj) {
+					if($('#input_value' + obj).val() > 2){
+						psycho_chk = 1;
+					}
+				});
+
+				$.each(koord, function(i, obj) {
+					if($('#input_value' + obj).val() > 2){
+						koord_chk = 1;
+					}
+				});
+
+				if(somatisch_chk == 0 && psycho_chk == 0){
+					koord_chk = 1;
+				}
+
+				if(somatisch_chk == 1){
+					$('#somatisch').attr('checked', true)
+					$('#koord').attr('checked', false)
+				} else {
+					$('#somatisch').attr('checked', false)
+				}
+
+				if(psycho_chk == 1){
+					$('#psycho').attr('checked', true)
+					$('#koord').attr('checked', false)
+				} else {
+					$('#psycho').attr('checked', false)
+				}
+
+				if(koord_chk == 1){
+					$('#koord').attr('checked', true)
+				}
+
+			});
+
+
+			$('#psycho').bind('click',function(){
+				if($('#psycho').attr('checked') == true) {
+					$('#koord').attr('checked', false)
+				}
+			});
+
+			$('#ethisch').bind('click',function(){
+				if($('#ethisch').attr('checked') == true) {
+					$('#koord').attr('checked', false)
+				}
+			});
+
+			$('#somatisch').bind('click',function(){
+				if($('#somatisch').attr('checked') == true) {
+					$('#koord').attr('checked', false)
+				}
+			});
+
+
+			//**********************last checkbox row end ***********************//
+
+//**************************************** befund radio *********************************//
+
+
+			if($('#kopfb:checked').val() == 2){
+			    $('#kopf_textdiv').show();
+			}
+
+			if($('#thoraxb:checked').val() == 2){
+			    $('#thorax_textdiv').show();
+			}
+
+			if($('#abdomenb:checked').val() == 2){
+			    $('#abdomen_textdiv').show();
+			}
+
+			if($('#extremitatenb:checked').val() == 2){
+			    $('#extremitaten_textdiv').show();
+			}
+
+			if($('#haut_wundenb:checked').val() == 2){
+			    $('#haut_wunden_textdiv').show();
+			}
+
+			if($('#neurologisch_psychiatrischb:checked').val() == 2){
+			    $('#neurologisch_psychiatrisch_textdiv').show();
+			}
+
+			$("input[name=kopf]").bind('click',function() {
+
+			    if($(this).val() == 2){
+				$('#kopf_textdiv').show();
+			    } else {
+				$('#kopf_text').val("");
+				$('#kopf_textdiv').hide();
+			    }
+			});
+			$("input[name=thorax]").bind('click',function() {
+			    if($(this).val() == 2){
+				$('#thorax_textdiv').show();
+			    } else {
+				$('#thorax_text').val("");
+				$('#thorax_textdiv').hide();
+			    }
+			});
+			$("input[name=abdomen]").bind('click',function() {
+			    if($(this).val() == 2){
+				$('#abdomen_textdiv').show();
+			    } else {
+				$('#abdomen_text').val("");
+				$('#abdomen_textdiv').hide();
+			    }
+			});
+			$("input[name=extremitaten]").bind('click',function() {
+			     if($(this).val() == 2){
+				$('#extremitaten_textdiv').show();
+			    } else {
+				$('#extremitaten_text').val("");
+				$('#extremitaten_textdiv').hide();
+			    }
+			});
+			$("input[name=haut_wunden]").bind('click',function() {
+			    if($(this).val() == 2){
+				$('#haut_wunden_textdiv').show();
+			    } else {
+				$('#haut_wunden_text').val("");
+				$('#haut_wunden_textdiv').hide();
+			    }
+			});
+			$("input[name=neurologisch_psychiatrisch]").bind('click',function() {
+			    if($(this).val() == 2){
+				$('#neurologisch_psychiatrisch_textdiv').show();
+			    } else {
+				$('#neurologisch_psychiatrisch_text').val("");
+				$('#neurologisch_psychiatrisch_textdiv').hide();
+			    }
+			});
+
+
+//***************************************** befund radio end ***********************************//
+
+//**************************************** Stammdaten checkboxes *********************************//
+
+
+            // port
+			if($('#kvno_port_notok:checked').val() == 2){
+			    $('#kvno_port_textdiv').show();
+			}
+
+			$("input[name=kvno_port]").bind('click',function() {
+
+			    if($(this).val() == 2){
+					$('#kvno_port_textdiv').show();
+			    } else {
+					$('#kvno_port_text').val("");
+					$('#kvno_port_textdiv').hide();
+			    }
+			});
+
+			// besonderer Aus-/ Eingang
+			if($('#kvno_kunstliche_notok:checked').val() == 2){
+			    $('#kvno_kunstliche_textdiv').show();
+			}
+
+			$("input[name=kvno_kunstliche]").bind('click',function() {
+
+			    if($(this).val() == 2){
+				$('#kvno_kunstliche_textdiv').show();
+			    } else {
+				$('#kvno_kunstliche_text').val("");
+				$('#kvno_kunstliche_textdiv').hide();
+			    }
+			});
+
+			//Pumps
+			if($('#kvno_pumpe_notok:checked').val() == 2){
+			    $('#kvno_pumps_textdiv').show();
+			}
+
+			$("input[name=kvno_pumps]").bind('click',function() {
+
+			    if($(this).val() == 2){
+				$('#kvno_pumps_textdiv').show();
+			    } else {
+				$('#kvno_pumps_text').val("");
+				$('#kvno_pumps_textdiv').hide();
+			    }
+			});
+
+			//DK
+			if($('#kvno_dauerkatheter_notok:checked').val() == 2){
+			    $('#kvno_dk_textdiv').show();
+			}
+
+			$("input[name=kvno_dk]").bind('click',function() {
+
+			    if($(this).val() == 2){
+				$('#kvno_dk_textdiv').show();
+			    } else {
+				$('#kvno_dk_text').val("");
+				$('#kvno_dk_textdiv').hide();
+			    }
+			});
+
+			// Peg
+			if($('#kvno_peg_notok:checked').val() == 2){
+			    $('#kvno_peg_textdiv').show();
+			}
+
+			$("input[name=kvno_peg]").bind('click',function() {
+
+			    if($(this).val() == 2){
+				$('#kvno_peg_textdiv').show();
+			    } else {
+				$('#kvno_peg_text').val("");
+				$('#kvno_peg_textdiv').hide();
+			    }
+			});
+
+			// Darm
+			if($('#kvno_darm_notok:checked').val() == 2){
+			    $('#kvno_darm_textdiv').show();
+			}
+
+			$("input[name=kvno_darm]").bind('click',function() {
+
+			    if($(this).val() == 2){
+				$('#kvno_darm_textdiv').show();
+			    } else {
+				$('#kvno_darm_text').val("");
+				$('#kvno_darm_textdiv').hide();
+			    }
+			});
+
+			//Blase
+			if($('#kvno_blase_notok:checked').val() == 2){
+			    $('#kvno_blase_textdiv').show();
+			}
+
+			$("input[name=kvno_blase]").bind('click',function() {
+
+			    if($(this).val() == 2){
+				$('#kvno_blase_textdiv').show();
+			    } else {
+				$('#kvno_blase_text').val("");
+				$('#kvno_blase_textdiv').hide();
+			    }
+			});
+
+			//Luftrohre
+			if($('#kvno_luftrohre_notok:checked').val() == 2){
+			    $('#kvno_luftrohre_textdiv').show();
+			}
+
+			$("input[name=kvno_luftrohre]").bind('click',function() {
+
+			    if($(this).val() == 2){
+				$('#kvno_luftrohre_textdiv').show();
+			    } else {
+				$('#kvno_luftrohre_text').val("");
+				$('#kvno_luftrohre_textdiv').hide();
+			    }
+			});
+
+
+			//Ablaufsonde
+			if($('#kvno_ablaufsonde_notok:checked').val() == 2){
+			    $('#kvno_ablaufsonde_textdiv').show();
+			}
+
+			$("input[name=kvno_ablaufsonde]").bind('click',function() {
+
+			    if($(this).val() == 2){
+				$('#kvno_ablaufsonde_textdiv').show();
+			    } else {
+				$('#kvno_ablaufsonde_text').val("");
+				$('#kvno_ablaufsonde_textdiv').hide();
+			    }
+			});
+
+
+//*****************************************Stammdaten checkboxes  end ***********************************//
+			$('#duplicate_visits').dialog({
+				autoOpen: false,
+				title: '<?php echo $this->translate('overlapping_event_modal_title'); ?>',
+				modal: true,
+				buttons: {
+					"<?php echo $this->translate('noconfirm'); ?>": function() {
+						$('#submitform').attr('disabled',false);
+						$( this ).dialog( "close" );
+					},
+					"<?php echo $this->translate('yesconfirm'); ?>": function() {
+						$('#submitform').attr('disabled',true);
+						$('.asubmitform').attr('disabled',true);
+						 $(".ui-button:first").attr("disabled", true)
+						 .addClass("ui-state-disabled").next("button").attr("disabled", true)
+						 .addClass("ui-state-disabled");
+						$('#kvnodoctorform').submit();
+						$( this ).dialog( "close" );
+					}
+				},
+				create:function () {
+			        $(this).closest(".ui-dialog")
+			            .find(".ui-button:first") // the first button
+			            .addClass("asubmitform");
+			    },
+			    close:function () {
+			    	$('.asubmitform').attr('disabled',false),
+					 $(".ui-button:first").attr("disabled", false)
+					 .removeClass("ui-state-disabled").next("button").attr("disabled", false)
+					 .removeClass("ui-state-disabled");
+			    }
+			})
+
+			function rowBuilder(that) {
+				return '<tr>'
+					+'<td>'+that.id+'</td>'
+					+'<td>'+that.user_details.first_name+ ' ' + that.user_details.last_name +'</td>'
+					+'<td>'+that.start_date+'</td>'
+					+'<td>'+that.end_date+'</td>'
+				+'</tr>';
+
+			}
+
+			$('#submitform, #save_create_doctorletter, #save_visit_edit_letter').bind('click', function(event) {
+
+			event.preventDefault();
+			
+			var error = 0;
+			var ajax_done = 0;
+			var clicked_button_id = $(this).attr('id');
+			
+			$(document).userSession().checksession('abort', function(result) { // new function
+				if(result === false) {
+					event.stopImmediatePropagation(); //stop going forward
+				} else {
+					
+					$("input[name=kvno_medizini_a]:checked").each(function(){
+						if($(this).val() ==  3){
+							if($("textarea[name=kvno_sonstiges]").val().length == 0){
+								error = 1;
+							}
+						}
+					});
+	
+					if($('#kvno_begin_date_h').val() > $('#kvno_end_date_h').val()) {
+						error = 2;
+					}
+	
+					if($('#kvno_begin_date_h').val() == $('#kvno_end_date_h').val()) {
+						if($('#kvno_begin_date_m').val() >= $('#kvno_end_date_m').val()) {
+							error = 3;
+						}
+					}
+	
+					if($('#vizit_date').val() == '') {
+						error = 4;
+					}
+	
+					if($('#kvno_begin_date_h').val() == "" || $('#kvno_end_date_h').val() == "" || $('#kvno_begin_date_m').val() == "" || $('#kvno_end_date_m').val() == "") {
+						error = 5;
+					}
+					
+					if(error == 1) {
+						jAlert('Bitte füllen Sonstiges / Kommentar');
+						return false;
+					} else if(error == 2) {
+						jAlert('Die Zeit der Beendigung des Besuchs sollte später sein als die Anfangszeit.');
+						return false;
+					} else if(error == 3) {
+						jAlert('Die Zeit der Beendigung des Besuchs sollte später sein als die Anfangszeit.');
+						return false;
+					}else if(error == 4) {
+						jAlert('Bitte füllen Beginn datum');
+						return false;
+					}else if(error == 5) {
+						jAlert('Bitte füllen zeit');
+						return false;
+					}
+	
+						if(error == '0') {
+							$.ajax({
+								type: 'POST',
+								url: 'ajax/overlappingcheck?id=<?php echo $_REQUEST['id']; ?>&uid=<?php echo $this->user_id;?>',
+								data: {
+									visit_type: 'D',
+									begin_h: $('#kvno_begin_date_h').val(),
+									begin_m: $('#kvno_begin_date_m').val(),
+									end_h: $('#kvno_end_date_h').val(),
+									end_m: $('#kvno_end_date_m').val(),
+									visit_start: $('#vizit_date').val(),
+									edit_id: '<?php if (!empty($_REQUEST['kvno_doc_id'])): echo $_REQUEST['kvno_doc_id']; else: echo '0'; endif;  ?>'
+								},
+								beforeSend:function(){
+									//loading image
+									$('#submitform').attr('disabled',true);
+									$('#submitform').addClass('loading_button');
+		
+									$('#save_create_doctorletter').attr('disabled',true);
+									$('#save_create_doctorletter').addClass('loading_button');
+
+									$('#save_visit_edit_letter').attr('disabled',true);
+									$('#save_visit_edit_letter').addClass('loading_button');
+									
+									$('#pdfexport').attr('disabled',true);
+									$('#pdfexport').addClass('loading_button');
+									
+									$('#create_letter').val('0'); //just precaution
+								$('#save_visit').val(''); //just precaution
+								$('#go_to_letter').val('0');
+								$('#generate_pdf').val('');
+								},
+								success:function(data){
+								$('button#submitform').removeClass('loading_button');
+								$('button#pdfexport').removeClass('loading_button');
+									$('div.error_fetching').remove();
+		
+								$('button#save_create_doctorletter').removeClass('loading_button');
+									$('#save_create_doctorletter').attr('disabled',false);
+
+								$('button#save_visit_edit_letter').removeClass('loading_button');
+									$('#save_visit_edit_letter').attr('disabled',false);
+		
+									$('#submitform').attr('disabled',false);
+									$('#pdfexport').attr('disabled',false);
+		
+		
+									var visitdata = jQuery.parseJSON(data);
+		
+									$('#visits_body').html(''); //reset table tbody
+		
+								
+								if(visitdata.error != 0){
+									jAlert(visitdata.error);
+									return false;
+								} else{
+									
+									if(visitdata.intersected == 1){
+										if(clicked_button_id == 'submitform'){
+											$('#save_visit').val('1');
+											$('#generate_pdf').val('');
+										} else {
+											$('#save_visit').val('');
+											$('#generate_pdf').val('');
+										}
+	
+										
+										if(clicked_button_id == 'save_create_doctorletter'){
+											$('#create_letter').val('1');
+											$('#generate_pdf').val('');
+										} else {
+											$('#create_letter').val('0');
+											$('#generate_pdf').val('');
+										}
+										
+										if(clicked_button_id == 'save_visit_edit_letter'){
+											$('#go_to_letter').val('1');
+											$('#generate_pdf').val('');
+										} else {
+											$('#go_to_letter').val('0');
+											$('#generate_pdf').val('');
+										}
+										
+										
+										$('#duplicate_visits').dialog('open');
+										return false; // used with modal
+									} else {
+		
+										if(clicked_button_id == 'submitform'){
+											$('#save_visit').val('1');
+											$('#generate_pdf').val('');
+										} else {
+											$('#save_visit').val('0');
+											$('#generate_pdf').val('');
+										}
+										
+										if(clicked_button_id == 'save_create_doctorletter'){
+											$('#create_letter').val('1');
+										} else {
+											$('#create_letter').val('0');
+										}
+		
+										if(clicked_button_id == 'save_visit_edit_letter'){
+											$('#go_to_letter').val('1');
+										} else {
+											$('#go_to_letter').val('0');
+										}
+		
+										$('#submitform').attr('disabled',true);
+										$('#save_create_doctorletter').attr('disabled',true);
+										$('#save_visit_edit_letter').attr('disabled',true);
+										$('#pdfexport').attr('disabled',true);
+										$('#kvnodoctorform').submit();
+		
+									}
+								}									
+								},
+								error:function(){
+									ajax_done = 1;
+								}
+							});
+						}
+					}
+				}); // new function end
+			});
+
+		$('#pdfexport').bind('click', function(event) {
+			event.preventDefault();
+			$(document).userSession().checksession('abort', function(result) { // new function
+				if(result === false) {
+					event.stopImmediatePropagation(); //stop going forward
+				} else {
+					$('#generate_pdf').val('1');
+					
+					$('#submitform').attr('disabled',true);
+					$('#save_create_doctorletter').attr('disabled',true);
+					$('#save_visit_edit_letter').attr('disabled',true);
+					$('#pdfexport').attr('disabled',true);
+					$('#kvnodoctorform').submit();
+				}
+			}); // new function end
+		});
+		
+				$('#pdfexport').bind('click', function() {
+				setTimeout(function () {$('button[type=button]').attr('disabled', true);}, 150);
+				setTimeout(function () {
+				$('button[type=button]').attr('disabled', false);
+				$('#generate_pdf').val('');
+			}, 6000);
+		});
+
+		$('select').change(function(){
+			$('#submitform').attr('disabled',false);
+				});						
+
+		$(function() {
+				$('#vizit_date').datepicker({
+					dateFormat: 'dd.mm.yy',
+					showOn: "both",
+					buttonImage: $('#calImg').attr('src'),
+					buttonImageOnly: true,
+					changeMonth: true,
+					changeYear: true,
+					nextText: '',
+					prevText: '',
+					maxDate: '<?php echo date('d.m.Y'); ?>'
+				 });
+
+			});
+	});
+</script>
+<form action="" name="kvnodoctorform" method="post" id="kvnodoctorform">
+  <div style="display: none"> <img id="calImg" src="<?php echo RES_FILE_PATH;  ?>/images/calendar.png" alt="Popup" class="trigger"> </div>
+  <?php echo $this->patientinfo ?>
+  <?php echo $this->tabmenus ?>
+  <div id="Einzel" class="tab_container"> <br />
+
+
+<div class="kvno_header"><span>Besuchsformular Arzt</span></div>
+
+<div id="Kvno_MainContenOuter" class="anfrageMainOuter Black_border">
+<div class="visit_patient_information">
+<table>
+	<tr>
+		<td><?php echo $this->lastname.', '.$this->firstname;?></td>
+		<td style="border-top: 0;"  width="30%" >&nbsp;</td>
+		<td><?php echo $this->epid;?></td>
+	</tr>
+	<tr>
+		<td style="border-top: 1px solid #000;"><i>Name, Vorname</i></td>
+		<td style="border-top: 0;"  width="30%" >&nbsp;</td>
+		<td style="border-top: 1px solid #000;"><i>Patientennummer</i></td>
+	</tr>
+	<tr>
+		<td colspan="3">&nbsp;</td>
+	</tr>
+	<tr>
+		<td><?php echo $this->street.', '.$this->zip.' '.$this->patcity;?></td>
+		<td></td>
+		<td><?php echo $this->birth;?></td>
+	</tr>
+	<tr>
+		<td style="border-top: 1px solid #000;"><i>Adresse</i></td>
+		<td></td>
+		<td style="border-top: 1px solid #000;"><i>Geb.-Datum</i></td>
+	</tr>
+
+
+</table>
+</div>
+ <div class="kvno_doctor_form">
+ <br/>
+<label for="kvno_begin_date" class="kvno_top_labels">Beginn :</label>
+	<select name="kvno_begin_date_h" id="kvno_begin_date_h">
+	<option value="00">00</option>
+	<?php for ($i=1; $i<=23; $i++){?>
+	 <option value="<?php echo str_pad($i, 2, "0", STR_PAD_LEFT); ?>" <?php if($i == $this->kvno_begin_date_h ){ echo 'selected';}?>><?php echo str_pad($i, 2, "0", STR_PAD_LEFT); ?></option>
+
+	<?php }?>
+	</select>
+	<select name="kvno_begin_date_m" id="kvno_begin_date_m">
+	<option value="00">00</option>
+	<?php for ($i=1; $i<=59; $i++){?>
+
+	 <option value="<?php echo str_pad($i, 2, "0", STR_PAD_LEFT); ?>" <?php if($i == $this->kvno_begin_date_m ){ echo 'selected';}?>><?php echo str_pad($i, 2, "0", STR_PAD_LEFT); ?></option>
+
+	<?php }?>
+	</select>
+<label>Ende:</label>
+	<select name="kvno_end_date_h"  id="kvno_end_date_h">
+	<option value="00">00</option>
+	<?php for ($i=1; $i<=23; $i++){?>
+	 <option value="<?php echo str_pad($i, 2, "0", STR_PAD_LEFT); ?>" <?php if($i == $this->kvno_end_date_h ){ echo 'selected';}?>><?php echo str_pad($i, 2, "0", STR_PAD_LEFT); ?></option>
+
+	<?php }?>
+	</select>
+	<select name="kvno_end_date_m"  id="kvno_end_date_m">
+	<option value="00">00</option>
+	<?php for ($i=1; $i<=59; $i++){?>
+	 <option value="<?php echo str_pad($i, 2, "0", STR_PAD_LEFT); ?>" <?php if($i == $this->kvno_end_date_m ){ echo 'selected';}?>><?php echo str_pad($i, 2, "0", STR_PAD_LEFT); ?></option>
+
+	<?php }?>
+	</select>
+<input type="text" name="vizit_date" id="vizit_date"  style="width:80px; margin: 2px 0 -2px 10px;" value="<?php echo $this->vizit_date ?>" >
+
+<br/>&nbsp;
+<br/>
+
+<label class="kvno_top_labels">Fahrtzeit: </label>
+<select name="fahrtzeit">
+<option value="--">--</option>
+	<?php for ($i=1; $i<=$this->driving_time_limit; $i++){?>
+ <option value="<?php echo $i; ?>" <?php if($i == $this->fahrtzeit || (empty($this->fahrtzeit) && $i == $this->fahrtzeit_min)){ echo 'selected';}?>><?php echo $i; ?></option>
+
+<?php }?></select>
+<br/><br/>
+<label class="kvno_top_labels">Fahrtstrecke (Km):</label><input type="text" name="fahrtstreke_km" value="<?php echo $this->fahrtstreke_km;?>" /><br/>
+ <br/>
+ <table  border="0" cellpadding="2" cellspacing="2" class="kvno_symptomatics" width="100%">
+ <tr  style=" border-bottom:1px solid #ccc;  line-height: 30px">
+ <th width="35%"><b>Item</b></th>
+ <th width="10%" style="text-align: center;"><b>Letzter Wert</b></th>
+ <th width="13%" style="text-align: center;"><b>Aktueller Wert</b></th>
+ <th width="40%"><b>Kommentar</b></th>
+ </tr>
+<?php if($this->sympt_view_select == 'a'): ?>
+	<?php
+		$none = array(0);
+		$weak = array(1,2,3,4);
+		$average = array(5,6,7);
+		$strong = array(8,9,10);
+		$atributes_values = array(0=>'kein',1=>'leicht',2=>'leicht',3=>'leicht',4=>'leicht',5=>'mittel',6=>'mittel',7=>'mittel',8=>'schwer',9=>'schwer',10=>'schwer');
+	?>
+
+ 	<?php foreach($this->symptomarr as $value):	?>
+		<tr  style=" border-bottom:1px dotted #ccc">
+			<td ><?php echo ($value['sym_description'])?></td>
+			<td style="text-align: center; "><span><?php echo $atributes_values [$value['input_value']];?></span>
+				<input type="hidden" name="current_value[<?php echo $value['symptomid']?>]" value="<?php echo $value['input_value']?>" />
+				<input type="hidden" name="entered_value[<?php echo $value['symptomid']?>]" value="<?php echo $value['entered_value']?>" />
+			</td>
+			<td class="kvno_tinyinpt">
+				<select name="input_value[<?php echo $value['symptomid']?>]"   id="input_value<?php echo $value['symptomid']?>"    class="symp_input">
+					<option value="0" <?php if( in_array($value['entered_value'],$none)):?> selected="selected" <?php endif; ?>  >kein</option>
+					<option value="4" <?php if( in_array($value['entered_value'],$weak)):?> selected="selected" <?php endif; ?> >leicht</option>
+					<option value="7" <?php if( in_array($value['entered_value'],$average)):?> selected="selected" <?php endif; ?> >mittel</option>
+					<option value="10" <?php if( in_array($value['entered_value'],$strong)):?> selected="selected" <?php endif; ?> >schwer</option>
+					<option value="" <?php if( $value['entered_value'] == NULL ){echo 'selected="selected"'; } else{}     ?>  ></option>
+				</select>
+				<input type="hidden" name="setid" value="1" /></td>
+			<td class="kvno_komentinput"><input type="text" name="comment[<?php echo $value['symptomid']?>]" value="<?php echo $value['comment']?>" /></td>
+		</tr>
+	<?php endforeach;?>
+
+ <?php else: ?>
+
+	<?php foreach($this->symptomarr as $value):?>
+		<tr  style=" border-bottom:1px dotted #ccc">
+			<td ><?php echo ($value['sym_description'])?></td>
+			<td style="text-align: center; "><span><?php echo $value['input_value'];?></span>
+				<input type="hidden" name="current_value[<?php echo $value['symptomid']?>]" value="<?php echo $value['input_value']?>" />
+				<input type="hidden" name="entered_value[<?php echo $value['symptomid']?>]" value="<?php echo $value['entered_value']?>" />
+			</td>
+			<td class="kvno_tinyinpt">
+				<input type="text" name="input_value[<?php echo $value['symptomid']?>]" value="<?php echo $value['entered_value']?>" class="kvnosymp_input" id="input_value<?php echo $value['symptomid']?>" onkeyup="isInteger([<?php echo $value['symptomid']?>])" />
+				<input type="hidden" name="setid" value="1" /></td>
+			<td class="kvno_komentinput"><input type="text" name="comment[<?php echo $value['symptomid']?>]" value="<?php echo $value['comment']?>" /></td>
+		</tr>
+	<?php endforeach;?>
+<?php endif;?>
+
+ <tr>
+ <td  colspan="4">&nbsp;</td>
+ </tr>
+
+
+ <tr></tr>
+
+ </table>
+
+ <table class="kvno_korpelicht_befund" cellpadding="0"  >
+<?php if ($this->port != 0) {?>
+
+ <tr>
+	 <td class="kvno_bigtd">Port</td>
+	 <td><input type="radio" name="kvno_port" id="kvno_port_ok" value="1"  <?php if($this->kvno_port == "1" ){echo 'checked="checked"';} ?>/><label for="kvno_port_ok">ok</label></td>
+	 <td class="empty_befun">&nbsp;</td>
+	 <td><input type="radio" name="kvno_port" id="kvno_port_notok" value="2"  <?php if($this->kvno_port == "2" ){echo 'checked="checked"';} ?>/><label for="kvno_port_notok"> nicht ok </label></td>
+	 <td><div id="kvno_port_textdiv" style="display: none;">&nbsp;<input type="text"   name="kvno_port_text" id="kvno_port_text" value="<?php echo $this->kvno_port_text;?>"  /></div></td>
+ </tr>
+
+<?php }?>
+
+ <?php if ($this->kunstliche != 0) {?>
+ <tr>
+	 <td class="kvno_bigtd">besonderer Aus-/ Eingang <?php if (!empty($this->kunstlichemore)):?>(<?php echo $this->kunstlichemore;?>) <input type="hidden" name="kunstlichemore" value="<?php echo $this->kunstlichemore?>" /><?php endif;?></td>
+	 <td><input type="radio" name="kvno_kunstliche" id="kvno_kunstliche_ok" value="1"  <?php if($this->kvno_kunstliche == "1" ){echo 'checked="checked"';} ?>/><label for="kvno_kunstliche_ok">ok</label></td>
+	 <td class="empty_befun">&nbsp;</td>
+	 <td><input type="radio" name="kvno_kunstliche" id="kvno_kunstliche_notok" value="2"  <?php if($this->kvno_kunstliche == "2" ){echo 'checked="checked"';} ?>/><label for="kvno_kunstliche_notok"> nicht ok </label></td>
+	 <td><div id="kvno_kunstliche_textdiv" style="display: none;">&nbsp;<input type="text"   name="kvno_kunstliche_text" id="kvno_kunstliche_text" value="<?php echo $this->kvno_kunstliche_text;?>"  /></div></td>
+ </tr>
+<?php }?>
+
+<?php if ($this->pumps != 0) {?>
+ <tr>
+	 <td class="kvno_bigtd">Pumpe</td>
+	 <td><input type="radio" name="kvno_pumps" id="kvno_pumpe_ok" value="1"  <?php if($this->kvno_pumps == "1" ){echo 'checked="checked"';} ?>/><label for="kvno_pumpe_ok">ok</label></td>
+	 <td class="empty_befun">&nbsp;</td>
+	 <td><input type="radio" name="kvno_pumps"  id="kvno_pumpe_notok" value="2"  <?php if($this->kvno_pumps == "2" ){echo 'checked="checked"';} ?>/><label for="kvno_pumpe_notok"> nicht ok </label></td>
+	 <td><div id="kvno_pumps_textdiv" style="display: none;">&nbsp;<input type="text"   name="kvno_pumps_text" id="kvno_pumps_text" value="<?php echo $this->kvno_pumps_text;?>"  /></div></td>
+ </tr>
+ <?php }?>
+
+<?php if ($this->dk != 0) {?>
+ <tr>
+	 <td class="kvno_bigtd">Dauerkatheter</td>
+	 <td><input type="radio" name="kvno_dk" id="kvno_dauerkatheter_ok" value="1"  <?php if($this->kvno_dk == "1" ){echo 'checked="checked"';} ?>/><label for="kvno_dauerkatheter_ok">ok</label></td>
+	 <td class="empty_befun">&nbsp;</td>
+	 <td><input type="radio" name="kvno_dk"  id="kvno_dauerkatheter_notok" value="2"  <?php if($this->kvno_dk == "2" ){echo 'checked="checked"';} ?>/><label for="kvno_dauerkatheter_notok"> nicht ok </label></td>
+	 <td><div id="kvno_dk_textdiv" style="display: none;">&nbsp;<input type="text"   name="kvno_dk_text" id="kvno_dk_text" value="<?php echo $this->kvno_dk_text;?>"  /></div></td>
+ </tr>
+<?php }?>
+<?php if ($this->peg != 0) {?>
+ <tr>
+	 <td class="kvno_bigtd">PEG</td>
+	 <td><input type="radio" name="kvno_peg" id="kvno_peg_ok" value="1"  <?php if($this->kvno_peg == "1" ){echo 'checked="checked"';} ?>/><label for="kvno_peg_ok">ok</label></td>
+	 <td class="empty_befun">&nbsp;</td>
+	 <td><input type="radio" name="kvno_peg" id="kvno_peg_notok" value="2"  <?php if($this->kvno_peg == "2" ){echo 'checked="checked"';} ?>/><label for="kvno_peg_notok"> nicht ok </label></td>
+ 	 <td><div id="kvno_peg_textdiv" style="display: none;">&nbsp;<input type="text"   name="kvno_peg_text" id="kvno_peg_text" value="<?php echo $this->kvno_peg_text;?>"  /></div></td>
+ </tr>
+<?php }?>
+
+
+<?php if ($this->darm != 0) {?>
+ <tr>
+	 <td class="kvno_bigtd">Darm</td>
+	 <td><input type="radio" name="kvno_darm" id="kvno_darm_ok" value="1"  <?php if($this->kvno_darm == "1" ){echo 'checked="checked"';} ?>/><label for="kvno_darm_ok">ok</label></td>
+	 <td class="empty_befun">&nbsp;</td>
+	 <td><input type="radio" name="kvno_darm" id="kvno_darm_notok" value="2"  <?php if($this->kvno_darm == "2" ){echo 'checked="checked"';} ?>/><label for="kvno_darm_notok"> nicht ok </label></td>
+	 <td><div id="kvno_darm_textdiv" style="display: none;">&nbsp;<input type="text"   name="kvno_darm_text" id="kvno_darm_text" value="<?php echo $this->kvno_darm_text;?>"  /></div></td>
+ </tr>
+<?php }?>
+<?php if ($this->blase != 0) {?>
+ <tr>
+	 <td class="kvno_bigtd">Blase</td>
+	 <td><input type="radio" name="kvno_blase" id="kvno_blase_ok" value="1"  <?php if($this->kvno_blase == "1" ){echo 'checked="checked"';} ?>/><label for="kvno_blase_ok">ok</label></td>
+	 <td class="empty_befun">&nbsp;</td>
+	 <td><input type="radio" name="kvno_blase" id="kvno_blase_notok" value="2"  <?php if($this->kvno_blase == "2" ){echo 'checked="checked"';} ?>/><label for="kvno_blase_notok"> nicht ok </label></td>
+ 	 <td><div id="kvno_blase_textdiv" style="display: none;">&nbsp;<input type="text"   name="kvno_blase_text" id="kvno_blase_text" value="<?php echo $this->kvno_blase_text;?>"  /></div></td>
+ </tr>
+<?php }?>
+<?php if ($this->luftrohre != 0) {?>
+ <tr>
+	 <td class="kvno_bigtd">Luftröhre</td>
+	 <td><input type="radio" name="kvno_luftrohre" id="kvno_luftrohre_ok" value="1"  <?php if($this->kvno_luftrohre == "1" ){echo 'checked="checked"';} ?>/><label for="kvno_luftrohre_ok">ok</label></td>
+	 <td class="empty_befun">&nbsp;</td>
+	 <td><input type="radio" name="kvno_luftrohre" id="kvno_luftrohre_notok" value="2"  <?php if($this->kvno_luftrohre == "2" ){echo 'checked="checked"';} ?>/><label for="kvno_luftrohre_notok"> nicht ok </label></td>
+	 <td><div id="kvno_luftrohre_textdiv" style="display: none;">&nbsp;<input type="text"   name="kvno_luftrohre_text" id="kvno_luftrohre_text" value="<?php echo $this->kvno_luftrohre_text;?>"  /></div></td>
+ </tr>
+<?php }?>
+<?php if ($this->ablaufsonde != 0) {?>
+ <tr>
+	 <td class="kvno_bigtd">Ablaufsonde</td>
+	 <td><input type="radio" name="kvno_ablaufsonde" id="kvno_ablaufsonde_ok" value="1" /><label>ok</label></td>
+	 <td class="empty_befun">&nbsp;</td>
+	 <td><input type="radio" name="kvno_ablaufsonde" id="kvno_ablaufsonde_notok"  value="2"   /><label>nicht ok</label> </td>
+	 <td><div id="kvno_ablaufsonde_textdiv" style="display: none;">&nbsp;<input type="text"   name="kvno_ablaufsonde_text" id="kvno_ablaufsonde_text" value="<?php echo $this->kvno_ablaufsonde_text;?>"  /></div></td>
+ </tr>
+<?php }?>
+ <tr>
+ <td colspan="5"> </td>
+ </tr>
+ <tr>
+ <td colspan="5"> <b>Körperlicher Befund:</b><br/></td>
+ </tr>
+ <tr>
+ <td colspan="5"> </td>
+ </tr>
+ <tr>
+ <td class="kvno_bigtd">Kopf</td>
+ <td><input type="radio" name="kopf" id="kopfk" value="1" /><label>krankheitsentsprechend</label></td>
+ <td class="empty_befun">&nbsp;</td>
+ <td><input type="radio" name="kopf" id="kopfb"  value="2"   /><label>Befund</label> </td>
+ <td><div id="kopf_textdiv" style="display: none;">&nbsp;<input type="text"   name="kopf_text" id="kopf_text" value="<?php echo $this->kopf_text;?>"  /></div></td>
+ </tr>
+
+  <tr>
+ <td class="kvno_bigtd">Thorax</td>
+ <td><input type="radio" name="thorax" id="thoraxk" value="1" /><label>krankheitsentsprechend</label></td>
+ <td class="empty_befun">&nbsp;</td>
+ <td><input type="radio" name="thorax" id="thoraxb"  value="2"   /><label>Befund</label> </td>
+ <td><div id="thorax_textdiv" style="display: none;">&nbsp;<input type="text"   name="thorax_text" id="thorax_text" value="<?php echo $this->thorax_text;?>"  /></div></td>
+ </tr>
+
+
+  <tr>
+ <td class="kvno_bigtd">Abdomen</td>
+ <td><input type="radio" name="abdomen" id="abdomenk" value="1" /><label>krankheitsentsprechend</label></td>
+ <td class="empty_befun">&nbsp;</td>
+ <td><input type="radio" name="abdomen" id="abdomenb"  value="2"   /><label>Befund</label> </td>
+ <td><div id="abdomen_textdiv" style="display: none;">&nbsp;<input type="text"   name="abdomen_text" id="abdomen_text" value="<?php echo $this->abdomen_text;?>"  /></div></td>
+ </tr>
+
+
+ <tr>
+ <td class="kvno_bigtd">Extremitäten</td>
+ <td><input type="radio" name="extremitaten" id="extremitatenk" value="1" /><label>krankheitsentsprechend</label></td>
+ <td class="empty_befun">&nbsp;</td>
+ <td><input type="radio" name="extremitaten" id="extremitatenb"  value="2"   /><label>Befund</label> </td>
+ <td><div id="extremitaten_textdiv" style="display: none;">&nbsp;<input type="text"   name="extremitaten_text" id="extremitaten_text" value="<?php echo $this->extremitaten_text;?>"  /></div></td>
+ </tr>
+
+
+ <tr>
+ <td class="kvno_bigtd">Haut/Wunden</td>
+ <td><input type="radio" name="haut_wunden" id="haut_wundenk" value="1" /><label>krankheitsentsprechend</label></td>
+ <td class="empty_befun">&nbsp;</td>
+ <td><input type="radio" name="haut_wunden" id="haut_wundenb"  value="2"   /><label>Befund</label> </td>
+ <td><div id="haut_wunden_textdiv" style="display: none;">&nbsp;<input type="text"   name="haut_wunden_text" id="haut_wunden_text" value="<?php echo $this->haut_wunden_text;?>"  /></div></td>
+ </tr>
+
+ <tr>
+ <td class="kvno_bigtd">neurologisch / psychiatrisch</td>
+ <td><input type="radio" name="neurologisch_psychiatrisch" id="neurologisch_psychiatrischk" value="1" /><label>krankheitsentsprechend</label></td>
+ <td class="empty_befun">&nbsp;</td>
+ <td><input type="radio" name="neurologisch_psychiatrisch" id="neurologisch_psychiatrischb"  value="2"   /><label>Befund</label> </td>
+ <td><div id="neurologisch_psychiatrisch_textdiv" style="display: none;">&nbsp;<input type="text"   name="neurologisch_psychiatrisch_text" id="neurologisch_psychiatrisch_text" value="<?php echo $this->neurologisch_psychiatrisch_text;?>"  /></div></td>
+ </tr>
+
+
+ </table>
+ <table class="kvno_ecog">
+ <tr>
+	 <td style="width:80px;">
+		  <b>ECOG :</b>
+	 </td>
+	 <td>
+		 <select name="kvno_ecog[]" id="kvno_ecog">
+			 <option value="0" <?php if(in_array(0,$this->kvno_ecog) || empty($this->kvno_ecog)) {echo  'selected="selected"';}?> ><?php echo $this->translate('please_select');  ?></option>
+			 <option value="1" <?php if(in_array(1,$this->kvno_ecog)) {echo  'selected="selected"';}?> >normale Aktivität</option>
+			 <option value="2" <?php if(in_array(2,$this->kvno_ecog)) {echo  'selected="selected"';}?> >Gehfähig, leichte Arbeiten möglich</option>
+			 <option value="3" <?php if(in_array(3,$this->kvno_ecog)) {echo  'selected="selected"';}?> >nicht arbeitsfähig, kann &gt; 50&#37; der Wachzeit aufstehen</option>
+			 <option value="4" <?php if(in_array(4,$this->kvno_ecog)) {echo  'selected="selected"';}?> >begrenzte Selbstversorgung, &gt; 50&#37; Wachzeit bettlägrig</option>
+			 <option value="5" <?php if(in_array(5,$this->kvno_ecog)) {echo  'selected="selected"';}?> >Pflegebedürftig, permanent bettlägrig</option>
+		 </select>
+	 </td>
+	 <td></td>
+ </tr>
+ </table>
+ <br/>
+
+<div class="kvno_fotodoc">
+    <table width="100%">
+	<tr>
+	    <td width="120"><b>Fotodokumentation :</b></td>
+	    <td><input type="text" name="kvno_fotodocumentation" id="kvno_fotodocumentation" value="<?php echo $this->kvno_fotodocumentation;?>" style="width:99%;" /></td>
+	</tr>
+    </table>
+</div>
+
+<div class="kvno_sonstiges">
+	 <div class="<?php echo $this->error_kvno_sonstiges ?> left">&nbsp;<b>Sonstiges / Kommentar: (Übertrag in Verlauf)  </b></div><br/>
+     <textarea name="kvno_sonstiges"><?php echo $this->kvno_sonstiges;?></textarea>
+</div>
+<div class="kvno_sonstiges">
+	 <div class=" left">&nbsp;<b>Kommentar Medikation / Pumpe / Apotheke </b></div><br/>
+     <textarea name="comment_apotheke"><?php echo $this->comment_apotheke;?></textarea>
+</div>
+<b>Globale Einschätzung:</b>
+<div class="kvno_globalline">
+<span><input type="radio" name="kvno_global[]" value="1" <?php if(in_array("1",$this->kvno_global)) {echo  'checked="checked"';}?> /><label>schlechter</label></span>
+<span><input type="radio" name="kvno_global[]" value="2" <?php if(in_array("2",$this->kvno_global)) {echo  'checked="checked"';}?> /><label>besser</label></span>
+<span><input type="radio" name="kvno_global[]" value="3" <?php if(in_array("3",$this->kvno_global)) {echo  'checked="checked"';}?> /><label>gleich</label></span>
+</div>
+<br/><br/>
+<div class="bayern_dragvbox" id="item_9">
+	<h2 class="" style="width:98.7%"> + <?php echo $this->translate('medication')?></h2>
+	<div style="display: none;" id="grow9" class="bayern_dragvbox_content">
+		<div class="bayern_sapvfb3_content">
+
+		<div class="medication_container" >
+			<p><b>Aktuelle Medikation :</b></p>
+			<?php echo $this->medications; ?>
+		</div>
+
+		<div class="medication_container" >
+			<p><b>Medikamente hinzufügen :</b></p>
+			<?php echo $this->medicgrid; ?>
+			<div class="add_new_medi">
+				<a href="javascript:createnewmedic()">
+					<img src="<?php echo RES_FILE_PATH; ?>/images/edit_add.png" width="20" height="20" />
+					<div class="add_new_medi_link"><?php echo $this->translate('addnewmedication'); ?></div>
+				</a>
+			</div>
+		</div>
+
+		<div class="medication_container" >
+			<p><b>Bedarfs Medikation:</b></p>
+			<?php echo $this->bedarfsmedications; ?>
+		</div>
+
+		<div class="medication_container" >
+			<p><b>Bedarf Medikamente hinzufügen :</b></p>
+			<?php echo $this->bedarfmedicgrid; ?>
+			<div class="add_new_medi">
+				<a href="javascript:createnewmedicrowbedarf();">
+					<img src="<?php echo RES_FILE_PATH; ?>/images/edit_add.png" width="20" height="20" />
+					<div class="add_new_medi_link"><?php echo $this->translate('addnewmedication'); ?></div>
+				</a>
+			</div>
+		</div>
+
+
+		<div class="medication_container" >
+			<p><b><?php echo $this->translate('discontinuedmedlist'); ?></b></p>
+			<input type="hidden" value="<?php echo $this->jsmedadd; ?>" id="jsmedadd" />
+			<?php echo $this->delmedications ?>
+		</div>
+		<br style="clear:both;" />
+		</div>
+	</div>
+</div>
+
+<br/>
+<div class="kvno_medizine">
+<b>Medizinische Maßnahmen:</b><br/>
+<div class="kvno_medizineline1">
+	<span><input type="radio" name="kvno_medizini_a" value="1"  <?php if($this->kvno_medizini_a == 1) {echo  'checked="checked"';}?> /><label>wie geplant gelaufen</label></span>
+	<span><input type="radio" name="kvno_medizini_a" value="2"  <?php if($this->kvno_medizini_a == 2) {echo  'checked="checked"';}?>  /><label>werden fortgesetzt</label></span>
+	<span><input type="radio" name="kvno_medizini_a" value="3"  <?php if($this->kvno_medizini_a == 3) {echo  'checked="checked"';}?>  /><label>nicht wie geplant verlaufen</label></span>
+</div>
+<br/><br/>
+</div>
+<div class="kvno_sonstiges">
+	 <div class=" left">&nbsp;<b>Pflege-Anweisung:</b></div><br/>
+     <textarea name="care_instructions"><?php echo $this->care_instructions;?></textarea>
+</div>
+<input type="hidden" name="wlform" value="<?php echo $this->wlform;?>" />
+<input type="hidden" name="kvno_doc_id" value="<?php echo $this->kvno_doc_id;?>">
+<br/><br/>
+ <div class="kvno_buttons">
+ <input type="hidden" name="iskvno" value ="1" />
+
+ 
+ </div>
+ 
+ 
+<table class="form_buttons_table">
+<tr>
+	<td>
+		<input  type="hidden" name="submitform" id="save_visit" value="" />
+		<button type="button" id="submitform" class="submit_form"><?php echo $this->translate('save') ?></button>
+		
+		<input  type="hidden"  name="pdfexport" id="generate_pdf" value="" />
+		<button type="button"  id="pdfexport" class="submit_form"><?php echo $this->translate('generatepdf') ?></button>
+		
+	<?php if($this->wlform):  ?>
+	<input name="create_letter" id="create_letter" type="hidden" value="0" />
+		<button type="button"  name="save_create_doctorletter" id="save_create_doctorletter" class="submit_form"> <?php echo $this->translate('save_create_doctorletter') ?></button>
+		
+	<input name="go_to_letter" id="go_to_letter" type="hidden" value="0" />
+		<button type="button"  name="save_visit_edit_letter" id="save_visit_edit_letter" class="submit_form"><?php echo $this->translate('save_visit_edit_letter') ?></button>
+	<?php endif;  ?>
+	
+	</td>
+</tr>
+</table>
+
+
+ </div>
+</div>
+
+  </div>
+</form>
+ <script type="text/javascript" >
+function getSelected(dbvalue,fieldname){
+    var fieldarray = document.getElementsByName(fieldname);
+    for(i=0; i<fieldarray.length;i++){
+	    if(fieldarray[i].value==dbvalue){
+		    fieldarray[i].checked = true;
+	}
+    }
+}
+//radiobuttons
+
+ getSelected('<?php echo $this->kopf; ?>', 'kopf');
+ getSelected('<?php echo $this->thorax; ?>', 'thorax');
+ getSelected('<?php echo $this->abdomen; ?>', 'abdomen');
+ getSelected('<?php echo $this->extremitaten; ?>', 'extremitaten');
+ getSelected('<?php echo $this->haut_wunden; ?>', 'haut_wunden');
+ getSelected('<?php echo $this->neurologisch_psychiatrisch; ?>', 'neurologisch_psychiatrisch');
+  getSelected('<?php echo $this->kvno_port; ?>', 'kvno_port');
+  getSelected('<?php echo $this->kvno_kunstliche; ?>', 'kvno_kunstliche');
+  getSelected('<?php echo $this->kvno_pumps; ?>', 'kvno_pumps');
+  getSelected('<?php echo $this->kvno_dk; ?>', 'kvno_dk');
+  getSelected('<?php echo $this->kvno_darm; ?>', 'kvno_darm');
+  getSelected('<?php echo $this->kvno_blase; ?>', 'kvno_blase');
+  getSelected('<?php echo $this->kvno_luftrohre; ?>', 'kvno_luftrohre');
+  getSelected('<?php echo $this->kvno_ablaufsonde; ?>', 'kvno_ablaufsonde');
+
+
+</script>
+<div id="duplicate_visits">
+	<p><?php echo $this->translate('overlapping_confirm');  ?></p>
+</div>

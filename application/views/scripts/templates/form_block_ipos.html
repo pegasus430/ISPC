@@ -1,0 +1,843 @@
+<!--  Maria:: Migration CISPC to ISPC 22.07.2020 -->
+<!-- Maria:: Migration ISPC to CISPC 08.08.2020 -->
+<!-- Maria:: Migration CISPC to ISPC 20.08.2020 -->
+<!--  ############################################################################## -->
+<!--  ###############################  IPOS   ###################################### -->
+<!--  ############################################################################## -->
+<?php
+$iposhist=$this->f_values['patient_ipos_hist_values'];
+//print_r($iposhist);
+$client_users = $this->f_values['client_users'];
+
+//$client_users = $this->client_users;
+$additional_users = $this->additional_users;
+$form_create_user = $this->form_create_user;
+
+if(isset($this->f_values['patient_ipos_values'])){
+$patient_ipos_values = $this->f_values['patient_ipos_values'];
+}else{
+$patient_ipos_values = $this->f_values;
+}
+
+
+?>
+<?php if($this->pdf):?>
+<div id="ipos"  >
+    <?php
+    $sum = 0;
+    function count_sum_add($iposvalue){
+    $add = 0;
+    switch($iposvalue){
+            case "2":
+                $add = 4;
+                break;
+            case "3":
+                $add = 3;
+                break;
+            case "4":
+                $add = 2;
+                break;
+            case "5":
+                $add =1;
+                break;
+        }
+        return $add;
+    }
+    ?>
+<div class="ipos">
+    <table border="0" cellspacing="2" cellpadding="2" style="width:100%;">
+        <tr>
+            <td colspan="4"><b>Ermittlung</b></td>
+        </tr>
+        <tr>
+            <td style="width:150px;">
+                Zeitpunkt der Erhebung
+            </td>
+            <td colspan="3">
+                <?php
+							$thistime=strtotime($patient_ipos_values['date']);
+							if($thistime>strtotime('2010-01-01 20:00:00')){
+                $thisdate=date('d.m.Y', $thistime);
+                $thishours= $patient_ipos_values['date_h'] ;//date('H', $thistime);
+                $thismins= $patient_ipos_values['date_m'] ;//date('i', $thistime);
+
+                }else{
+                $thisdate=date('d.m.Y');
+                $thishours=date('H');
+                $thismins=date('i');
+                }
+
+                $thisuser=($patient_ipos_values['user']!="")? $patient_ipos_values['user'] : $this->form_create_user;
+                $thistraffic=$this->patient_traffic_status;
+                if($patient_ipos_values['status']){
+                $thistraffic=$this->patient_traffic_status;
+                }
+                ?>
+
+                <?php echo $thisdate; ?> ,
+
+
+                    <?php
+                    echo $thishours;
+
+                    ?>
+
+
+                :   <?php echo $thismins; ?> Uhr
+
+            </td>
+        </tr>
+        <tr>
+            <td>
+                Erhoben von:
+            </td>
+            <td colspan="3">
+
+                    <?php
+                            $ipospreseluser=$patient_ipos_values['user'];
+                            if(!$ipospreseluser){
+                            $ipospreseluser=$this->form_create_user;
+                    }
+
+                    ?>
+                    <?php	foreach ($client_users as $kuser => $vuser):?>
+                    <?php if ($vuser['id'] == $ipospreseluser) echo $vuser['last_name'].' '.$vuser['first_name'];?>
+                    <?php endforeach;?>
+
+            </td>
+        </tr>
+        <tr>
+            <td></td>
+            <td>
+                <img src="<?php echo PUBLIC_PATH;?>/images/<?php if($patient_ipos_values['ipos0']=="selbst"){ echo "radio-selected-btn.jpg"; }else{ echo "radio-btn.jpg";} ?>"/> selbst
+            </td>
+            <td>
+                <img src="<?php echo PUBLIC_PATH;?>/images/<?php if($patient_ipos_values['ipos0']=="Professionelle"){ echo "radio-selected-btn.jpg"; }else{ echo "radio-btn.jpg";} ?>"/> Professionelle
+            </td>
+            <td>
+                <img src="<?php echo PUBLIC_PATH;?>/images/<?php if($patient_ipos_values['ipos0']=="Angehörige"){ echo "radio-selected-btn.jpg"; }else{ echo "radio-btn.jpg";} ?>"/> Angehörige
+            </td>
+        </tr>
+    </table>
+</div>
+    <div class="ipos">
+        <table border="0" cellspacing="2" cellpadding="2" style="width:100%;">
+            <tr>
+                <td colspan="2"><b>1. Welche Hauptprobleme hatte der Patient* <u>in den letzten 3 Tagen?</u></b><br><small>Um die Fragen möglichst kurz zu halten, wird im Folgenden nur „der Patient“ genannt. Gemeint ist immer „die Patientin/der Patient“.</small></td>
+            </tr>
+            <tr>
+                <td width="10%">&nbsp;a)</td>
+                <td  width="90%"><?php echo $patient_ipos_values['ipos1a']; ?></td>
+            </tr>
+            <tr>
+                <td  width="10%">&nbsp;b)</td>
+                <td  width="90%"><?php echo $patient_ipos_values['ipos1b']; ?></td>
+            </tr>
+            <tr>
+                <td  width="10%">&nbsp;c)</td>
+                <td  width="90%"><?php echo $patient_ipos_values['ipos1c']; ?></td>
+            </tr>
+        </table>
+    </div>
+    <div class="ipos iposhighlighter">
+        <table class="iposappendable" border="0" cellspacing="2" cellpadding="2" style="width:100%;">
+            <tr>
+                <td colspan="8"><b>2. Bitte kreuzen Sie an, wie sehr der Patient <u>in den letzten 3 Tagen</u> von folgenden Symptomen beeinträchtigt war:</b></td>
+            </tr>
+            <tr>
+                <td class="seven_first legend"></td>
+                <td class="seven_other legend">Gar nicht</td>
+                <td class="seven_other legend">Ein wenig</td>
+                <td class="seven_other legend">Mäßig</td>
+                <td class="seven_other legend">Stark</td>
+                <td class="seven_other legend">Extrem stark</td>
+                <td class="seven_other legend">Nicht beurteilbar (z.B. bewusstlos)</td>
+            </tr>
+            <tr>
+                <td class="seven_first">Schmerzen</td>
+                <?php foreach (array(6,5,4,3,2,0) as $val): ?>
+                <td class="seven_other">
+                    &nbsp;&nbsp;<img src="<?php echo PUBLIC_PATH;?>/images/<?php if($patient_ipos_values['ipos2a']==$val){ echo "radio-selected-btn.jpg";$sum+=count_sum_add($val); }else{ echo "radio-btn.jpg";} ?>"/>
+                     </td>
+                <?php endforeach; ?>
+            </tr>
+            <tr class="zebra">
+                <td class="seven_first">Atemnot</td>
+                <?php foreach (array(6,5,4,3,2,0) as $val): ?>
+                <td class="seven_other">
+                    &nbsp;&nbsp;<img src="<?php echo PUBLIC_PATH;?>/images/<?php if($patient_ipos_values['ipos2b']==$val){ echo "radio-selected-btn.jpg";$sum+=count_sum_add($val); }else{ echo "radio-btn.jpg";} ?>"/></td>
+
+                <?php endforeach; ?>
+            </tr>
+            <tr>
+                <td class="seven_first">Schwäche oder fehlende Energie</td>
+                <?php foreach (array(6,5,4,3,2,0) as $val): ?>
+                <td class="seven_other">
+                    &nbsp;&nbsp;<img src="<?php echo PUBLIC_PATH;?>/images/<?php if($patient_ipos_values['ipos2c']==$val){ echo "radio-selected-btn.jpg";$sum+=count_sum_add($val); }else{ echo "radio-btn.jpg";} ?>"/></td>
+                <?php endforeach; ?>
+            </tr>
+            <tr class="zebra">
+                <td class="seven_first">Übelkeit (das Gefühl, erbrechen zu müssen)</td>
+                <?php foreach (array(6,5,4,3,2,0) as $val): ?>
+                <td class="seven_other">
+                    &nbsp;&nbsp;<img src="<?php echo PUBLIC_PATH;?>/images/<?php if($patient_ipos_values['ipos2d']==$val){ echo "radio-selected-btn.jpg";$sum+=count_sum_add($val); }else{ echo "radio-btn.jpg";} ?>"/>
+                </td>
+                <?php endforeach; ?>
+            </tr>
+            <tr>
+                <td class="seven_first">Erbrechen</td>
+                <?php foreach (array(6,5,4,3,2,0) as $val): ?>
+                <td class="seven_other">
+                    &nbsp;&nbsp;<img src="<?php echo PUBLIC_PATH;?>/images/<?php if($patient_ipos_values['ipos2e']==$val){ echo "radio-selected-btn.jpg";$sum+=count_sum_add($val); }else{ echo "radio-btn.jpg";} ?>"/>
+                </td>
+                <?php endforeach; ?>
+            </tr>
+            <tr class="zebra">
+                <td class="seven_first">Appetitlosigkeit</td>
+                <?php foreach (array(6,5,4,3,2,0) as $val): ?>
+                <td class="seven_other">
+                    &nbsp;&nbsp;<img src="<?php echo PUBLIC_PATH;?>/images/<?php if($patient_ipos_values['ipos2f']==$val){ echo "radio-selected-btn.jpg";$sum+=count_sum_add($val); }else{ echo "radio-btn.jpg";} ?>"/>
+                </td>
+                <?php endforeach; ?>
+            </tr>
+            <tr>
+                <td class="seven_first">Verstopfung</td>
+                <?php foreach (array(6,5,4,3,2,0) as $val): ?>
+               <td class="seven_other" >
+                   &nbsp;&nbsp;<img src="<?php echo PUBLIC_PATH;?>/images/<?php if($patient_ipos_values['ipos2g']==$val){ echo "radio-selected-btn.jpg";$sum+=count_sum_add($val); }else{ echo "radio-btn.jpg";} ?>"/>
+                </td>
+                <?php endforeach; ?>
+            </tr>
+            <tr class="zebra">
+                <td class="seven_first">Mundtrockenheit oder schmerzhafter Mund</td>
+                <?php foreach (array(6,5,4,3,2,0) as $val): ?>
+                <td class="seven_other">
+                    &nbsp;&nbsp;<img src="<?php echo PUBLIC_PATH;?>/images/<?php if($patient_ipos_values['ipos2h']==$val){ echo "radio-selected-btn.jpg";$sum+=count_sum_add($val); }else{ echo "radio-btn.jpg";} ?>"/>
+                </td>
+                <?php endforeach; ?>
+            </tr>
+            <tr>
+                <td class="seven_first">Schläfrigkeit</td>
+                <?php foreach (array(6,5,4,3,2,0) as $val): ?>
+                <td class="seven_other">
+                    &nbsp;&nbsp;<img src="<?php echo PUBLIC_PATH;?>/images/<?php if($patient_ipos_values['ipos2i']==$val){ echo "radio-selected-btn.jpg";$sum+=count_sum_add($val); }else{ echo "radio-btn.jpg";} ?>"/>
+                </td>
+                <?php endforeach; ?>
+            </tr>
+            <tr class="zebra">
+                <td class="seven_first">eingeschränkte Mobilität</td>
+                <?php foreach (array(6,5,4,3,2,0) as $val): ?>
+                <td class="seven_other">
+                    &nbsp;&nbsp;<img src="<?php echo PUBLIC_PATH;?>/images/<?php if($patient_ipos_values['ipos2j']==$val){ echo "radio-selected-btn.jpg";$sum+=count_sum_add($val); }else{ echo "radio-btn.jpg";} ?>"/>
+                </td>
+                <?php endforeach; ?>
+            </tr>
+
+
+            <tr class="jsclonepool" style="display:none;">
+                <td class="seven_first"> <input  type="text" name="ipos_add[0][key]"  style="width:180px;" value=""></td>
+                <?php foreach (array(6,5,4,3,2,0) as $val): ?>
+                <td class="seven_other">
+                    &nbsp;&nbsp;<img src="<?php echo PUBLIC_PATH;?>/images/<?php if(0===$val){ echo "radio-selected-btn.jpg";;$sum+=count_sum_add($val); }else{ echo "radio-btn.jpg";} ?>"/>
+                </td>
+                <?php endforeach; ?>
+            </tr>
+
+            <tr>
+                <td colspan="7" style="font-size:12px; font-weight:bold; padding-top:3px; padding-bottom:2px;" class="legend"><b>Bitte nennen Sie weitere Symptome, die aus Ihrer Sicht den Patienten in den letzten 3 Tagen beeinträchtigt haben.</b></td>
+            </tr>
+
+            <?php
+                    $items=array();
+                    $iposlist=array();
+
+                    if($iposhist['ipos_add']){
+                        foreach ($iposhist['ipos_add'] as $add_k=>$add_v){
+            if (!($items[$add_k])) $items[$add_k]=0;
+            }
+            }
+            if ($this->patient_ipos_add_values){
+            $items=$this->patient_ipos_add_values;
+            }elseif ($this->f_values['patient_ipos_add_values']){
+            $items=$this->f_values['patient_ipos_add_values'];
+            }
+            ?>
+            <?php $iposaddcount=0;?>
+            <?php foreach ($items as $ia_k=>$ia_v):?>
+            <?php /*if($ia_v['key'] != '') :*/ ?>
+            <?php
+                $key = "";
+                $value = "";
+                if(is_array($ia_v)){
+                $key = $ia_v['key'];
+                $value = $ia_v['value'];
+                }
+                else{
+                $key = $ia_k;
+                $value = $ia_v;
+
+                }
+            ?>
+            <?php $iposaddcount+=1;?>
+            <tr <?php if ($iposaddcount%2==0) echo 'class="zebra"';?>>
+            <td class="seven_first"> <input  type="text" name="ipos_add[<?php echo $iposaddcount;?>][key]"  style="width:180px;" value="<?php echo $key; ?>"></td>
+            <?php foreach (array(6,5,4,3,2,0) as $val): ?>
+            <td class="seven_other">
+                &nbsp;&nbsp;<img src="<?php echo PUBLIC_PATH;?>/images/<?php if($value==$val){ echo "radio-selected-btn.jpg"; }else{ echo "radio-btn.jpg";} ?>"/>
+            </td>
+            <?php endforeach; ?>
+            </tr>
+            <?php /*endif;*/ ?>
+            <?php endforeach;?>
+
+
+        </table>
+    </div>
+
+    <div class="ipos">
+        <table border="0" cellspacing="2" cellpadding="2" style="width:100%;">
+            <tr>
+                <td class="seven_first legend"></td>
+                <td class="seven_other legend">Gar nicht</td>
+                <td class="seven_other legend">Selten</td>
+                <td class="seven_other legend">Manchmal</td>
+                <td class="seven_other legend">Meistens</td>
+                <td class="seven_other legend">Immer</td>
+                <td class="seven_other legend">Nicht beurteilbar (z.B. bewusstlos)</td>
+            </tr>
+            <tr>
+                <td class="seven_first"><b>3. War der Patient wegen seiner Erkrankung oder Behandlung besorgt oder beunruhigt?<br/><br/></b></td>
+                <?php foreach (array(6,5,4,3,2,0) as $val): ?>
+                <td class="seven_other">
+                    &nbsp;&nbsp;<img src="<?php echo PUBLIC_PATH;?>/images/<?php if($patient_ipos_values['ipos3']==$val){ echo "radio-selected-btn.jpg";$sum+=count_sum_add($val); }else{ echo "radio-btn.jpg";} ?>"/>
+
+                </td>
+                <?php endforeach; ?>
+            </tr>
+            <tr class="zebra">
+                <td class="seven_first"><b>4. Waren die Familie/ Freunde des Patienten seinetwegen besorgt oder beunruhigt?<br/><br/></b></td>
+                <?php foreach (array(6,5,4,3,2,0) as $val): ?>
+                <td class="seven_other">
+                    &nbsp;&nbsp;<img src="<?php echo PUBLIC_PATH;?>/images/<?php if($patient_ipos_values['ipos4']==$val){ echo "radio-selected-btn.jpg";$sum+=count_sum_add($val); }else{ echo "radio-btn.jpg";} ?>"/>
+                </td>
+                <?php endforeach; ?>
+            </tr>
+            <tr>
+                <td class="seven_first"><b>5. Denken Sie, dass er traurig bedrückt war?<br/><br/></b></td>
+                <?php foreach (array(6,5,4,3,2,0) as $val): ?>
+                <td class="seven_other">
+                    &nbsp;&nbsp;<img src="<?php echo PUBLIC_PATH;?>/images/<?php if($patient_ipos_values['ipos5']==$val){ echo "radio-selected-btn.jpg";$sum+=count_sum_add($val); }else{ echo "radio-btn.jpg";} ?>"/>
+
+                </td>
+                <?php endforeach; ?>
+            </tr>
+        </table>
+    </div>
+    <div class="ipos">
+        <table>
+            <tr>
+                <td class="seven_first legend"></td>
+                <td class="seven_other legend">Immer</td>
+                <td class="seven_other legend">Meistens</td>
+                <td class="seven_other legend">Manchmal</td>
+                <td class="seven_other legend">Selten</td>
+                <td class="seven_other legend">Gar nicht</td>
+                <td class="seven_other legend">Nicht beurteilbar (z.B. bewusstlos)</td>
+            </tr>
+            <tr>
+                <td class="seven_first"><b>6. Denken Sie, dass er im Frieden mit sich selbst war?</b></td>
+                <?php foreach (array(6,5,4,3,2,0) as $val): ?>
+                <td class="seven_other">
+                    &nbsp;&nbsp;<img src="<?php echo PUBLIC_PATH;?>/images/<?php if($patient_ipos_values['ipos6']==$val){ echo "radio-selected-btn.jpg";$sum+=count_sum_add($val); }else{ echo "radio-btn.jpg";} ?>"/>
+                </td>
+                <?php endforeach; ?>
+            </tr>
+            <tr class="zebra">
+                <td class="seven_first"><b>7. Konnte der Patient seine Gefühle mit seiner Familie oder seinen Freunden teilen, so viel wie er wollte?</b></td>
+                <?php foreach (array(6,5,4,3,2,0) as $val): ?>
+                <td class="seven_other">
+                    &nbsp;&nbsp;<img src="<?php echo PUBLIC_PATH;?>/images/<?php if($patient_ipos_values['ipos7']==$val){ echo "radio-selected-btn.jpg";$sum+=count_sum_add($val); }else{ echo "radio-btn.jpg";} ?>"/>
+
+                </td>
+                <?php endforeach; ?>
+            </tr>
+            <tr>
+                <td class="seven_first"><b>8. Hat der Patient so viele Informationen erhalten, wie er wollte?</b></td>
+                <?php foreach (array(6,5,4,3,2,0) as $val): ?>
+                <td class="seven_other">
+                    &nbsp;&nbsp;<img src="<?php echo PUBLIC_PATH;?>/images/<?php if($patient_ipos_values['ipos8']==$val){ echo "radio-selected-btn.jpg";$sum+=count_sum_add($val); }else{ echo "radio-btn.jpg";} ?>"/>
+                </td>
+                <?php endforeach; ?>
+            </tr>
+
+        </table>
+    </div>
+    <div class="ipos">
+        <table>
+            <tr>
+                <td class="seven_first legend"></td>
+                <td class="seven_other legend">Probleme angegangen / Keine Probleme</td>
+                <td class="seven_other legend">Probleme größtenteils angegangen</td>
+                <td class="seven_other legend">Probleme teilweise angegangen</td>
+                <td class="seven_other legend">Probleme kaum angegangen</td>
+                <td class="seven_other legend">Probleme nicht angegangen</td>
+                <td class="seven_other legend">Nicht beurteilbar (z.B. bewusstlos)</td>
+            </tr>
+            <tr>
+                <td><b>9. Wurden in den letzten 3 Tagen praktische Probleme angegangen, die Folge seiner Erkrankung sind (z.B. finanzieller oder persönlicher Art)?</b></td>
+                <?php foreach (array(6,5,4,3,2,0) as $val): ?>
+                <td class="seven_other">
+                    &nbsp;&nbsp;<img src="<?php echo PUBLIC_PATH;?>/images/<?php if($patient_ipos_values['ipos9']==$val){ echo "radio-selected-btn.jpg";$sum+=count_sum_add($val); }else{ echo "radio-btn.jpg";} ?>"/>
+                </td>
+                <?php endforeach; ?>
+            </tr>
+        </table>
+    </div>
+
+    <div class="ipos">
+        <h2>Gesamtscore:				<span style="display:inline-block; font-size:18px; padding:8px;" id="iposscoresum"><?php echo $sum; ?></span></h2>
+        <input name="ipos[patient_ipos_values][score]" type="hidden" id="iposscoresumhidden" value="0">
+    </div>
+</div>
+
+<?php else: ?>
+<script>
+    var detailscookies = '<?php echo $this->detailscookies; ?>';
+
+    $(document).ready(function(){
+
+        $('#ipos_date').datepicker();
+
+        if($('#lmu_pmba_sympt').length==1){
+            var newwrap=$("<div class='ipos'></div>");
+            $(newwrap).append($('#lmu_pmba_sympt'));
+            $($('#ipos div')[3]).after(newwrap);
+            $('#lmu_pmba_sympt .contactform_dragvbox_content').hide();
+
+
+            var iposaddrows=$('.iposappendable tr input[type=text]').length;
+            $('#ipos').on('change','#ipos ul.linktoipos input[type=checkbox]', function(){
+                if($(this).attr('checked')=="checked"){
+                    var newel=$('.iposappendable .jsclonepool').clone();
+                    $(newel).removeClass('jsclonepool');
+                    iposaddrows=iposaddrows+1;
+                    $(newel).find('input').each(function(){
+                        var elemn = $(this).attr('name');
+                        elemn = elemn.replace('0', iposaddrows);
+                        $(this).attr('name', elemn);
+                    });
+
+                    $(newel).find('input[type=text]').val($(this).val());
+                    $(newel).show();
+
+                    $('.iposappendable').append(newel);
+                }
+                else{
+                    var elemn = $(this).val();
+                    $('.iposappendable').find('input').each(function(){
+
+                        if ($(this).val()==elemn) {
+                            $(this).parents('tr').remove();
+                        }
+                    });
+                }
+            });
+
+
+        }
+    });
+
+</script>
+<style type="text/css">
+    input.long{
+        width:700px;
+        margin-left:1em;
+    }
+
+    div.ipos  td.seven_first{
+        width:210px;
+    }
+    div.ipos  td.seven_other{
+        width:88px;
+        text-align:center;
+        vertical-align:middle;
+
+    }
+    div.ipos  td.legend{
+        background-color:#e1e1e1;
+        font-size: 10px;
+    }
+
+    div.ipos{
+        margin-top:1em;
+    }
+    tr.zebra{
+        background-color:#F4F4F4;
+    }
+    div.iposhighlighter tr:hover td{
+        background-color:#c0ffc0;
+    }
+
+
+
+</style>
+            <div class="ipos">
+                <table border="0" cellspacing="2" cellpadding="2" style="width:100%;">
+                    <tr>
+                        <td colspan="4"><b>Ermittlung</b></td>
+                    </tr>
+                    <tr>
+                        <td style="width:150px;">
+                            Zeitpunkt der Erhebung
+                        </td>
+                        <td colspan="3">
+                            <?php
+							$thistime=strtotime($patient_ipos_values['date']);
+							if($thistime>strtotime('2010-01-01 20:00:00')){
+                            $thisdate=date('d.m.Y', $thistime);
+                            $thishours= $patient_ipos_values['date_h'] ;//date('H', $thistime);
+                            $thismins= $patient_ipos_values['date_m'] ;//date('i', $thistime);
+
+                            }else{
+                            $thisdate=date('d.m.Y');
+                            $thishours=date('H');
+                            $thismins=date('i');
+                            if(intval($thismins) == 0){
+                            $thismins = '00';
+                            }elseif(intval($thismins) < 15){
+                            $thismins = '00';
+                            }elseif(intval($thismins) < 30){
+                            $thismins = '15';
+                            }elseif(intval($thismins) < 45){
+                            $thismins = '30';
+                            }else if(intval($thismins) < 60){
+                            $thismins = '45';
+                            };
+                            }
+
+                            $thisuser=($patient_ipos_values['user']!="")? $patient_ipos_values['user'] : $this->form_create_user;
+                            $thistraffic=$this->patient_traffic_status;
+                            if($patient_ipos_values['status']){
+                            $thistraffic=$this->patient_traffic_status;
+                            }
+                            ?>
+                            <input type="hidden" name="ipos[patient_ipos_values][status]" value="<?php echo $thistraffic;?>">
+                            <input type="text" name="ipos[patient_ipos_values][date]"  id="ipos_date" style="width:80px;padding:3px;" value="<? echo $thisdate; ?>" />,
+
+                            <select name="ipos[patient_ipos_values][date_h]" style="margin-left:8px;">
+                                <option value="00">00</option>
+                                <?php for ($i=1; $i<=23; $i++){?>
+                                <option value="<?php echo str_pad($i, 2, "0", STR_PAD_LEFT); ?>" <?php if(str_pad($i, 2, "0", STR_PAD_LEFT) == $thishours ){ echo 'selected="selected"';}?>><?php echo str_pad($i, 2, "0", STR_PAD_LEFT); ?></option>
+                                <?php }?>
+                            </select>
+                            :
+                            <select name="ipos[patient_ipos_values][date_m]">
+                                <option value="00">00</option>
+                                <?php for ($i=15; $i<=59; $i=$i+15){?>
+                                <option value="<?php echo str_pad($i, 2, "0", STR_PAD_LEFT); ?>" <?php if(str_pad($i, 2, "0", STR_PAD_LEFT) == $thismins ){ echo 'selected="selected"';}?>><?php echo str_pad($i, 2, "0", STR_PAD_LEFT); ?></option>
+                                <?php }?>
+                            </select>
+                            Uhr
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            Erhoben von:
+                        </td>
+                        <td colspan="3">
+                            <select name="ipos[patient_ipos_values][user]" style="width:170px;">
+                                <option value="0">Mitarbeiter auswählen</option>
+                                <?php
+                            $ipospreseluser=$patient_ipos_values['user'];
+                            if(!$ipospreseluser){
+                            $ipospreseluser=$this->form_create_user;
+                                }
+
+                                ?>
+                                <?php	foreach ($client_users as $kuser => $vuser):?>
+                                <option value="<?php echo $vuser['id'] ?>" <?php if ($vuser['id'] == $ipospreseluser) echo "selected"?>><? echo $vuser['last_name'].' '.$vuser['first_name'];?></option>
+                                <?php endforeach;?>
+                            </select>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td></td>
+                        <td>
+                            <input type="radio" name="ipos[patient_ipos_values][ipos0]" id="ipos0_1" value="selbst" <?php if ($patient_ipos_values['ipos0']=="selbst") echo "checked"; ?>> <label for="ipos0_1">selbst</label>
+                        </td>
+                        <td>
+                            <input type="radio" name="ipos[patient_ipos_values][ipos0]" id="ipos0_2"   value="Professionelle" <?php if ($patient_ipos_values['ipos0']=="fremd") echo "checked"; ?>> <label for="ipos0_2">Professionelle</label>
+                        </td>
+                        <td>
+                            <input type="radio" name="ipos[patient_ipos_values][ipos0]" id="ipos0_3" value="Angehörige" <?php if ($patient_ipos_values['ipos0']=="proxy") echo "checked"; ?>> <label for="ipos0_3">Angehörige</label>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="ipos">
+                <table border="0" cellspacing="2" cellpadding="2" style="width:100%;">
+                    <tr>
+                        <td colspan="2"><b>1. Welche Hauptprobleme hatte der Patient* <u>in den letzten 3 Tagen?</u></b><br><small>Um die Fragen möglichst kurz zu halten, wird im Folgenden nur „der Patient“ genannt. Gemeint ist immer „die Patientin/der Patient“.</small></td>
+                    </tr>
+                    <tr>
+                        <td>&nbsp;a)</td>
+                        <td><input type="text" name="ipos[patient_ipos_values][ipos1a]" value="<?php echo $patient_ipos_values['ipos1a']; ?>" class="long"></td>
+                    </tr>
+                    <tr>
+                        <td>&nbsp;b)</td>
+                        <td><input type="text" name="ipos[patient_ipos_values][ipos1b]" value="<?php echo $patient_ipos_values['ipos1b']; ?>" class="long"></td>
+                    </tr>
+                    <tr>
+                        <td>&nbsp;c)</td>
+                        <td><input type="text" name="ipos[patient_ipos_values][ipos1c]" value="<?php echo $patient_ipos_values['ipos1c']; ?>" class="long"></td>
+                    </tr>
+                </table>
+            </div>
+            <div class="ipos iposhighlighter">
+                <table class="iposappendable" border="0" cellspacing="2" cellpadding="2" style="width:100%;">
+                    <tr>
+                        <td colspan="8"><b>2. Bitte kreuzen Sie an, wie sehr der Patient <u>in den letzten 3 Tagen</u> von folgenden Symptomen beeinträchtigt war:</b></td>
+                    </tr>
+                    <tr>
+                        <td class="seven_first legend"></td>
+                        <td class="seven_other legend">Gar nicht</td>
+                        <td class="seven_other legend">Ein wenig</td>
+                        <td class="seven_other legend">Mäßig</td>
+                        <td class="seven_other legend">Stark</td>
+                        <td class="seven_other legend">Extrem stark</td>
+                        <td class="seven_other legend">Nicht beurteilbar (z.B. bewusstlos)</td>
+                    </tr>
+                    <tr>
+                        <td class="seven_first">Schmerzen</td>
+                        <?php foreach (array(6,5,4,3,2,0) as $val): ?>
+                        <td class="seven_other"> <input class="ipossum" type="radio" value="<?php echo $val;?>" <?php if ($patient_ipos_values['ipos2a']==$val) echo 'checked'; ?> name="ipos[patient_ipos_values][ipos2a]"></td>
+                        <?php endforeach; ?>
+                    </tr>
+                    <tr class="zebra">
+                        <td class="seven_first">Atemnot</td>
+                        <?php foreach (array(6,5,4,3,2,0) as $val): ?>
+                        <td class="seven_other"> <input class="ipossum" type="radio" value="<?php echo $val;?>" <?php if ($patient_ipos_values['ipos2b']==$val) echo 'checked'; ?> name="ipos[patient_ipos_values][ipos2b]"></td>
+                        <?php endforeach; ?>
+                    </tr>
+                    <tr>
+                        <td class="seven_first">Schwäche oder fehlende Energie</td>
+                        <?php foreach (array(6,5,4,3,2,0) as $val): ?>
+                        <td class="seven_other"> <input class="ipossum" type="radio" value="<?php echo $val;?>" <?php if ($patient_ipos_values['ipos2c']==$val) echo 'checked'; ?> name="ipos[patient_ipos_values][ipos2c]"></td>
+                        <?php endforeach; ?>
+                    </tr>
+                    <tr class="zebra">
+                        <td class="seven_first">Übelkeit (das Gefühl, erbrechen zu müssen)</td>
+                        <?php foreach (array(6,5,4,3,2,0) as $val): ?>
+                        <td class="seven_other"> <input class="ipossum" type="radio" value="<?php echo $val;?>" <?php if ($patient_ipos_values['ipos2d']==$val) echo 'checked'; ?> name="ipos[patient_ipos_values][ipos2d]"></td>
+                        <?php endforeach; ?>
+                    </tr>
+                    <tr>
+                        <td class="seven_first">Erbrechen</td>
+                        <?php foreach (array(6,5,4,3,2,0) as $val): ?>
+                        <td class="seven_other"> <input class="ipossum" type="radio" value="<?php echo $val;?>" <?php if ($patient_ipos_values['ipos2e']==$val) echo 'checked'; ?> name="ipos[patient_ipos_values][ipos2e]"></td>
+                        <?php endforeach; ?>
+                    </tr>
+                    <tr class="zebra">
+                        <td class="seven_first">Appetitlosigkeit</td>
+                        <?php foreach (array(6,5,4,3,2,0) as $val): ?>
+                        <td class="seven_other"> <input class="ipossum" type="radio" value="<?php echo $val;?>" <?php if ($patient_ipos_values['ipos2f']==$val) echo 'checked'; ?> name="ipos[patient_ipos_values][ipos2f]"></td>
+                        <?php endforeach; ?>
+                    </tr>
+                    <tr>
+                        <td class="seven_first">Verstopfung</td>
+                        <?php foreach (array(6,5,4,3,2,0) as $val): ?>
+                        <td class="seven_other"> <input class="ipossum" type="radio" value="<?php echo $val;?>" <?php if ($patient_ipos_values['ipos2g']==$val) echo 'checked'; ?> name="ipos[patient_ipos_values][ipos2g]"></td>
+                        <?php endforeach; ?>
+                    </tr>
+                    <tr class="zebra">
+                        <td class="seven_first">Mundtrockenheit oder schmerzhafter Mund</td>
+                        <?php foreach (array(6,5,4,3,2,0) as $val): ?>
+                        <td class="seven_other"> <input class="ipossum" type="radio" value="<?php echo $val;?>" <?php if ($patient_ipos_values['ipos2h']==$val) echo 'checked'; ?> name="ipos[patient_ipos_values][ipos2h]"></td>
+                        <?php endforeach; ?>
+                    </tr>
+                    <tr>
+                        <td class="seven_first">Schläfrigkeit</td>
+                        <?php foreach (array(6,5,4,3,2,0) as $val): ?>
+                        <td class="seven_other"> <input class="ipossum" type="radio" value="<?php echo $val;?>" <?php if ($patient_ipos_values['ipos2i']==$val) echo 'checked'; ?> name="ipos[patient_ipos_values][ipos2i]"></td>
+                        <?php endforeach; ?>
+                    </tr>
+                    <tr class="zebra">
+                        <td class="seven_first">eingeschränkte Mobilität</td>
+                        <?php foreach (array(6,5,4,3,2,0) as $val): ?>
+                        <td class="seven_other"> <input class="ipossum" type="radio" value="<?php echo $val;?>" <?php if ($patient_ipos_values['ipos2j']==$val) echo 'checked'; ?> name="ipos[patient_ipos_values][ipos2j]"></td>
+                        <?php endforeach; ?>
+                    </tr>
+
+
+                    <tr class="jsclonepool" style="display:none;">
+                        <td class="seven_first"> <input  type="text" name="ipos_add[0][key]"  style="width:180px;" value=""></td>
+                        <?php foreach (array(6,5,4,3,2,0) as $val): ?>
+                        <td class="seven_other"> <input type="radio" value="<?php echo $val;?>" <?php if (0===$val) echo 'checked'; ?> name="ipos_add[0][value]"></td>
+                        <?php endforeach; ?>
+                    </tr>
+
+                    <tr><td class="legend" colspan="7" style="font-size:12px; font-weight:bold; padding-top:3px; padding-bottom:2px;" >Bitte nennen Sie weitere Symptome, die aus Ihrer Sicht den Patienten in den letzten 3 Tagen beeinträchtigt haben.</td></tr>
+
+                    <?php
+                    $items=array();
+                    $iposlist=array();
+
+                    if($iposhist['ipos_add']){
+                        foreach ($iposhist['ipos_add'] as $add_k=>$add_v){
+                    if (!($items[$add_k])) $items[$add_k]=0;
+                    }
+                    }
+                    if ($this->f_values['patient_ipos_add_values']){
+                    $items=$this->f_values['patient_ipos_add_values'];
+                    }
+
+                    ?>
+
+
+                    <?php $iposaddcount=0;?>
+                    <?php foreach ($items as $ia_k=>$ia_v):?>
+                    <?php $iposaddcount+=1;?>
+                    <tr <?php if ($iposaddcount%2==0) echo 'class="zebra"';?>>
+                    <td class="seven_first"> <input  type="text" name="ipos_add[<?php echo $iposaddcount;?>][key]"  style="width:180px;" value="<?php echo $ia_k; ?>"></td>
+                    <?php foreach (array(6,5,4,3,2,0) as $val): ?>
+                    <td class="seven_other"> <input type="radio" value="<?php echo $val;?>" <?php if ($this->f_values['patient_ipos_add_values'][$ia_k]==$val) echo 'checked'; ?> name="ipos_add[<?php echo $iposaddcount;?>][value]"></td>
+                    <?php endforeach; ?>
+                    </tr>
+                    <?php endforeach;?>
+
+                    <?php for ($i=0;$i<3;$i++):?>
+                    <?php $iposaddcount+=1;?>
+                    <tr <?php if ($iposaddcount%2==0) echo 'class="zebra"';?>>
+                    <td class="seven_first"> <input  type="text" name="ipos_add[<?php echo $iposaddcount;?>][key]"  style="width:180px;" value=""></td>
+                    <?php foreach (array(6,5,4,3,2,0) as $val): ?>
+                    <td class="seven_other"> <input type="radio" value="<?php echo $val;?>" <?php if (0==$val) echo 'checked'; ?> name="ipos_add[<?php echo $iposaddcount;?>][value]"></td>
+                    <?php endforeach; ?>
+                    </tr>
+                    <?php endfor;?>
+                </table>
+            </div>
+
+            <div class="ipos">
+                <table border="0" cellspacing="2" cellpadding="2" style="width:100%;">
+                    <tr>
+                        <td class="seven_first legend"></td>
+                        <td class="seven_other legend">Gar nicht</td>
+                        <td class="seven_other legend">Selten</td>
+                        <td class="seven_other legend">Manchmal</td>
+                        <td class="seven_other legend">Meistens</td>
+                        <td class="seven_other legend">Immer</td>
+                        <td class="seven_other legend">Nicht beurteilbar (z.B. bewusstlos)</td>
+                    </tr>
+                    <tr>
+                        <td class="seven_first"><b>3. War der Patient wegen seiner Erkrankung oder Behandlung besorgt oder beunruhigt?<br/><br/></b></td>
+                        <?php foreach (array(6,5,4,3,2,0) as $val): ?>
+                        <td class="seven_other"> <input class="ipossum" type="radio" value="<?php echo $val;?>" <?php if ($patient_ipos_values['ipos3']==$val) echo 'checked'; ?> name="ipos[patient_ipos_values][ipos3]" ></td>
+                        <?php endforeach; ?>
+                    </tr>
+                    <tr class="zebra">
+                        <td class="seven_first"><b>4. Waren die Familie/ Freunde des Patienten seinetwegen besorgt oder beunruhigt?<br/><br/></b></td>
+                        <?php foreach (array(6,5,4,3,2,0) as $val): ?>
+                        <td class="seven_other"> <input class="ipossum" type="radio" value="<?php echo $val;?>" <?php if ($patient_ipos_values['ipos4']==$val) echo 'checked'; ?> name="ipos[patient_ipos_values][ipos4]"></td>
+                        <?php endforeach; ?>
+                    </tr>
+                    <tr>
+                        <td class="seven_first"><b>5. Denken Sie, dass er traurig bedrückt war?<br/><br/></b></td>
+                        <?php foreach (array(6,5,4,3,2,0) as $val): ?>
+                        <td class="seven_other"> <input class="ipossum" type="radio" value="<?php echo $val;?>" <?php if ($patient_ipos_values['ipos5']==$val) echo 'checked'; ?> name="ipos[patient_ipos_values][ipos5]"></td>
+                        <?php endforeach; ?>
+                    </tr>
+                </table>
+            </div>
+            <div class="ipos">
+                <table>
+                    <tr>
+                        <td class="seven_first legend"></td>
+                        <td class="seven_other legend">Immer</td>
+                        <td class="seven_other legend">Meistens</td>
+                        <td class="seven_other legend">Manchmal</td>
+                        <td class="seven_other legend">Selten</td>
+                        <td class="seven_other legend">Gar nicht</td>
+                        <td class="seven_other legend">Nicht beurteilbar (z.B. bewusstlos)</td>
+                    </tr>
+                    <tr>
+                        <td class="seven_first"><b>6. Denken Sie, dass er im Frieden mit sich selbst war?</b></td>
+                        <?php foreach (array(6,5,4,3,2,0) as $val): ?>
+                        <td class="seven_other"> <input class="ipossum" type="radio" value="<?php echo $val;?>" <?php if ($patient_ipos_values['ipos6']==$val) echo 'checked'; ?> name="ipos[patient_ipos_values][ipos6]"></td>
+                        <?php endforeach; ?>
+                    </tr>
+                    <tr class="zebra">
+                        <td class="seven_first"><b>7. Konnte der Patient seine Gefühle mit seiner Familie oder seinen Freunden teilen, so viel wie er wollte?</b></td>
+                        <?php foreach (array(6,5,4,3,2,0) as $val): ?>
+                        <td class="seven_other"> <input class="ipossum"  type="radio" value="<?php echo $val;?>" <?php if ($patient_ipos_values['ipos7']==$val) echo 'checked'; ?> name="ipos[patient_ipos_values][ipos7]"></td>
+                        <?php endforeach; ?>
+                    </tr>
+                    <tr>
+                        <td class="seven_first"><b>8. Hat der Patient so viele Informationen erhalten, wie er wollte?</b></td>
+                        <?php foreach (array(6,5,4,3,2,0) as $val): ?>
+                        <td class="seven_other"> <input class="ipossum"  type="radio" value="<?php echo $val;?>" <?php if ($patient_ipos_values['ipos8']==$val) echo 'checked'; ?> name="ipos[patient_ipos_values][ipos8]"></td>
+                        <?php endforeach; ?>
+                    </tr>
+
+                </table>
+            </div>
+            <div class="ipos">
+                <table>
+                    <tr>
+                        <td class="seven_first legend"></td>
+                        <td class="seven_other legend">Probleme angegangen / Keine Probleme</td>
+                        <td class="seven_other legend">Probleme größtenteils angegangen</td>
+                        <td class="seven_other legend">Probleme teilweise angegangen</td>
+                        <td class="seven_other legend">Probleme kaum angegangen</td>
+                        <td class="seven_other legend">Probleme nicht angegangen</td>
+                        <td class="seven_other legend">Nicht beurteilbar (z.B. bewusstlos)</td>
+                    </tr>
+                    <tr>
+                        <td><b>9. Wurden in den letzten 3 Tagen praktische Probleme angegangen, die Folge seiner Erkrankung sind (z.B. finanzieller oder persönlicher Art)?</b></td>
+                        <?php foreach (array(6,5,4,3,2,0) as $val): ?>
+                        <td class="seven_other"> <input class="ipossum" type="radio" value="<?php echo $val;?>" <?php if ($patient_ipos_values['ipos9']==$val) echo 'checked'; ?> name="ipos[patient_ipos_values][ipos9]"></td>
+                        <?php endforeach; ?>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="ipos">
+                <script>
+                    function sum_ipos(){
+                        var sum=0;
+                        var elecount=0;
+                        $('input.ipossum').each(function(){
+
+                            if($(this).attr('checked')=='checked'){
+                                elecount++;
+                                switch($(this).val()){
+                                    case "2":
+                                        sum=sum+4;
+                                        break;
+                                    case "3":
+                                        sum=sum+3;
+                                        break;
+                                    case "4":
+                                        sum=sum+2;
+                                        break;
+                                    case "5":
+                                        sum=sum+1;
+                                        break;
+                                }
+                            }
+                        });
+                        $('#iposscoresum').text(sum);
+                        $('#iposscoresumhidden').val(sum);
+                    }
+                    $(document).ready(function(){
+                        $('input.ipossum').change(sum_ipos);
+
+                        sum_ipos();
+                    });
+                </script>
+                <h2>Gesamtscore:				<span style="display:inline-block; font-size:18px; padding:8px;" id="iposscoresum"></span></h2>
+                <input name="ipos[patient_ipos_values][score]" type="hidden" id="iposscoresumhidden" value="0">
+            </div>
+<?php endif; ?>
+    <!--  ############################################################################## -->

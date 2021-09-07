@@ -1,0 +1,555 @@
+<!-- Maria:: Migration ISPC to CISPC 08.08.2020 -->
+<div style="display: none"> <img id="calImg" src="<?php echo RES_FILE_PATH;  ?>/images/calendar.png" alt="Popup" class="trigger"> </div>
+<form enctype="multipart/form-data"  action="" method="post" name="voluntary_worker" id="voluntary_worker">
+
+
+ 
+<?php $voluntary_worker_history = $this->voluntary_worker_history;?>
+<div class="tab_container" >
+	<div>
+		<div id="tabs">
+			
+<!-- 			####################################### -->
+<!-- 			############## TAB 7 ################## -->
+<!-- 			####################################### -->
+			<!-- ISPC - 2231 -p.5 apply design of patient verlauf; used select with chosen instead input for shortcut-->
+			<div id="tabs-7">
+				<? 
+					$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/autogrow/jquery.elastic.source_new.js?'.date('Ymd'));
+				?>		
+				<script type="text/javascript">
+				$(document).ready(function(){
+					$('.vwc_textarea').elastic();
+					
+				});
+				
+				var shorcuts_js = <?php echo $this->shorcuts_js ?>;
+				var delaytrimer;
+				
+				function keyupdelay(obj, cntr) 
+				{
+					clearTimeout(delaytrimer);
+					delaytrimer = setTimeout(function applydelay(){
+						upper(cntr);
+						chkmask(obj.value, cntr);
+						changeinput(obj.value, cntr);
+					},700);
+				}
+				function upper(v) {
+					document.getElementById("vw_course_type"+v).value = document.getElementById("vw_course_type"+v).value.toUpperCase();
+				}
+				
+				function chkmask(ltr,cnt)
+				{
+					var cnts = 0;
+					for(i=0; i<shorcuts_js.length;i++) {
+						if(shorcuts_js[i] == ltr) {
+							cnts++;
+						}
+					}
+
+					if(cnts<1){
+						document.getElementById('vw_course_type'+cnt).value="";
+					} else {
+						$('#vw_course_title'+cnt).focus();
+						new_course_line(cnt+1);
+					}
+				}
+				
+				function appendto(rowId,inputValue){
+					var text = '';
+ 
+					if ($('#vw_course_type' + rowId).val() == "XT" ) 
+					{
+						//appended the select value to time
+						if ($('#time' + rowId).val() == "Zeit (in Minuten)" || $('#time' + rowId).val() == "" || $('#time' + rowId).val() == " ") 
+						{//set time default value if left empty
+							time = " ";
+						} 
+						else 
+						{
+							time = $('#time' + rowId).val();
+						}
+			
+						if ($('#komment' + rowId).val() == "Grund / Anlass" || $('#komment' + rowId).val() == "" || $('#komment' + rowId).val() == " ") 
+						{//set kommentar default value if left empty
+							komment = " ";
+						} 
+						else 
+						{
+							komment = $('#komment' + rowId).val();
+						}
+						text = time + ' | ' + komment + ' | ' + $('#date' + rowId).val() + ' ' + $('#hourtime' + rowId).val();
+					}  
+					$('#vw_course_title' + rowId).val(text);
+	 
+				}
+
+				
+				function changeinput(shortcut, id){
+					idplus = id +1;
+					idminus = id -1;
+					
+					$('.verlauf_error_div').hide();
+					$('#vw_course_title'+id).val('');
+					
+	 				if(shortcut == "XT" || shortcut == "xt")
+					{ //Koordination and Telefon 
+
+						if($('#hidd'+id).length > 0)
+						{
+							$('#hidd'+id).hide().remove();
+							$('#vw_course_title'+id).val('');
+						}
+
+					
+						$("#time"+id).live("keyup input paste", function(){
+							setTimeout(jQuery.proxy(function() {
+								this.val(this.val().replace(/[^0-9]/g, ''));
+							}, $(this)), 0);
+						});
+
+
+						var newInputs = '';
+						newInputs +='<div id="hidd'+id+'">';
+						newInputs +='<input type="text" id="time'+id+'" class="vw_course_time" name="vw_course[time][]" value="Zeit (in Minuten)" onfocus="if(this.value == \'Zeit (in Minuten)\') { this.value=\'\'}" onblur="if(this.value == \'\'){ this.value=\'Zeit (in Minuten)\' } else { appendto (\''+id+'\',this.value) }" onkeydown="appendto(\''+id+'\',this.value);"/>';
+						newInputs +='<textarea name="vw_course[komment][]" id="komment'+id+'" class="vw_course_comment" onfocus="if(this.value == \'Grund / Anlass\') { this.value=\'\'}" onblur="if(this.value == \'\'){ this.value=\'Grund / Anlass\' } else { appendto(\''+id+'\',this.value) }" >Grund / Anlass</textarea> ';
+						newInputs +='<input type="text" id="date'+id+'" name="vw_course[date][]" class="vw_course_date" value="<?php echo date("d.m.Y"); ?>" onfocus="appendto(\''+id+'\',this.value);"  onblur="if(this.value == \'\'){ this.value=\'<?php echo date("d.m.Y"); ?>\' }"   onchange="if(this.value == \'\'){ this.value=\'<?php echo date("d.m.Y"); ?>\' } else { appendto(\''+id+'\',this.value) }"/>';
+						newInputs +='<input type="text" id="hourtime'+id+'" name="vw_course[hourtime][]" class="vw_course_timepicker"  value="<?php echo date("H:i"); ?>"   onblur="if(this.value == \'\'){ this.value=\'<?php echo date("H:i"); ?>\' }"/>';
+						newInputs +='</div>';
+						
+						$('#vwc_text'+id).append(newInputs);
+
+						$('#komment'+id).elastic();
+						
+						$('#date' + id).mask("99.99.9999");
+						$('#date'+id).datepicker({
+							dateFormat: 'dd.mm.yy',
+							showOn: "both",
+							buttonImage: $('#calImg').attr('src'),
+							buttonImageOnly: true,
+							changeMonth: true,
+							changeYear: true,
+							nextText: '',
+							prevText: '',
+							onSelect: function(date) {
+								appendto(id,date.value);
+								$(this).focus();
+								return false;
+							}
+						});
+
+						$('#hourtime' + id).timepicker({
+							onSelect : function(time_value) {
+								if($('#date'+id).val()==""){
+									$('#date'+id).val("<?php echo date('d.m.Y'); ?>");
+								}
+								appendto(id, time_value);
+								$(this).focus();
+								return false;
+							},
+							minutes : {
+								interval : 5
+							},
+							showPeriodLabels : false,
+							rows : 4,
+							hourText : 'Stunde',
+							minuteText : 'Minute'
+						});
+
+						$('#vw_course_title' + id).hide();
+
+						$('#vwc_text' + id).show();
+						appendto(id, '<?php echo date("d.m.Y"); ?>');
+						if (jQuery.inArray(shortcut, shorcuts_js)) {
+							$('#time' + id).focus();
+						}
+
+					}
+					else 
+					{
+						$('#vw_course_title' + id).show();
+						$('#hidd' + id).hide().remove();
+						$('#vw_course_title' + id).val('');
+					}
+				}
+
+
+				function new_course_line(newcnt)
+				{
+
+					var createrow = 0;
+					if(newcnt>=2)
+					{
+						createrow = '1';
+					}
+					else
+					{
+						if(document.getElementById('vw_course_title'+(newcnt-2))){ //avoid error when element is not defined!!
+							if(document.getElementById('vw_course_title'+(newcnt-2)).value.length>0) //if it has more than 1 character create new row
+							{
+								createrow = '1';
+							}
+						}
+					}
+
+					if(createrow==1)
+					{
+						if($('#vw_course_type'+newcnt).length == "0"){
+							var outerdiv = document.createElement('div');
+							outerdiv.className = "vwc_inner_inputs";
+
+							var div1 = document.createElement('div');
+							div1.className="vwc_shortcut";
+
+							var div2 = document.createElement('div');
+							div2.className="vwc_text";
+							div2.id="vwc_text"+newcnt;
+
+							/*var ip1 = document.createElement('input');
+							ip1.name = "vw_course[vw_course_type][]";
+							ip1.id = "vw_course_type"+newcnt;
+							ip1.type = "text";*/
+							
+							/* cloned_selectShortcut replaces ip1 */
+							var cloned_selectShortcut= $('.vwc_shortcut').find('select.selectShortcut:first').clone(false).off();
+							$(cloned_selectShortcut)
+							.attr('id', "vw_course_type"+newcnt)
+							.css('display','block')
+							.attr("onchange", "")
+							//removeAttrr('onchange')
+//							.chosen("destroy") 
+							.change(function(){ keyupdelay(this, newcnt); })
+							.find(':selected').removeAttr('selected').end();
+							
+							var ip2 = document.createElement('textarea');
+							ip2.name = "vw_course[vw_course_title][]";
+							ip2.id = "vw_course_title"+newcnt;
+							ip2.className = 'vwc_textarea';
+							
+							div1.appendChild($(cloned_selectShortcut).get(0));
+							div2.appendChild(ip2);
+
+							outerdiv.appendChild(div1);
+							outerdiv.appendChild(div2);
+
+							$('.vwc_inputs').append($(outerdiv));
+							$('.vwc_textarea').elastic();
+							
+							var div3 = document.createElement('div');
+							div3.className="clearer";
+							
+							$('.vwc_inputs').append($(div3));
+							
+							chosenizeSelectShortcut($(outerdiv).find('select.selectShortcut'));
+
+						}
+
+					}
+				}
+				var callBackWrong = function(params){
+
+					if(params.val==1)
+					{
+						$("#wrongcomment_"+params.id).show();
+						$("#wrongcomment_"+params.id).html(params.comment);
+						$('#vwc_line_'+params.id).addClass('wrongfilter');
+
+						$('#vwc_line_'+params.id).addClass('greyclass');
+						$('.wrc_'+params.id).find('font').attr('color','#cccccc');
+						$('.wrt_'+params.id).find('font').attr('color','#cccccc');
+					}
+					else
+					{
+						$('#vwc_line_'+params.id).removeClass('greyclass');
+						$('#vwc_line_'+params.id).removeClass('wrongfilter');
+
+						$('#wrongcomment_'+params.id).hide();
+
+
+
+						for(i=0;i<$('.wrc_'+params.id).length;i++)
+						{
+							var crid = ($('.wrc_'+params.id)[i].id);
+							var crtid = ($('.wrt_'+params.id)[i].id);
+							var oldcolor = $('#old_'+crid.substr(('wrc_').length)).val();
+
+							$('#'+crid).find('font').attr('color','#'+oldcolor);
+							$('#'+crtid).find('font').attr('color','#'+oldcolor);
+						}
+					}
+				}
+				function uncheckbox(chk)
+				{
+			       $('#wrong_check_'+chk).attr('checked',false);
+				}
+				function closepopup() {
+					disablePopup();
+				}
+
+				
+				function openPopup(chkbx,id, skip_modal) {
+// 					var checkid = $(chkbx).attr('id');
+					var checkid = $(chkbx).data('block_id');
+					
+					var ids = "";
+					var quamma = "";
+
+					for(i=0; i < $('.block_'+checkid).length; i++) {
+						var entry_id = $('.block_'+checkid + ":eq("+i+")").attr('data-entry_id');
+// 						ids = ids + quamma + ( $('.block_'+checkid)[i].id );
+						ids = ids + quamma + entry_id;
+						
+// 						console.log( $('.block_'+checkid + ":eq("+i+")").attr('data-entry_id') );
+						
+						quamma = ",";
+					}
+
+					console.log(ids); 
+					if(chkbx.checked) {
+						$("<input type='hidden' name='comments["+id+"]' id='comment_"+id+"' value='' />").appendTo("#frmcourse");
+
+						$('#contactArea').html('<iframe id="add_family_doc" frameborder="0" src="" scrolling="no" style="margin:0 auto;"></iframe>');
+
+
+						centerPopup({sr:'about:blank',ht:250,wt:450});
+
+						$('#contactArea').html('<div><?php echo $this->translate('wrongcomment'); ?><div align="right"><a id="popupContactClose" style="cursor:pointer;" onclick="uncheckbox(\''+checkid+'\');closepopup()">x</a></div></div><div><textarea name="comment" id="comment"></textarea></div><div><button name="" onClick="saveComment(\''+id+'\',\''+ids+'\',\''+checkid+'\');"><?php echo $this->translate('submit');?></button></div>');
+
+						loadPopup();
+					} else {
+
+						$("#comment_"+id).remove();
+
+						ajaxCallserver({url:'voluntaryworkers/savewrongcd?ids='+ids+'&val=0&blockcnt='+checkid});
+					}
+				}
+
+				function saveComment(id,ids,blockid)
+				{
+				   var val = "";
+				   var modal_mode = '0';
+
+					if($("#comment").val().length>0) {
+						val="<?php echo ("Dieser Eintrag wurde als gelöscht markiert. Begründung : ") ?>" + $("#comment").val();
+
+						$("#comment_"+id).val(val);
+
+						ajaxCallserver({url:'voluntaryworkers/savewrongcd', method:'POST', data:{comment:val,val:1,ids:ids,blockcnt:blockid}});
+						disablePopup();
+					}
+					else
+					{
+						jAlert('<?php echo $this->translate('entercomment') ?>');
+					}
+				}
+				
+				</script>
+
+				<div class="vw_course_form">
+					
+					<!-- course date  -->
+					<div class="vwc_title"><?php echo $this->translate('patientcoursedocs')?></div>
+					<div class="vwc_date"><?php echo date("d.m.Y");?></div>
+					
+					<span class="err">
+						<?php echo $this->error_shortcut; ?>
+						<?php echo $this->error_date; ?>
+					</span>
+						
+					<!-- course inputs  -->
+					<div class="vwc_inputs">
+										
+						<div class="vwc_filtres">
+							
+							<?php echo $this->translate("Filter by course"); ?>:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+						 	<td class="vwc_shortcut"><input type="checkbox"  name="course_filter" id="course_filter_K"  value="K" <?php if($this->course_filter == 'K'){ echo 'checked="checked"';} ?>  /></td>
+						 	<td  class="vwc_shortcut"><label  for="course_filter_K" >Kommentar &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </label> </td>
+						 		 
+						 	<td class="vwc_shortcut"><input type="checkbox"  name="course_filter" id="course_filter_M"  value="M" <?php if($this->course_filter == 'M'){ echo 'checked="checked"';} ?>  /></td>
+						 	<td  class="vwc_shortcut"><label  for="course_filter_M" >Mitarbeitergespräch &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</label> </td>
+
+						 	<td class="vwc_shortcut"><input type="checkbox"  name="course_filter" id="course_filter_XT"  value="XT" <?php if($this->course_filter == 'XT'){ echo 'checked="checked"';} ?>  /></td>
+						 	<td  class="vwc_shortcut"><label  for="course_filter_XT" >Telefon &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</label> </td>
+
+						 	<td class="vwc_shortcut"><input type="checkbox"  name="course_filter" id="course_filter_P"  value="P" <?php if($this->course_filter == 'P'){ echo 'checked="checked"';} ?>  /></td>
+						 	<td  class="vwc_shortcut"><label  for="course_filter_P" >Persönliches &nbsp;&nbsp;&nbsp;&nbsp;</label> </td>
+						 							
+						</div>
+					
+						<div class="vwc_inner_inputs">
+						<div class="vwc_shortcut">			
+								<!-- <input type="text" onchange="keyupdelay(this,1)" onkeyup="keyupdelay(this,1)" value="" id="vw_course_type1" name="vw_course[vw_course_type][]"> -->
+							
+							<?php 
+							//add empty option so we can de-select
+							$optionss = "<option value='' data-1='' data-2='" . $this->translate("Please select action") . "' data-3='font-style: italic;color:#BBBBBB;'>" . $this->translate("Please select action") . "</option>"; 
+
+							foreach ($this->all_available_shortcuts as $short) {
+    							$css = '';
+   			 					$css .= $short['isbold'] ? 'font-weight: bold;' : '';
+    							$css .= $short['isitalic'] ? 'font-style: italic;' : '';
+    							$css .= $short['isunderline'] ? 'text-decoration: underline;' : '';
+    							$css .= $short['font_color'] ? "color: #{$short['font_color']};" : '';
+    
+    							//$selected = $short['shortcut'] == $course_type ? ' selected ' : '';
+    
+    							$short['course_fullname'] = trim($short['course_fullname']);
+    
+    							$optionss .= "<option value='{$short['shortcut']}' data-1='{$short['shortcut']}' data-2='{$short['ctype']}' data-3='{$css}'>{$short['ctype']}</option>";
+							} 
+							$course_type_as_select = "<select name='vw_course[vw_course_type][]' onchange='keyupdelay(this,1)' id='vw_course_type1' class='selectShortcut chosenShortcuts-container'>{$optionss}</select>";
+							echo $course_type_as_select;
+							?>
+						</div>
+							
+							<div class="vwc_text"  id="vwc_text1"> 			
+								<textarea rows="" cols="" id="vw_course_title1" class="vwc_textarea" name="vw_course[vw_course_title][]" ></textarea>
+							</div>
+						</div>
+						<div class="clearer"></div>
+					</div>
+				</div>
+				
+				<?php if(empty($this->vw_course)) { ?>
+					<div class="vw_course" style="border-top: 0px;">
+				<?php } else { ?>
+					<div class="vw_course">
+				<?php } ?>
+				<?php 	
+						$vw_course = $this->vw_course;
+						$course_users = $this->allusers;
+ 				?>
+					<?php
+					$blockcounter = "1";
+					$wrongfilterclass = "";
+					$greyclass = "";
+					 foreach($vw_course as $vcw_line=>$vwc):?>
+					 <?
+					 if ($vwc['wrong'] == 1)
+						{
+        					$wrongfilterclass = "wrongfilter";
+        					$greyclass = "greyclass";
+						 } else{
+        					$wrongfilterclass = "";
+        					$greyclass = "";
+						}						
+					 
+					 ?>
+					<div class="vwc_line <?php echo $wrongfilterclass;?> <?php echo $greyclass;?>" id="vwc_line_<?php echo $blockcounter; ?>">
+						<div class="vwc_left">
+						<?php
+							$full_course_date = $vwc['c_date_dt'].''.$vwc['c_date_hm'];
+							$full_done_date = $vwc['date_dt'].''.$vwc['date_hm'];
+						
+						 if($full_course_date != $full_done_date ):?>
+							<span class="done_date_block"> <?php echo $vwc['date_dt']; ?>, <?php echo $vwc['date_hm']; ?></span>
+							<span class="entry_date_block"> <?php echo $vwc['c_date_dt']; ?>, <?php echo $vwc['c_date_hm']; ?></span><br/>
+							
+						<?php else:	?>
+							<span class="done_date_block"> <?php echo $vwc['date_dt']; ?>, <?php echo $vwc['date_hm']; ?></span>
+						<?php endif; ?>
+						<?php echo $course_users[$vwc['user']]; ?>
+						</div>
+						
+						
+						
+						
+						<div class="vwc_right">
+							<div class="vwc_details">
+									<?php foreach($vwc['summary'] as $k=>$sh_data):?>
+									
+								   <?php
+										$wrongcheck = "";
+
+										if ($sh_data['wrong'] == 1)
+										{
+											$wrongcheck = 'checked=checked';
+										}
+
+										$style="";
+										if(strlen($sh_data['font_color']) > 0){
+											$style .="color: #".$sh_data['font_color']."; ";
+										}
+										if($sh_data['isbold'] == "1"){
+											$style .=" font-weight:800; ";
+										}
+										if($sh_data['isitalic'] == "1"){
+											$style .=" font-style: italic; ";
+										}
+										if($sh_data['isunderline'] == "1"){
+											$style .=" text-decoration: underline; ";
+										}
+									
+									 ?>
+										<div class="vwc_details_line">		
+											<div class="vwc_sh greyfontclass wrc_<?php echo $blockcounter; ?>" id="wrc_<?php echo $sh_data['id'] ?>" <?php if(strlen($style) > 0 ): ?> style="<?php echo $style;?>" <?php endif;?> > <?php echo $sh_data['course_type']?></div>
+											<div class="vwc_text greyfontclass wrt_<?php echo $blockcounter; ?>" id="wrt_<?php echo $sh_data['id'] ?>" <?php if(strlen($style) > 0 ): ?> style="<?php echo $style;?>" <?php endif;?>  > <?php echo $sh_data['course_title']?></div>
+											
+										<div class="colleft2_inpwid " style="display: none;">
+											<input type="checkbox" name="wrong[<?php echo $sh_data['id'] ?>]" class="block_<?php echo $blockcounter; ?>" data-entry_id="<?php echo $sh_data['id'] ?>"	id="<?php echo $sh_data['id'] ?>" value="1"  /> 
+											<input type="hidden" value="<?php echo $sh_data['course_type']?>" 	id="course_type_<?php echo $sh_data['id'] ?>" name="courses_types[]" class="courses_types_<?php echo $blockcounter; ?>"	rel="0" /> &nbsp;
+										</div>
+										<input type="hidden" name="oldcolor" id="old_<?php echo $sh_data['id'] ?>" value="<?php echo $sh_data['font_color']; ?>" />
+											
+										</div>		
+									<?php endforeach; ?>
+							</div>
+							<div class="vwc_details_wrong">
+							
+								<input type="checkbox" class="divcheckbox" onclick="openPopup(this,<?php echo $blockcounter; ?>)" <?php echo $wrongcheck; ?> value="1" id="wrong_check_<?php echo $blockcounter; ?>"  data-block_id="<?php echo $blockcounter; ?>"  name="wrongmain">
+							</div>
+							
+							<div class="ListCourseSumm" id="wrongcomment_<?php echo $blockcounter; ?>" style="width: 100%; display: bloc; float:left;"><?php echo $vwc['wrongcomment'];  ?></div>
+						</div>
+					
+					</div> 
+				<?php $blockcounter++; ?>
+				<?php endforeach; ?>
+					
+					
+				</div>
+				
+				<div class="vwc_available">
+				
+					<!-- <h3><?php echo $this->translate("vwc available shortcuts"); ?></h3> -->
+					<div class="verlauf_bar_bottom"></div>
+					<?php foreach($this->all_available_shortcuts as $k=>$sh_data):?>
+															<?php
+										$style="";
+										if(strlen($sh_data['font_color']) > 0){
+											$style .="color: #".$sh_data['font_color']."; ";
+										}
+										if($sh_data['isbold'] == "1"){
+											$style .=" font-weight:800; ";
+										}
+										if($sh_data['isitalic'] == "1"){
+											$style .=" font-style: italic; ";
+										}
+										if($sh_data['isunderline'] == "1"){
+											$style .=" text-decoration: underline; ";
+										}
+									
+									 ?>
+										<div class="vwc_sh_av_line">		
+											<div class="vwc_av_sh" <?php if(strlen($style) > 0 ): ?> style="<?php echo $style;?>" <?php endif;?> > <?php echo $sh_data['shortcut']?></div>
+											<div class="vwc_av_text" <?php if(strlen($style) > 0 ): ?> style="<?php echo $style;?>" <?php endif;?>  > <?php echo $sh_data['ctype']?></div>
+										</div>		
+					<?php endforeach;?>
+				</div>
+			
+				<div class="clearer"></div>
+			
+		</div>
+	</div>
+	</div>
+	
+
+		<label for="btnsubmit"></label>
+		<input type="hidden" id="changedrows" value="" name="changedrows">
+		<input type="submit" name="btnsubmit" id="btnsubmit" class="button" tabindex="30" value="<?php echo $this->translate('submit') ?>">
+		<input type="submit" name="btnsubmit2" id="btnsubmit_and_close" class="button btnsubmit_usersessions" value="<?php echo $this->translate('save and close') ?>">
+ 		<input type="hidden" name="tabs" value="" id="tabs_selected_id" /> 
+ 		<input type="hidden" name="action_redirect" id="action_redirect" value="btnsubmit" /> 
+</form>
+  

@@ -1,0 +1,213 @@
+<table width="85%" border="0" align="left" cellpadding="0" cellspacing="0" id="schmerzpumpeedittable" class="datatable">
+	<tr>
+		<th width="80" align="left" valign="top"><strong><? echo $this->translate('date');?></strong></th>
+		<th width="180" align="left" valign="top"><strong><? echo $this->translate('medication');?></strong></th>
+		<th width="100" align="left" valign="top"><strong><? echo $this->translate('dosage');?></strong></th>
+		<th height="20" align="left" valign="top"><strong><? echo $this->translate('registeredby');?></strong></th>
+		<th height="20" align="left" valign="top"><strong><? echo $this->translate('prescribedby');?></strong></th>
+		<th height="20" align="left" valign="top"><strong>Delete</strong></th>
+
+	</tr>
+	<gridrow>
+		<phpscript>
+			if($cnt <= '99999')
+			{
+				$cnt = $cnt+99999;
+			}
+			$cnt++;
+			$view->mcntr_s = $cnt;
+
+			$pid = $_GET['id'];
+			$username = $view->all_users[$create_user];
+
+			$medarr = $view->medarr1;
+
+			$medication = $medarr[$medication_master_id]['name'];
+			$hidd_medication = $medarr[$medication_master_id]['id'];
+			//ISPC-2329 Ancuta 03.04.2020
+			$pzn = $medarr[$medication_master_id]['pzn'];
+			$dbf_id = $medarr[$medication_master_id]['dbf_id'];
+			$source = $medarr[$medication_master_id]['source'];
+			//--			
+			
+			$create_date = date('d.m.Y',strtotime($create_date));
+
+			$replace_with="";
+			$medication_date_change="";
+	
+			if($medication_change != '0000-00-00 00:00:00'){
+	
+		    	$medication_date_change = date('d.m.Y',strtotime($medication_change));
+				$replace_with = "none";
+	
+			} elseif($medication_change == '0000-00-00 00:00:00' && $change_date != '0000-00-00 00:00:00') {
+	
+		    	$medication_date_change = date('d.m.Y',strtotime($change_date));
+				$replace_with = "change";
+	
+			} else {
+	
+		    	$medication_date_change = date('d.m.Y',strtotime($create_date));
+				$replace_with = "create";
+			}
+
+			$users = $view->users;
+
+
+			$userdrop  = $view->formSelect('add_schmerze[verordnetvon]['.$cnt.']', $verordnetvon, array("class"=>"user_selector_schmerze"), $users);
+
+			if($smpdescription != 0){
+			$idcocktail = $smpdescription['id'];
+			$smprow = '
+
+			<tr id="cDetails">
+				<td colspan="7">
+					<div id="cocktailDetails">
+						<table border="0" cellspacing="2" cellpadding="2" style="width:100%;">
+							<tbody>
+								<tr>
+									<td colspan="2">Kommentar</td>
+								</tr>
+								<tr>
+									<td colspan="2"><textarea name="cocktailDescription" id="cocktailDescription" style="width:99%; height: 50px;">'.$smpdescription[description].'</textarea>
+									<input type="hidden" id="cocktailhid" name="cocktailhid" value="'.$cocktailid.'" />
+									</td>
+								</tr>
+								<tr>
+									<td>Bolus</td>
+									<td><input type="text" name="bolus" value="'.$smpdescription[bolus].'" id="bolus" /></td>
+								</tr>
+								<tr>
+									<td>Flussrate</td>
+									<td><input type="text" name="flussrate" value="'.$smpdescription[flussrate].'" id="flussrate" /></td>
+								</tr>
+								<tr>
+									<td>Sperrzeit</td>
+									<td><input type="text" name="sperrzeit" value="'.$smpdescription[sperrzeit].'" id="sperrzeit" /></td>
+								</tr>
+							</tbody>
+						</table>
+
+					</div>
+				</td>
+			</tr>
+			';
+		} else {
+			$smprow = '';
+		}
+		$encPatId = $_REQUEST['id'];
+		
+		
+		
+		
+		
+		
+		
+  		
+
+   $acknowledge  = $view->acknowledge; 
+	    $non_approved_line="";
+		$red_back = " ";
+		$new_non_approved = "";			 
+		$app_rights = "";
+			 
+		if($acknowledge  == "1"){
+
+
+
+			if(!empty($on_hold_changes[$id])){
+			  	$change_username[$id] = $view->all_users[$on_hold_changes[$id]['create_user']];
+			  	$change_prescribed[$id] = $view->all_users[$on_hold_changes[$id]['verordnetvon']];
+				$red_back = " red_back"; 
+				if($on_hold_changes[$id]['status'] == "delete")
+				{
+					$set_for_deletion = '<span class="red_text">'.$view->translate("Delete medication: ").'</span>'; 
+				} 
+				else
+				{
+					$set_for_deletion = '';
+					 
+				}
+				
+				if($on_hold_changes[$id]['status'] == "new")
+				{
+					$add_username[$id] = $view->all_users[$create_user];
+				  	$add_prescribed[$id] = $view->all_users[$verordnetvon];
+				  	
+					$red_back = " red_back"; 
+					$non_approved_line = '<tr class="red_back"><td colspan="7"><b>'.$view->translate("Unapproved newly added medication: ").'</b><br/>'.$on_hold_changes[$id]['medication_change_date'].' | '.$on_hold_changes[$id]['name'].' | '.$on_hold_changes[$id]['dosage'].' | '.$on_hold_changes[$id]['comments'].' | '.$add_username[$id].' | '.$add_prescribed[$id] .'</td></tr>';
+					$new_non_approved = '  ';
+				} else{
+					$non_approved_line = '<tr class="red_back"><td colspan="7"><b>'.$view->translate("Unapproved changes: ").'</b><br/>'.$set_for_deletion.' '.$on_hold_changes[$id]['medication_change_date'].' | '.$on_hold_changes[$id]['name'].' | '.$on_hold_changes[$id]['dosage'].' | '.$on_hold_changes[$id]['comments'].' | '.$change_username[$id].' | '.$change_prescribed[$id] .'</td></tr>';
+					$new_non_approved = "";
+				}
+			}
+			else
+			{
+				$non_approved_line = "";
+				$red_back = " ";
+				$new_non_approved = ""; 
+			}
+		} 
+		else
+		{
+			$non_approved_line = "";
+			$red_back = " "; 
+			$new_non_approved = "";
+		}
+ 
+ 
+ 
+		
+		</phpscript>
+		<tr id="medadd_schmerze[[cnt]]" alt='[[cnt]]' class="[[red_back]]" [[new_non_approved]] >
+			<td align="left" class="date_line_[[id]]" valign="top">
+				<input name="add_schmerze[medication_change][[[cnt]]]" value="[[medication_date_change]]" type="text" class="med_date"   rel="med_date[[cnt]]" />
+				<input name="add_schmerze[replace_with][[[cnt]]]" value="[[replace_with]]" type="hidden">
+	    	</td>
+			<td align="left" valign="top">
+				<input name="add_schmerze[medication][[[cnt]]]" value="[[medication]]" id="medication[[cnt]]" type="text" class="livesearchmedinp med meds_medadd_schmerze[[cnt]]">
+
+				<input name="add_schmerze[hidd_medication][[[cnt]]]" value="[[hidd_medication]]" id="hidd_medication[[cnt]]" type="hidden">
+
+				<input type="hidden" id="drid[[cnt]]" name="add_schmerze[drid][[[cnt]]]" value="[[id]]" />
+				<input type="hidden" id="edited[[cnt]]" name="edited[[[cnt]]]" value="0" />
+				
+				<!--//ISPC-2329 Ancuta 03.04.2020 -->
+				<input name="add_schmerze[[cnt]][pzn]" value="[[pzn]]" id="pzn[[cnt]]" type="hidden" class="medication_pzn" />
+				<input name="add_schmerze[[cnt]][dbf_id]" value="[[dbf_id]]" id="dbf_id[[cnt]]" type="hidden" class="medication_dbf_id">
+				<input name="add_schmerze[[cnt]][source]" value="[[source]]" id="source[[cnt]]" type="hidden"  class="medication_source"/>
+				<!--//--  -->
+				
+
+
+				<div id="medidropdown[[cnt]]" style="position:absolute;display:none;" class="listPatMedEd livesearchdropdown"></div>
+
+			</td>
+			<td align="left" valign="top">
+				<input  name="add_schmerze[dosage][[[cnt]]]" id="dosage[[cnt]]" class="dosage dsg_medadd_schmerze[[cnt]]" value="[[dosage]]"  />
+			</td>
+			<td width="120" align="left" valign="top" class="usrname_medadd_schmerze[[cnt]]">[[username]]</td>
+			<td align="left" valign="top">[[userdrop]]</td>
+			<td align="left" valign="top"><a href="javascript:void(0)" onclick="delmedicationRow('[[id]]', '[[encPatId]]');"><img src="<? echo RES_FILE_PATH;  ?>/images/action_delete.png" border="0" class='remove_tr_schmerze' /></a></td>
+
+
+		</tr>
+		[[non_approved_line]]
+		
+		[[smprow]]
+	</gridrow>
+	<tr>
+		<td colspan="2">
+			<div class="add_new_medi">
+				<a href="javascript:createnewschmerzpumpeedit()">
+					<img src="<? echo RES_FILE_PATH; ?>/images/edit_add.png" width="20" height="20" />
+					<div class="add_new_medi_link">
+						<? echo $this->translate('addnewmedication'); ?>
+					</div>
+				</a>
+			</div>
+		</td>
+	</tr>
+
+</table>

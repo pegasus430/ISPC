@@ -1,0 +1,221 @@
+<!-- Maria:: Migration ISPC to CISPC 08.08.2020 -->
+<? 
+	$allowed_medication_types = $this->medication_blocks;
+	$medication_array = $this->medications_array;
+	$allow_print = $this->allow_print;
+	$timed_scheduled_medications = $this->timed_scheduled_medications;
+
+	// group by indikation so we can print easier
+    
+    $medications_array_isbedarfs = array();
+	$medications_isbedarfs_noindication = array();
+
+    foreach( $medication_array['isbedarfs'] as $k=>$v ) {
+		
+		if ( strtolower(trim($v['indication'])) == '' ) {
+			$medications_isbedarfs_noindication[] = $v;
+		}
+		else{
+			$medications_array_isbedarfs [ strtolower(trim($v['indication'])) ] [] = $v;
+		}
+	}
+	
+	if ( ! empty($medications_isbedarfs_noindication)) {
+		$medications_array_isbedarfs [] = $medications_isbedarfs_noindication;
+	}	
+
+	//krsort($medications_array_isbedarfs);
+//Changes for ISPC-1848 F
+
+?>
+<?php foreach($allowed_medication_types as $k=>$medication_type):?>
+	<?php if( $medication_type == "isbedarfs"):?>
+			<h1>
+				<?php echo $this->translate("Bedarfsmedikationsplan")?>
+			</h1 >
+			<?php endif; ?>
+	<?php if(  $medication_type == "isbedarfs" && in_array($medication_type,$timed_scheduled_medications) && in_array($medication_type,$allow_print['medication_types'])):?>
+	<br/>&nbsp;<br/>
+			
+			<?php foreach ($medications_array_isbedarfs as $indication_name => $medication_array ) :?>
+				
+				<br/>&nbsp;<br/>
+					
+				<!--  LIST MEDICATION -->
+				<?php $header[$medication_type] ="0";?>			
+		 		<?php foreach($medication_array as $k =>$med):?>
+				
+				
+				<table border="1" width="100%" cellpadding="2" nobr="true">
+					<?php if($header[$medication_type] == "0"):?>
+						<tr>
+							<th style="opacity:0.4; <?php if (strlen($med['indication_color']) >0 ) { echo "background-color:#".$med['indication_color'] ; } ?>" colspan="<?php echo ( count($this->dosage_intervals[$medication_type]) + 3) ;?>">
+								<h3>
+									<?php // echo $this->translate('medication_indication'); ?>
+									<?php // if(strlen($med['indication']) > 0) { echo ":"; } ?>
+									<?php echo html_entity_decode($med['indication']); ?>
+								</h3>
+							</th>
+				 		</tr>
+						
+						<tr>
+				 			<th border="1" rowspan="2" width="30%"><b><?php echo $this->translate('medication_name');?></b></th><!--  1 -->
+				 			<!--  DOSAGE TABLE HEADER PARENT-->
+				 			<th border="1"  width="40%" colspan="<?php echo count($this->dosage_intervals[$medication_type]);?>"><b><?php echo $this->translate('medication_dosage'); ?></b></th> <!--  5 -->
+				 			<th border="1" rowspan="2" width="20%"><b><?php echo $this->translate('medication_comments'); ?></b></th><!--  0 -->
+				 			<th border="1" rowspan="2" width="10%"><b><?php echo $this->translate('date'); ?></b></th><!--  0 -->
+				 		</tr>
+						<!--  DOSAGE TABLE HEADER KIDS-->
+				 		<tr>
+				 			<?php foreach($this->dosage_intervals[$medication_type] as $k => $di):?>
+					 			<th  border="1" align="center" ><b><?php echo $di;?></b></th>
+				 			<?php endforeach;?>
+				 		</tr>
+					
+					<?php $header[$medication_type] = 1;?>
+					<?php endif;?>
+					<tr>
+						<!--  MEDICATION NAME -->
+						<td width="30%"><b><?php echo html_entity_decode($med['medication']);?></b>
+							<?php if(strlen($med['drug'])>0):?>
+								<hr/>
+								<i><?php echo $this->translate('medication_drug'); ?>:</i> <?php echo html_entity_decode($med['drug']);?>
+							<?php endif;?>
+							<?php if($this->show_new_fileds == "1"): ?>
+								<hr/>
+								<i><?php echo $this->translate('medication_unit'); ?>:</i> <?php echo $med['unit'];?>
+								<hr/>
+								<i><?php echo $this->translate('medication_type'); ?>:</i> <?php echo $med['type'];?>
+								<hr/>
+								<i><?php echo $this->translate('medication_dosage_form'); ?>:</i> <?php echo $med['dosage_form'];?>
+								<hr/>
+								<i><?php echo $this->translate('medication_concentration'); ?>:</i> <?php echo $med['concentration_full'];?>
+							<?php endif; ?>
+						</td>
+						
+						<!--  MEDICATION DOSAGE INPUTS-->
+						<?php $td_width = round((40 /count($this->dosage_intervals[$medication_type])),2); ?>
+						<?php $td_width = str_replace(',','.',$td_width);?>
+						<?php foreach($this->dosage_intervals[$medication_type] as $k => $dosage_time):?>
+						<td align="center" width="<?php echo $td_width;?>%">
+							 <?php echo $med['dosage'][$dosage_time];?><?php if($this->show_new_fileds == "1" &&  strlen($med['dosage'][$dosage_time]) ): ?><?php echo $med['unit'];?><?php endif;?>
+							<br/>
+							<!--TODO-3624 Ancuta 23.11.2020 -->
+							<?php if($this->show_new_fileds == "1" &&  strlen($med['dosage_concentration'][$dosage_time]) ): ?>
+								<?php echo $med['dosage_concentration'][$dosage_time];?>
+							<?php endif; ?>
+							
+						</td>
+		 				<?php endforeach;?>
+						
+						<!--  MEDICATION INDICATION  / MEDICATION Comment-->
+						<td  width="20%">
+						<?php if(strlen($med['indication']) > 0):?>
+						<b><?php echo $this->translate('medication_indication'); ?></b>: <?php echo html_entity_decode($med['indication']);?>
+						<?php endif;?>
+						<br/>
+						<?php 
+							echo nl2br(html_entity_decode($med['comments']));
+						?>
+						</td>
+						
+						<!--  MEDICATION DATE-->
+	 					<td align="center"  width="10%">
+							<?php echo date('d.m.Y',strtotime($med['medication_change']));?><br/>
+						</td>
+					</tr> 	
+				</table>
+		 		<?php endforeach;?>
+				
+			<?php endforeach;?>
+		 
+		 <?php elseif( $medication_type == "isbedarfs" && in_array($medication_type,$allow_print['medication_types']) ):?>
+			 	
+			 	<?php foreach ($medications_array_isbedarfs as $indication_name => $medication_array ) :?>
+				
+					<br/>&nbsp;<br/>
+						
+					<!--  LIST MEDICATION -->
+					<?php $header[$medication_type] ="0";?>			
+			 		<?php foreach($medication_array as $k =>$med):?>
+			 		
+					<table border="1" width="100%" cellpadding="2" nobr="true">
+					<?php if($header[$medication_type] == "0"):?>
+					
+						<tr>
+							<th style="opacity:0.4; <?php if (strlen($med['indication_color']) >0 ) { echo "background-color:#".$med['indication_color'] ; } ?>" colspan="4">
+								<h3>
+									<?php // echo $this->translate($medication_type." medication title")?>
+									<?php // echo $this->translate('medication_indication'); ?>
+									<?php // if(strlen($med['indication']) > 0) { echo ":"; } ?>
+									<?php echo html_entity_decode($med['indication']); ?>
+								</h3>
+							</th>
+				 		</tr>
+				 		<!-- 
+					<tr>
+						<th colspan="4"  style="background-color:#D3D3D3; border:1px solid #000" >
+							<h3><?php echo $this->translate($medication_type." medication title")?></h3>
+						</th>
+			 		</tr>
+					-->
+				 	<tr>
+				 		<th border="1" width="30%"><b><?php echo $this->translate('medication_name');?></b></th><!--  1 -->
+				 		<th border="1" width="30%"><b><?php echo $this->translate('medication_dosage'); ?><?=($medication_type == "isbedarfs" || $medication_type == "iscrisis") ? ' / '. $this->translate('Interval for dosage') : '';?></b></th> <!--  5 --><!-- TODO-4208 Ancuta 15.06.2021 -->
+				 		<th border="1" width="30%"><b><?php echo $this->translate('medication_comments'); ?></b></th><!--  0 -->
+				 		<th border="1" width="10%"><b><?php echo $this->translate('date'); ?></b></th><!--  0 -->
+				 	</tr>
+					<?php $header[$medication_type] = "1";?>
+					<?php endif;?>
+					
+						<tr>
+							<!--  MEDICATION NAME -->
+							<td width="30%"><b><?php echo html_entity_decode($med['medication']);?></b>
+								<?php if(strlen($med['drug'])>0):?>
+									<hr/>
+									<i><?php echo $this->translate('medication_drug'); ?>:</i> <?php echo html_entity_decode($med['drug']);?>
+								<?php endif; ?>
+								
+								<?php if($this->show_new_fileds == "1"): ?>
+									<hr/>
+									<i><?php echo $this->translate('medication_unit'); ?>:</i> <?php echo $med['unit'];?>
+									<hr/>
+									<i><?php echo $this->translate('medication_type'); ?>:</i> <?php echo $med['type'];?>
+									<hr/>
+									<i><?php echo $this->translate('medication_dosage_form'); ?>:</i> <?php echo $med['dosage_form'];?>
+									<hr/>
+									<i><?php echo $this->translate('medication_concentration'); ?>:</i> <?php echo $med['concentration_full'];?>
+								
+								<?php endif; ?>
+							</td>
+							
+							<!--  MEDICATION DOSAGE INPUTS-->  <!-- ISPC-2524 pct.4) Lore 13.01.2020 -->
+							<td width="30%"><?php echo html_entity_decode($med['dosage']);?><?php if($this->show_new_fileds == "1"): ?> <?php echo $med['unit'];?><?php endif; ?>
+                            <?=(($medication_type == "isbedarfs" || $medication_type == "iscrisis") && ! empty($med['dosage_interval'])) ? ' / '. $med['dosage_interval'] : '';?> <!-- TODO-4208 Ancuta 15.06.2021 -->
+                            </td>
+		 
+							<!--  MEDICATION INDICATION  / MEDICATION Comment-->
+							<td width="30%">
+							<?php if(strlen($med['indication']) > 0):?>
+							<b><?php echo $this->translate('medication_indication'); ?></b>: <?php echo html_entity_decode($med['indication']);?>
+							<?php endif;?>
+							<br/>
+							<?php 
+								echo nl2br(html_entity_decode($med['comments']))
+							?>
+							</td>
+							
+							
+							<!--  MEDICATION DATE-->
+		 					<td align="center" width="10%"><?php echo date('d.m.Y',strtotime($med['medication_change']));?></td>
+		 
+						</tr>
+					</table>
+			 		<?php endforeach;?>
+			 	<?php endforeach;?>
+	<?php endif;?>
+	
+	
+	
+<?php endforeach;?>
+ 

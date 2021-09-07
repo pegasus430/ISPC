@@ -1,0 +1,196 @@
+ <!--  Maria:: Migration CISPC to ISPC 22.07.2020 -->
+ <!-- Maria:: Migration CISPC to ISPC 20.08.2020 -->
+
+
+<?php
+$testdata=[
+    ['title'=>'PMD Bericht', 'date'=>'2019-01-01 23:44:55', 'file_id'=>1001, 'sendable_tag'=>'pmd_bericht'],
+    ['title'=>'PMD Bericht 2', 'date'=>'2019-02-22 22:44:55', 'file_id'=>1001, 'sendable_tag'=>'pmd_bericht', 'sent'=>'12.12.2020 12:22'],
+];
+
+$data=$this->files;
+?>
+
+<div class="tab_container">
+    <h1>Berichte übertragen</h1>
+
+    <table class="datatable">
+        <tr>
+            <th style="width:100px;">Besuch</th>
+            <th style="width:100px;">Version</th>
+            <th>Dokument</th>
+            <th style="width:100px;">Art</th>
+            <th style="width:100px;">übertragen</th>
+        </tr>
+
+
+        <?php
+        $reports=array_filter($data, function($a){if($a['tag']['sendable']==2){return 1;}});
+        $col_group=array_column($reports, 'cf_parent');
+        $col_index=array_column($reports, 'id');
+        array_multisort($col_group,SORT_DESC,$col_index, SORT_DESC, $reports);
+
+        $x=0;
+        $last_parent=0;
+        ?>
+        <?php foreach($reports as $entry):?>
+            <?php if($entry['tag']['sendable']==2):?>
+                <?php if(isset($entry['transferinfo']) && $entry['transferinfo']['muted']){
+                    if(  isset($entry['transferinfo'])
+                        && isset($entry['transferinfo']['sent_date'])
+                        && strtotime($entry['transferinfo']['sent_date'])>strtotime('2020-01-01')){
+                        //file has a sent_date
+                    }else {
+                        continue;
+                    }
+
+                }?>
+                <tr>
+                    <td>
+                        <?php if($last_parent!=$entry['cf_parent']){
+                           $dt=new DateTime($entry['cf_date']);echo $dt->format('d.m.Y H:i');
+                            $last_parent=$entry['cf_parent'];
+                        }else{
+                            echo '\' \'';
+                        }?>
+                    </td>
+                    <td><?php $dt=new DateTime($entry['create_date']);echo $dt->format('d.m.Y H:i');?></td>
+                    <td><a href="<?php echo APP_BASE . "stats/patientfileupload?doc_id=".$entry['id']."&id=".$this->encid;?>"><?php echo htmlspecialchars($entry['title']);?></a></td>
+                    <td>
+                        <?php echo htmlspecialchars($entry['tag']['tag']);?>
+                        <?php
+                        if($entry['transferinfo']['signed_status'] == 0) echo "(vorläufig)";
+                        if($entry['transferinfo']['signed_status'] == 1) echo "(final)";
+                        ?>
+
+                    </td>
+                    <td>
+                        <?php if(  isset($entry['transferinfo'])
+                                && isset($entry['transferinfo']['sent_date'])
+                                && strtotime($entry['transferinfo']['sent_date'])>strtotime('2020-01-01')):?>
+                            <?php echo date('d.m.Y H:i',strtotime($entry['transferinfo']['sent_date']));?>
+                        <?php else:?>
+                            <input type="button" class="transmit_open_dlg" value="jetzt übertragen" data-fileid="<?php echo $entry['id'];?>"  data-filename="<?php echo $entry['title'];?>">
+                        <?php endif;?>
+                    </td>
+                </tr>
+            <?php endif;?>
+        <?php endforeach;?>
+    </table>
+</div>
+
+
+<div class="tab_container">
+    <h1>Dokumente übertragen</h1>
+
+    <table class="datatable">
+        <tr>
+            <th  style="width:100px;">Datum</th>
+            <th>Dokument</th>
+            <th  style="width:100px;">Art</th>
+            <th  style="width:100px;">übertragen</th>
+        </tr>
+        <?php foreach(array_reverse($data) as $entry):?>
+        <?php if($entry['tag']['sendable']==1):?>
+        <tr>
+            <td><?php echo date('d.m.Y H:i',strtotime($entry['create_date']));?></td>
+            <td><a href="<?php echo APP_BASE . "stats/patientfileupload?doc_id=".$entry['id']."&id=".$this->encid;?>"><?php echo htmlspecialchars($entry['title']);?></a></td>
+            <td><?php echo htmlspecialchars($entry['tag']['tag']);?></td>
+            <td>
+                <?php if(  isset($entry['transferinfo'])
+                    && isset($entry['transferinfo']['sent_date'])
+                    && strtotime($entry['transferinfo']['sent_date'])>strtotime('2020-01-01')):?>
+                    <?php echo date('d.m.Y H:i',strtotime($entry['transferinfo']['sent_date']));?>
+                <?php else:?>
+                        <input type="button" class="transmit_open_dlg" value="jetzt übertragen" data-fileid="<?php echo $entry['id'];?>"  data-filename="<?php echo $entry['title'];?>">
+                <?php endif;?>
+            </td>
+        </tr>
+        <?php endif;?>
+        <?php endforeach;?>
+    </table>
+</div>
+
+
+<div id="transmit_patfile_dlg" style="display:none;">
+    <p><b>Wollen Sie diese Datei wirklich übertragen?</b></p>
+    <p style="margin:8px;" id="transmit_patfile_ftitle">??.pdf</p>
+
+    <div id="case">Fall auswählen:
+        <select id="case_select" name="case_id">
+            <?php foreach ($this->cases as $case_id=>$case):?>
+                <option value="<?php echo $case_id;?>"><?php echo $case;?></option>
+            <?php endforeach;?>
+        </select><br><br>
+    </div>
+
+    <div id="return_area"><pre></pre></div>
+    <div align="center" style="width:100%;display:none;" id="sendfile_throbber">
+        übertragen... <img src="<?php echo APP_BASE;?>images/ajax-loader.gif">
+    </div>
+</div>
+
+
+<script>
+    $(document).ready(function(){
+
+        $('#transmit_patfile_dlg').dialog({
+            autoOpen: false,
+            width:560,
+            height:280,
+            title:'Dokument übertragen',
+            modal: true,
+            open:function(){
+                $(".ui-dialog-buttonpane button:contains('Datei senden')").button("enable");
+            },
+            close: function(){
+                $('#sendfile_throbber').hide();
+                $('#return_area').hide();
+            },
+            buttons: {
+                "Datei senden": function () {
+                    $(".ui-dialog-buttonpane button:contains('Datei senden')").button("disable");
+                    $('#sendfile_throbber').show();
+                    $.post("patient/doctransferhl7?id=<?php echo $this->encid;?>",
+                        {
+                            fileid: $('#transmit_patfile_dlg').prop('send_fileid'),
+                            case: $('#case_select').val()
+                        }
+                        , function (msg) {
+                            var msgtext = "Es ist ein Fehler aufgetreten.";
+                            msg = $.trim(msg);
+                            msgtext += "\n" + msg;
+                            if (msg == "OK") {
+                                msgtext = "Übertragung war erfolgreich.";
+                                var mybutt = $('#transmit_patfile_dlg').prop('send_sender_button');
+                                $(mybutt).replaceWith("gerade gesendet");
+                            }
+                            $('#return_area pre').html(msgtext);
+                            $('#sendfile_throbber').hide();
+                            $('#return_area').show();
+                            $('#transmit_dialog .backtobutton').show();
+                        });
+
+                    return false;
+                },
+                "Abbrechen": function () {
+                    $('#transmit_patfile_dlg').dialog("close");
+                }
+            }
+
+            });
+
+        $(document).on('click', 'input.transmit_open_dlg', function(){
+            var f_title=$(this).data('filename');
+            var f_fileid=$(this).data('fileid');
+            $('#transmit_patfile_ftitle').text(f_title);
+            $('#transmit_patfile_dlg').prop('send_fileid',f_fileid);
+            $('#transmit_patfile_dlg').prop('send_sender_button',this);
+            $('#transmit_patfile_dlg').dialog('open');
+        });
+
+    });
+
+
+
+</script>

@@ -1,0 +1,235 @@
+<?php
+     $this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/page-css/controldischargeplanningclinic.css?' . date('Ymd'));
+?>
+
+<script>
+    $(document).ready(function () {
+        $('.plangoalentries').on('change', '.plangoalentry input, .plangoalentry textarea, .plangoalentry select', function () {
+            var emptyrows = 0;
+            $('.plangoalentry').each(function () {
+                var cont = $(this).find('input').val() + $(this).find('textarea').val();
+                if (cont == "") {
+                    emptyrows++;
+                }
+                if (emptyrows > 1) $(this).remove();
+            });
+            if (emptyrows == 0) {
+                var newel = $('.plangoalentry:first').clone();
+                $(newel).find('input, textarea').val('');
+                $('.plangoalentry:last').after(newel);
+                var rowcount = 0;
+                $('.plangoalentry').each(function () {
+                    $(this).find('input, textarea, select').each(function () {
+                        var name = $(this).attr('name');
+                        name = name.replace(/\[[\d+]\]/, "[" + rowcount + "]");
+                        $(this).attr('name', name);
+                    });
+                    rowcount++;
+                });
+
+            }
+        });
+
+        $("#placerows").on('click', '.remove-place-button', function (e) {
+
+            var whichtr = $(this).closest("tr");
+            confirm_and_remove(whichtr);
+        });
+    });
+
+    $(document).on('change', '.placename', function () {
+        //http://jsfiddle.net/ambiguous/LAECx/
+        var last = $(this).closest('.placerow');
+
+        if ($(last).find('.placename').val() != "") {
+
+            var newel = last.clone();  //clone the last row
+            $(newel).find('.placename').val(''); //delete value of new row
+            $(last).find('.remove-place-button').removeAttr('style'); //set the button of last row visible
+
+            last.after(newel);
+
+            newel.find('.placename').focus();
+        }
+        var last = $('.placename').last()[0];
+
+        $('.placename').each(function () {
+            if ($(this).val() == "") {
+                if (this != last) {
+                    $(this).parents('.placerow').remove();
+                }
+            }
+        });
+    })
+
+    function confirm_and_remove (whichtr){
+        jConfirm('<? echo $this->translate('confirmdeleteonerecord'); ?>', '<? echo $this->translate('confirmdeletetitle'); ?>', function(r) {
+            if(r){
+                whichtr.remove();
+            }
+        });
+    }
+
+</script>
+
+<style>
+    .listboxformsep {
+        margin-top: 24px;
+    }
+
+    .listboxformsep textarea {
+        margin-left: 18px;
+        width: 280px;
+        height: 200px;
+    }
+
+    .listboxformsep input.plangoalsubmit {
+        margin-left: 180px;
+        margin-top: -4px;
+    }
+
+    .listboxformsep h2 {
+        color: darkblue;
+        font-size: 16px;
+    }
+
+    .lirowelement1 {
+        width: 350px;
+        background-color: #cdf;
+        height: 100px;
+        float: left;
+        padding: 8px;
+    }
+
+    .lirowelement1 input {
+        margin: 0px;
+        width: 320px;
+    }
+
+    .lirowelement2 {
+        width: 350px;
+        background-color: #fdc;
+        height: 100px;
+        float: left;
+        padding: 8px;
+    }
+
+    .lirowelement2 textarea {
+        height: 64px;
+        margin: 0px;
+        width: 346px;
+    }
+
+    .plangoalentry {
+        border: 1px solid #ccc;
+        width: 732px;
+        margin-left: 16px;
+        margin-top: 8px;
+    }
+
+    .lirowclear {
+        clear: both;
+    }
+</style>
+
+<h1>Verwaltung der Vorgaben für Auswahllisten</h1>
+
+<p><i>Eine Zeile einer Liste ist ein Eintrag.</i></p>
+
+
+<div class="listboxformsep">
+    <form method="post">
+
+        <h2>Teambesprechung: Plan und Ziel</h2>
+
+        <div class="plangoalentries">
+            <?php $rowcount=0;
+
+    array_multisort(array_column($this->list_goalsandplans, 'category'), $this->list_goalsandplans);
+            $this->list_goalsandplans['']=array('category'=>'', 'plan'=>array());
+
+            ?>
+            <?php foreach ($this->list_goalsandplans as $goal=>$goalp):?>
+            <div class="plangoalentry">
+                <div class="lirowelement1">
+                    <div>
+                        <b>Ziel:</b><br><input name="plangoalentries[<?php echo $rowcount;?>][goal]" type="text"
+                                               value="<?php echo $goal;?>">
+                    </div>
+                    <div>
+                        <b>Bereich:</b><br>
+                        <select name="plangoalentries[<?php echo $rowcount;?>][category]">
+                            <?php $optionvals=array('Medizinisch', 'Pflegerisch', 'Psychologisch', 'Sozial', 'Spirituell', 'Physiotherapeutisch', 'Atemtherapie');
+                    $displayval_to_optionval=array();
+
+                    foreach($this->professions_conf as $short=>$long){
+                            $displayval_to_optionval[$long]=$short;
+                            $c++;
+                            }
+
+                            ?>
+                            <?php foreach ($displayval_to_optionval as $disp=>$optionval):?>
+                            <option
+                                <?php if ($optionval==$goalp['category']){echo 'selected="selected"';};?>
+                                value="<?php echo $optionval;?>"><?php echo $disp;?></option>
+                            <?php endforeach;?>
+                        </select>
+                    </div>
+                </div>
+                <div class="lirowelement2">
+                    <b>Behandlungsplan:</b><br>
+                    <textarea
+                            name="plangoalentries[<?php echo $rowcount;?>][plan]"><?php echo implode("\n",$goalp['plan']);?></textarea>
+                </div>
+                <div class="lirowclear"></div>
+            </div>
+
+            <?php $rowcount++;?>
+            <?php endforeach;?>
+
+
+        </div>
+
+        </br></br>
+        <h2><?php echo $this->translate('wish_placesofdeath');?></h2>
+        <br>
+        <table id="placerows" width="50%" border="0" cellpadding="0" cellspacing="0"
+               class="datatable halflisttable fixed_team_header"
+               style="border-width:0px;border-collapse:collapse;margin-top: 5px;">
+            <thead class="main_table_header">
+            <tr>
+                <th><?php echo $this->translate('wish_placesofdeath');?></th>
+                <th> <?php echo $this->translate('actions'); ?></th>
+            </tr>
+            </thead>
+            <tbody>
+            <?php foreach ($this->placesofdeathlist as $place):?>
+
+            <tr class="placerow">
+                <td>
+                    <input type="text" name="placesofdeathlist[]" class="placename" value="<?php echo $place;?>" readonly>
+                </td>
+                <td>
+                    <button type="button" value="1" class="remove-place-button"
+                            title="<?php echo $this->translate(delete); ?>"><img
+                            src="<? echo RES_FILE_PATH;  ?>/images/action_delete.png"></button>
+                </td>
+            </tr>
+            </tr>
+            <?php endforeach;?>
+            <tr class="placerow">
+                <td><input type="text" name="placesofdeathlist[]" class="placename" value=""></td>
+                <td>
+                    <button type="button" class="remove-place-button" style="visibility:hidden;" value="1"
+                            title="<?php echo $this->translate(delete); ?>"><img
+                            src="<? echo RES_FILE_PATH;  ?>/images/action_delete.png"></button>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+
+        <input type="submit" style="text-align:left;padding:8px;" value="Speichern">
+
+    </form>
+</div>
+

@@ -1,0 +1,492 @@
+<?php
+    $pdf_box[1]='<img height="10pt"  src="' . PUBLIC_PATH . "/images/checkbox_checked.svg" .'"><font size="6px">&nbsp;</font>';
+    $pdf_box[0]='<img height="10pt"  src="' . PUBLIC_PATH . "/images/checkbox_unchecked.svg" .'"><font size="6px">&nbsp;</font>';
+    $pdf_box['on']='<img height="10pt" src="' . PUBLIC_PATH . "/images/checkbox_checked.svg" .'" ><font size="6px">&nbsp;</font>';
+?>
+ <!--  Maria:: Migration CISPC to ISPC 22.07.2020 -->
+ <!-- Maria:: Migration CISPC to ISPC 20.08.2020 -->
+<?php if ($this->layout=='PDF'):?><!-- Start PDF-Layout -->
+
+<style>
+    body{
+        font-family: times;
+        font-size:12pt;
+    }
+    td{
+        font-size:16px;
+        padding: 0px;
+    }
+
+</style>
+
+<table border="0" width="100%">
+    <?php if($this->logo == ''): ?>
+        <tr>
+            <td height="52,7mm"></td>
+        </tr>
+    <?php else:?>
+        <tr>
+            <td>
+                <img src="<?php echo $this->logo;?>" width="165mm">
+            </td>
+        </tr>
+        <tr>
+            <td height="30mm"></td>
+        </tr>
+    <?php endif;?>
+    <tr>
+        <td width="80mm">
+            <?php echo $this->patientinfo['patient_name'];?>
+        </td>
+    </tr>
+    <tr>
+        <td>
+            <?php echo $this->patientinfo['street'];?>
+        </td>
+    </tr>
+    <tr>
+        <td>
+            <?php echo $this->patientinfo['city'];?>
+        </td>
+    </tr>
+    <tr>
+        <td height="5mm"></td>
+    </tr>
+</table>
+
+<table border="0" width="100%"  cellpadding="5pt">
+    <tr>
+        <td colspan="1"><b><?php echo $this->translate('dischargeplanning');?></b></td>
+    </tr>
+    <tr>
+        <td width="45mm">Geplantes Entlassdatum::</td>
+        <td><?php echo htmlspecialchars($this->data['entlassplanung']['date']);?></td>
+    </tr>
+    <tr>
+        <td>Entlassziel</td>
+        <td><?php echo htmlspecialchars($this->data['entlassplanung']['entlassziel']);?></td>
+    </tr>
+</table>
+
+<table border="0" width="100%" cellpadding="5pt">
+    <tr>
+        <td colspan="1"><b>Entlassassessment</b></td>
+    </tr>
+    <tr>
+        <td width="45mm">Pflegegrad:</td>
+        <td><?php echo htmlspecialchars($this->data['entlassplanung']['pflegegrad']);?></td>
+    </tr>
+     <tr>
+        <td><?php echo $this->translate('patient_aid');?></td>
+        <td><?php echo htmlspecialchars($this->data['entlassplanung']['hilfsmittel']);?></td>
+    </tr>
+     <tr>
+        <td>Verordnungen:</td>
+        <td><?php echo htmlspecialchars($this->data['entlassplanung']['verordnungen']);?></td>
+    </tr>
+</table>
+<table border="0" width="100%" cellpadding="5pt">
+    <tr>
+        <td colspan="1"><b><?php echo $this->translate('contactperson');?></b></td>
+    </tr>
+    <?php foreach ($this->data['ansprechpartner'] as $key=>$value):?>
+    <tr>
+        <td width="45mm"><?php echo htmlspecialchars($key);?></td>
+        <td><?php echo htmlspecialchars($value);?></td>
+    </tr>
+    <?php endforeach;?>
+</table>
+<table border="0" width="100%" cellpadding="0">
+    <tr>
+        <td colspan="1"><b><?php echo $this->translate('dischargepreparation');?></b></td>
+    </tr>
+    <?php foreach ($this->data['entlassvorbereitung'] as $key=>$value):?>
+    <tr nobr="true">
+        <td width="35mm"><b><?php echo htmlspecialchars($key);?></b></td>
+        <td width="120mm">
+        <tr>
+            <?php foreach ($value as $k=>$item):?>
+                <?php if ($k === 'select') continue; ?>
+                <?php if($k != 0 && $k%3 == 0): ?>
+                    </tr><tr> <!-- three double-cells i a line -->
+                <?php endif;?>
+                <td width="5mm" >
+                    <?php echo $pdf_box[$item['check']];?>
+                </td>
+                <td width="35mm" style="text-indent:-2mm;">
+                    <?php echo htmlspecialchars(implode($item['value']));?>
+                </td>
+            <?php endforeach;?>
+        </tr>
+        </td>
+    </tr>
+    <?php endforeach;?>
+
+</table>
+
+
+
+<?php else:?> <!-- End PDF-Layout/Start HTML-Layout -->
+
+<?php $this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/page-css/dischargeplanningclinic.css'); ?>
+
+<?php $js_actions='{"keine Aktion erforderlich":"white","Aktion erforderlich":"red","Absprache nötig":"orange","in Bearbeitung":"yellow","erledigt/geklärt":"green"}'; ?>
+
+<script>
+    $(document).ready(function () {
+
+        $('.mydatepick').datepicker();
+
+        $('.suggestionbox').hide();
+
+        $('.discharge_label').each(function () {
+            resize_input(this);
+        });
+
+        $('.discharge_input').each(function () {
+            resize_input(this);
+        });
+        $('.input_large').each(function () {
+            resize_input(this);
+        });
+        $('.dischargeselect').each(function () {
+            change_action_color(this);
+        });
+    });
+
+    function validate_dialog() {
+
+        var isValid = true;
+
+        //check the discharge-date
+
+        var val = $('#discharge_date').val() ;
+        if (val ==''){
+            $('#discharge_date').addClass('error_display_field');
+            $('.error_display_area').show();
+            $('#mandatory_fields').show();
+            isValid = false;
+        }
+
+
+        if (!isValidDate(val)) {
+            ('#discharge_date').addClass('error_display_field');
+            $('.error_display_area').show();
+            $('#format_error').show();
+            isValid = false;
+        }
+
+        return isValid;
+
+    }
+
+    function isValidDate(val){
+
+        if(val == '')
+            return true; //empty date is checked separate
+
+        var date_regex = new RegExp(/\b\d{1,2}[\.]\d{1,2}[\.]\d{4}\b/);
+
+        return date_regex.test(val);
+
+    }
+
+    function hide_error_fields() {
+        $('.error_display_area').hide();
+        $('#mandatory_fields').hide();
+        $('#discharge_date').removeClass('error_display_field');
+    }
+
+
+    //select forms has changed
+    $(document).on('change', '#formlistwidget #formselector', function () {
+        $('#formlistwidget form').submit();
+    });
+
+    /**
+     * Checkbox-value or input-value has changed => log the user
+     */
+    $(document).on('change', '.check_discharge, .discharge_input', function () {
+        var row = $(this).closest('.element_discharge');
+        var log = $(row).find('.log_discharge')
+      //  if (log.val() == "") {
+            var options = {year: 'numeric', month: 'numeric', day: '2-digit', hour: '2-digit', minute: '2-digit'};
+            var username = '<?php echo $this->username;?>';
+            log.val(new Date().toLocaleDateString('de-DE', options) + ' ' + username);
+      //  }
+    });
+
+    /**
+     * click into a contact-text-field => show the suggestion for this input
+     * hide the suggestion, if it is show so far
+     */
+    $(document).on('click', '.contact', function (e) {
+
+        var row = $(this).closest('.contactrow');
+        var suggestionbox = $(row).find('.suggestionbox');
+        if (!$(suggestionbox).is(':visible'))
+            $(suggestionbox).show();
+        else
+            $(suggestionbox).hide();
+    });
+
+    $(document).on('focusout', '.contact', function () {
+        if ($('.suggestionbox:hover').length < 1) {
+            $('.suggestionbox').hide();
+        }
+    });
+
+
+    /**
+     * the submit button is selected => validate the form
+     */
+    $(document).on('click', '.submit_btn', function () {
+        hide_error_fields();
+
+        if(!validate_dialog()) {
+            $('submit_btn').attr("disabled", false);
+            return false;
+        }
+         else{
+            $('#entlassplanung form').submit();
+         }
+
+    });
+
+    /**
+     * a suggestion is selected => hide the suggestion field
+     */
+    $(document).on('click', '.suggitem', function () {
+        var ival = $(this).text();
+        var row = $(this).closest('.contactrow');
+        $(row).find('.contact').val(ival);
+        $('.suggestionbox').hide();
+    });
+
+    /**
+     * the value of a resizable input-field has changed => change the width
+     */
+    $(document).on('keypress', '.discharge_input, .input_large', function () {
+        resize_input(this);
+    });
+
+    $(document).on('change', '.dischargeselect', function () {
+        change_action_color(this);
+    });
+
+
+    function resize_input(input) {
+
+        var min_width = $(input).css("min-width").replace('px', '');
+        var max_width = $(input).css("max-width").replace('px', '');
+        var new_width = ((input.value.length + 2) * 6);
+        if (new_width < min_width)
+            input.style.width = min_width + 'px';
+        else if (new_width > max_width)
+            input.style.width = max_width + 'px';
+        else
+            input.style.width = new_width + 'px';
+
+    }
+
+    function change_action_color(input) {
+
+        var actions =<?php echo $js_actions;?>;
+
+        var val = $(input).val();
+        for (var col in actions) {
+
+            $(input).removeClass(actions[col]);
+        }
+        $(input).addClass(actions[val]);
+
+    }
+
+
+</script>
+
+
+</br></br>
+<h1><?php echo $this->translate('dischargeform');?></h1>
+<br>
+
+<div id="formlistwidget" style="margin:12px 0px; padding:4px;clear:both;">
+    <form>
+        <input type="hidden" name="id" value="<?php echo $this->epid;?>">
+        Formularauswahl:
+        <select id="formselector" name="fid">
+            <option value="0">Neues Formular</option>
+            <?php foreach ($this->formlist as $f):?>
+            <option value="<?php echo $f->id;?>"
+            <?php if($this->fid==$f->id){echo 'selected';}?>>Formular vom <?php echo date("d.m.Y", strtotime($f->
+            create_date)) ;?></option>
+            <?php endforeach;?>
+        </select>
+    </form>
+</div>
+
+</br></br>
+<h1><?php echo $this->translate('dischargeplan');?></h1>
+<br>
+
+<form method="post" id="entlassplanung">
+
+    <h2><?php echo $this->translate('dischargeplanning');?></h2>
+
+    <table id="plan_table" width="50%" class="datatable">
+        <tr>
+            <td class="label">Geplantes Entlassdatum:</td>
+            <td><input type="text" autocomplete="off" id="discharge_date" class="mydatepick"
+                       value="<?php echo $this->data['entlassplanung']['date'];?>" name="entlassplanung[date]"></td>
+        </tr>
+        <tr>
+            <td class="label">Entlassziel:</td>
+            <td>
+                <select name="entlassplanung[entlassziel]" class="destination">
+                     <?php foreach ($this->supplieslist as $value):?>
+                        <option <?php if ($this->data[entlassplanung][entlassziel] == $value ) echo 'selected' ; ?> >
+                            <?php echo $value;?>
+                        </option>
+                    <?php endforeach;?>
+                </select>
+            </td>
+        </tr>
+        <tr>
+            <td class="label">Pflegegrad:</td>
+            <td>
+                <input id="pflegegrad" class="input_large" type="text" name="entlassplanung[pflegegrad]"
+                       value="<?php echo htmlspecialchars($this->data[entlassplanung][pflegegrad]);?>">
+            </td>
+        </tr>
+        <tr>
+            <td class="label">Hilfsmittel:</td>
+            <td>
+                <input type="text" id="hilfsmittel" name="entlassplanung[hilfsmittel]" class="input_large"
+                       value="<?php echo htmlspecialchars($this->data[entlassplanung][hilfsmittel]);?>">
+            </td>
+        </tr>
+        <tr>
+            <td class="label">Verordnungen:</td>
+            <td><input type="text" name="entlassplanung[verordnungen]" class="input_large"
+                       value="<?php echo htmlspecialchars($this->data[entlassplanung][verordnungen]);?>"></td>
+        </tr>
+    </table>
+
+
+    <h2><?php echo $this->translate('contactperson');?></h2>
+
+    <table id="contact_table" width="50%" class="datatable">
+        <tbody>
+        <?php foreach ($this->contactlist as $keycat=>$contactcat):?>
+        <?php foreach ($contactcat as $contact):?>
+        <tr class="contactrow">
+            <td class="label"><?php echo $contact;?></td>
+            <td>
+                <input type="text" autocomplete="off" name="ansprechpartner[<?php echo $contact;?>]" class="contact"
+                       value="<?php echo htmlspecialchars($this->data[ansprechpartner][$contact]);?>">
+                <div class="suggestionbox">
+                    <?php foreach($this->suggestionlist['patientsupplier'][$keycat] as $supplier):?>
+                    <div class="suggitem"><?php echo $supplier;?></div>
+                    <?php endforeach;?>
+                </div>
+            </td>
+        </tr>
+        <?php endforeach;?>
+        <?php endforeach;?>
+        </tbody>
+    </table>
+
+    <h2><?php echo $this->translate('dischargepreparation');?></h2>
+
+    <table id="discharge_table" width="50%" class="datatable">
+        <tbody>
+        <!-- first level - grouping of preparation-items-->
+        <?php foreach ($this->dischargelist as $key=>$discharge):?>
+        <tr class="group_discharge">
+            <td class="label">
+                <input type="text" name="entlassvorbereitung[<?php echo $key;?>]" class="dischargename"
+                       value="<?php echo $key;?>" readonly></td>
+            <td/>
+            <td/>
+            <td>
+                <select name="entlassvorbereitung[<?php echo $key;?>][select]" class="dischargeselect">
+                    <?php foreach (json_decode($js_actions) as $k=>$item):?>
+                    <option
+                    <?php if ($this->data[entlassvorbereitung][$key][select] == $k ) echo 'selected' ; ?> >
+                    <?php echo $k;?>
+                    </option>
+                    <?php endforeach;?>
+                </select>
+            </td>
+        </tr>
+        <!-- second level - the preparation-items-->
+        <?php foreach ($discharge as $item_key=>$item):?>
+        <tr class="element_discharge">
+            <td/>
+            <td>
+                <!-- use a hidden input to get a post-request for NOT-checkes checkbox-->
+                <!-- if hte checkbox is checked, it will overide the didden input field-->
+                <input type='hidden' value='0'
+                       name='entlassvorbereitung[<?php echo $key;?>][<?php echo $item_key;?>][check]'>
+                <input type="checkbox" class="check_discharge"
+                       name="entlassvorbereitung[<?php echo $key;?>][<?php echo $item_key;?>][check]" <?php if ($this->
+                data[entlassvorbereitung][$key][$item_key][check] == 'on') echo 'checked' ; ?>>
+            </td>
+            <td>
+                <?php foreach ($item as $text_key=>$text):?>
+                <?php if($text == '###'){  ;?>
+                <input type="text" name='entlassvorbereitung[<?php echo $key;?>][<?php echo $item_key;?>][value][]'
+                       class="discharge_input"
+                       value="<?php echo htmlspecialchars($this->data[entlassvorbereitung][$key][$item_key][value][$text_key]);?>">
+                <?php } else{;?>
+                <input type="text" name='entlassvorbereitung[<?php echo $key;?>][<?php echo $item_key;?>][value][]'
+                       class="discharge_label"
+                       value="<?php echo $text;?>" readonly>
+                <?php };?>
+                <?php endforeach;?>
+            </td>
+            <td><input type="text" class="log_discharge"
+                       name="entlassvorbereitung[<?php echo $key;?>][<?php echo $item_key;?>][log]"
+                       value="<?php echo htmlspecialchars($this->data[entlassvorbereitung][$key][$item_key][log]);?>"
+                       readonly>
+            </td>
+        </tr>
+        <?php endforeach;?>
+        <?php endforeach;?>
+        </tbody>
+    </table>
+
+    <div class="error_display_area" style="display:none">
+        <div id="mandatory_fields" style="display:none">
+            <?php echo $this->translate('fill_mandatory_fields'); ?>
+        </div>
+        <div id="format_error" style="display:none">
+            <?php echo $this->translate('invalid_date'); ?>
+        </div>
+    </div>
+
+    <!-- hiden field -->
+
+    <?php foreach ($this->supplieslist as $value):?>
+        <input type='hidden' value= "<?php echo $value ;?>" name='entlassziele[]'>
+    <?php endforeach;?>
+
+    <input type="hidden" name="fid" value="<?php echo $this->fid;?>">
+    <input type="hidden" name="epid" value="<?php echo $this->epid;?>">
+    <div>
+        <input type="submit" class="submit_btn" style="text-align:left;padding:8px;" name="modus"
+               value="<?php echo $this->modus['SUBMIT'] ?>">
+        <input type="submit" class="submit_btn" style="text-align:left;padding:8px;" name="modus"
+               value="<?php echo $this->modus['FINISH'] ?>">
+        <input type="submit" style="text-align:left;padding:8px;" name="modus"
+               value="<?php echo $this->modus['PREVIEW'] ?>">
+        <input type="submit" style="text-align:left;padding:8px;" name="modus"
+               value="<?php echo $this->modus['LETTERHEAD'] ?>">
+    </div>
+    <div>
+        <p><b><?php echo $this->modus['SUBMIT'];?></b> <?php echo $this->translate('clinic_help_002');?></p>
+        <p><b><?php echo $this->modus['FINISH'];?></b> <?php echo $this->translate('clinic_help_003');?></p>
+        <p><b><?php echo $this->translate('preview');?></b> <?php echo $this->translate('clinic_help_004');?> </p>
+    </div>
+</form>
+<?php endif;?> <!-- END HTML-Layout-->

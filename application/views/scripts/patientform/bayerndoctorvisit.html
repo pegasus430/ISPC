@@ -1,0 +1,2283 @@
+<script type="text/javascript">
+	var detailscookies = <?php echo $this->detailscookies; ?>;
+</script>
+<?
+$this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/page-css/bayern_doctor_visit_style.css');
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/autogrow/jquery.elastic.js');
+$this->headScript()->appendFile(RES_FILE_PATH . '/javascript/dragdiv/dragdivpatient.js');
+
+	$client_users = $this->client_users;
+	$additional_users = explode(',', $this->related_users);
+
+?>
+<script type="text/javascript">
+	var jscount = '0';
+	var jsmedcount = '0';
+	var medcount = '<?php echo $this->mcntr + 1 ?>';
+	var jcount = '<?php echo $this->jscount + 1 ?>';
+	var dcntr = '<?php echo $this->dcntr ?>';
+	var medblur = Array();
+	var jsusers = <?php echo $this->jsusers; ?>;
+	var route_error = "<?php echo $this->route_error; ?>";// TODO-1211
+
+//medications
+	function selectMedications(mid, row)
+	{
+		$('#medication'+row).val($('#medi_me_'+mid).val());
+		$('#comment'+row).val($('#medi_comment_'+mid).val());
+		$('#hidd_medication'+row).val($('#medi_id_'+mid).val());
+	}
+	function reset_medications(input_row)
+	{
+		if($('#hidd_medication'+input_row).val()){
+			$('#hidd_medication'+input_row).val('');
+			$('#drid'+input_row).val('');
+		}
+	}
+
+	function createnewmedic()
+	{
+		var usrstr = "";
+		for(var i in jsusers)
+		{
+			usrstr +='<option value="'+i+'">'+jsusers[i]+'</option>';
+		}
+
+		var userdrop = '<select name="add[verordnetvon]['+medcount+']">'+usrstr+'</select>';
+		var trInnerHtml = $('<tr id="medadd'+medcount+'"><td align="left" valign="top"><input name="add[medication]['+medcount+']" value="" id="medication'+medcount+'" type="text" class="livesearchmedinp med"><input name="add[hidd_medication]['+medcount+']" value="" id="hidd_medication'+medcount+'" type="hidden"></td><td align="left" valign="top"><input  name="add[dosage]['+medcount+']" id="dosage" class="dosage" value=""  /></td><td align="left" valign="top"><input  name="add[comments]['+medcount+']" value=""  id="comment'+medcount+'"  /></td><td align="left" valign="top">'+userdrop+'</td><td width="60" align="left" valign="top"><a href="javascript:void(0)" onclick="removeElem(\'#medadd'+medcount+'\')"><img src="<?php echo RES_FILE_PATH; ?>/images/action_delete.png" border="0" /></a></td></tr>');
+
+		$('#medaddtable').append(trInnerHtml);
+
+		$('#medication'+medcount).bind('keyup keydown change paste',function(){
+			//livesearch medications ls
+			$(this).live('change', function() {
+				var input_row = parseInt($(this).attr('id').substr(('medication').length));
+				reset_medications(input_row);
+			}).liveSearch({
+				url: 'ajax/medications?q=',
+				id: 'livesearch_admission_medications',
+				aditionalWidth: '300',
+				noResultsDelay: '900',
+				typeDelay: '900',
+				returnRowId: function (input) {return parseInt($(input).attr('id').substr(('medication').length));}
+			});
+		});
+		medcount++;
+	}
+
+	function createnewmedicrowbedarf()
+	{
+
+		var usrstr = "";
+		for(var i in jsusers)
+		{
+			usrstr +='<option value="'+i+'">'+jsusers[i]+'</option>';
+		}
+		var userdrop = '<select name="verordnetvon['+medcount+']">'+usrstr+'</select>';
+
+		var trInnerHtml = $('<tr id="medadd'+medcount+'"><td align="left" valign="top"><input name="addbedarf[medication]['+medcount+']" value="" id="medication'+medcount+'" type="text" class="livesearchmedinp med"><input name="addbedarf[hidd_medication]['+medcount+']" value="" id="hidd_medication'+medcount+'" type="hidden"><div id="medidropdown'+medcount+'" style="position:absolute;display:none;" class="listPatMedEd livesearchdropdown"></div></td><td align="left" valign="top"><input  name="addbedarf[dosage]['+medcount+']" id="dosage" class="dosage" value=""  /></td><td align="left" valign="top"><input  name="addbedarf[comments]['+medcount+']" value=""   id="comment'+medcount+'"  /></td><td align="left" valign="top">'+userdrop+'</td><td width="60" align="left" valign="top"><a href="javascript:void(0)" onclick="delmedicationRow('+medcount+');removeElem(\'#medadd'+medcount+'\')"><img src="<?php echo RES_FILE_PATH; ?>/images/action_delete.png" border="0" /></a></td></tr>');
+
+		$('#medbedarfaddtable').append(trInnerHtml);
+
+
+		$('#medication'+medcount).bind('keyup keydown change paste',function(){
+			//livesearch medications ls
+			$(this).live('change', function() {
+				var input_row = parseInt($(this).attr('id').substr(('medication').length));
+				reset_medications(input_row);
+			}).liveSearch({
+				url: 'ajax/medications?q=',
+				id: 'livesearch_admission_medications',
+				aditionalWidth: '300',
+				noResultsDelay: '900',
+				typeDelay: '900',
+				returnRowId: function (input) {return parseInt($(input).attr('id').substr(('medication').length));}
+			});
+		});
+		medcount++;
+	}
+
+
+	function removeElem(ids) {
+		$(ids).remove();
+	}
+
+	function removeMedicationKvno(mid,pid)
+	{
+		if(mid>0)
+		{
+			ajaxCallserver({
+				url:'patient/patientmedication?mid='+mid+'&id='+pid+'&act=del&noredir=1'
+			});
+		}
+		$("#line_"+mid).remove();
+	}
+	function delmedicationRow(did,patidencrypted)
+	{
+
+		if(did && $('#hidd_medication'+did).val())
+		{
+
+			ajaxCallserver({
+				url:'patient/patientmedication?id='+patidencrypted+'&delid='+did+'&mid='+did+'&act=del&noredir=1' //mid for trigger when deleteing the row
+			});
+		}
+	}
+	function renewMedicationKvno(mid,pid)
+	{
+		if(mid>0){
+			ajaxCallserver({
+				url:'patient/patientmedication?mid='+mid+'&id='+pid+'&act=rnw&noredir=1'
+			});
+		}
+		$("#line_r_"+mid).remove();
+	}
+
+$(function() {//MEDICATION - SEARCH, REMOVE, RENEW -----------Start
+
+	   /*======================= LIVESEARCH MEDICATIONS  ======================================*/
+		$('.livesearchmedinp').live('change', function() {
+			var input_row = parseInt($(this).attr('id').substr(('medication').length));
+			reset_medications(input_row);
+
+		}).liveSearch({
+			url: 'ajax/medications?q=',
+			id: 'livesearch_admission_medications',
+			aditionalWidth: '300',
+			noResultsDelay: '900',
+			typeDelay: '900',
+			returnRowId: function (input) {return parseInt($(input).attr('id').substr(('medication').length));}
+		});
+
+		$('input.livesearchmedinp, input.med_date, input.dosage, input.med, input.comment, select.user_selector').live('change keypress', function(){
+
+			if($(this).hasClass('livesearchmedinp')){
+				var input_row = parseInt($(this).attr('id').substr(('medication').length)); //med name
+			} else if($(this).hasClass('med_date')) {
+				var input_row = parseInt($(this).attr('id').substr(('med_date').length)); //change date
+			} else if($(this).hasClass('dosage')) {
+				var input_row = parseInt($(this).attr('id').substr(('dosage').length)); //dosage
+			} else if($(this).hasClass('med') || $(this).hasClass('comment')) {
+				var input_row = parseInt($(this).attr('id').substr(('comment').length)); //comment
+			} else if ($(this).hasClass('user_selector')) {
+				var input_row = parseInt($(this).attr('id').substr(('verordnetvon-').length)); //user slector
+			}
+
+			$('#edited' + input_row).val('1');
+		});
+		/*======================= MEDICATIONS DATE PICKER ======================================*/
+	   $('.med_date').datepicker({
+			dateFormat: 'dd.mm.yy',
+			buttonImageOnly: true,
+			changeMonth: true,
+			changeYear: true,
+			nextText: '',
+			prevText: ''
+		});
+
+		$(".med_date").mask("99.99.9999");
+
+		/*======================= RENEW MEDICATION  ======================================*/
+		$(".renew_ajx, .renew_ajx_bedarfs").live('click', function(e){
+			e.preventDefault();
+			//get row id
+			var tridrn = $(this).closest('tr').attr('id');
+			//get medication edit count rows
+			var cntren = Number($('#jsmedadd').val()) +1;
+
+			//split row id and get numeric medis id
+			var id = tridrn.split('_');
+			var that = $(this);
+			$("#"+tridrn).each(function() {
+				var dateren = $(this).find(".datern_"+id[2]).text();
+				var medsren = $(this).find(".medsrn_"+id[2]).text();
+				var pid = "<?php echo $_GET['id']; ?>";
+				var dsgren = $(this).find(".dsgrn_"+id[2]).text();
+				var commren = $(this).find(".commrn_"+id[2]).text();
+				var usrnameren = $(this).find(".usrnamern_"+id[2]).text();
+				var usr_addren = $(this).find(".usr_id_add_"+id[2]).text();
+				var hidd_medisren = $(this).find(".hidd_medicationrn_"+id[2]).text();
+				var usrren = $(this).find(".usrid_"+id[2]).text();
+				var users = <?php echo  json_encode($this->users); ?>;
+				var options = '';
+				var i = 1;
+
+				$.each(users, function(key, value){
+					if(key == usrren){
+						options += "<option selected=\"selected\" value=\""+key+"\">"+value+"</option>"
+					} else {
+						options += "<option value=\""+key+"\">"+value+"</option>"
+					}
+				});
+
+				if($(that).hasClass('renew_ajx')) {
+					var date_now = "<?php echo date('d.m.Y')?>";
+					var trrenewNou = '<tr id="line_'+id[2]+'" alt="'+cntren+'">';
+					  trrenewNou += '<td align="left" valign="top"><input name="medication_change['+cntren+']" value="'+date_now+'" id="renew_change_date_'+cntren+'" type="text" class="med_date date_line_'+id[2]+' "><input name="replace_with['+cntren+']" value="change" type="hidden"></td>';
+					  trrenewNou += '<td align="left" valign="top"><input name="medication['+cntren+']" value="'+medsren+'" id="medication'+cntren+'" type="text" class="livesearchmedinp med meds_line_'+id[2]+'"><input name="hidd_medication['+cntren+']" value="'+hidd_medisren+'" id="hidd_medication'+cntren+'" type="hidden"><input type="hidden" id="drid" name="drid['+cntren+']" value="'+id[2]+'"><div id="medidropdown'+cntren+'" style="position:absolute;display:none;" class="listPatMedEd livesearchdropdown"></div></td>';
+					  trrenewNou += '<td align="left" valign="top"><input name="dosage['+cntren+']" id="dosage" class="dosage dsg_line_'+id[2]+'" value="'+dsgren+'"></td>';
+					  trrenewNou += '<td align="left" id="line_'+id[2]+'_row" valign="top"><!--<textarea name="comments['+cntren+']" cols="25 " rows="6" id="comment"></textarea>--><input name="comments['+cntren+']" class="med comm_line_'+id[2]+'" value="'+commren+'"></td>';
+					  trrenewNou += '<td width="120" id="line_'+id[2]+'_row" align="left" valign="top" class="usrname_line_'+id[2]+'">'+usrnameren+'</td>';
+					  trrenewNou += '<td align="left" id="line_'+id[2]+'_row" valign="top"><select name="verordnetvon['+cntren+']" id="verordnetvon-'+cntren+'">'+options+'</select></td>';
+					  trrenewNou += '<td align="left" valign="top"><a href="javascript:void(0)" class="remove_tr" ><img src="images/action_delete.png" border="0" /></a></td>';
+					  trrenewNou += '</tr>';
+
+					$("#listpatientmedicationedit_medicationtable").append(trrenewNou);
+
+					$('#renew_change_date_'+cntren).datepicker({
+						dateFormat: 'dd.mm.yy',
+						buttonImageOnly: true,
+						changeMonth: true,
+						changeYear: true,
+						nextText: '',
+						prevText: ''
+					});
+
+
+
+				} else if($(that).hasClass('renew_ajx_bedarfs')) {
+
+					var date_now = "<?php echo date('d.m.Y')?>";
+
+					var trrenewNou = '<tr id="line_'+id[2]+'" alt="'+cntren+'">';
+					trrenewNou += '<td align="left" valign="top"><input name="medication_change['+cntren+']" value="'+date_now+'" id="renew_bedarf_change_date_'+cntren+'" type="text" class="med_date date_line_'+id[2]+' "><input name="replace_with['+cntren+']" value="change" type="hidden"></td>';
+					trrenewNou += '<td align="left" valign="top"><input name="medication['+cntren+']" value="'+medsren+'" id="medication'+cntren+'" type="text" class="livesearchmedinp med meds_line_'+id[2]+'"><input name="hidd_medication['+cntren+']" value="'+hidd_medisren+'" id="hidd_medication'+cntren+'" type="hidden"><input type="hidden" id="drid" name="drid['+cntren+']" value="'+id[2]+'"><div id="medidropdown'+cntren+'" style="position:absolute;display:none;" class="listPatMedEd livesearchdropdown"></div></td>';
+					trrenewNou += '<td align="left" valign="top"><input name="dosage['+cntren+']" id="dosage" class="dosage dsg_line_'+id[2]+'" value="'+dsgren+'"></td>';
+					trrenewNou += '<td align="left" id="line_'+id[2]+'_row" valign="top"><!--<textarea name="comments['+cntren+']" cols="25 " rows="6" id="comment"></textarea>--><input name="comments['+cntren+']" class="med comm_line_'+id[2]+'" value="'+commren+'"></td>';
+					trrenewNou += '<td width="120" id="line_'+id[2]+'_row" align="left" valign="top" class="usrname_line_'+id[2]+'">'+usrnameren+'</td>';
+					trrenewNou += '<td align="left" id="line_'+id[2]+'_row" valign="top"><select name="verordnetvon['+cntren+']" id="verordnetvon-'+cntren+'">'+options+'</select></td>';
+					trrenewNou += '</tr>';
+
+					$("#listpatientmedicationedit_bedarfsmedicationtable").append(trrenewNou);
+
+					$('#renew_bedarf_change_date_'+cntren).datepicker({
+						dateFormat: 'dd.mm.yy',
+						buttonImageOnly: true,
+						changeMonth: true,
+						changeYear: true,
+						nextText: '',
+						prevText: ''
+					});
+				}
+
+				$('#jsmedadd').val(cntren);
+				renewMedicationKvno(id[2], pid);
+				var medsren = '';
+
+
+			});
+		});
+
+		/*======================= REMOVE MEDICATION ROW ======================================*/
+		$(".remove_tr").live('click', function(){
+
+			var trid = $(this).closest('tr').attr('id');
+			var cnt = $("#"+trid).attr('alt');
+			var id = trid.split('_');
+			var pid = "<?php echo $_GET['id']; ?>";
+
+			$("#"+trid).each(function() {
+
+				var date = "<?php echo date('d.m.Y'); ?>";
+				var meds = $(this).find(".meds_"+trid).val();
+				var dsg = $(this).find(".dsg_"+trid).val();
+				var comm = $(this).find(".comm_"+trid).val();
+				var hidd_medis = $(this).find("#hidd_medication"+cnt).val();
+				var usr_add = $(this).find(".usrname_"+trid).text();
+				var usr = $(this).find("#verordnetvon-"+cnt+" option:selected").text();
+				var usr_id = $(this).find("#verordnetvon-"+cnt+" option:selected").val();
+
+				var trnou = '<tr class="row" id="line_r_'+id[1]+'">';
+					trnou +='<td height="20" align="left" class="datern_'+id[1]+'" valign="top">'+date+'</td>';
+					trnou +='<td height="20" align="left" valign="top" class="hidd_medicationrn_'+cnt+'" style="display: none;">'+hidd_medis+'</td>';
+					trnou +='<td align="left" valign="top" class="medsrn_'+id[1]+'"><font color="#777777">'+meds+'</font> </td>';
+					trnou +='<td align="left" valign="top" class="dsgrn_'+id[1]+'">'+dsg+'</td><td align="left" valign="top" class="commrn_'+id[1]+'">'+comm+'</td>';
+					trnou +='<td align="left" valign="top"><a href="javascript:void(0)" class="renew_ajx"><img src="<?php echo RES_FILE_PATH; ?>/images/action_renew.png" border="0"></a></td>';
+					trnou +='<td height="20" align="left" valign="top" class="usrnamern_'+id[1]+'">'+usr_add+'</td><td height="20" align="left" valign="top">'+usr+'</td>';
+					trnou +='<td valign="top" height="20" align="left" class="usrid_'+id[1]+'" style="display:none;">'+usr_id+'</td>';
+					trnou +='</tr>';
+
+				$("#listpatientmedication_contenttabel").append(trnou);
+				removeMedicationKvno(id[1],pid);
+			});
+
+		});
+}); //MEDICATION - SEARCH, REMOVE, RENEW -----------End
+
+
+	// make the textarea grow
+	  $(function() {
+	        $('textarea').elastic();
+	    });
+
+	function getSelected(dbvalue,fieldname)
+	{
+		var fieldarray = document.getElementsByName(fieldname);
+		for(i=0; i<fieldarray.length;i++)
+		{
+			if(fieldarray[i].value==dbvalue)
+			{
+				fieldarray[i].checked = true;
+			}
+		}
+	}
+	function showbox(val)
+	{
+		if(val.value=="4")
+		{
+			$("#otherdivid").show();
+		}else{
+			$("#otherdivid").hide();
+		}
+	}
+
+	 function isInteger(k)
+	 {
+	 	var s = document.getElementById('input_value'+k).value;
+	 	var chars = "0123456789";
+
+	 	if(s>10)
+	 	{
+	 	  document.getElementById('input_value'+k).value = "";
+	 	  return false;
+	 	}
+
+	 	var i;
+	 	s = s.toString();
+	     for (i = 0; i < s.length; i++)
+	     {
+	     	var c = s.charAt(i);
+	         if (chars.indexOf(c)==-1)
+	 	    {
+	 			document.getElementById('input_value'+k).value = "";
+	 			return false;
+	 	    }
+	     }
+	       return true;
+	 }
+
+		$(document).ready(function(){
+			$("#visit_date").mask("99.99.9999");
+
+	 		$('*').keypress(function(event){
+		        if(event.keyCode == 13 && event.target.nodeName!='TEXTAREA')
+		        {
+		          event.preventDefault();
+		          return false;
+		        }
+		    });
+
+	 		// TODO-1211
+	 		if(route_error == 1){
+	 			alert('<?php echo $this->translate('route_calculation_error'); ?>')
+	 		}
+	 		
+
+			//auto fill visit_duration
+			var existing_visit = "<?php echo $this->visit_duration;?>"
+
+			if(existing_visit != 0 ){
+				var initial_visit_duration = existing_visit;
+			} else{
+				var initial_visit_duration = 15;
+			}
+
+			var drive_time = $('#fahrtzeit').val();
+			var documantation_time = $('#documantation_time').val();
+
+			// the driving time
+			if(drive_time != '--') {
+				var drive_time_total = Number(drive_time) + Number(drive_time);
+			}
+			else{
+				var drive_time_total = 0;
+			}
+
+			// the documentation time
+			if(documantation_time != '0' & documantation_time != '') {
+				var documantation_time_total = Number(documantation_time)  ;
+			}
+			else{
+				var documantation_time_total = 0;
+			}
+
+			var total_visit_time = Number(drive_time_total) + Number(initial_visit_duration) + Number(documantation_time_total);
+			$('.total_visit_duration').val(total_visit_time);
+
+			$(".visittimeinterval").change(function(){
+				$.ajax({
+					type: 'POST',
+					url: 'ajax/visittimeinterval?id=<?php echo $_REQUEST['id']; ?>',
+					data: {
+						begin_date_h: $('#begin_date_h').val(),
+						begin_date_m: $('#begin_date_m').val(),
+						end_date_h: $('#end_date_h').val(),
+						end_date_m: $('#end_date_m').val(),
+						driving_time: $('#fahrtzeit').val(),
+						visit_date: $('#visit_date').val(),
+						documantation_time: $('#documantation_time').val()
+					},
+
+					success:function(data){
+						var visitdata = jQuery.parseJSON(data);
+
+						if(visitdata.intersected == 1){
+							$('.visit_interval').attr('checked', true)
+						} else {
+							$('.visit_interval').attr('checked', false)
+						}
+
+						if(visitdata.total_visit_duration){
+							$('.total_visit_duration').val(visitdata.total_visit_duration)
+						} else {
+							$('.total_visit_duration').val('')
+						}
+
+					},
+					error:function(){
+						ajax_done = 1;
+					}
+				});
+			});
+
+
+//**************************************** befund radio *********************************//
+
+
+			if($('#kopfb:checked').val() == 2){
+			    $('#kopf_textdiv').show();
+			}
+
+			if($('#thoraxb:checked').val() == 2){
+			    $('#thorax_textdiv').show();
+			}
+
+			if($('#abdomenb:checked').val() == 2){
+			    $('#abdomen_textdiv').show();
+			}
+
+			if($('#extremitatenb:checked').val() == 2){
+			    $('#extremitaten_textdiv').show();
+			}
+
+			if($('#haut_wundenb:checked').val() == 2){
+			    $('#haut_wunden_textdiv').show();
+			}
+
+			if($('#neurologisch_psychiatrischb:checked').val() == 2){
+			    $('#neurologisch_psychiatrisch_textdiv').show();
+			}
+
+			$("input[name=kopf]").bind('click',function() {
+
+			    if($(this).val() == 2){
+				$('#kopf_textdiv').show();
+			    } else {
+				$('#kopf_text').val("");
+				$('#kopf_textdiv').hide();
+			    }
+			});
+			$("input[name=thorax]").bind('click',function() {
+			    if($(this).val() == 2){
+				$('#thorax_textdiv').show();
+			    } else {
+				$('#thorax_text').val("");
+				$('#thorax_textdiv').hide();
+			    }
+			});
+			$("input[name=abdomen]").bind('click',function() {
+			    if($(this).val() == 2){
+				$('#abdomen_textdiv').show();
+			    } else {
+				$('#abdomen_text').val("");
+				$('#abdomen_textdiv').hide();
+			    }
+			});
+			$("input[name=extremitaten]").bind('click',function() {
+			     if($(this).val() == 2){
+				$('#extremitaten_textdiv').show();
+			    } else {
+				$('#extremitaten_text').val("");
+				$('#extremitaten_textdiv').hide();
+			    }
+			});
+			$("input[name=haut_wunden]").bind('click',function() {
+			    if($(this).val() == 2){
+				$('#haut_wunden_textdiv').show();
+			    } else {
+				$('#haut_wunden_text').val("");
+				$('#haut_wunden_textdiv').hide();
+			    }
+			});
+			$("input[name=neurologisch_psychiatrisch]").bind('click',function() {
+			    if($(this).val() == 2){
+				$('#neurologisch_psychiatrisch_textdiv').show();
+			    } else {
+				$('#neurologisch_psychiatrisch_text').val("");
+				$('#neurologisch_psychiatrisch_textdiv').hide();
+			    }
+			});
+
+
+//***************************************** befund radio end ***********************************//
+
+//**************************************** Stammdaten checkboxes *********************************//
+
+
+            // port
+			if($('#port_notok:checked').val() == 2){
+			    $('#port_textdiv').show();
+			}
+
+			$("input[name=port]").bind('click',function() {
+
+			    if($(this).val() == 2){
+					$('#port_textdiv').show();
+			    } else {
+					$('#port_text').val("");
+					$('#port_textdiv').hide();
+			    }
+			});
+
+			// besonderer Aus-/ Eingang
+			if($('#kunstliche_notok:checked').val() == 2){
+			    $('#kunstliche_textdiv').show();
+			}
+
+			$("input[name=kunstliche]").bind('click',function() {
+
+			    if($(this).val() == 2){
+				$('#kunstliche_textdiv').show();
+			    } else {
+				$('#kunstliche_text').val("");
+				$('#kunstliche_textdiv').hide();
+			    }
+			});
+
+			//Pumps
+			if($('#pumpe_notok:checked').val() == 2){
+			    $('#pumps_textdiv').show();
+			}
+
+			$("input[name=pumps]").bind('click',function() {
+
+			    if($(this).val() == 2){
+				$('#pumps_textdiv').show();
+			    } else {
+				$('#pumps_text').val("");
+				$('#pumps_textdiv').hide();
+			    }
+			});
+
+			//DK
+			if($('#dauerkatheter_notok:checked').val() == 2){
+			    $('#dk_textdiv').show();
+			}
+
+			$("input[name=dk]").bind('click',function() {
+
+			    if($(this).val() == 2){
+				$('#dk_textdiv').show();
+			    } else {
+				$('#dk_text').val("");
+				$('#dk_textdiv').hide();
+			    }
+			});
+
+			// Peg
+			if($('#peg_notok:checked').val() == 2){
+			    $('#peg_textdiv').show();
+			}
+
+			$("input[name=peg]").bind('click',function() {
+
+			    if($(this).val() == 2){
+				$('#peg_textdiv').show();
+			    } else {
+				$('#peg_text').val("");
+				$('#peg_textdiv').hide();
+			    }
+			});
+
+			// Darm
+			if($('#darm_notok:checked').val() == 2){
+			    $('#darm_textdiv').show();
+			}
+
+			$("input[name=darm]").bind('click',function() {
+
+			    if($(this).val() == 2){
+				$('#darm_textdiv').show();
+			    } else {
+				$('#darm_text').val("");
+				$('#darm_textdiv').hide();
+			    }
+			});
+
+			//Blase
+			if($('#blase_notok:checked').val() == 2){
+			    $('#blase_textdiv').show();
+			}
+
+			$("input[name=blase]").bind('click',function() {
+
+			    if($(this).val() == 2){
+				$('#blase_textdiv').show();
+			    } else {
+				$('#blase_text').val("");
+				$('#blase_textdiv').hide();
+			    }
+			});
+
+			//Luftrohre
+			if($('#luftrohre_notok:checked').val() == 2){
+			    $('#luftrohre_textdiv').show();
+			}
+
+			$("input[name=luftrohre]").bind('click',function() {
+
+			    if($(this).val() == 2){
+				$('#luftrohre_textdiv').show();
+			    } else {
+				$('#luftrohre_text').val("");
+				$('#luftrohre_textdiv').hide();
+			    }
+			});
+
+
+			//Ablaufsonde
+			if($('#ablaufsonde_notok:checked').val() == 2){
+			    $('#ablaufsonde_textdiv').show();
+			}
+
+			$("input[name=ablaufsonde]").bind('click',function() {
+
+			    if($(this).val() == 2){
+				$('#ablaufsonde_textdiv').show();
+			    } else {
+				$('#ablaufsonde_text').val("");
+				$('#ablaufsonde_textdiv').hide();
+			    }
+			});
+
+
+//*****************************************Stammdaten checkboxes  end ***********************************//
+		$('#duplicate_visits').dialog({
+			autoOpen: false,
+			title: '<?php echo $this->translate('overlapping_event_modal_title'); ?>',
+			modal: true,
+			buttons: {
+				"<?php echo $this->translate('noconfirm'); ?>": function() {
+					$('#submitform').attr('disabled',false);
+					$( this ).dialog( "close" );
+				},
+				"<?php echo $this->translate('yesconfirm'); ?>": function() {
+					$('#submitform').attr('disabled',true);
+
+					 $('.asubmitform').attr('disabled',true);
+					 $(".ui-button:first").attr("disabled", true)
+					 .addClass("ui-state-disabled").next("button").attr("disabled", true)
+					 .addClass("ui-state-disabled");
+
+					$('#doctorform').submit();
+				}
+			},
+			create:function () {
+		        $(this).closest(".ui-dialog")
+		            .find(".ui-button:first") // the first button
+		            .addClass("asubmitform");
+		    },
+		    close:function () {
+		    	$('.asubmitform').attr('disabled',false),
+				 $(".ui-button:first").attr("disabled", false)
+				 .removeClass("ui-state-disabled").next("button").attr("disabled", false)
+				 .removeClass("ui-state-disabled");
+		    }
+
+
+		})
+
+		function rowBuilder(that) {
+			return '<tr>'
+				+'<td>'+that.id+'</td>'
+				+'<td>'+that.user_details.first_name+ ' ' + that.user_details.last_name +'</td>'
+				+'<td>'+that.start_date+'</td>'
+				+'<td>'+that.end_date+'</td>'
+			+'</tr>';
+
+		}
+		
+		
+		$('#submitform, #save_create_doctorletter,#save_visit_edit_letter').bind('click', function(event) {
+			event.preventDefault();
+
+			var error = 0;
+			var ajax_done = 0;
+			var clicked_button_id = $(this).attr('id');
+			
+			$(document).userSession().checksession('abort', function(result) { // new function
+				if(result === false) {
+					event.stopImmediatePropagation(); //stop going forward
+				} else {
+			if($('#begin_date_h').val() > $('#end_date_h').val()) {
+				error = 2;
+			}
+
+			if($('#begin_date_h').val() == $('#end_date_h').val()) {
+				if($('#begin_date_m').val() >= $('#end_date_m').val()) {
+					error = 3;
+				}
+			}
+
+			if($('#visit_date').val() == '') {
+				error = 4;
+			}
+
+			if($('#begin_date_h').val() == "" || $('#end_date_h').val() == "" || $('#begin_date_m').val() == "" || $('#end_date_m').val() == "") {
+				error = 5;
+			}
+			
+			if(error == 2) {
+				jAlert('Die Zeit der Beendigung des Besuchs sollte später sein als die Anfangszeit.');
+				return false;
+			} else if(error == 3) {
+				jAlert('Die Zeit der Beendigung des Besuchs sollte später sein als die Anfangszeit.');
+				return false;
+			} else if(error == 4) {
+				jAlert('Bitte füllen Beginn datum');
+				return false;
+			}else if(error == 5) {
+				jAlert('Bitte füllen zeit');
+				return false;
+			}
+
+			if(error == '0'){
+				$.ajax({
+					type: 'POST',
+					url: 'ajax/overlappingcheck?id=<?php echo $_REQUEST['id']; ?>&uid=<?php echo $this->user_id;?>',
+					data: {
+						visit_type: 'BD',
+						begin_h: $('#begin_date_h').val(),
+						begin_m: $('#begin_date_m').val(),
+						end_h: $('#end_date_h').val(),
+						end_m: $('#end_date_m').val(),
+						visit_start: $('#visit_date').val(),
+						edit_id: '<?php if (!empty($_REQUEST['bayern_doc_id'])): echo $_REQUEST['bayern_doc_id']; elseif(!empty($_REQUEST['bayern_nurse_id'])):  echo $_REQUEST['bayern_doc_id']; else: echo '0'; endif;  ?>'
+					},
+					beforeSend:function(){
+		//				loading image
+						$('#submitform').attr('disabled',true);
+						$('#submitform').addClass('loading_button');
+
+						$('#save_create_doctorletter').attr('disabled',true);
+						$('#save_create_doctorletter').addClass('loading_button');
+
+						$('#save_visit_edit_letter').attr('disabled',true);
+						$('#save_visit_edit_letter').addClass('loading_button');
+
+						$('#pdfexport').attr('disabled',true);
+						$('#pdfexport').addClass('loading_button');
+
+						$('#create_letter').val('0'); //just precaution
+						
+						$('#save_visit').val(''); //just precaution
+						$('#generate_pdf').val('');
+						
+					},
+					success:function(data){
+						$('button#submitform').removeClass('loading_button');
+						$('div.error_fetching').remove();
+
+						$('button#save_create_doctorletter').removeClass('loading_button');
+						$('#save_create_doctorletter').attr('disabled',false);
+
+						$('button#save_visit_edit_letter').removeClass('loading_button');
+						$('#save_visit_edit_letter').attr('disabled',false);
+
+						$('button#pdfexport').removeClass('loading_button');
+						$('#pdfexport').attr('disabled',false);
+
+						$('#submitform').attr('disabled',false);
+
+						var visitdata = jQuery.parseJSON(data);
+
+						$('#visits_body').html(''); //reset table tbody
+
+						if(visitdata.error != 0){
+							jAlert(visitdata.error);
+							return false;
+						} else{
+							if(visitdata.intersected == 1){
+								if(clicked_button_id == 'submitform'){
+									$('#save_visit').val('1');
+									$('#generate_pdf').val('');
+								} else {
+									$('#save_visit').val('');
+									$('#generate_pdf').val('');
+								}
+
+								
+								if(clicked_button_id == 'save_create_doctorletter'){
+									$('#create_letter').val('1');
+								} else {
+									$('#create_letter').val('0');
+								}
+	
+								if(clicked_button_id == 'save_visit_edit_letter'){
+									$('#go_to_letter').val('1');
+								} else {
+									$('#go_to_letter').val('0');
+								}
+	
+								$('#duplicate_visits').dialog('open');
+								return false; // used with modal
+							} else {
+								
+								if(clicked_button_id == 'submitform'){
+									$('#save_visit').val('1');
+									$('#generate_pdf').val('');
+								} else {
+									$('#save_visit').val('');
+									$('#generate_pdf').val('');
+								}
+
+								
+								if(clicked_button_id == 'save_create_doctorletter'){
+									$('#create_letter').val('1');
+								} else {
+									$('#create_letter').val('0');
+								}
+								if(clicked_button_id == 'save_visit_edit_letter'){
+									$('#go_to_letter').val('1');
+								} else {
+									$('#go_to_letter').val('0');
+								}
+	
+								$('#submitform').attr('disabled',true);
+								$('#save_create_doctorletter').attr('disabled',true);
+								$('#save_visit_edit_letter').attr('disabled',true);
+								$('#pdfexport').attr('disabled',true);
+								$('#doctorform').submit();
+							}
+						}
+					},
+					error:function(){
+						ajax_done = 1;
+					}
+				});
+			}
+		}
+		
+		}); // new function end
+			
+		});
+		
+		$('#pdfexport').bind('click', function(event) {
+			event.preventDefault();
+			$(document).userSession().checksession('abort', function(result) { // new function
+				if(result === false) {
+					event.stopImmediatePropagation(); //stop going forward
+				} else {
+					$('#generate_pdf').val('1');
+					
+					$('#submitform').attr('disabled',true);
+					$('#save_create_doctorletter').attr('disabled',true);
+					$('#save_visit_edit_letter').attr('disabled',true);
+					$('#pdfexport').attr('disabled',true);
+					$('#doctorform').submit();
+				}
+			}); // new function end
+		});
+		
+		$('#pdfexport').bind('click', function() {
+			setTimeout(function () {$('button[type=button]').attr('disabled', true);}, 150);
+			setTimeout(function () {
+				$('button[type=button]').attr('disabled', false);
+				$('#generate_pdf').val('');
+			}, 6000);
+		});
+		
+
+		$('select').change(function(){
+			$('#submitform').attr('disabled',false);
+		});
+
+		$(function() {
+			$('#visit_date').datepicker({
+				dateFormat: 'dd.mm.yy',
+				showOn: "both",
+				buttonImage: $('#calImg').attr('src'),
+				buttonImageOnly: true,
+				changeMonth: true,
+				changeYear: true,
+				nextText: '',
+				prevText: '',
+				maxDate: '<?php echo date('d.m.Y'); ?>'
+			});
+		});
+
+		(function( $ ){
+			$.fn.jaySort= function(prefix, lst) {
+				for (var x=0; x<lst.length; x++)
+					$(this).append($('#' + prefix + lst[x]));
+			};
+		})( jQuery );
+
+
+
+	});
+
+
+		// ---------------- Sapvfb3 ------------------------------
+
+
+		function saveCheckboxes(chkbx,elname,category)
+		{
+
+			if(chkbx.checked)
+			{
+				var cmt = category+"  :  "+elname;
+
+				$("<input type='hidden' name='comments_l[]' id='comment_"+chkbx.value+"' value='"+cmt+"' />").appendTo("#doctorform");
+			}
+			else
+			{
+				$("#comment_"+chkbx.value).remove();
+			}
+
+		}
+
+		function updateCheckboxes(chkbx,elname,category,valid)
+		{
+
+			if(chkbx.checked)
+			{
+				var cmt = category+"  :  "+elname;
+
+				$("<input type='hidden' name='upcomments["+valid+"]["+chkbx.value+"]' id='upcomments_"+chkbx.value+"' value='"+cmt+"' />").appendTo("#doctorform");
+			}
+			else
+			{
+				var cmt = category+"  :  "+elname;
+				$("<input type='hidden' name='upcomments["+valid+"]["+chkbx.value+"]' id='upcomments_"+chkbx.value+"' value='"+cmt+"' />").appendTo("#doctorform");
+			}
+
+		}
+
+
+</script>
+<form action="" name="doctorform" method="post" id="doctorform">
+  <div style="display: none"> <img id="calImg" src="<?php echo RES_FILE_PATH;  ?>/images/calendar.png" alt="Popup" class="trigger"> </div>
+  <?php echo $this->patientinfo ?>
+  <?php echo $this->tabmenus ?>
+  <div id="Einzel" class="tab_container"> <br />
+
+<div class="bayern_header"><span>Besuchsformular Bayern</span></div>
+<input type="hidden" name="total_visit_duration" class="total_visit_duration" value="15" />
+<div id="bayern_MainContenOuter" class="anfrageMainOuter Black_border">
+<div class="visit_patient_information">
+<table>
+	<tr>
+		<td><?php echo $this->lastname.', '.$this->firstname;?></td>
+		<td style="border-top: 0;"  width="30%" >&nbsp;</td>
+		<td><?php echo $this->epid;?></td>
+	</tr>
+	<tr>
+		<td style="border-top: 1px solid #000;"><i>Name, Vorname</i></td>
+		<td style="border-top: 0;"  width="30%" >&nbsp;</td>
+		<td style="border-top: 1px solid #000;"><i>Patientennummer</i></td>
+	</tr>
+	<tr>
+		<td colspan="3">&nbsp;</td>
+	</tr>
+	<tr>
+		<td><?php echo $this->street.', '.$this->zip.' '.$this->patcity;?></td>
+		<td></td>
+		<td><?php echo $this->birth;?></td>
+	</tr>
+	<tr>
+		<td style="border-top: 1px solid #000;"><i>Adresse</i></td>
+		<td></td>
+		<td style="border-top: 1px solid #000;"><i>Geb.-Datum</i></td>
+	</tr>
+
+
+</table>
+
+</div>
+
+ <div class="bayern_doctor_form">
+ <br/>
+<label for="begin_date" class="bayern_top_labels">Beginn :</label>
+	<select name="begin_date_h" id="begin_date_h" class="visittimeinterval">
+	<option value="00">00</option>
+	<?php for ($i=1; $i<=23; $i++){?>
+	 <option value="<?php echo str_pad($i, 2, "0", STR_PAD_LEFT); ?>" <?php if($i == $this->begin_date_h ){ echo 'selected';}?>><?php echo str_pad($i, 2, "0", STR_PAD_LEFT); ?></option>
+
+	<?php }?>
+	</select>
+	<select name="begin_date_m" id="begin_date_m" class="visittimeinterval">
+	<option value="00">00</option>
+	<?php for ($i=1; $i<=59; $i++){?>
+
+	 <option value="<?php echo str_pad($i, 2, "0", STR_PAD_LEFT); ?>" <?php if($i == $this->begin_date_m ){ echo 'selected';}?>><?php echo str_pad($i, 2, "0", STR_PAD_LEFT); ?></option>
+
+	<?php }?>
+	</select>
+<label>Ende:</label>
+	<select name="end_date_h"  id="end_date_h"  class="visittimeinterval">
+	<option value="00">00</option>
+	<?php for ($i=1; $i<=23; $i++){?>
+	 <option value="<?php echo str_pad($i, 2, "0", STR_PAD_LEFT); ?>" <?php if($i == $this->end_date_h ){ echo 'selected';}?>><?php echo str_pad($i, 2, "0", STR_PAD_LEFT); ?></option>
+
+	<?php }?>
+	</select>
+	<select name="end_date_m"  id="end_date_m"  class="visittimeinterval">
+	<option value="00">00</option>
+	<?php for ($i=1; $i<=59; $i++){?>
+	 <option value="<?php echo str_pad($i, 2, "0", STR_PAD_LEFT); ?>" <?php if($i == $this->end_date_m ){ echo 'selected';}?>><?php echo str_pad($i, 2, "0", STR_PAD_LEFT); ?></option>
+
+	<?php }?>
+	</select>
+<input type="text" name="visit_date" id="visit_date"  style="width:80px; margin: 2px 0 -2px 10px;" value="<?php echo $this->visit_date ?>"   class="visittimeinterval">
+
+
+<label>Dokumentationsdauer</label><input type="text" name="documantation_time" id="documantation_time" value="<?php echo $this->documantation_time;?>" style="width: 50px; margin: 0 5px 0 5px;"   class="visittimeinterval" />
+
+
+
+
+<br/>&nbsp
+<div class="error_new">
+	<?php echo $this->error_visit_date; ?>
+</div>
+<br/>
+
+
+<label class="bayern_top_labels">Fahrtzeit (einfach !): </label>
+<select name="fahrtzeit" id="fahrtzeit"  class="visittimeinterval">
+<option value="--">--</option>
+	<?php for ($i=1; $i<=$this->driving_time_limit; $i++){?>
+ <option value="<?php echo $i; ?>" <?php if($i == $this->fahrtzeit || (empty($this->fahrtzeit) && $i == $this->fahrtzeit_min)){ echo 'selected';}?>><?php echo $i; ?></option>
+
+<?php }?></select>
+<?php echo '<!--'.$this->fahrtzeit_min.'-->';?>
+<br/><br/>
+<label class="bayern_top_labels">Fahrtstrecke (einfach !):</label><input type="text" name="fahrtstreke_km" value="<?php echo $this->fahrtstreke_km;?>" /> ( Km )<br/>
+ <br/>
+ <table  border="0" cellpadding="2" cellspacing="2" class="bayern_symptomatics" width="100%">
+ <tr  style=" border-bottom:1px solid #ccc;  line-height: 30px">
+ <th width="35%"><b>Item</b></th>
+ <th width="10%" style="text-align: center;"><b>Letzter Wert</b></th>
+ <th width="13%" style="text-align: center;"><b>Aktueller Wert</b></th>
+ <th width="40%"><b>Kommentar</b></th>
+ </tr>
+<?php if($this->sympt_view_select == 'a'): ?>
+	<?php
+		$none = array(0);
+		$weak = array(1,2,3,4);
+		$average = array(5,6,7);
+		$strong = array(8,9,10);
+		$atributes_values = array(0=>'kein',1=>'leicht',2=>'leicht',3=>'leicht',4=>'leicht',5=>'mittel',6=>'mittel',7=>'mittel',8=>'schwer',9=>'schwer',10=>'schwer');
+	?>
+
+ 	<?php foreach($this->symptomarr as $value):	?>
+		<tr  style=" border-bottom:1px dotted #ccc">
+			<td ><?php echo ($value['sym_description'])?></td>
+			<td style="text-align: center; "><span><?php echo $atributes_values [$value['input_value']];?></span>
+				<input type="hidden" name="current_value[<?php echo $value['symptomid']?>]" value="<?php echo $value['input_value']?>" />
+				<input type="hidden" name="entered_value[<?php echo $value['symptomid']?>]" value="<?php echo $value['entered_value']?>" />
+			</td>
+			<td class="kvno_tinyinpt">
+				<select name="input_value[<?php echo $value['symptomid']?>]"   id="input_value<?php echo $value['symptomid']?>"    class="symp_input">
+					<option value="0" <?php if( in_array($value['entered_value'],$none)):?> selected="selected" <?php endif; ?>  >kein</option>
+					<option value="4" <?php if( in_array($value['entered_value'],$weak)):?> selected="selected" <?php endif; ?> >leicht</option>
+					<option value="7" <?php if( in_array($value['entered_value'],$average)):?> selected="selected" <?php endif; ?> >mittel</option>
+					<option value="10" <?php if( in_array($value['entered_value'],$strong)):?> selected="selected" <?php endif; ?> >schwer</option>
+					<option value="" <?php if( $value['entered_value'] == NULL ){echo 'selected="selected"'; } else{}     ?>  ></option>
+				</select>
+				<input type="hidden" name="setid" value="1" /></td>
+			<td class="bayern_komentinput"><input type="text" name="comment[<?php echo $value['symptomid']?>]" value="<?php echo $value['comment']?>" /></td>
+		</tr>
+	<?php endforeach;?>
+
+ <?php else: ?>
+	<?php foreach($this->symptomarr as $value):?>
+		<tr  style=" border-bottom:1px dotted #ccc">
+			<td ><?php echo ($value['sym_description'])?></td>
+			<td style="text-align: center; "><span><?php echo $value['input_value'];?></span>
+				<input type="hidden" name="current_value[<?php echo $value['symptomid']?>]" value="<?php echo $value['input_value']?>" />
+				<input type="hidden" name="entered_value[<?php echo $value['symptomid']?>]" value="<?php echo $value['entered_value']?>" />
+			</td>
+			<td class="bayern_tinyinpt">
+				<input type="text" name="input_value[<?php echo $value['symptomid']?>]" value="<?php echo $value['entered_value']?>" class="bayernsymp_input" id="input_value<?php echo $value['symptomid']?>" onkeyup="isInteger([<?php echo $value['symptomid']?>])" />
+				<input type="hidden" name="setid" value="1" /></td>
+			<td class="bayern_komentinput"><input type="text" name="comment[<?php echo $value['symptomid']?>]" value="<?php echo $value['comment']?>" /></td>
+		</tr>
+	<?php endforeach;?>
+<?php endif;?>
+
+ <tr>
+ <td  colspan="4">&nbsp;</td>
+ </tr>
+
+
+ <tr></tr>
+
+ </table>
+
+ <table class="bayern_korpelicht_befund" cellpadding="0"  >
+
+
+<?php if ($this->stam_port != 0) {?>
+
+  <tr>
+	 <td class="bayern_bigtd">Port</td>
+	 <td><input type="radio" name="port" id="port_ok" value="1"  <?php if($this->port == "1" ){echo 'checked="checked"';} ?>/><label for="port_ok">ok</label></td>
+	 <td class="empty_befun">&nbsp;</td>
+	 <td><input type="radio" name="port" id="port_notok" value="2"  <?php if($this->port == "2" ){echo 'checked="checked"';} ?>/><label for="port_notok"> nicht ok </label></td>
+	 <td><div id="port_textdiv" style="display: none;">&nbsp;<input type="text"   name="port_text" id="port_text" value="<?php echo $this->port_text;?>"  /></div></td>
+ </tr>
+
+<?php }?>
+
+ <?php if ($this->stam_kunstliche != 0) {?>
+ <tr>
+	 <td class="bayern_bigtd">besonderer Aus-/ Eingang <?php if (!empty($this->stam_kunstlichemore)):?>(<?php echo $this->stam_kunstlichemore;?>) <input type="hidden" name="kunstlichemore" value="<?php echo $this->kunstlichemore?>" /><?php endif;?></td>
+	 <td><input type="radio" name="kunstliche" id="kunstliche_ok" value="1"  <?php if($this->kunstliche == "1" ){echo 'checked="checked"';} ?>/><label for="kunstliche_ok">ok</label></td>
+	 <td class="empty_befun">&nbsp;</td>
+	 <td><input type="radio" name="kunstliche" id="kunstliche_notok" value="2"  <?php if($this->kunstliche == "2" ){echo 'checked="checked"';} ?>/><label for="kunstliche_notok"> nicht ok </label></td>
+	 <td><div id="kunstliche_textdiv" style="display: none;">&nbsp;<input type="text"   name="kunstliche_text" id="kunstliche_text" value="<?php echo $this->kunstliche_text;?>"  /></div></td>
+ </tr>
+
+<?php }?>
+
+<?php if ($this->stam_pumps != 0) {?>
+ <tr>
+	 <td class="bayern_bigtd">Pumpe</td>
+	 <td><input type="radio" name="pumps" id="pumpe_ok" value="1"  <?php if($this->pumps == "1" ){echo 'checked="checked"';} ?>/><label for="pumpe_ok">ok</label></td>
+	 <td class="empty_befun">&nbsp;</td>
+	 <td><input type="radio" name="pumps"  id="pumpe_notok" value="2"  <?php if($this->pumps == "2" ){echo 'checked="checked"';} ?>/><label for="pumpe_notok"> nicht ok </label></td>
+	 <td><div id="pumps_textdiv" style="display: none;">&nbsp;<input type="text"   name="pumps_text" id="pumps_text" value="<?php echo $this->pumps_text;?>"  /></div></td>
+ </tr>
+ <?php }?>
+
+<?php if ($this->stam_dk != 0) {?>
+ <tr>
+	 <td class="bayern_bigtd">Dauerkatheter</td>
+	 <td><input type="radio" name="dk" id="dauerkatheter_ok" value="1"  <?php if($this->dk == "1" ){echo 'checked="checked"';} ?>/><label for="dauerkatheter_ok">ok</label></td>
+	 <td class="empty_befun">&nbsp;</td>
+	 <td><input type="radio" name="dk"  id="dauerkatheter_notok" value="2"  <?php if($this->dk == "2" ){echo 'checked="checked"';} ?>/><label for="dauerkatheter_notok"> nicht ok </label></td>
+	 <td><div id="dk_textdiv" style="display: none;">&nbsp;<input type="text"   name="dk_text" id="dk_text" value="<?php echo $this->dk_text;?>"  /></div></td>
+ </tr>
+<?php }?>
+<?php if ($this->stam_peg != 0) {?>
+ <tr>
+	 <td class="bayern_bigtd">PEG</td>
+	 <td><input type="radio" name="peg" id="peg_ok" value="1"  <?php if($this->peg == "1" ){echo 'checked="checked"';} ?>/><label for="peg_ok">ok</label></td>
+	 <td class="empty_befun">&nbsp;</td>
+	 <td><input type="radio" name="peg" id="peg_notok" value="2"  <?php if($this->peg == "2" ){echo 'checked="checked"';} ?>/><label for="peg_notok"> nicht ok </label></td>
+ 	 <td><div id="peg_textdiv" style="display: none;">&nbsp;<input type="text"   name="peg_text" id="peg_text" value="<?php echo $this->peg_text;?>"  /></div></td>
+ </tr>
+<?php }?>
+
+
+<?php if ($this->stam_darm != 0) {?>
+ <tr>
+	 <td class="bayern_bigtd">Darm</td>
+	 <td><input type="radio" name="darm" id="darm_ok" value="1"  <?php if($this->darm == "1" ){echo 'checked="checked"';} ?>/><label for="darm_ok">ok</label></td>
+	 <td class="empty_befun">&nbsp;</td>
+	 <td><input type="radio" name="darm" id="darm_notok" value="2"  <?php if($this->darm == "2" ){echo 'checked="checked"';} ?>/><label for="darm_notok"> nicht ok </label></td>
+	 <td><div id="darm_textdiv" style="display: none;">&nbsp;<input type="text"   name="darm_text" id="darm_text" value="<?php echo $this->darm_text;?>"  /></div></td>
+ </tr>
+<?php }?>
+<?php if ($this->stam_blase != 0) {?>
+ <tr>
+	 <td class="bayern_bigtd">Blase</td>
+	 <td><input type="radio" name="blase" id="blase_ok" value="1"  <?php if($this->blase == "1" ){echo 'checked="checked"';} ?>/><label for="blase_ok">ok</label></td>
+	 <td class="empty_befun">&nbsp;</td>
+	 <td><input type="radio" name="blase" id="blase_notok" value="2"  <?php if($this->blase == "2" ){echo 'checked="checked"';} ?>/><label for="blase_notok"> nicht ok </label></td>
+ 	 <td><div id="blase_textdiv" style="display: none;">&nbsp;<input type="text"   name="blase_text" id="blase_text" value="<?php echo $this->blase_text;?>"  /></div></td>
+ </tr>
+<?php }?>
+<?php if ($this->stam_luftrohre != 0) {?>
+ <tr>
+	 <td class="bayern_bigtd">Luftröhre</td>
+	 <td><input type="radio" name="luftrohre" id="luftrohre_ok" value="1"  <?php if($this->luftrohre == "1" ){echo 'checked="checked"';} ?>/><label for="luftrohre_ok">ok</label></td>
+	 <td class="empty_befun">&nbsp;</td>
+	 <td><input type="radio" name="luftrohre" id="luftrohre_notok" value="2"  <?php if($this->luftrohre == "2" ){echo 'checked="checked"';} ?>/><label for="luftrohre_notok"> nicht ok </label></td>
+	 <td><div id="luftrohre_textdiv" style="display: none;">&nbsp;<input type="text"   name="luftrohre_text" id="luftrohre_text" value="<?php echo $this->luftrohre_text;?>"  /></div></td>
+ </tr>
+<?php }?>
+ <?php if ($this->stam_ablaufsonde != 0) {?>
+ <tr>
+	 <td class="bayern_bigtd">Ablaufsonde</td>
+	 <td><input type="radio" name="ablaufsonde" id="ablaufsonde_ok" value="1" /><label>ok</label></td>
+	 <td class="empty_befun">&nbsp;</td>
+	 <td><input type="radio" name="ablaufsonde" id="ablaufsonde_notok"  value="2"   /><label>nicht ok</label> </td>
+	 <td><div id="ablaufsonde_textdiv" style="display: none;">&nbsp;<input type="text"   name="ablaufsonde_text" id="ablaufsonde_text" value="<?php echo $this->ablaufsonde_text;?>"  /></div></td>
+ </tr>
+ <?php }?>
+ <tr>
+ <td colspan="5"> </td>
+ </tr>
+ <tr>
+ <td colspan="5"> <b>Körperlicher Befund:</b><br/></td>
+ </tr>
+ <tr>
+ <td colspan="5"> </td>
+ </tr>
+ <tr>
+ <td class="bayern_bigtd">Kopf</td>
+ <td><input type="radio" name="kopf" id="kopfk" value="1" /><label>Ohne Befund</label></td>
+ <td class="empty_befun">&nbsp;</td>
+ <td><input type="radio" name="kopf" id="kopfb"  value="2"   /><label>Befund</label> </td>
+ <td><div id="kopf_textdiv" style="display: none;">           &nbsp;<input type="text"    name="kopf_text"             id="kopf_text"              value="<?php echo $this->kopf_text;?>"  /></div></td>
+ </tr>
+
+  <tr>
+ <td class="bayern_bigtd">Thorax</td>
+ <td><input type="radio" name="thorax" id="thoraxk" value="1" /><label>Ohne Befund</label></td>
+ <td class="empty_befun">&nbsp;</td>
+ <td ><input type="radio" name="thorax" id="thoraxb"  value="2"   /><label>Befund</label> </td>
+ <td><div id="thorax_textdiv" style="display: none;">&nbsp;<input type="text"   name="thorax_text" id="thorax_text" value="<?php echo $this->thorax_text;?>"  /></div></td>
+ </tr>
+
+
+  <tr>
+ <td class="bayern_bigtd">Abdomen</td>
+ <td><input type="radio" name="abdomen" id="abdomenk" value="1" /><label>Ohne Befund</label></td>
+ <td class="empty_befun">&nbsp;</td>
+ <td><input type="radio" name="abdomen" id="abdomenb"  value="2"   /><label>Befund</label> </td>
+ <td><div id="abdomen_textdiv" style="display: none;">&nbsp;<input type="text"   name="abdomen_text" id="abdomen_text" value="<?php echo $this->abdomen_text;?>"  /></div></td>
+ </tr>
+
+
+ <tr>
+ <td class="bayern_bigtd">Extremitäten</td>
+ <td><input type="radio" name="extremitaten" id="extremitatenk" value="1" /><label>Ohne Befund</label></td>
+ <td class="empty_befun">&nbsp;</td>
+ <td><input type="radio" name="extremitaten" id="extremitatenb"  value="2"   /><label>Befund</label> </td>
+ <td><div id="extremitaten_textdiv" style="display: none;">&nbsp;<input type="text"   name="extremitaten_text" id="extremitaten_text" value="<?php echo $this->extremitaten_text;?>"  /></div></td>
+ </tr>
+
+
+ <tr>
+ <td class="bayern_bigtd">Haut/Wunden</td>
+ <td><input type="radio" name="haut_wunden" id="haut_wundenk" value="1" /><label>Ohne Befund</label></td>
+ <td class="empty_befun">&nbsp;</td>
+ <td><input type="radio" name="haut_wunden" id="haut_wundenb"  value="2"   /><label>Befund</label> </td>
+ <td><div id="haut_wunden_textdiv" style="display: none;">&nbsp;<input type="text"   name="haut_wunden_text" id="haut_wunden_text" value="<?php echo $this->haut_wunden_text;?>"  /></div></td>
+ </tr>
+
+ <tr>
+ <td class="bayern_bigtd">neurologisch / psychiatrisch</td>
+ <td><input type="radio" name="neurologisch_psychiatrisch" id="neurologisch_psychiatrischk" value="1" /><label>Ohne Befund</label></td>
+ <td class="empty_befun">&nbsp;</td>
+ <td><input type="radio" name="neurologisch_psychiatrisch" id="neurologisch_psychiatrischb"  value="2"   /><label>Befund</label> </td>
+ <td><div id="neurologisch_psychiatrisch_textdiv" style="display: none;">&nbsp;<input type="text"   name="neurologisch_psychiatrisch_text" id="neurologisch_psychiatrisch_text" value="<?php echo $this->neurologisch_psychiatrisch_text;?>"  /></div></td>
+ </tr>
+
+ </table>
+
+ <table class="kvno_ecog">
+ <tr>
+	 <td style="width:80px;">
+		  <b>ECOG :</b>
+	 </td>
+	 <td>
+		 <select name="ecog[]" id="ecog">
+			 <option value="0" <?php if(in_array(0,$this->ecog) || empty($this->ecog)) {echo  'selected="selected"';}?> ><?php echo $this->translate('please_select');  ?></option>
+			 <option value="1" <?php if(in_array(1,$this->ecog)) {echo  'selected="selected"';}?> >normale Aktivität</option>
+			 <option value="2" <?php if(in_array(2,$this->ecog)) {echo  'selected="selected"';}?> >Gehfähig, leichte Arbeiten möglich</option>
+			 <option value="3" <?php if(in_array(3,$this->ecog)) {echo  'selected="selected"';}?> >nicht arbeitsfähig, kann &gt; 50&#37; der Wachzeit aufstehen</option>
+			 <option value="4" <?php if(in_array(4,$this->ecog)) {echo  'selected="selected"';}?> >begrenzte Selbstversorgung, &gt; 50&#37; Wachzeit bettlägrig</option>
+			 <option value="5" <?php if(in_array(5,$this->ecog)) {echo  'selected="selected"';}?> >Pflegebedürftig, permanent bettlägrig</option>
+		 </select>
+	 </td>
+	 <td></td>
+ </tr>
+ </table>
+ <br/>
+
+<div class="bayern_doctor_vboxes">
+	<div class="bayern_vboxes_left">
+
+		<div class="bayern_dragvbox" id="item_1">
+			<h2 class="">Beratung - Einsatzort / -art</h2>
+			<div style="display: none;"   id="grow1" class="bayern_dragvbox_content">
+			<div class="bayern_sapvfb3_content">
+				<table class="bayern_sapvfb3_table">
+					<tr>
+						<td width="95%"><label for="cbx_1">Hausbesuch in Privatwohnung</label></td>
+						<td width="5%">
+							<?php if( is_array($this->sapvalarr)):?>
+      							<input type="checkbox" id="cbx_1" name="checkbox[<?php echo $this->sapv_id ;?>][]" onclick="updateCheckboxes(this,'Hausbesuch in Privatwohnung','<?php echo $this->cat1;?>',<?php echo $this->sapv_id; ?>)" value="1" <?php if(in_array('1',$this->sapvalarr)) { echo ' checked="checked"';}?> />
+							<?php else :?>
+								<input type="checkbox" id="cbx_1" name="symptom[]" value="1" onclick="saveCheckboxes(this,'Hausbesuch in Privatwohnung','<?php echo $this->cat1;?>')" />
+							<?php endif;?>
+						</td>
+					</tr>
+					<tr class="bayern_box_alt">
+						<td><label for="cbx_2">Besuch im Krankenhaus / Palliativstation</label></td>
+						<td>
+						<?php if( is_array($this->sapvalarr)):?>
+     						<input type="checkbox" id="cbx_2"  value="2" name="checkbox[<?php echo $this->sapv_id ;?>][]" onclick="updateCheckboxes(this,'Besuch im Krankenhaus / Palliativstation','<?php echo $this->cat1;?>',<?php echo $this->sapv_id; ?>)"  <?php if(in_array('2',$this->sapvalarr)) { echo ' checked="checked"';}?>   />
+						<?php else :?>
+							<input type="checkbox" id="cbx_2"  value="2" name="symptom[]" onclick="saveCheckboxes(this,'Besuch im Krankenhaus / Palliativstation','<?php echo $this->cat1;?>')" />
+						<?php endif;?>
+						</td>
+					</tr>
+					<tr>
+						<td><label for="cbx_3">Besuch in stationärer Pflegeeinrichtung / Hospiz</label></td>
+						<td>
+						<?php if( is_array($this->sapvalarr)):?>
+     						<input type="checkbox" id="cbx_3"  value="3" name="checkbox[<?php echo $this->sapv_id ;?>][]" onclick="updateCheckboxes(this,'Besuch in stationärer Pflegeeinrichtung / Hospiz','<?php echo $this->cat1;?>',<?php echo $this->sapv_id; ?>)"  <?php if(in_array('3',$this->sapvalarr)) { echo ' checked="checked"';}?>   />
+						<?php else :?>
+							<input type="checkbox" id="cbx_3"  value="3" name="symptom[]" onclick="saveCheckboxes(this,'Besuch in stationärer Pflegeeinrichtung / Hospiz','<?php echo $this->cat1;?>')" />
+						<?php endif;?>
+						</td>
+					</tr>
+					<tr class="bayern_box_alt">
+						<td><label for="cbx_6" >Telefonate/ E-Mails</label></td>
+						<td>
+						<?php if( is_array($this->sapvalarr)):?>
+							<input type="checkbox" id="cbx_6" value="6" name="checkbox[<?php echo $this->sapv_id ;?>][]" onclick="updateCheckboxes(this,'Telefonate/ E-Mails','<?php echo $this->cat1;?>', <?php echo $this->sapv_id ;?> )"   <?php if(in_array('6',$this->sapvalarr)) { echo ' checked="checked"';}?>  />
+						<?php else :?>
+							<input type="checkbox" id="cbx_6" value="6" name="symptom[]" onclick="saveCheckboxes(this,'Telefonate/ E-Mails','<?php echo $this->cat1;?>');">
+						<?php endif;?>
+						</td>
+					</tr>
+					<tr>
+						<td><label for="cbx_61" >24h-Bereitschaft</label></td>
+						<td>
+						<?php if( is_array($this->sapvalarr)):?>
+     						<input type="checkbox" id="cbx_61"  value="61" name="checkbox[<?php echo $this->sapv_id ;?>][]" onclick="updateCheckboxes(this,'24h-Bereitschaft','<?php echo $this->cat1;?>',<?php echo $this->sapv_id; ?>)"  <?php if(in_array('61',$this->sapvalarr)) { echo ' checked="checked"';}?>   />
+						<?php else :?>
+							<input type="checkbox" id="cbx_61"  value="61" name="symptom[]" onclick="saveCheckboxes(this,'24h-Bereitschaft','<?php echo $this->cat1;?>')" />
+						<?php endif;?>
+						</td>
+					</tr>
+					<tr style="display: none;">
+						<td>20.00 – 6.00 Uhr</td>
+						<td>
+						<?php if( is_array($this->sapvalarr)):?>
+     						<input type="checkbox" id="cbx_7" class="visit_interval"  value="7" name="checkbox[<?php echo $this->sapv_id ;?>][]" onclick="updateCheckboxes(this,'20.00 – 6.00 Uhr','<?php echo $this->cat1;?>',<?php echo $this->sapv_id; ?>)"  <?php if(in_array('7',$this->sapvalarr)) { echo ' checked="checked"';}?>   />
+						<?php else :?>
+							<input type="checkbox" id="cbx_7" class="visit_interval"  value="7" name="symptom[]" onclick="saveCheckboxes(this,'20.00 – 6.00 Uhr','<?php echo $this->cat1;?>')" />
+						<?php endif;?>
+						</td>
+					</tr>
+
+				</table>
+			</div>
+			</div>
+		</div>
+
+		<div class="bayern_dragvbox" id="item_2">
+			<h2 class="">Koordination - Absprache mit/ Beratung von  FachkollegInnen</h2>
+			<div style="display: none;" id="grow2" class="bayern_dragvbox_content">
+				<div class="bayern_sapvfb3_content">
+				<table class="bayern_sapvfb3_table">
+					<tr>
+						<td width="95%"><label for="cbx_8" >behandelnde Ärzte</label></td>
+						<td width="5%">
+							<?php if( is_array($this->sapvalarr)):?>
+	     						<input type="checkbox" id="cbx_8"  value="8" name="checkbox[<?php echo $this->sapv_id ;?>][]" onclick="updateCheckboxes(this,'behandelnde Ärzte','<?php echo $this->cat2;?>',<?php echo $this->sapv_id; ?>)"  <?php if(in_array('8',$this->sapvalarr)) { echo ' checked="checked"';}?>   />
+							<?php else :?>
+								<input type="checkbox" id="cbx_8"  value="8" name="symptom[]" onclick="saveCheckboxes(this,'behandelnde Ärzte','<?php echo $this->cat2;?>')" />
+							<?php endif;?>
+						</td>
+					</tr>
+					<tr class="bayern_box_alt">
+						<td><label  for="cbx_9" >amb. und stationäre Pflege</label></td>
+						<td>
+						<?php if( is_array($this->sapvalarr)):?>
+	     						<input type="checkbox" id="cbx_9"  value="9" name="checkbox[<?php echo $this->sapv_id ;?>][]" onclick="updateCheckboxes(this,'amb. und stationäre Pflege','<?php echo $this->cat2;?>',<?php echo $this->sapv_id; ?>)"  <?php if(in_array('9',$this->sapvalarr)) { echo ' checked="checked"';}?>   />
+						<?php else :?>
+								<input type="checkbox" id="cbx_9"  value="9" name="symptom[]" onclick="saveCheckboxes(this,'amb. und stationäre Pflege','<?php echo $this->cat2;?>')" />
+						<?php endif;?>
+						</td>
+					</tr>
+					<tr>
+						<td><label  for="cbx_10" >Koordinatoren des amb. Hospiz</label></td>
+						<td>
+						<?php if( is_array($this->sapvalarr)):?>
+	     						<input type="checkbox" id="cbx_10"  value="10" name="checkbox[<?php echo $this->sapv_id ;?>][]" onclick="updateCheckboxes(this,'Koordinatoren des amb. Hospiz','<?php echo $this->cat2;?>',<?php echo $this->sapv_id; ?>)"  <?php if(in_array('10',$this->sapvalarr)) { echo ' checked="checked"';}?>   />
+						<?php else :?>
+								<input type="checkbox" id="cbx_10"  value="10" name="symptom[]" onclick="saveCheckboxes(this,'Koordinatoren des amb. Hospiz','<?php echo $this->cat2;?>')" />
+						<?php endif;?>
+						</td>
+					</tr>
+					<tr class="bayern_box_alt">
+						<td><label  for="cbx_11" >Med.-pfleg. Palliative Care Fachkraft</label></td>
+						<td>
+						<?php if( is_array($this->sapvalarr)):?>
+	     						<input type="checkbox" id="cbx_11"  value="11" name="checkbox[<?php echo $this->sapv_id ;?>][]" onclick="updateCheckboxes(this,'Med.-pfleg. Palliative Care Fachkraft','<?php echo $this->cat2;?>',<?php echo $this->sapv_id; ?>)"  <?php if(in_array('11',$this->sapvalarr)) { echo ' checked="checked"';}?>   />
+						<?php else :?>
+								<input type="checkbox" id="cbx_11"  value="11" name="symptom[]" onclick="saveCheckboxes(this,'Med.-pfleg. Palliative Care Fachkraft','<?php echo $this->cat2;?>')" />
+						<?php endif;?>
+						</td>
+					</tr>
+
+					<tr>
+						<td><label  for="cbx_12" >PalliativmedizinerIn</label></td>
+						<td>
+							<?php if( is_array($this->sapvalarr)):?>
+	     						<input type="checkbox" id="cbx_12"  value="12" name="checkbox[<?php echo $this->sapv_id ;?>][]" onclick="updateCheckboxes(this,'PalliativmedizinerIn','<?php echo $this->cat2;?>',<?php echo $this->sapv_id; ?>)"  <?php if(in_array('12',$this->sapvalarr)) { echo ' checked="checked"';}?>   />
+							<?php else :?>
+								<input type="checkbox" id="cbx_12"  value="12" name="symptom[]" onclick="saveCheckboxes(this,'PalliativmedizinerIn','<?php echo $this->cat2;?>')" />
+							<?php endif;?>
+						</td>
+					</tr>
+					<tr class="bayern_box_alt">
+						<td><label  for="cbx_19" >Klinik- Aufnahme bzw. Entlassung</label></td>
+						<td>
+							<?php if( is_array($this->sapvalarr)):?>
+	     						<input type="checkbox" id="cbx_19"  value="19" name="checkbox[<?php echo $this->sapv_id ;?>][]" onclick="updateCheckboxes(this,'Klinik- Aufnahme bzw. Entlassung','<?php echo $this->cat2;?>',<?php echo $this->sapv_id; ?>)"  <?php if(in_array('19',$this->sapvalarr)) { echo ' checked="checked"';}?>   />
+							<?php else :?>
+								<input type="checkbox" id="cbx_19"  value="19" name="symptom[]" onclick="saveCheckboxes(this,'Klinik- Aufnahme bzw. Entlassung','<?php echo $this->cat2;?>')" />
+							<?php endif;?>
+						</td>
+
+					</tr>
+					<tr>
+						<td><label  for="cbx_62" >HomeCare</label></td>
+						<td>
+							<?php if( is_array($this->sapvalarr)):?>
+	     						<input type="checkbox" id="cbx_62"  value="62" name="checkbox[<?php echo $this->sapv_id ;?>][]" onclick="updateCheckboxes(this,'HomeCare','<?php echo $this->cat2;?>',<?php echo $this->sapv_id; ?>)"  <?php if(in_array('62',$this->sapvalarr)) { echo ' checked="checked"';}?>   />
+							<?php else :?>
+								<input type="checkbox" id="cbx_62"  value="62" name="symptom[]" onclick="saveCheckboxes(this,'HomeCare','<?php echo $this->cat2;?>')" />
+							<?php endif;?>
+						</td>
+
+					</tr>
+
+				</table>
+				</div>
+			</div>
+		</div>
+
+		<div class="bayern_dragvbox" id="item_3">
+			<h2 class="">Teilversorgung - palliativärztlich-pflegerische Maßnahmen</h2>
+			<div style="display: none;" id="grow3" class="bayern_dragvbox_content">
+				<div class="bayern_sapvfb3_content">
+				<table class="bayern_sapvfb3_table">
+					<tr>
+						<td  width="95%"><label  for="cbx_20" ><b>Schmerztherapie<b> Erstberatung</label></td>
+						<td>
+							<?php if( is_array($this->sapvalarr)):?>
+	     						<input type="checkbox" id="cbx_20"  value="20" name="checkbox[<?php echo $this->sapv_id ;?>][]" onclick="updateCheckboxes(this,'Schmerztherapie Erstberatung','<?php echo $this->cat3;?>',<?php echo $this->sapv_id; ?>)"  <?php if(in_array('20',$this->sapvalarr)) { echo ' checked="checked"';}?>   />
+							<?php else :?>
+								<input type="checkbox" id="cbx_20"  value="20" name="symptom[]" onclick="saveCheckboxes(this,'Schmerztherapie Erstberatung','<?php echo $this->cat3;?>')" />
+							<?php endif;?>
+						</td>
+					</tr>
+					<tr class="bayern_box_alt">
+						<td><label  for="cbx_21" ><span>Verlaufskontrolle</span></label></td>
+						<td>
+							<?php if( is_array($this->sapvalarr)):?>
+								<input type="checkbox" id="cbx_21" value="21" name="checkbox[<?php echo $this->sapv_id ;?>][]" onclick="updateCheckboxes(this,'Verlaufskontrolle','<?php echo $this->cat1;?>', <?php echo $this->sapv_id ;?> )"    <?php if(in_array('21',$this->sapvalarr)) { echo ' checked="checked"';}?> />
+							<?php else :?>
+								<input type="checkbox" id="cbx_21" value="21" name="symptom[]" onclick="saveCheckboxes(this,'Verlaufskontrolle','<?php echo $this->cat1;?>');">
+							<?php endif;?>
+						</td>
+					</tr>
+					<tr>
+						<td><label  for="cbx_22" ><b>REASSESSMENT Krisenintervention</b></label></td>
+						<td>
+						<?php if( is_array($this->sapvalarr)):?>
+     						<input type="checkbox" id="cbx_22"  value="22" name="checkbox[<?php echo $this->sapv_id ;?>][]" onclick="updateCheckboxes(this,'REASSESSMENT Krisenintervention','<?php echo $this->cat3;?>',<?php echo $this->sapv_id; ?>)"  <?php if(in_array('22',$this->sapvalarr)) { echo ' checked="checked"';}?>   />
+						<?php else :?>
+							<input type="checkbox" id="cbx_22"  value="22" name="symptom[]" onclick="saveCheckboxes(this,'REASSESSMENT Krisenintervention','<?php echo $this->cat3;?>')" />
+						<?php endif;?>
+						</td>
+					</tr>
+					<tr class="bayern_box_alt">
+						<td><label  for="cbx_23" ><b>Symptomkontrolle</b> Erstberatung</label></td>
+						<td>
+							<?php if( is_array($this->sapvalarr)):?>
+	     						<input type="checkbox" id="cbx_23"  value="23" name="checkbox[<?php echo $this->sapv_id ;?>][]" onclick="updateCheckboxes(this,'Symptomkontrolle  Erstberatung','<?php echo $this->cat3;?>',<?php echo $this->sapv_id; ?>)"  <?php if(in_array('23',$this->sapvalarr)) { echo ' checked="checked"';}?>   />
+							<?php else :?>
+								<input type="checkbox" id="cbx_23"  value="23" name="symptom[]" onclick="saveCheckboxes(this,'Symptomkontrolle  Erstberatung','<?php echo $this->cat3;?>')" />
+							<?php endif;?>
+						</td>
+					</tr>
+					<tr>
+						<td><label  for="cbx_24" ><span>Verlaufskontrolle</span></label></td>
+						<td>
+							<?php if( is_array($this->sapvalarr) && in_array('24',$this->sapvalarr)):?>
+								<input type="checkbox" id="cbx_24" value="24" name="checkbox[<?php echo $this->sapv_id ;?>][]" onclick="updateCheckboxes(this,'Verlaufskontrolle','<?php echo $this->cat2;?>', <?php echo $this->sapv_id ;?> )"   <?php if(in_array('24',$this->sapvalarr)) { echo ' checked="checked"';}?>  />
+							<?php else :?>
+								<input type="checkbox" id="cbx_24" value="24" name="symptom[]" onclick="saveCheckboxes(this,'Verlaufskontrolle','<?php echo $this->cat2;?>');">
+							<?php endif;?>
+						</td>
+					</tr>
+					<tr class="bayern_box_alt">
+						<td><label  for="cbx_25" ><b>REASSESSMENT   Krisenintervention</b></label></td>
+						<td>
+							<?php if( is_array($this->sapvalarr)):?>
+	     						<input type="checkbox" id="cbx_25"  value="25" name="checkbox[<?php echo $this->sapv_id ;?>][]" onclick="updateCheckboxes(this,'REASSESSMENT Krisenintervention','<?php echo $this->cat3;?>',<?php echo $this->sapv_id; ?>)"  <?php if(in_array('25',$this->sapvalarr)) { echo ' checked="checked"';}?>   />
+							<?php else :?>
+								<input type="checkbox" id="cbx_25"  value="25" name="symptom[]" onclick="saveCheckboxes(this,'REASSESSMENT Krisenintervention','<?php echo $this->cat3;?>')" />
+							<?php endif;?>
+						</td>
+					</tr>
+					<tr>
+						<td><label  for="cbx_26" ><span>individueller Notfallplan</span></label></td>
+						<td>
+							<?php if( is_array($this->sapvalarr)):?>
+	     						<input type="checkbox" id="cbx_26"  value="26" name="checkbox[<?php echo $this->sapv_id ;?>][]" onclick="updateCheckboxes(this,'individueller Notfallplan','<?php echo $this->cat3;?>',<?php echo $this->sapv_id; ?>)"  <?php if(in_array('26',$this->sapvalarr)) { echo ' checked="checked"';}?>   />
+							<?php else :?>
+								<input type="checkbox" id="cbx_26"  value="26" name="symptom[]" onclick="saveCheckboxes(this,'individueller Notfallplan','<?php echo $this->cat3;?>')" />
+							<?php endif;?>
+						</td>
+					</tr>
+					<tr class="bayern_box_alt">
+						<td><label  for="cbx_27" ><span>Terminalphase</span></label></td>
+						<td>
+							<?php if( is_array($this->sapvalarr)):?>
+	     						<input type="checkbox" id="cbx_27"  value="27" name="checkbox[<?php echo $this->sapv_id ;?>][]" onclick="updateCheckboxes(this,'Terminalphase','<?php echo $this->cat3;?>',<?php echo $this->sapv_id; ?>)"  <?php if(in_array('27',$this->sapvalarr)) { echo ' checked="checked"';}?>   />
+							<?php else :?>
+								<input type="checkbox" id="cbx_27"  value="27" name="symptom[]" onclick="saveCheckboxes(this,'Terminalphase','<?php echo $this->cat3;?>')" />
+							<?php endif;?>
+						</td>
+					</tr>
+					<tr>
+						<td><label  for="cbx_28" ><span>Maßnahmen im <b>Todesfall</b></span></label></td>
+						<td>
+							<?php if( is_array($this->sapvalarr)):?>
+	     						<input type="checkbox" id="cbx_28"  value="28" name="checkbox[<?php echo $this->sapv_id ;?>][]" onclick="updateCheckboxes(this,'Maßnahmen im Todesfall','<?php echo $this->cat3;?>',<?php echo $this->sapv_id; ?>)"  <?php if(in_array('28',$this->sapvalarr)) { echo ' checked="checked"';}?>   />
+							<?php else :?>
+								<input type="checkbox" id="cbx_28"  value="28" name="symptom[]" onclick="saveCheckboxes(this,'Maßnahmen im Todesfall','<?php echo $this->cat3;?>')" />
+							<?php endif;?>
+						</td>
+					</tr>
+					<tr class="bayern_box_alt">
+						<td><label  for="cbx_31" >Medikation subkutan / i.v. / i.m.</label></td>
+						<td>
+							<?php if( is_array($this->sapvalarr)):?>
+								<input type="checkbox" id="cbx_31" value="31" name="checkbox[<?php echo $this->sapv_id ;?>][]" onclick="updateCheckboxes(this,'Medikation subkutan / i.v. / i.m.','<?php echo $this->cat3;?>', <?php echo $this->sapv_id ;?> )"   <?php if(in_array('31',$this->sapvalarr)) { echo ' checked="checked"';}?>  />
+							<?php else :?>
+								<input type="checkbox" id="cbx_31" value="31" name="symptom[]" onclick="saveCheckboxes(this,'Medikation subkutan / i.v. / i.m.','<?php echo $this->cat3;?>');">
+							<?php endif;?>
+						</td>
+					</tr>
+					<tr>
+						<td><label  for="cbx_34" ><span>Mundpflege</span></label></td>
+						<td>
+							<?php if( is_array($this->sapvalarr)):?>
+	     						<input type="checkbox" id="cbx_34"  value="34" name="checkbox[<?php echo $this->sapv_id ;?>][]" onclick="updateCheckboxes(this,'Mundpflege','<?php echo $this->cat3;?>',<?php echo $this->sapv_id; ?>)"  <?php if(in_array('34',$this->sapvalarr)) { echo ' checked="checked"';}?>   />
+							<?php else :?>
+								<input type="checkbox" id="cbx_34"  value="34" name="symptom[]" onclick="saveCheckboxes(this,'Mundpflege','<?php echo $this->cat3;?>')" />
+							<?php endif;?>
+						</td>
+					</tr>
+					<tr class="bayern_box_alt">
+						<td><label  for="cbx_35" ><span>Wundversorgung</span></label></td>
+						<td>
+							<?php if( is_array($this->sapvalarr)):?>
+	     						<input type="checkbox" id="cbx_35"  value="35" name="checkbox[<?php echo $this->sapv_id ;?>][]" onclick="updateCheckboxes(this,'Wundversorgung','<?php echo $this->cat3;?>',<?php echo $this->sapv_id; ?>)"  <?php if(in_array('35',$this->sapvalarr)) { echo ' checked="checked"';}?>   />
+							<?php else :?>
+								<input type="checkbox" id="cbx_35"  value="35" name="symptom[]" onclick="saveCheckboxes(this,'Wundversorgung','<?php echo $this->cat3;?>')" />
+							<?php endif;?>
+						</td>
+					</tr>
+					<tr>
+						<td><label  for="cbx_36" ><span>Abführmaßnahmen</span></label></td>
+						<td>
+							<?php if( is_array($this->sapvalarr) ):?>
+	     						<input type="checkbox" id="cbx_36"  value="36" name="checkbox[<?php echo $this->sapv_id ;?>][]" onclick="updateCheckboxes(this,'Abführmaßnahmen','<?php echo $this->cat3;?>',<?php echo $this->sapv_id; ?>)"  <?php if(in_array('36',$this->sapvalarr)) { echo ' checked="checked"';}?>   />
+							<?php else :?>
+								<input type="checkbox" id="cbx_36"  value="36" name="symptom[]" onclick="saveCheckboxes(this,'Abführmaßnahmen','<?php echo $this->cat3;?>')" />
+							<?php endif;?>
+						</td>
+					</tr>
+					<tr class="bayern_box_alt">
+						<td><label  for="cbx_37" ><span>Stomata-Kontinenzberatung</span></label></td>
+						<td>
+							<?php if( is_array($this->sapvalarr)):?>
+	     						<input type="checkbox" id="cbx_37"  value="37" name="checkbox[<?php echo $this->sapv_id ;?>][]" onclick="updateCheckboxes(this,'Stomata-Kontinenzberatung','<?php echo $this->cat3;?>',<?php echo $this->sapv_id; ?>)"  <?php if(in_array('37',$this->sapvalarr)) { echo ' checked="checked"';}?>   />
+							<?php else :?>
+								<input type="checkbox" id="cbx_37"  value="37" name="symptom[]" onclick="saveCheckboxes(this,'Stomata-Kontinenzberatung','<?php echo $this->cat3;?>')" />
+							<?php endif;?>
+						</td>
+					</tr>
+					<tr>
+						<td><label  for="cbx_38" ><span>Lagerungsmaßnahmen</span></label></td>
+						<td>
+							<?php if( is_array($this->sapvalarr)):?>
+	     						<input type="checkbox" id="cbx_38"  value="38" name="checkbox[<?php echo $this->sapv_id ;?>][]" onclick="updateCheckboxes(this,'Lagerungsmaßnahmen','<?php echo $this->cat3;?>',<?php echo $this->sapv_id; ?>)"  <?php if(in_array('38',$this->sapvalarr)) { echo ' checked="checked"';}?>   />
+							<?php else :?>
+								<input type="checkbox" id="cbx_38"  value="38" name="symptom[]" onclick="saveCheckboxes(this,'Lagerungsmaßnahmen','<?php echo $this->cat3;?>')" />
+							<?php endif;?>
+						</td>
+					</tr>
+					<tr class="bayern_box_alt">
+						<td><label  for="cbx_39" ><span>Einsatz von Hilfsmitteln</span></label></td>
+						<td>
+							<?php if( is_array($this->sapvalarr)):?>
+								<input type="checkbox" id="cbx_39" value="39" name="checkbox[<?php echo $this->sapv_id ;?>][]" onclick="updateCheckboxes(this,'Einsatz von Hilfsmitteln','<?php echo $this->cat3;?>', <?php echo $this->sapv_id ;?> )"   <?php if(in_array('39',$this->sapvalarr)) { echo ' checked="checked"';}?>  />
+							<?php else :?>
+								<input type="checkbox" id="cbx_39" value="39" name="symptom[]" onclick="saveCheckboxes(this,'Einsatz von Hilfsmitteln','<?php echo $this->cat3;?>');">
+							<?php endif;?>
+						</td>
+					</tr>
+				</table>
+				</div>
+			</div>
+		</div>
+
+	</div>
+
+	<div class="bayern_vboxes_right">
+
+		<div class="bayern_dragvbox" id="item_4">
+			<h2 class="">Teilversorgung - Psychosoziale Beratung und Begleitung</h2>
+			<div style="display: none;" id="grow4" class="bayern_dragvbox_content">
+				<div class="bayern_sapvfb3_content">
+				<table class="bayern_sapvfb3_table">
+					<tr>
+						<td  width="95%"><label  for="cbx_40" >Krankheitsbewältigung</label></td>
+						<td>
+							<?php if( is_array($this->sapvalarr)):?>
+	     						<input type="checkbox" id="cbx_40"  value="40" name="checkbox[<?php echo $this->sapv_id ;?>][]" onclick="updateCheckboxes(this,'Krankheitsbewältigung','<?php echo $this->cat4;?>',<?php echo $this->sapv_id; ?>)"  <?php if(in_array('40',$this->sapvalarr)) { echo ' checked="checked"';}?>   />
+							<?php else :?>
+								<input type="checkbox" id="cbx_40"  value="40" name="symptom[]" onclick="saveCheckboxes(this,'Krankheitsbewältigung','<?php echo $this->cat4;?>')" />
+							<?php endif;?>
+						</td>
+					</tr>
+					<tr class="bayern_box_alt">
+						<td><label  for="cbx_41" >Unterstützung in akuten Krisen</label></td>
+						<td>
+							<?php if( is_array($this->sapvalarr)):?>
+	     						<input type="checkbox" id="cbx_41"  value="41" name="checkbox[<?php echo $this->sapv_id ;?>][]" onclick="updateCheckboxes(this,'Unterstützung in akuten Krisen','<?php echo $this->cat4;?>',<?php echo $this->sapv_id; ?>)"  <?php if(in_array('41',$this->sapvalarr)) { echo ' checked="checked"';}?>   />
+							<?php else :?>
+								<input type="checkbox" id="cbx_41"  value="41" name="symptom[]" onclick="saveCheckboxes(this,'Unterstützung in akuten Krisen','<?php echo $this->cat4;?>')" />
+							<?php endif;?>
+						</td>
+					</tr>
+					<tr>
+						<td><label  for="cbx_42" >Situation der Angehörigen/ Bezugspersonen</label></td>
+						<td>
+							<?php if( is_array($this->sapvalarr)):?>
+	     						<input type="checkbox" id="cbx_42"  value="42" name="checkbox[<?php echo $this->sapv_id ;?>][]" onclick="updateCheckboxes(this,'Situation der Angehörigen/ Bezugspersonen','<?php echo $this->cat4;?>',<?php echo $this->sapv_id; ?>)"  <?php if(in_array('42',$this->sapvalarr)) { echo ' checked="checked"';}?>   />
+							<?php else :?>
+								<input type="checkbox" id="cbx_42"  value="42" name="symptom[]" onclick="saveCheckboxes(this,'Situation der Angehörigen/ Bezugspersonen','<?php echo $this->cat4;?>')" />
+							<?php endif;?>
+						</td>
+					</tr>
+					<tr class="bayern_box_alt">
+						<td><label  for="cbx_43" >Familienkonferenz</label></td>
+						<td>
+							<?php if( is_array($this->sapvalarr)):?>
+	     						<input type="checkbox" id="cbx_43"  value="43" name="checkbox[<?php echo $this->sapv_id ;?>][]" onclick="updateCheckboxes(this,'Familienkonferenz','<?php echo $this->cat4;?>',<?php echo $this->sapv_id; ?>)"  <?php if(in_array('43',$this->sapvalarr)) { echo ' checked="checked"';}?>   />
+							<?php else :?>
+								<input type="checkbox" id="cbx_43"  value="43" name="symptom[]" onclick="saveCheckboxes(this,'Familienkonferenz','<?php echo $this->cat4;?>')" />
+							<?php endif;?>
+						</td>
+					</tr>
+				</table>
+				</div>
+			</div>
+		</div>
+
+		<div class="bayern_dragvbox" id="item_6">
+			<h2 class="">Teilversorgung - Ethisch-rechtliche Beratung</h2>
+			<div style="display: none;" id="grow6" class="bayern_dragvbox_content">
+				<div class="bayern_sapvfb3_content">
+					<table class="bayern_sapvfb3_table">
+						<tr>
+							<td  width="95%"><label  for="cbx_46" >Selbstbestimmung und Patientenverfügung</label></td>
+						<td>
+							<?php if( is_array($this->sapvalarr)):?>
+	     						<input type="checkbox" id="cbx_46"  value="46" name="checkbox[<?php echo $this->sapv_id ;?>][]" onclick="updateCheckboxes(this,'Selbstbestimmung und Patientenverfügung','<?php echo $this->cat6;?>',<?php echo $this->sapv_id; ?>)"  <?php if(in_array('46',$this->sapvalarr)) { echo ' checked="checked"';}?>   />
+							<?php else :?>
+								<input type="checkbox" id="cbx_46"  value="46" name="symptom[]" onclick="saveCheckboxes(this,'Selbstbestimmung und Patientenverfügung','<?php echo $this->cat6;?>')" />
+							<?php endif;?>
+						</td>
+						</tr>
+						<tr class="bayern_box_alt">
+							<td><label  for="cbx_63" >palliative Sedierung</label></td>
+							<td>
+								<?php if( is_array($this->sapvalarr)):?>
+		     						<input type="checkbox" id="cbx_63"  value="63" name="checkbox[<?php echo $this->sapv_id ;?>][]" onclick="updateCheckboxes(this,'palliative Sedierung','<?php echo $this->cat6;?>',<?php echo $this->sapv_id; ?>)"  <?php if(in_array('63',$this->sapvalarr)) { echo ' checked="checked"';}?>   />
+								<?php else :?>
+									<input type="checkbox" id="cbx_63"  value="63" name="symptom[]" onclick="saveCheckboxes(this,'palliative Sedierung','<?php echo $this->cat6;?>')" />
+								<?php endif;?>
+							</td>
+						</tr>
+						<tr>
+							<td><label  for="cbx_64" >Indikationsänderung</label></td>
+							<td>
+								<?php if( is_array($this->sapvalarr)):?>
+									<input type="checkbox" id="cbx_64" value="64" name="checkbox[<?php echo $this->sapv_id ;?>][]" onclick="updateCheckboxes(this,'Indikationsänderung','<?php echo $this->cat6;?>', <?php echo $this->sapv_id ;?> )"    <?php if(in_array('64',$this->sapvalarr)) { echo ' checked="checked"';}?>  />
+								<?php else :?>
+									<input type="checkbox" id="cbx_64" value="64" name="symptom[]" onclick="saveCheckboxes(this,'Indikationsänderung','<?php echo $this->cat6;?>');">
+								<?php endif;?>
+							</td>
+						</tr>
+
+					</table>
+				</div>
+			</div>
+		</div>
+
+		<div class="bayern_dragvbox" id="item_7">
+			<h2 class="">Teilversorgung - Unterstützung in der Trauer</h2>
+			<div style="display: none;" id="grow7" class="bayern_dragvbox_content">
+				<div class="bayern_sapvfb3_content">
+					<table class="bayern_sapvfb3_table">
+						<tr>
+							<td  width="95%"><label  for="cbx_51" >Unterstützung der Hinterbliebenen nach dem Tod</label></td>
+							<td>
+								<?php if( is_array($this->sapvalarr)):?>
+		     						<input type="checkbox" id="cbx_51"  value="51" name="checkbox[<?php echo $this->sapv_id ;?>][]" onclick="updateCheckboxes(this,'Unterstützung der Hinterbliebenen nach dem Tod','<?php echo $this->cat7;?>',<?php echo $this->sapv_id; ?>)"  <?php if(in_array('51',$this->sapvalarr)) { echo ' checked="checked"';}?>   />
+								<?php else :?>
+									<input type="checkbox" id="cbx_51"  value="51" name="symptom[]" onclick="saveCheckboxes(this,'Unterstützung der Hinterbliebenen nach dem Tod','<?php echo $this->cat7;?>')" />
+								<?php endif;?>
+							</td>
+						</tr>
+					</table>
+				</div>
+			</div>
+		</div>
+
+		<div class="bayern_dragvbox" id="item_8">
+			<h2 class="">Vollversorgung - Palliativmedizinische Leistungen</h2>
+			<div style="display: none;" id="grow8" class="bayern_dragvbox_content">
+				<div class="bayern_sapvfb3_content">
+					<table class="bayern_sapvfb3_table">
+						<tr>
+							<td  width="95%"><label  for="cbx_53" >Schmerzpumpe: Anlage / Einstellung</label></td>
+							<td width="5%">
+								<?php if( is_array($this->sapvalarr)):?>
+									<input type="checkbox" id="cbx_53" value="53" name="checkbox[<?php echo $this->sapv_id ;?>][]" onclick="updateCheckboxes(this,'Schmerzpumpe: Anlage / Einstellung','<?php echo $this->cat8;?>', <?php echo $this->sapv_id ;?> )"   <?php if(in_array('53',$this->sapvalarr)) { echo ' checked="checked"';}?>  />
+								<?php else :?>
+									<input type="checkbox" id="cbx_53" value="53" name="symptom[]" onclick="saveCheckboxes(this,'Schmerzpumpe: Anlage / Einstellung','<?php echo $this->cat8;?>');">
+								<?php endif;?>
+							</td>
+						</tr>
+						<tr class="bayern_box_alt">
+							<td><label  for="cbx_60" >Versorgung Port – zentraler Zugang</label></td>
+							<td>
+								<?php if( is_array($this->sapvalarr)):?>
+									<input type="checkbox" id="cbx_60" value="60" name="checkbox[<?php echo $this->sapv_id ;?>][]" onclick="updateCheckboxes(this,'Versorgung Port – zentraler Zugang','<?php echo $this->cat8;?>', <?php echo $this->sapv_id ;?> )"   <?php if(in_array('60',$this->sapvalarr)) { echo ' checked="checked"';}?>  />
+								<?php else :?>
+									<input type="checkbox" id="cbx_60" value="60" name="symptom[]" onclick="saveCheckboxes(this,'Versorgung Port – zentraler Zugang','<?php echo $this->cat8;?>');">
+								<?php endif;?>
+							</td>
+						</tr>
+					</table>
+				</div>
+			</div>
+		</div>
+
+	</div>
+
+</div>
+
+<br style="clear:both;" />
+<div class="bayern_sonstiges">
+	 <div class="<?php echo $this->error_bayern_sonstiges ?> left">&nbsp;<b>Sonstiges / Kommentar: (Übertrag in Verlauf)  </b></div><br/>
+     <textarea name="sonstiges" ><?php echo $this->sonstiges;?></textarea>
+</div>
+<div class="bayern_sonstiges">
+	 <div class=" left">&nbsp;<b>Kommentar Medikation / Pumpe / Apotheke </b></div><br/>
+     <textarea name="comment_apotheke" ><?php echo $this->comment_apotheke;?></textarea>
+</div>
+
+<b>Globale Einschätzung:</b>
+<div class="bayern_globalline">
+<span><input type="radio" name="global[]" value="1" <?php if(in_array("1",$this->global)) {echo  'checked="checked"';}?> /><label>schlechter</label></span>
+<span><input type="radio" name="global[]" value="2" <?php if(in_array("2",$this->global)) {echo  'checked="checked"';}?> /><label>besser</label></span>
+<span><input type="radio" name="global[]" value="3" <?php if(in_array("3",$this->global)) {echo  'checked="checked"';}?> /><label>gleich</label></span>
+</div>
+<br/><br/>
+<br/>
+		<div class="bayern_dragvbox" id="item_8">
+			<h2 class="" style="width:98.7%"> + Leistungserfassung</h2>
+			<div style="display: none;" id="grow8" class="bayern_dragvbox_content">
+				<div class="bayern_sapvfb3_content">
+					<table class="bayern_sapvfb3_table  more_sapvfb3">
+					<tr>
+						<td colspan="2">&nbsp;</td>
+					</tr>
+					<tr>
+						<th colspan="2">Beratung - Einsatzort / -art</th>
+					</tr>
+					<tr>
+						<td  width="95%"><label for="cbx_4" >Besuch in Arztpraxis</label></td>
+						<td  width="5%">
+								<?php if( is_array($this->sapvalarr)):?>
+		     						<input type="checkbox" id="cbx_4"  value="4" name="checkbox[<?php echo $this->sapv_id ;?>][]" onclick="updateCheckboxes(this,'Besuch in Arztpraxis','<?php echo $this->cat1;?>',<?php echo $this->sapv_id; ?>)"  <?php if(in_array('4',$this->sapvalarr)) { echo ' checked="checked"';}?>   />
+								<?php else :?>
+									<input type="checkbox" id="cbx_4"  value="4" name="symptom[]" onclick="saveCheckboxes(this,'Besuch in Arztpraxis','<?php echo $this->cat1;?>')" />
+								<?php endif;?>
+							</td>
+					</tr>
+					<tr class="bayern_box_alt">
+						<td><label  for="cbx_5" >Beratung im Büro</label></td>
+						<td>
+							<?php if( is_array($this->sapvalarr)):?>
+	     						<input type="checkbox" id="cbx_5"  value="5" name="checkbox[<?php echo $this->sapv_id ;?>][]" onclick="updateCheckboxes(this,'Beratung im Büro','<?php echo $this->cat1;?>',<?php echo $this->sapv_id; ?>)"  <?php if(in_array('5',$this->sapvalarr)) { echo ' checked="checked"';}?>   />
+							<?php else :?>
+								<input type="checkbox" id="cbx_5"  value="5" name="symptom[]" onclick="saveCheckboxes(this,'Beratung im Büro','<?php echo $this->cat1;?>')" />
+							<?php endif;?>
+						</td>
+					</tr>
+					<tr>
+						<td colspan="2">&nbsp;</td>
+					</tr>
+					<tr>
+						<td colspan="2">&nbsp;</td>
+					</tr>
+					<tr>
+						<th colspan="2">Koordination - Absprache mit/ Beratung von  FachkollegInnen</th>
+					</tr>
+					<tr>
+						<td><label  for="cbx_13" >soziale Dienste</label></td>
+						<td>
+							<?php if( is_array($this->sapvalarr)):?>
+	     						<input type="checkbox" id="cbx_13"  value="13" name="checkbox[<?php echo $this->sapv_id ;?>][]" onclick="updateCheckboxes(this,'soziale Dienste','<?php echo $this->cat2;?>',<?php echo $this->sapv_id; ?>)"  <?php if(in_array('13',$this->sapvalarr)) { echo ' checked="checked"';}?>   />
+							<?php else :?>
+								<input type="checkbox" id="cbx_13"  value="13" name="symptom[]" onclick="saveCheckboxes(this,'soziale Dienste','<?php echo $this->cat2;?>')" />
+							<?php endif;?>
+						</td>
+					</tr>
+					<tr class="bayern_box_alt">
+						<td><label  for="cbx_14" >ehrenamtliche HospizhelferIn</label></td>
+						<td>
+							<?php if( is_array($this->sapvalarr)):?>
+	     						<input type="checkbox" id="cbx_14"  value="14" name="checkbox[<?php echo $this->sapv_id ;?>][]" onclick="updateCheckboxes(this,'ehrenamtliche HospizhelferIn','<?php echo $this->cat2;?>',<?php echo $this->sapv_id; ?>)"  <?php if(in_array('14',$this->sapvalarr)) { echo ' checked="checked"';}?>   />
+							<?php else :?>
+								<input type="checkbox" id="cbx_14"  value="14" name="symptom[]" onclick="saveCheckboxes(this,'ehrenamtliche HospizhelferIn','<?php echo $this->cat2;?>')" />
+							<?php endif;?>
+						</td>
+					</tr>
+					<tr>
+						<td><label  for="cbx_15" >therapeutische Hilfen</label></td>
+						<td>
+							<?php if( is_array($this->sapvalarr)):?>
+	     						<input type="checkbox" id="cbx_15"  value="15" name="checkbox[<?php echo $this->sapv_id ;?>][]" onclick="updateCheckboxes(this,'therapeutische Hilfen','<?php echo $this->cat2;?>',<?php echo $this->sapv_id; ?>)"  <?php if(in_array('15',$this->sapvalarr)) { echo ' checked="checked"';}?>   />
+							<?php else :?>
+								<input type="checkbox" id="cbx_15"  value="15" name="symptom[]" onclick="saveCheckboxes(this,'therapeutische Hilfen','<?php echo $this->cat2;?>')" />
+							<?php endif;?>
+						</td>
+					</tr>
+					<tr class="bayern_box_alt">
+						<td><label  for="cbx_16" >seelsorgerliche Fachstelle</label></td>
+						<td>
+							<?php if( is_array($this->sapvalarr)):?>
+	     						<input type="checkbox" id="cbx_16"  value="16" name="checkbox[<?php echo $this->sapv_id ;?>][]" onclick="updateCheckboxes(this,'seelsorgerliche Fachstelle','<?php echo $this->cat2;?>',<?php echo $this->sapv_id; ?>)"  <?php if(in_array('16',$this->sapvalarr)) { echo ' checked="checked"';}?>   />
+							<?php else :?>
+								<input type="checkbox" id="cbx_16"  value="16" name="symptom[]" onclick="saveCheckboxes(this,'seelsorgerliche Fachstelle','<?php echo $this->cat2;?>')" />
+							<?php endif;?>
+						</td>
+					</tr>
+					<tr>
+						<td><label  for="cbx_17" >sozial-rechtliche Beratung</label></td>
+						<td>
+							<?php if( is_array($this->sapvalarr)):?>
+	     						<input type="checkbox" id="cbx_17"  value="17" name="checkbox[<?php echo $this->sapv_id ;?>][]" onclick="updateCheckboxes(this,'sozial-rechtliche Beratung','<?php echo $this->cat2;?>',<?php echo $this->sapv_id; ?>)"  <?php if(in_array('17',$this->sapvalarr)) { echo ' checked="checked"';}?>   />
+							<?php else :?>
+								<input type="checkbox" id="cbx_17"  value="17" name="symptom[]" onclick="saveCheckboxes(this,'sozial-rechtliche Beratung','<?php echo $this->cat2;?>')" />
+							<?php endif;?>
+						</td>
+					</tr>
+					<tr class="bayern_box_alt">
+						<td><label  for="cbx_18" >fachliche Nacht- bzw. Sitzwache</label></td>
+						<td>
+							<?php if( is_array($this->sapvalarr)):?>
+	     						<input type="checkbox" id="cbx_18"  value="18" name="checkbox[<?php echo $this->sapv_id ;?>][]" onclick="updateCheckboxes(this,'fachliche Nacht- bzw. Sitzwache','<?php echo $this->cat2;?>',<?php echo $this->sapv_id; ?>)"  <?php if(in_array('18',$this->sapvalarr)) { echo ' checked="checked"';}?>   />
+							<?php else :?>
+								<input type="checkbox" id="cbx_18"  value="18" name="symptom[]" onclick="saveCheckboxes(this,'fachliche Nacht- bzw. Sitzwache','<?php echo $this->cat2;?>')" />
+							<?php endif;?>
+						</td>
+					</tr>
+					<tr>
+						<td colspan="2">&nbsp;</td>
+					</tr>
+					<tr>
+						<td colspan="2">&nbsp;</td>
+					</tr>
+					<tr>
+						<th colspan="2">Teilversorgung - palliativärztlich-pflegerische Maßnahmen</th>
+					</tr>
+					<tr>
+						<td><label  for="cbx_29"><b>Flüssigkeit und Ernährung</b><br/><span>enterale Ernährung</span></label></td>
+						<td>
+							<?php if( is_array($this->sapvalarr)):?>
+								<input type="checkbox" id="cbx_29" value="29" name="checkbox[<?php echo $this->sapv_id ;?>][]" onclick="updateCheckboxes(this,'Flüssigkeit und Ernährung','<?php echo $this->cat3;?>', <?php echo $this->sapv_id ;?> )"   <?php if(in_array('29',$this->sapvalarr)) { echo ' checked="checked"';}?>  />
+							<?php else :?>
+								<input type="checkbox" id="cbx_29" value="29" name="symptom[]" onclick="saveCheckboxes(this,'Flüssigkeit und Ernährung','<?php echo $this->cat3;?>');">
+							<?php endif;?>
+						</td>
+					</tr>
+					<tr  class="bayern_box_alt">
+						<td><label  for="cbx_30" ><span>parenterale Ernährung</span></label></td>
+						<td>
+							<?php if( is_array($this->sapvalarr)):?>
+								<input type="checkbox" id="cbx_30" value="30" name="checkbox[<?php echo $this->sapv_id ;?>][]" onclick="updateCheckboxes(this,'parenterale Ernährung','<?php echo $this->cat3;?>', <?php echo $this->sapv_id ;?> )"   <?php if(in_array('30',$this->sapvalarr)) { echo ' checked="checked"';}?>  />
+							<?php else :?>
+								<input type="checkbox" id="cbx_30" value="30" name="symptom[]" onclick="saveCheckboxes(this,'parenterale Ernährung','<?php echo $this->cat3;?>');">
+							<?php endif;?>
+						</td>
+					</tr>
+					<tr >
+						<td><label  for="cbx_32" ><b>Dauerkatheter, Magensonde</b> Anlage / Wechsel</label></td>
+						<td>
+							<?php if( is_array($this->sapvalarr)):?>
+								<input type="checkbox" id="cbx_32" value="32" name="checkbox[<?php echo $this->sapv_id ;?>][]" onclick="updateCheckboxes(this,'Dauerkatheter, Magensonde Anlage / Wechsel','<?php echo $this->cat3;?>', <?php echo $this->sapv_id ;?> )"   <?php if(in_array('32',$this->sapvalarr)) { echo ' checked="checked"';}?>  />
+							<?php else :?>
+								<input type="checkbox" id="cbx_32" value="32" name="symptom[]" onclick="saveCheckboxes(this,'Dauerkatheter, Magensonde Anlage / Wechsel','<?php echo $this->cat3;?>');">
+							<?php endif;?>
+						</td>
+					</tr>
+					<tr  class="bayern_box_alt">
+						<td><label  for="cbx_33" ><b>Beratung zur Pflege/Anleitung Pflege</b></label></td>
+						<td>
+							<?php if( is_array($this->sapvalarr)):?>
+	     						<input type="checkbox" id="cbx_33"  value="33" name="checkbox[<?php echo $this->sapv_id ;?>][]" onclick="updateCheckboxes(this,'Beratung zur Pflege/Anleitung Pflege','<?php echo $this->cat3;?>',<?php echo $this->sapv_id; ?>)"  <?php if(in_array('33',$this->sapvalarr)) { echo ' checked="checked"';}?>   />
+							<?php else :?>
+								<input type="checkbox" id="cbx_33"  value="33" name="symptom[]" onclick="saveCheckboxes(this,'Beratung zur Pflege/Anleitung Pflege','<?php echo $this->cat3;?>')" />
+							<?php endif;?>
+						</td>
+					</tr>
+					<tr>
+						<td colspan="2">&nbsp;</td>
+					</tr>
+					<tr>
+						<td colspan="2">&nbsp;</td>
+					</tr>
+					<tr>
+						<th colspan="2">Teilversorgung - Sozialrechtliche Beratung</th>
+					</tr>
+					<tr>
+						<td><label  for="cbx_44" >selbst erbracht</label></td>
+						<td>
+							<?php if( is_array($this->sapvalarr)):?>
+	     						<input type="checkbox" id="cbx_44"  value="44" name="checkbox[<?php echo $this->sapv_id ;?>][]" onclick="updateCheckboxes(this,'selbst erbracht','<?php echo $this->cat5;?>',<?php echo $this->sapv_id; ?>)"  <?php if(in_array('44',$this->sapvalarr)) { echo ' checked="checked"';}?>   />
+							<?php else :?>
+								<input type="checkbox" id="cbx_44"  value="44" name="symptom[]" onclick="saveCheckboxes(this,'selbst erbracht','<?php echo $this->cat5;?>')" />
+							<?php endif;?>
+						</td>
+					</tr>
+					<tr class="bayern_box_alt">
+						<td><label  for="cbx_45" >Vermittlung Fachstelle</label></td>
+						<td>
+							<?php if( is_array($this->sapvalarr)):?>
+								<input type="checkbox" id="cbx_45" value="45" name="checkbox[<?php echo $this->sapv_id ;?>][]" onclick="updateCheckboxes(this,'Vermittlung Fachstelle','<?php echo $this->cat5;?>', <?php echo $this->sapv_id ;?> )"   <?php if(in_array('45',$this->sapvalarr)) { echo ' checked="checked"';}?>  />
+							<?php else :?>
+								<input type="checkbox" id="cbx_45" value="45" name="symptom[]" onclick="saveCheckboxes(this,'Vermittlung Fachstelle','<?php echo $this->cat5;?>');">
+							<?php endif;?>
+						</td>
+					</tr>
+
+					<tr>
+						<td colspan="2">&nbsp;</td>
+					</tr>
+					<tr>
+						<td colspan="2">&nbsp;</td>
+					</tr>
+
+					<tr>
+						<th colspan="2">Teilversorgung - Ethisch-rechtliche Beratung</th>
+					</tr>
+					<tr>
+						<td><label  for="cbx_47" >Gesetzliche Vertretung</label></td>
+						<td>
+							<?php if( is_array($this->sapvalarr)):?>
+	     						<input type="checkbox" id="cbx_47"  value="47" name="checkbox[<?php echo $this->sapv_id ;?>][]" onclick="updateCheckboxes(this,'Gesetzliche Vertretung','<?php echo $this->cat6;?>',<?php echo $this->sapv_id; ?>)"  <?php if(in_array('47',$this->sapvalarr)) { echo ' checked="checked"';}?>   />
+							<?php else :?>
+								<input type="checkbox" id="cbx_47"  value="47" name="symptom[]" onclick="saveCheckboxes(this,'Gesetzliche Vertretung','<?php echo $this->cat6;?>')" />
+							<?php endif;?>
+						</td>
+					</tr>
+					<tr class="bayern_box_alt">
+						<td><label  for="cbx_48" >Erstellung individueller Verfügungen</label></td>
+						<td>
+							<?php if( is_array($this->sapvalarr)):?>
+	     						<input type="checkbox" id="cbx_48"  value="48" name="checkbox[<?php echo $this->sapv_id ;?>][]" onclick="updateCheckboxes(this,'Erstellung individueller Verfügungen','<?php echo $this->cat6;?>',<?php echo $this->sapv_id; ?>)"  <?php if(in_array('48',$this->sapvalarr)) { echo ' checked="checked"';}?>   />
+							<?php else :?>
+								<input type="checkbox" id="cbx_48"  value="48" name="symptom[]" onclick="saveCheckboxes(this,'Erstellung individueller Verfügungen','<?php echo $this->cat6;?>')" />
+							<?php endif;?>
+						</td>
+					</tr>
+					<tr>
+						<td><label  for="cbx_49" >Ethische Konfliktsituation</label></td>
+						<td>
+							<?php if( is_array($this->sapvalarr)):?>
+	     						<input type="checkbox" id="cbx_49"  value="49" name="checkbox[<?php echo $this->sapv_id ;?>][]" onclick="updateCheckboxes(this,'Ethische Konfliktsituation','<?php echo $this->cat6;?>',<?php echo $this->sapv_id; ?>)"  <?php if(in_array('49',$this->sapvalarr)) { echo ' checked="checked"';}?>   />
+							<?php else :?>
+								<input type="checkbox" id="cbx_49"  value="49" name="symptom[]" onclick="saveCheckboxes(this,'Ethische Konfliktsituation','<?php echo $this->cat6;?>')" />
+							<?php endif;?>
+						</td>
+					</tr>
+					<tr class="bayern_box_alt">
+						<td><label  for="cbx_50" >PEG als lebensverlängernde Maßnahme</label></td>
+						<td>
+							<?php if( is_array($this->sapvalarr)):?>
+	     						<input type="checkbox" id="cbx_50"  value="50" name="checkbox[<?php echo $this->sapv_id ;?>][]" onclick="updateCheckboxes(this,'PEG als lebensverlängernde Maßnahme','<?php echo $this->cat6;?>',<?php echo $this->sapv_id; ?>)"  <?php if(in_array('50',$this->sapvalarr)) { echo ' checked="checked"';}?>   />
+							<?php else :?>
+								<input type="checkbox" id="cbx_50"  value="50" name="symptom[]" onclick="saveCheckboxes(this,'PEG als lebensverlängernde Maßnahme','<?php echo $this->cat6;?>')" />
+							<?php endif;?>
+						</td>
+					</tr>
+
+					<tr>
+						<td colspan="2">&nbsp;</td>
+					</tr>
+					<tr>
+						<td colspan="2">&nbsp;</td>
+					</tr>
+					<tr>
+						<th colspan="2">Teilversorgung - Unterstützung in der Trauer</th>
+					</tr>
+					<tr>
+						<td class="brd_bottom"><label  for="cbx_52" >Vermittlung in Trauerbegleitung</label></td>
+						<td class="brd_bottom">
+							<?php if( is_array($this->sapvalarr)):?>
+								<input type="checkbox" id="cbx_52" value="52" name="checkbox[<?php echo $this->sapv_id ;?>][]" onclick="updateCheckboxes(this,'Vermittlung in Trauerbegleitung','<?php echo $this->cat7;?>', <?php echo $this->sapv_id ;?> )"   <?php if(in_array('52',$this->sapvalarr)) { echo ' checked="checked"';}?>  />
+							<?php else :?>
+								<input type="checkbox" id="cbx_52" value="52" name="symptom[]" onclick="saveCheckboxes(this,'Vermittlung in Trauerbegleitung','<?php echo $this->cat7;?>');">
+							<?php endif;?>
+						</td>
+					</tr>
+					<tr>
+						<td colspan="2">&nbsp;</td>
+					</tr>
+					<tr>
+						<td colspan="2">&nbsp;</td>
+					</tr>
+					<tr>
+						<th colspan="2">Vollversorgung - Palliativmedizinische Leistungen</th>
+					</tr>
+					<tr>
+						<td><label  for="cbx_54" >Pleurapunktion</label></td>
+						<td>
+							<?php if( is_array($this->sapvalarr)):?>
+								<input type="checkbox" id="cbx_54" value="54" name="checkbox[<?php echo $this->sapv_id ;?>][]" onclick="updateCheckboxes(this,'Pleurapunktion','<?php echo $this->cat8;?>', <?php echo $this->sapv_id ;?> )"   <?php if(in_array('54',$this->sapvalarr)) { echo ' checked="checked"';}?>  />
+							<?php else :?>
+								<input type="checkbox" id="cbx_54" value="54" name="symptom[]" onclick="saveCheckboxes(this,'Pleurapunktion','<?php echo $this->cat8;?>');">
+							<?php endif;?>
+						</td>
+					</tr>
+					<tr class="bayern_box_alt">
+						<td><label  for="cbx_55" >Aszitespunktion</label></td>
+						<td>
+							<?php if( is_array($this->sapvalarr) && in_array('55',$this->sapvalarr)):?>
+								<input type="checkbox" id="cbx_55" value="55" name="checkbox[<?php echo $this->sapv_id ;?>][]" onclick="updateCheckboxes(this,'Aszitespunktion','<?php echo $this->cat8;?>', <?php echo $this->sapv_id ;?> )"   <?php if(in_array('55',$this->sapvalarr)) { echo ' checked="checked"';}?>  />
+							<?php else :?>
+								<input type="checkbox" id="cbx_55" value="55" name="symptom[]" onclick="saveCheckboxes(this,'Aszitespunktion','<?php echo $this->cat8;?>');">
+							<?php endif;?>
+						</td>
+					</tr>
+					<tr>
+						<td><label  for="cbx_56" >Transfusion</label></td>
+						<td>
+							<?php if( is_array($this->sapvalarr)):?>
+								<input type="checkbox" id="cbx_56" value="56" name="checkbox[<?php echo $this->sapv_id ;?>][]" onclick="updateCheckboxes(this,'Transfusion','<?php echo $this->cat8;?>', <?php echo $this->sapv_id ;?> )"   <?php if(in_array('56',$this->sapvalarr)) { echo ' checked="checked"';}?>  />
+							<?php else :?>
+								<input type="checkbox" id="cbx_56" value="56" name="symptom[]" onclick="saveCheckboxes(this,'Transfusion','<?php echo $this->cat8;?>');">
+							<?php endif;?>
+						</td>
+					</tr>
+					<tr class="bayern_box_alt">
+						<td><label  for="cbx_57" >Medikamente epidural, intrathekal</label></td>
+						<td>
+							<?php if( is_array($this->sapvalarr)):?>
+								<input type="checkbox" id="cbx_57" value="57" name="checkbox[<?php echo $this->sapv_id ;?>][]" onclick="updateCheckboxes(this,'Medikamente epidural, intrathekal','<?php echo $this->cat8;?>', <?php echo $this->sapv_id ;?> )"   <?php if(in_array('57',$this->sapvalarr)) { echo ' checked="checked"';}?>  />
+							<?php else :?>
+								<input type="checkbox" id="cbx_57" value="57" name="symptom[]" onclick="saveCheckboxes(this,'Medikamente epidural, intrathekal','<?php echo $this->cat8;?>');">
+							<?php endif;?>
+						</td>
+					</tr>
+
+					<tr>
+						<td><label  for="cbx_58" >Sonographie</label></td>
+						<td>
+							<?php if( is_array($this->sapvalarr)):?>
+								<input type="checkbox" id="cbx_58" value="58" name="checkbox[<?php echo $this->sapv_id ;?>][]" onclick="updateCheckboxes(this,'Sonographie','<?php echo $this->cat8;?>', <?php echo $this->sapv_id ;?> )"   <?php if(in_array('58',$this->sapvalarr)) { echo ' checked="checked"';}?>  />
+							<?php else :?>
+								<input type="checkbox" id="cbx_58" value="58" name="symptom[]" onclick="saveCheckboxes(this,'Sonographie','<?php echo $this->cat8;?>');">
+							<?php endif;?>
+						</td>
+					</tr>
+
+					</table>
+				</div>
+			</div>
+		</div>
+		<div class="bayern_dragvbox" id="item_99">
+			<h2 class="" style="width:98.7%"> + <?php echo $this->translate('block_additional_users')?></h2>
+			<div style="display: none;" id="grow99" class="bayern_dragvbox_content">
+				<div class="bayern_sapvfb3_content">
+					<table class="datatable" >
+						<?php foreach ($client_users as $kuser => $vuser):?>
+
+						<tr>
+							<td>
+								<input type="checkbox" id="additional_users[<?php echo $vuser['id']?>]" name="additional_users[<?php echo $vuser['id']; ?>][value]" value="1"  <?php if( in_array($vuser['id'],$additional_users)):?> checked="checked" <?php endif; ?> />
+								<input type="hidden" name="additional_users[<?php echo $vuser['id']; ?>][creator]" value="0" />
+							</td>
+							<td><label for="additional_users[<?php echo $vuser['id']?>]"><?php echo $vuser['user_title'].' '.$vuser['last_name'].', '.$vuser['first_name'];?></label></td>
+						</tr>
+
+
+
+						<?php endforeach; ?>
+				</table>
+
+				<br style="clear:both;" />
+				</div>
+			</div>
+		</div>
+		<div class="bayern_dragvbox" id="item_9">
+			<h2 class="" style="width:98.7%"> + <?php echo $this->translate('medication')?></h2>
+			<div style="display: none;" id="grow9" class="bayern_dragvbox_content">
+				<div class="bayern_sapvfb3_content">
+
+				<div class="medication_container" >
+					<p><b>Aktuelle Medikation :</b></p>
+					<?php echo $this->medications; ?>
+				</div>
+
+				<div class="medication_container" >
+					<p><b>Medikamente hinzufügen :</b></p>
+					<?php echo $this->medicgrid; ?>
+					<div class="add_new_medi">
+						<a href="javascript:createnewmedic()">
+							<img src="<?php echo RES_FILE_PATH; ?>/images/edit_add.png" width="20" height="20" />
+							<div class="add_new_medi_link"><?php echo $this->translate('addnewmedication'); ?></div>
+						</a>
+					</div>
+				</div>
+
+				<div class="medication_container" >
+					<p><b>Bedarfs Medikation:</b></p>
+					<?php echo $this->bedarfsmedications; ?>
+				</div>
+
+				<div class="medication_container" >
+					<p><b>Bedarf Medikamente hinzufügen :</b></p>
+					<?php echo $this->bedarfmedicgrid; ?>
+					<div class="add_new_medi">
+						<a href="javascript:createnewmedicrowbedarf();">
+							<img src="<?php echo RES_FILE_PATH; ?>/images/edit_add.png" width="20" height="20" />
+							<div class="add_new_medi_link"><?php echo $this->translate('addnewmedication'); ?></div>
+						</a>
+					</div>
+				</div>
+
+
+				<div class="medication_container" >
+					<p><b><?php echo $this->translate('discontinuedmedlist'); ?></b></p>
+					<input type="hidden" value="<?php echo $this->jsmedadd; ?>" id="jsmedadd" />
+					<?php echo $this->delmedications ?>
+				</div>
+				<br style="clear:both;" />
+				</div>
+			</div>
+		</div>
+
+<div class="bayern_sonstiges">
+	 <div class="<?php echo $this->error_bayern_sonstiges ?> left">&nbsp;<b>Anamnese </b></div><br/>
+     <textarea name="case_history"  ><?php echo $this->case_history;?></textarea>
+</div>
+<div class="bayern_sonstiges">
+	 <div class=" left">&nbsp;<b>Gespräch / Telefonat</b></div><br/>
+     <textarea name="conversation_phonecall" ><?php echo $this->conversation_phonecall;?></textarea>
+</div>
+
+
+<input type="hidden" name="bayern_doc_id" value="<?php echo $this->bayern_doc_id;?>">
+<input type="hidden" name="hdnsapid" value="<?php echo $this->sapv_id;?>">
+<br/><br/>
+ <div class="bayern_buttons">
+ <input type="hidden" name="isbayern" value ="1" />
+ <input type="hidden" name="iskvno" value ="1" />
+
+<!-- <input name="submitform" id="submitform" type="submit" value="<?php echo $this->translate('save') ?>" />&nbsp;&nbsp; -->
+<!-- <input name="pdfexport" id="pdfexport" type="submit" value="<?php echo $this->translate('generatepdf') ?>" /> -->
+<?php if($this->wlform):  ?>
+<!-- &nbsp;&nbsp; -->
+<!-- <input name="create_letter" id="create_letter" type="hidden" value="0" /> -->
+<!-- <input name="save_create_doctorletter" id="save_create_doctorletter" type="submit" value="<?php echo $this->translate('save_create_doctorletter') ?>" /> -->
+<!-- &nbsp;&nbsp; -->
+<!-- <input name="go_to_letter" id="go_to_letter" type="hidden" value="0" /> -->
+<!-- <input name="save_visit_edit_letter" id="save_visit_edit_letter" type="submit" value="<?php echo $this->translate('save_visit_edit_letter') ?>" /> -->
+<?php endif;  ?>
+</div>
+
+
+
+
+
+<table class="form_buttons_table">
+<tr>
+	<td>
+		<input  type="hidden" name="submitform" id="save_visit" value="" />
+		<button type="button" id="submitform" class="submit_form"><?php echo $this->translate('save') ?></button>
+		
+		<input  type="hidden"  name="pdfexport" id="generate_pdf" value="" />
+		<button type="button"  id="pdfexport" class="submit_form"><?php echo $this->translate('generatepdf') ?></button>
+		
+	<?php if($this->wlform):  ?>
+		<input name="create_letter" id="create_letter" type="hidden" value="0" />
+		<button type="button"  name="save_create_doctorletter" id="save_create_doctorletter" class="submit_form"> <?php echo $this->translate('save_create_doctorletter') ?></button>
+		
+		<input name="go_to_letter" id="go_to_letter" type="hidden" value="0" />
+		<button type="button"  name="save_visit_edit_letter" id="save_visit_edit_letter" class="submit_form"><?php echo $this->translate('save_visit_edit_letter') ?></button>
+	<?php endif;  ?>
+	
+	</td>
+</tr>
+</table>
+
+
+
+
+
+
+
+
+
+</div>
+</div>
+
+  </div>
+</form>
+ <script type="text/javascript" >
+function getSelected(dbvalue,fieldname){
+    var fieldarray = document.getElementsByName(fieldname);
+    for(i=0; i<fieldarray.length;i++){
+	    if(fieldarray[i].value==dbvalue){
+		    fieldarray[i].checked = true;
+	}
+    }
+}
+//radiobuttons
+
+ getSelected('<?php echo $this->kopf; ?>', 'kopf');
+ getSelected('<?php echo $this->thorax; ?>', 'thorax');
+ getSelected('<?php echo $this->abdomen; ?>', 'abdomen');
+ getSelected('<?php echo $this->extremitaten; ?>', 'extremitaten');
+ getSelected('<?php echo $this->haut_wunden; ?>', 'haut_wunden');
+ getSelected('<?php echo $this->neurologisch_psychiatrisch; ?>', 'neurologisch_psychiatrisch');
+
+ getSelected('<?php echo $this->port; ?>', 'port');
+ getSelected('<?php echo $this->peg; ?>', 'peg');
+ getSelected('<?php echo $this->kunstliche; ?>', 'kunstliche');
+ getSelected('<?php echo $this->pumps; ?>', 'pumps');
+ getSelected('<?php echo $this->dk; ?>', 'dk');
+ getSelected('<?php echo $this->darm; ?>', 'darm');
+ getSelected('<?php echo $this->blase; ?>', 'blase');
+ getSelected('<?php echo $this->luftrohre; ?>', 'luftrohre');
+ getSelected('<?php echo $this->ablaufsonde; ?>', 'ablaufsonde');
+
+
+</script>
+<div id="duplicate_visits">
+	<p><?php echo $this->translate('overlapping_confirm');  ?></p>
+</div>

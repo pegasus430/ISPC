@@ -1,0 +1,203 @@
+<?php
+//ISPC-2891 Ancuta 27.04.2021
+// dd($this->all_forms);
+?>
+
+    
+    <?php 
+//ISPC-2864 Ancuta 13.04.2021
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/efa/patientproblems.css');
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/qtip/jquery.qtip.min.css?' . date('Ymd'));
+$this->headScript()->appendFile(RES_FILE_PATH . '/javascript/qtip/jquery.qtip.min.js?' . date('Ymd'));
+$this->headScript()->appendFile(RES_FILE_PATH . '/javascript/human_body/multi.js?' . date('Ymd'));
+
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/efa/modal-efa.css');
+
+?>
+<div id="layout_result_messages">
+    <?php if (count($this->SuccessMessages)) : ?>
+    <!--  SuccessMessages -->
+        <ul id="messages" class="success">
+        <?php foreach ($this->SuccessMessages as $message) : ?>
+            <li><?php echo $this->escape($message); ?></li>
+        <?php endforeach; ?>
+        </ul>
+    <?php endif; ?>
+    <?php if (count($this->ErrorMessages)) : ?>
+    <!--  ErrorMessages -->
+        <ul id="messages" class="err">
+        <?php foreach ($this->ErrorMessages as $message) : ?>
+            <li><?php echo $this->escape($message); ?></li>
+        <?php endforeach; ?>
+        </ul>
+    <?php endif; ?>
+</div>
+
+<?php
+$this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/efa/specialcare.css');
+
+
+if(empty($_REQUEST['tab'])){
+    $selected_tab = 'show_wounddocumentation';
+}else{
+    $selected_tab = $_REQUEST['tab'];
+}
+?>
+
+<script type="text/javascript">
+var selected_tab= '<?php echo $selected_tab;?>';
+var DEBUGMODE = <?=APPLICATION_ENV == 'development' ? 'true' : 'false' ?>;
+var isdischarged = <?php echo $this->isdischarged; ?>;
+
+	$(document).ready(function() {
+ 
+ 		$('.preview_dialog_button').click(function(event){
+			event.preventDefault();
+			var form_id =  $(this).data('form_id');
+			$('#preview_forms_dialog')
+			.data('form_id',form_id)
+			.dialog('open');
+		});
+ 
+		//preview modal is shown only if there are entries in db
+		$('#preview_forms_dialog').dialog({
+			autoOpen: false,
+			modal: true,
+			title: '',
+			closeOnEscape: true,
+			width: '600',
+			height: '540',
+			resizable: false,
+			open: function(event, ui) {
+					var file_id  = $(this).data('form_id');
+					$( "li.shadow" ).removeClass('selected');
+					$( "#file-"+file_id ).addClass('selected');
+					load_first_image(file_id);
+				
+				
+			},
+// 			buttons: {
+//				"<?php echo $this->translate('cancel'); ?>": function() {
+// 					$( this ).dialog( "close" );
+// 				}
+// 			}
+		});
+				
+				
+
+				
+});
+	
+	function load_first_image(file_id)
+	{
+		//current canvas
+		var canvas = $('#human_0')[0];
+
+		var context = canvas.getContext("2d");
+
+		//data loader
+		var image_data_loader = '#canvas_load_preview_' + file_id;
+		
+		if($(image_data_loader).val()) {
+			//reset canvas
+			context.clearRect(0, 0, canvas.width, canvas.height);
+
+			//create the image object
+			var imageObj = new Image();
+
+			//draw image on canvas once it's loaded
+			imageObj.onload = function() {
+				context.drawImage(this, 0, 0);
+			};
+
+			//load image from loader
+			imageObj.src = $(image_data_loader).val();
+		}
+	}
+ 
+	
+</script>
+<style>
+
+
+</style>
+
+<h1>
+<?php echo $this->translate('special_care_title'); ?>
+</h1>
+<br/>
+<div style="width: 100%;">
+    <div style="width: 100%;">
+        <div id="tabs_specialcare" style="width: 100%;">
+        
+            <ul>
+                <li><a href="#tabs-1" id="show_wounddocumentation" data-tab="show_wounddocumentation"><?=$this->translate('show_wounddocumentation');?></a></li>
+                <li><a href="#tabs-2" id="show_artificial_inouts" data-tab="show_artificial_inouts"><?=$this->translate('show_artificial_inouts');?></a></li>
+                <li><a href="#tabs-3" id="show_ventilations" data-tab="show_ventilations"><?=$this->translate('show_ventilations');?></a></li>
+            </ul>
+
+
+            <div id="tabs-1" class="show_wounddocumentation"  >
+
+			<div class="tab-outer" style="width: 100%;display: block; float: left;">
+    			<div class="ff_file_list">
+    			
+        			<?php $i = 1;
+        			foreach ($this->all_forms as $k_contact_file => $v_contact_file): ?>
+        			<div class="ff_link_container">
+        			<button class="preview_dialog_button" data-form_id="<?php echo $v_contact_file['id'];?>"></button>
+            			<a class="ff_file_link" href="<?php echo $v_contact_file['pdf_link'];?>" >
+            				<span class="ff_name">Wund: <?php echo $v_contact_file['w_name']; ?> - <?php echo date('d.m.Y', strtotime($v_contact_file['create_date'])); ?></span>
+                            <!--<span class="ff_user"><?php echo $this->users_data[$v_contact_file['create_user']]['first_name'].', '.$this->users_data[$v_contact_file['create_user']]['last_name']; ?></span>-->
+            			</a>
+     
+            		</div>
+        			<?php $i++; endforeach; ?>		 		
+    			</div>    					
+             </div>
+                <!-- PREVIEW HUMAN  MODAL -->
+                <div id="preview_forms_dialog">
+                	<div class="container grid_100">
+                		<div class="preview right" style="float:right;">
+                			<canvas id="human_0" class="preview_human_body_canvas" width="544" height="397"></canvas>
+                			<input type="hidden" class="canvas_container" id="canvas_container_0" name="human"/>
+                			<?php if($this->all_forms): ?>
+                				<?php foreach($this->all_forms as $k_saved_form => $v_saved_form): ?>
+                					<input type="hidden" class="canvas_load" id="canvas_load_preview_<?php echo $v_saved_form['id'];?>" value="<?php echo $v_saved_form['w_localisation'];?>" />
+                				<?php endforeach; ?>
+                			<?php endif; ?>
+                
+                		</div>
+                	</div>
+                	
+                </div>
+             
+            </div>
+            
+            <div id="tabs-2" class="show_artificial_inouts">
+            <?php echo $this->patient_artificial_in; ?>
+            <?php echo $this->patient_artificial_outs; ?>
+             
+            </div>
+            
+            
+            <div id="tabs-3"  class="show_ventilations">
+            
+            </div>
+ 
+   
+        </div>
+        
+    </div>
+
+    
+</div>
+
+
+
+<!-- datapicker image -->
+<div id="calImgs" style="display: none;">
+    <img id="calImg" src="<?php echo RES_FILE_PATH; ?>/images/calendar.png" alt="Popup" class="trigger">
+</div>
+
+ 

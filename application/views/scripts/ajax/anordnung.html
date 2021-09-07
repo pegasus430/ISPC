@@ -1,0 +1,522 @@
+<?php
+//ISPC-2697, elena, 13.11.2020
+$blockname = 'anordnung';
+//print_r($this->f_values);
+$machine_chosen = $this->machine_chosen;
+$anordnung_name = '';
+$color = 'cccccc';//ISPC-2816,Elena,04.02.2021
+$params = null;
+$description = '';
+$anordnung_id = 0;
+$machine_opt = $this->machine_opt;
+//ISPC-2906,Elena,27.04.2021
+$tpl = '<div><label for="inline_from">Von:</label> <select name="anordnung[hours_from][]" id="inline_from">';
+     for($i=0;$i<24;$i++) {
+        $str = '<option value="' . $i .'">' . $i .':00</option>';
+
+       $tpl.=$str ;
+     }
+
+    $tpl.= '</select>';
+    $tpl .= ' <label for="inline_till">Bis:</label> ';
+    $tpl .= '<select name="anordnung[hours_till][]" id="inline_till">';
+    for($i=0;$i<24;$i++) {
+        $str = '<option value="' . $i .'">' . $i .':00</option>';
+
+        $tpl.=$str ;
+
+     }
+
+
+    $tpl .= '</select>';
+    $tpl .= '<img class="remove_line" src="' . RES_FILE_PATH  . '/images/action_delete.png"><div>';
+if(isset($this->anordnung)){
+
+$params = json_decode($this->anordnung['parameters'], true);
+//ISPC-2906,Elena,27.04.2021
+$aColors = [];
+
+$anordnung_id = $this->anordnung['id'];
+$anordnung_name = $this->anordnung['name'];
+$color = $this->anordnung['color'];
+$description = $this->anordnung['description'];
+$machine_opt = $this->anordnung['machine'];
+$timelinedata = [];
+try{
+ $timelinedata = json_decode($this->anordnung['timelinedata'], true);
+}catch(Exception $exp){
+//echo 'no data';
+}
+
+foreach($timelinedata as $timeline){
+$from = $timeline['from'];
+$till = $timeline['till'];
+for($j=$from;$j<$till;$j++){
+$aColors[$j] = [ 'color'  => $this->anordnung['color'], 'name' => $this->anordnung['name'], 'id' => $this->anordnung['id']];
+}
+}
+
+}
+
+
+
+?>
+<script>
+    var aErrors = {};
+    //ISPC-2906,Elena,27.04.2021
+    var template = '<?php echo $tpl; ?>';
+
+
+    $(document).ready(function(){
+       //<!-- ISPC-2816,Elena,12.02.2021-->
+        //$('#timeset_anordnung_group').hide();
+        //ISPC-2906,Elena,27.04.2021
+        if($('#slider_anordnung').length > 0){
+            console.log('anrodnung da', '#<?php echo $color; ?>' );
+
+            setTimeout(function(){
+                $('#slider_anordnung').find('.ui-slider-range').css('background', '#<?php echo $color; ?>');
+
+            }, 500);
+
+
+        }
+    //ISPC-2906,Elena,27.04.2021
+        $('#timepart_add').on('click', function(e){
+
+            $(template).insertBefore($('#timepart_add'));
+
+        })
+
+        $('.remove_line').on('click', function(){
+            var that = $(this);
+            jConfirm('Möchten Sie diesen Teil vom Zeitschema unwiderruflich entfernen?', 'Zeitschema: Daten entfernen', function(r) {
+                if(r) {
+                    //remove
+                    //console.log(that);
+                    that.parent().remove();
+
+                }
+            });
+
+
+        })
+
+
+
+
+        $('#anordnung_set_time').on('change', function(){
+            if($(this).is(":checked")){
+                $('.timeset_group').show();//ISPC-2906,Elena,27.04.2021
+
+            }else{
+                $('.timeset_group').hide();//ISPC-2906,Elena,27.04.2021
+
+            }
+
+
+        })
+
+
+        $('#colorSelector').ColorPicker({
+            color: '#<? echo $color ?>',
+
+            onShow: function (colpkr) {
+                $(colpkr).css('z-index', 20000);
+
+                $(colpkr).fadeIn(500);
+                return false;
+            },
+            onHide: function (colpkr) {
+                $(colpkr).fadeOut(500);
+                return false;
+            },
+            onChange: function (hsb, hex, rgb) {
+                //$('#icon_color').val(hex);
+                $('#anordnung_color').val(hex);
+                $('#colorSelector div').css('backgroundColor', '#' + hex);
+                //ISPC-2906,Elena,27.04.2021
+                $('.timeline_hour_anordnung[title="<?php echo $anordnung_name ?>"]').css('backgroundColor', '#' + hex);
+                $('#slider_anordnung').find('.ui-slider-range').css('background', '#' + hex);
+            }
+        });
+
+        <?php if(isset($this->machine_opt)) : ?>
+           //ISPC-2844,Elena,26.02.2021
+            $('#choose_machine_anordnung').val("<?php echo $this->machine_opt; ?>");
+            setTimeout(function(){$('#choose_machine_anordnung').trigger('change');}, 300);
+
+
+        <?php endif; ?>
+
+        $('#colorSelector div').css('backgroundColor', '#<? echo $color ?>');
+
+
+
+        <?php if(isset($this->with_datetime) && $this->with_datetime): ?>
+        $('.datepicker').datepicker();
+        $('.timepicker').timepicker({
+            hourText: 'Stunde',
+            minuteText: 'Minute'
+        });
+
+    <?php endif; ?>
+
+
+    <?php if(!$this->machine_chosen): ?>
+        $('#sets_table').hide();
+
+
+        //ISPC-2844,Elena,26.02.2021
+        $('#choose_machine_anordnung').on('change', function(){
+            console.log('select machine', $(this).val());
+            var selected_machine_opt = $(this).val();
+
+            $.ajax({
+                type: 'POST',
+                data : {
+                    blockname: '<?php echo $blockname; ?>'
+                },
+                url: '<?php echo APP_BASE; ?>ajax/beatmungsform?opt=' + $('#choose_machine_anordnung').val(), //ISPC-2844,Elena,26.02.2021
+
+                beforeSend: function () {
+                    //loading image
+
+                },
+                success: function (data) {
+                    $('#machine_opt').val(selected_machine_opt);
+
+                    $('#anordnung_data').html(data).promise().done(function () {
+
+
+                    });
+                },
+            })
+
+        });
+
+    <?php if(isset($this->used_machine)): ?>
+        console.log('<?php echo $this->used_machine; ?>');
+    //ISPC-2844,Elena,26.02.2021
+        $('#choose_machine_anordnung').val('<?php echo $this->used_machine; ?>');
+        $('#choose_machine_anordnung').trigger('change');
+
+    <?php endif; ?>
+
+
+    <?php else: ?>
+    //ISPC-2844,Elena,26.02.2021
+        $('#choose_machine_anordnung').hide();
+
+    <?php endif; ?>
+
+
+        function rebuildErrors(){
+            var message = '';
+            console.log('rebuild');
+            console.log(aErrors);
+
+            $('.beatmung_errors').html('');
+            if(Object.keys(aErrors).length > 0){
+                //console.log(aErrors.length);
+
+                $('.submitform').hide();
+            }else{
+                $('.submitform').show();
+            }
+
+            $.each( aErrors, function( index, val ){
+                console.log('error',val, index);
+                message += val + '<br>';
+            });
+            $('.beatmung_errors').html(message);
+
+        }
+
+        $('input').live('input', function(e){
+//console.log('input changed');//ISPC-2906,Elena,27.04.2021
+            var validation = $(this).attr('data-validation');
+            var val = $(this).val();
+            var label = $(this).attr('data-name');
+            console.log(validation);
+            console.log(val);
+            console.log(label);
+            if(validation == 'integer' && val != ''){
+                var val2 = parseInt(val);
+                if(val2 != val){
+                    aErrors[label] = label + ' muss eine Ganzzahl sein.';
+                    console.log(aErrors);
+                }
+                else{
+                    delete aErrors[label];
+                }
+                rebuildErrors();
+
+            }else if(validation == 'decimal'  && val != ''){
+                var val_with_point = val.replace(',', '.')
+                var val2 = parseFloat(val_with_point);
+                if(val2 != val_with_point){
+                    aErrors[label] = label + ' muss eine Dezimalzahl sein.';
+                }
+                else{
+                    delete aErrors[label];
+                }
+                rebuildErrors()
+            }
+
+        });
+        //ISPC-2816,Elena,12.02.2021
+        //ISPC-2906,Elena,27.04.2021
+        /*
+        //deprecated in ISPC-2906, Elena, 27.04.2021
+        $('#inline_from,#inline_till').on('change', function(){
+            //ISPC-2836,Elena,23.02.2021
+            var from = parseInt($('#inline_from').val());
+            var till = parseInt($('#inline_till').val());
+            if(till <= from){
+                aErrors['anordnung'] = 'Uhrzeit \"von"\ muss kleiner als Uhrzeit \"bis"\ sein';
+            }else{
+                delete aErrors['anordnung'];
+
+            }
+
+            rebuildErrors();
+
+        });
+        */
+
+
+    });
+</script>
+<style>
+    .beatmung_errors{
+        color: red;
+    }
+    .alarm_box{
+        width: 40px;
+    }
+    #description{
+        width: 89%;
+        height:50px;
+    }
+
+    /* ISPC-2906,Elena,27.04.2021 */
+    .beatmung_overlay{
+        display:none;
+        position: absolute;
+        width: 90%;
+        height:100%;
+        z-index:300;
+        /*background: #c0c0c0;*/
+        opacity: 0.7;
+    }
+    .beatmung_overlay_inner{
+
+        position: relative;
+        text-align:center;
+        width:100%;
+        margin-top: 100px;
+    }
+
+</style>
+<!-- ISPC-2906,Elena,27.04.2021  -->
+<div class="beatmung_overlay">
+    <div class="beatmung_overlay_inner">
+    <img src="<?php echo RES_FILE_PATH;?>/images/ajax-loader.gif" alt="Loading" />
+    </div>
+</div>
+
+<div class="beatmung_errors"></div>
+<form id="anordnung_form">
+<div id="anordnung">
+    <input type="hidden"  name="<?php echo $blockname; ?>[anordnung_id]"  id="anordnung_id" value="<?php echo $anordnung_id; ?>">
+<?php if(isset($this->machine)): ?>
+    <h4>Beatmungsmaschine: <?php echo $this->machine['machine_name']; ?></h4>
+ <?php else: ?>
+    <h4>Bitte wählen Sie eine Machine</h4>
+<?php endif; ?>
+<!--//ISPC-2844,Elena,26.02.2021-->
+<select id="choose_machine_anordnung">
+    <?php $mcounter = 0; ?>
+    <option value="-1">-----</option>
+    <?php foreach($this->machines as $device): ?>
+
+    <option value="<?php echo $device['id']; ?>"><?php echo $device['machine_name']; ?></option>
+    <?php $mcounter++; ?>
+    <?php endforeach; ?>
+</select>
+
+    <table width="80%">
+        <tr>
+            <td><label for="anordnung_name">Name der Anordnung</label></td>
+            <td>
+                <input type="text"  name="<?php echo $blockname; ?>[anordnung_name]"  id="anordnung_name" value="<?php echo $anordnung_name; ?>">
+            </td>
+        </tr>
+
+
+<tr><td><label for="anordnung_color">Farbe der Anordnung</label></td>
+    <td><input type="hidden"  name="<?php echo $blockname; ?>[anordnung_color]"  id="anordnung_color" value="<?php echo $color; ?>">
+    <div id="colorSelector" class="icon_color_selector"><div style="background-color: <?php echo "#".$color; ?>"></div>
+    </td>
+</tr>
+</table>
+    <input type="hidden" name="<?php echo $blockname; ?>[machine]" id="machine_opt" value="<?php echo $machine_opt; ?>">
+    <div id="anordnung_data">
+    <?php if($this->machine_chosen): ?>
+    <table class="datatable" id="sets_table">
+        <tr>
+            <th>Bezeichnung</th><!-- ISPC-2816,Elena,04.02.2021 -->
+            <th>Wert</th>
+            <th>Einheit</th><!-- ISPC-2816,Elena,04.02.2021 -->
+            <th>Alarmgrenzen</th>
+            <!--<th>Emergency</th>-->
+
+        </tr>
+        <?php $sets = json_decode($this->machine['parameters'], true);  ?>
+        <?php foreach($sets as $set): ?>
+        <tr>
+            <td><?php echo $set['label']; ?></td>
+            <td>
+                <?php if($set['value'] == 'dropdown'): ?>
+                <select class="input_field" name="<?php echo $blockname; ?>[beatmung][<?php echo $set['label']; ?>]" data-name="<?php echo $set['label']; ?>">
+                    <?php foreach($set['list'] as $listentry) : ?>
+                    <option value="<?php echo $listentry; ?>"  <?php if($listentry == $params[$set['label']]){ echo 'selected' ;} ?> ><?php echo $listentry; ?></option>
+                    <?php endforeach; ?>
+                </select>
+
+                <?php else: ?>
+                <input class="input_field" type="text" data-validation="<?php echo $set['validation'] ?>" name="<?php echo $blockname; ?>[beatmung][<?php echo $set['label']; ?>]" data-name="<?php echo $set['label']; ?>" value="<?php echo  $params[$set['label']]; ?>" >
+
+                <?php endif; ?>
+
+            </td>
+            <td><?php echo $set['unit']; ?></td>
+            <td>
+                <?php if($set['has_alarm'] == '1'): ?>
+                <?php if($set['value'] == 'dropdown'): ?>
+                <select class="input_field" name="<?php echo $blockname; ?>[beatmung][<?php echo $set['label']; ?>_alarm_higher]" data-name="<?php echo $set['label']; ?>: höhere Alarmgrenze">
+                    <?php foreach($set['list'] as $listentry) : ?>
+                    <option value="<?php echo $listentry; ?>"  <?php if($listentry == $params[$set['label'] . '_alarm_higher']) { echo 'selected '; } ?> ><?php echo $listentry; ?></option>
+                    <?php endforeach; ?>
+                </select> /
+                <select class="input_field" name="<?php echo $blockname; ?>[beatmung][<?php echo $set['label']; ?>_alarm_lower]" data-name="<?php echo $set['label']; ?>: niedrigere Alarmgrenze">
+                    <?php foreach($set['list'] as $listentry) : ?>
+                    <option value="<?php echo $listentry; ?>" <?php if($listentry == $params[$set['label'] . '_alarm_lower']) { echo 'selected '; } ?> ><?php echo $listentry; ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <?php else: ?>
+                <input type="text" class="alarm_box" name="<?php echo $blockname; ?>[beatmung][<?php echo $set['label']; ?>_alarm_higher]" value="<?php echo  $params[$set['label'] . '_alarm_higher']; ?>" data-validation="<?php echo $set['validation'] ?>" data-name="<?php echo $set['label']; ?>: höhere Alarmgrenze" > /
+                <input type="text" class="alarm_box" value="<?php echo $params[$set['label'] . '_alarm_lower']; ?>" name="<?php echo $blockname; ?>[beatmung][<?php echo $set['label']; ?>_alarm_lower]" data-validation="<?php echo $set['validation'] ?>" data-name="<?php echo $set['label']; ?>: niedrigere Alarmgrenze">
+                <?php endif; ?>
+                <?php endif; ?>
+
+            </td>
+            <!--<td>
+                <?php if($set['has_emergency'] == '1'): ?>
+                <input type="text" class="alarm_box" readonly value="<?php echo $set['emergency']; ?>">
+                <?php endif; ?>
+
+            </td>-->
+
+        </tr>
+
+        <?php endforeach; ?>
+    </table>
+
+    <?php endif; ?>
+
+</div>
+    <textarea id="description" name="anordnung[description]" ><?php echo $description; ?></textarea>
+</div>
+    <!-- ISPC-2816,Elena,12.02.2021-->
+    <!-- //ISPC-2906,Elena,27.04.2021 -->
+    <div>Zeitschema setzen:
+        <input type="checkbox" name="anordnung[set_time]" id="anordnung_set_time" value="1" checked></div>
+    <div>
+     <?php   foreach($timelinedata as $timepart): ?>
+        <div>
+        <label for="inline_from">Von:</label>
+            <select name="anordnung[hours_from][]" class="inline_from">
+            <?php for($i=0;$i<24;$i++) : ?>
+                <option value="<?php echo $i; ?>" <?php if($timepart['from'] == $i){echo 'selected'; }  ?>><?php echo $i; ?>:00</option>
+
+            <?php endfor; ?>
+
+        </select>
+        <label for="inline_till">Bis:</label>
+            <select name="anordnung[hours_till][]" class="inline_till">
+            <?php for($i=0;$i<24;$i++) : ?>
+                <option value="<?php echo $i; ?>"  <?php if($timepart['till'] == $i){echo 'selected'; }  ?>><?php echo $i; ?>:00</option>
+
+                <?php endfor; ?>
+
+
+            </select>
+            <img class="remove_line" src="<?php echo RES_FILE_PATH; ?>/images/action_delete.png">
+
+
+        </div>
+     <?php endforeach; ?>
+    </div>
+
+    <?php if(count($timelinedata) == 0) : ?>
+    <div>
+
+        <div id="timeset_anordnung_group" class="timeset_group"><!-- //ISPC-2906,Elena,27.04.2021 -->
+        <div>
+         <label for="inline_from_<?php echo $i; ?>">Von:</label>
+        <select name="anordnung[hours_from][]" id="inline_from_<?php echo $i; ?>">
+            <?php for($i=0;$i<24;$i++) : ?>
+             <option value="<?php echo $i; ?>"><?php echo $i; ?>:00</option>
+
+            <?php endfor; ?>
+
+        </select>
+            <!--//ISPC-2906,Elena,27.04.2021-->
+        <label for="inline_till_<?php echo $i; ?>">Bis:</label>
+        <select name="anordnung[hours_till][]" id="inline_till_<?php echo $i; ?>">
+            <?php for($i=0;$i<24;$i++) : ?>
+             <option value="<?php echo $i; ?>"><?php echo $i; ?>:00</option>
+
+            <?php endfor; ?>
+
+
+        </select>
+            <!--//ISPC-2906,Elena,27.04.2021-->
+            <img class="remove_line" src="<?php echo RES_FILE_PATH; ?>/images/action_delete.png">
+      <div>
+      <?php endif; ?>
+    </div>
+            <!--//ISPC-2906,Elena,27.04.2021-->
+        </div>
+
+        <div id="timepart_add"><img src="<?php echo RES_FILE_PATH;  ?>/images/add.png"/></div>
+
+    </div>
+
+
+    <!--//ISPC-2906,Elena,27.04.2021-->
+    <div id="timeline_day_anordnung" class="timeset_group">
+        <h4>Zeitschema Anordnung</h4>
+
+        <div id="timeline_line_anordnung">
+            <?php for($i=0;$i<24;$i++): ?>
+            <div class="timeline_group">
+                <div class="timeline_hour timeline_hour_anordnung"
+                <?php if(isset($aColors[$i])): ?>
+                style="background-color:#<?php echo $aColors[$i]['color']; ?>;"
+                title="<?php echo $aColors[$i]['name']; ?>"
+                <?php endif; ?> >
+    </div>
+
+            <div class="timeline_hour_show"><?php echo ($i ); ?>:00</div>
+        </div>
+
+        <?php endfor; ?>
+
+
+    </div>
+    </div>
+</form>
+

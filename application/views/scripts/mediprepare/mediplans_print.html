@@ -1,0 +1,127 @@
+<!-- TODO-3949,Elena,15.03.2021 -->
+<?php $excludedPatients = 0; ?>
+<?php $this->show_new_files = '1'; ?>
+<?php $patCounter = 0; ?>
+<?php foreach($this->patientsData as $ipid => $patdata): ?>
+<?php if(isset($patdata['patientname'])) : ?>
+<?php if($patdata['exclude']){$excludedPatients++;continue;} ?>
+<h2><?php echo $patdata['patientname']; ?> , <?php echo $patdata['bed_name'] ?>, <?php  echo $this->stellliste_date; ?></h2>
+<?php //print_r($patdata); ?>
+<?php foreach ($this->medication_blocks as $medication_type): ?>
+<?php if(empty($patdata['mediplan'][$medication_type])){
+
+continue;
+}
+?>
+<table width="100%" cellpadding="2">
+    <thead>
+    <tr nobr="true">
+        <th style="background-color:#D3D3D3; border: 1px solid #000;" colspan="<?php echo ( count($patdata['dosage_interval'][$medication_type]) + 3) ;?>">
+            <h3><?php echo $this->translate($medication_type." medication title") ?></h3>
+        </th>
+    </tr>
+    <tr nobr="true">
+        <th  style="border: 1px solid #000;" rowspan="2" width="30%"><b><?php echo $this->translate('medication_name');?></b></th><!--  1 -->
+        <!--  DOSAGE TABLE HEADER PARENT-->
+        <th style="border: 1px solid #000;" width="40%" colspan="<?php echo count($patdata['dosage_interval'][$medication_type]);?>"><b><?php echo $this->translate('medication_dosage'); ?></b></th> <!--  5 -->
+        <!-- ISPC-2329 pct.y) Lore 26.08.2019 -->
+        <th style="border: 1px solid #000;" rowspan="2" width="20%"><b><?php echo $this->translate('medication_comments').' / '.$this->translate('medication_indication'); ?></b></th><!--  0 -->
+        <th style="border: 1px solid #000;" rowspan="2" width="10%"><b><?php echo $this->translate('date'); ?></b></th><!--  0 -->
+    </tr>
+    <!--  DOSAGE TABLE HEADER KIDS-->
+    <tr nobr="true">
+        <?php foreach($patdata['dosage_interval'][$medication_type] as $k => $di):?>
+        <th style="border: 1px solid #000;" align="center" ><b><?php echo $di;?></b></th>
+        <?php endforeach;?>
+    </tr>
+    </thead>
+    <tbody>
+    <?php foreach($patdata['mediplan'][$medication_type] as $k =>$med):?>
+    <?php if($med['exclude']){continue;} ?>
+    <tr nobr="true" style="page-break-inside: avoid;">
+        <!--  MEDICATION NAME -->
+        <td  style="border: 1px solid #000;" width="30%"><b><?php echo html_entity_decode($med['medication']);?></b>
+            <?php if(strlen($med['drug'])>0):?>
+            <hr/>
+            <i><?php echo $this->translate('medication_drug'); ?>:</i> <?php echo html_entity_decode($med['drug']);?>
+            <?php endif;?>
+            <?php if ($medication_type == "isintubated"): ?>
+            <?php if(strlen($med['packaging']) > 0):?>
+            <hr/>
+            <i><?php echo $this->translate('medication_packaging'); ?></i>: <?php echo $med['packaging_name'];?>
+            <?php endif;?>
+            <?php endif;?>
+
+
+            <?php if($this->show_new_files == "1"): ?>
+            <hr/>
+            <i><?php echo $this->translate('medication_unit'); ?>:</i> <?php echo $med['unit'];?>
+            <hr/>
+            <i><?php echo $this->translate('medication_type'); ?>:</i> <?php echo $med['type'];?>
+            <hr/>
+            <i><?php echo $this->translate('medication_dosage_form'); ?>:</i> <?php echo $med['dosage_form'];?>
+            <hr/>
+            <i><?php echo $this->translate('medication_concentration'); ?>:</i> <?php echo $med['concentration_full'];?>
+            <?php endif; ?>
+        </td>
+
+        <!--  MEDICATION DOSAGE INPUTS-->
+        <?php foreach($patdata['dosage_interval'][$medication_type] as $k => $dosage_time):?>
+        <?php $td_width = round((40 /count($patdata['dosage_interval'][$medication_type])),2); ?>
+        <?php $td_width = str_replace(',','.',$td_width);?>
+        <td  style="border: 1px solid #000;" align="center" width="<?php echo $td_width; ?>%">
+
+            <?php echo html_entity_decode($med['dosage'][$dosage_time]);?><?php if($this->show_new_files == "1" &&  strlen($med['dosage'][$dosage_time]) ): ?><?php echo $med['unit'];?><?php endif;?>
+            <br/>
+            <!--TODO-3624 Ancuta 23.11.2020 -->
+            <?php if($this->show_new_files == "1" &&  strlen($med['dosage_concentration'][$dosage_time]) ): ?>
+            <?php echo $med['dosage_concentration'][$dosage_time];?>
+            <?php endif; ?>
+
+        </td>
+        <?php endforeach;?>
+
+        <!--  MEDICATION INDICATION  / MEDICATION Comment-->
+        <td  style="border: 1px solid #000;" width="20%">
+            <?php if(strlen($med['indication']) > 0):?>
+            <!-- ISPC-2329 pct.y) Lore 26.08.2019 -->
+            <!-- <b><?php echo $this->translate('medication_indication'); ?></b>: --><?php echo html_entity_decode($med['indication']);?>
+            <?php endif;?>
+
+            <?php if ($medication_type == "isintubated"): ?>
+
+            <?php if(strlen($med['kcal']) > 0):?>
+            <br/>
+            <b><?php echo $this->translate('medication_kcal'); ?></b>: <?php echo $med['kcal'];?>
+            <?php endif;?>
+
+            <?php if(strlen($med['volume']) > 0):?>
+            <br/>
+            <b><?php echo $this->translate('medication_volume'); ?></b>: <?php echo $med['volume'];?>
+            <?php endif;?>
+            <?php endif;?>
+
+            <br/>
+            <?php
+							echo nl2br(html_entity_decode($med['comments']));
+						?>
+        </td>
+
+        <!--  MEDICATION DATE-->
+        <td style="border: 1px solid #000;" align="center"  width="10%">
+            <?php echo date('d.m.Y',strtotime($med['medication_change']));?><br/>
+        </td>
+    </tr>
+    <?php endforeach;?>
+    </tbody>
+
+    </tbody>
+</table>
+<?php endforeach; ?>
+<?php if($patCounter < ($this->patsInPlan -1)) : ?>
+<br pagebreak="true"/>
+<?php endif; ?>
+<?php $patCounter++; ?>
+<?php endif; ?>
+
+<?php endforeach; ?>

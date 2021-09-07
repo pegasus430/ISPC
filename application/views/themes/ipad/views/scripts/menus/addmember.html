@@ -1,0 +1,910 @@
+<?php
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/jgrowl/fileuploader.js?'.date('Ymd'));
+$this->headLink()->appendStylesheet(RES_FILE_PATH.'/javascript/jgrowl/filepatient.css?'.date('Ymd'));
+$this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/page-css/member_style.css?'.date('Ymd'));
+?>
+
+<?php 
+	$membership_history = $this->membership_history;
+	$memberships = $this->memberships ;
+	$invoices = $this->invoices_array ;
+	$action_page = $this->action_page ;
+?>
+<script type="text/javascript">
+$(document).ready(function() { /*------ Start $(document).ready --------------------*/
+	var member_id = $("#member_id").val();
+	var member_type = "<?php echo $this->type; ?>";
+	
+	if(member_id){
+		$('#existing_invoices').html('<br/><div class="loadingdiv" align="center"><img src="<?php echo RES_FILE_PATH; ?>/images/ajax-loader.gif"><br /><?php echo $this->translate(loadingpleasewait); ?></div><br/>');
+		$.ajax({
+			url : appbase+'member/memberinvoices?id='+member_id,
+			success : function(response) {
+				$('#existing_invoices').html(response);
+			}
+		});
+	}
+	
+
+	$('a.invoice_element').live('click', function() {
+		var invoice_data_rel = $(this).attr('rel');
+		var invoice_data =invoice_data_rel.split("_");
+		var alink_id = $(this).attr('id');
+		
+		
+		jConfirm('<?php echo $this->translate('are you sure you want to create invoice?'); ?>', '<?php echo $this->translate('invoice'); ?>', function(r) {
+			if(r) {
+				$("#"+alink_id).addClass('generated_flow_element');
+				
+				// create invoice
+//				window.location =appbase+'invoicenew/membersinvoice?member='+invoice_data[0]+'&membership_data='+invoice_data[1]+'&int_start='+invoice_data[2]+'&int_end='+invoice_data[3];
+ 
+			 	$.ajax({url: appbase+'invoicenew/membersinvoice?member='+invoice_data[0]+'&membership_data='+invoice_data[1]+'&int_start='+invoice_data[2]+'&int_end='+invoice_data[3] });
+ 
+ 
+				// add time out then - refresh invoice list
+				$('#existing_invoices').html('<br/><div class="loadingdiv" align="center"><img src="<?php echo RES_FILE_PATH; ?>/images/ajax-loader.gif"><br /><?php echo $this->translate(loadingpleasewait); ?></div><br/>');
+				setTimeout(function () {
+					$.ajax({
+						url : appbase+'member/memberinvoices?id='+member_id,
+						success : function(response) {
+							$('#existing_invoices').html(response);
+						}
+					});
+				}, 150);
+				 
+			} else{
+				return false;
+			}
+		});
+});
+
+	$( ".birth_date" ).datepicker({
+		dateFormat: 'dd.mm.yy',
+		showOn: "both",
+		buttonImage: $('#calImg').attr('src'),
+		buttonImageOnly: true,
+		changeMonth: true,
+		changeYear: true,
+		nextText: '',
+		prevText: '',
+		maxDate: '<?php echo date('d.m.Y'); ?>',
+		yearRange: '-100:+10',
+	});
+	
+	$( ".inactive_from" ).datepicker({
+		dateFormat: 'dd.mm.yy',
+		showOn: "both",
+		buttonImage: $('#calImg').attr('src'),
+		buttonImageOnly: true,
+		changeMonth: true,
+		changeYear: true,
+		nextText: '',
+		prevText: ''
+	});
+	
+	$('.a_date').each(function(){
+		
+		var ms_id = $(this).attr('rel');
+	
+		$("#membership_start_"+ms_id).datepicker({
+			dateFormat: 'dd.mm.yy',
+			showOn: "both",					
+			buttonImage: $('#calImg').attr('src'),
+			buttonImageOnly: true,
+			changeMonth: true,
+			changeYear: true,
+			nextText: '',
+			prevText: '',
+			maxDate: $("#membership_end_"+ms_id).val(),
+	        onClose: function( selectedDate ) {
+	        	$("#membership_end_"+ms_id).datepicker( "option", "minDate", selectedDate );
+	        }
+	      });
+		
+		$("#membership_end_"+ms_id).datepicker({
+			dateFormat: 'dd.mm.yy',
+			showOn: "both",					
+			buttonImage: $('#calImg').attr('src'),
+			buttonImageOnly: true,
+			changeMonth: true,
+			changeYear: true,
+			nextText: '',
+			prevText: '',
+			minDate: $("#membership_start_"+ms_id).val(),
+	        onClose: function( selectedDate ) {
+	        	$("#membership_start_"+ms_id).datepicker( "option", "maxDate", selectedDate );
+	        } 
+	      });
+	});
+	
+ 
+	$('table').on('click','tr a.delete_row',function(e){
+		  e.preventDefault();
+		  $(this).closest('tr').remove();
+		});
+ 
+	
+	
+	$('table').on('click','tr a.delete_existing_row',function(e){
+		e.preventDefault();
+		var del_ids = $('#delete_ids').val();
+		var new_del_id = $(this).attr('rel');
+		  var $this = $(this);
+		jConfirm('<?php echo $this->translate('confirmdeleterecord'); ?>', '<?php echo $this->translate('confirmdeletetitle'); ?>', function(r) {
+			if(r) {
+				if(new_del_id){
+					$('#delete_ids').val(del_ids+','+new_del_id)
+				}
+				$this.closest('tr').remove();
+			}
+		});
+	});
+	
+ 
+	$('table').on('click','tr a.donation_delete_row',function(e){
+		  e.preventDefault();
+		  $(this).closest('tr').remove();
+		});
+ 
+	
+	
+	$('table').on('click','tr a.donation_delete_existing_row',function(e){
+		e.preventDefault();
+		var del_ids = $('#delete_donation_ids').val();
+		var new_del_id = $(this).attr('rel');
+		  var $this = $(this);
+		jConfirm('<?php echo $this->translate('confirmdeleterecord'); ?>', '<?php echo $this->translate('confirmdeletetitle'); ?>', function(r) {
+			if(r) {
+				if(new_del_id){
+					$('#delete_donation_ids').val(del_ids+','+new_del_id)
+				}
+				$this.closest('tr').remove();
+			}
+		});
+	});
+	
+	$( "#tabs" ).tabs({
+		show: function(event, ui) {},
+		select: function(event, ui) {
+			var selected_tab = ui.index;
+		}
+	});	
+  
+	
+	// ####################
+	// status 
+	// ####################
+	
+		
+	$('#inactive_from_div').hide();
+	$('#inactive_info').live('change',function(){
+ 		var inactive_value = $(this).val();
+ 		if(inactive_value != 0){
+ 			$('#inactive_from_div').show();
+ 		} else{
+ 			$('#inactive_from_div').removeClass('force_display');
+ 			$('#inactive_from_div').hide();
+ 		}	
+	});
+	
+	
+	$('.update_price').live('change',function(){
+		var row_id = $(this).data("row_id");
+		$.ajax({
+			type: 'POST',
+			url: 'member/getmembershipprice',
+			data: {
+				form_data: $('#member_form').serialize(),
+				row_id: row_id
+			},
+
+			success:function(data){
+				var membership_data = jQuery.parseJSON(data);
+				if(membership_data.needed_data == "1"  )
+				{
+					$('#membership_price_'+row_id).attr('disabled',false);
+					$('#membership_price_'+row_id).val(membership_data.membership_price);
+					$('#membership_price_from_list_'+row_id).val(membership_data.membership_price);
+				} 
+				else 
+				{
+					$('#membership_price_'+row_id).attr('disabled',true);
+				}
+			},
+			error:function(){
+				ajax_done = 1;
+			}
+		});
+		
+		
+		
+	})
+	
+	// ####################
+	// memberships 
+	// ####################
+	
+	
+	
+	$('[id^=membership_price_]').live('change',function(){
+		var row_id = $(this).data("row_id");
+		var new_price = $(this).val();			
+		var price_list_value = $('#membership_price_from_list_'+row_id).val();
+
+		var result = parseFloat(new_price)-parseFloat(price_list_value) ;
+		if(result < 0  || !new_price){
+			$(this).val(price_list_value)
+		}
+	})	
+	
+	
+	
+	$('.add_new_patient_line').live('click',function(){
+
+		var row_status = $('#memberships2member').val();
+
+		
+		var action_page = "<?php echo $action_page; ?>"
+		
+		<?php
+			foreach($memberships as $km=>$mt_data) {
+					$sel_str .= '<option value="'.$mt_data["id"].'">'.$mt_data["membership"].'</option>';
+				}
+			?>
+			var membership_select = '<select class="update_price membership_select_sm"  data-row_id ="'+row_status+'"  name="membership['+row_status+'][membership]" >  <?php echo $sel_str;?></select>';
+			
+		
+		var tr ='<tr class="patient_row '+row_status+'">';
+		var membership_sel ='<td>'+membership_select+'</td>';
+		var start_date ='<td><input type="text" name="membership['+row_status+'][start]" rel="'+row_status+'"  data-row_id ="'+row_status+'"  class="update_price start_date_input date_input '+row_status+'" value="" id="membership_start_'+row_status+'"   /><input type="hidden" name="membership['+row_status+'][custom]" value="1" /></td>';
+		var end_date ='<td><input type="text" name="membership['+row_status+'][end]"  rel="'+row_status+'"    data-row_id ="'+row_status+'"  class="update_price end_date_input date_input '+row_status+'"  value="" id="membership_end_'+row_status+'"     /></td>';
+		var membership_price ='<td> <input type="text" disabled="disabled"   data-row_id ="'+row_status+'" name="membership['+row_status+'][price]" rel="'+row_status+'" class="membership_price memnership_price_'+row_status+'" value="" id="membership_price_'+row_status+'"   /> &euro; <input type="hidden"  name="membership['+row_status+'][price_from_list]" rel="'+row_status+'"   data-row_id ="'+row_status+'" value="" id="membership_price_from_list_'+row_status+'" class="membership_price"/></td>';
+		var invoice_periods ='<td> </td>';
+		var a_delete ='<td><a href="javascript:void(0)" class="delete_row" rel="<?php echo $k; ?>" id="delete_<?php echo $k; ?>"><img src="<?php echo RES_FILE_PATH;  ?>/images/action_delete.png" /></a></td>';
+		var tr_end = '</tr>';
+		if(action_page =="edit"){
+			$('#patient_table').append(tr+membership_sel+start_date+end_date+membership_price+invoice_periods+a_delete+tr_end);
+		} else{
+			$('#patient_table').append(tr+membership_sel+start_date+end_date+membership_price+a_delete+tr_end);
+		}
+		
+		$('#membership_start_'+row_status).datepicker({
+			dateFormat: 'dd.mm.yy',
+			showOn: "both",					
+			buttonImage: $('#calImg').attr('src'),
+			buttonImageOnly: true,
+			changeMonth: true,
+			changeYear: true,
+			nextText: '',
+			prevText: '',
+	        onClose: function( selectedDate ) {
+	        	$('#membership_end_'+row_status).datepicker( "option", "minDate", selectedDate );
+	        }
+	      });
+		
+		$('#membership_end_'+row_status).datepicker({
+			dateFormat: 'dd.mm.yy',
+			showOn: "both",					
+			buttonImage: $('#calImg').attr('src'),
+			buttonImageOnly: true,
+			changeMonth: true,
+			changeYear: true,
+			nextText: '',
+			prevText: '',
+	        onClose: function( selectedDate ) {
+	        	$('#membership_start_'+row_status).datepicker( "option", "maxDate", selectedDate );
+	        }
+	      });
+		
+		var new_row = parseInt(row_status) + 1;
+		$('#memberships2member').val(new_row);
+	});
+	
+	
+	
+	// ####################
+	// DONATIONS 
+	// ####################
+	
+		$('.price, .membership_price').live('keyup change ', function() {			
+			$(this).val($(this).val().replace(/[^0-9\.-]/g,''));
+		});
+	
+	$( ".donation_date_input" ).datepicker({
+		dateFormat: 'dd.mm.yy',
+		showOn: "both",
+		buttonImage: $('#calImg').attr('src'),
+		buttonImageOnly: true,
+		changeMonth: true,
+		changeYear: true,
+		nextText: '',
+		prevText: ''
+	});
+	
+	$('.add_new_donation_line').live('click',function(){
+
+		var row_status = $('#donation2member').val();
+
+ 
+		var tr ='<tr class="donation_row_'+row_status+'">';
+		var donations_date ='<td><input type="text" name="donation['+row_status+'][donation_date]" rel="'+row_status+'" class="donation_date_input date_input '+row_status+'" value="" id="donation_date_'+row_status+'"   /><input type="hidden" name="donation['+row_status+'][custom]" value="1" /></td>';
+		var amount ='<td><input type="text" name="donation['+row_status+'][amount]"  rel="'+row_status+'"   class="donation_amount_input price r'+row_status+'"  value="" id="donation_amout_'+row_status+'"     /></td>';
+		var don_delete ='<td><a href="javascript:void(0)" class="donation_delete_row" rel="<?php echo $k; ?>" id="donation_delete_<?php echo $k; ?>"><img src="<?php echo RES_FILE_PATH;  ?>/images/action_delete.png" /></a></td>';
+		var tr_end = '</tr>';
+		
+		$('#donation_table').append(tr+donations_date+amount+don_delete+tr_end);
+		
+		$('#donation_date_'+row_status).datepicker({
+			dateFormat: 'dd.mm.yy',
+			showOn: "both",					
+			buttonImage: $('#calImg').attr('src'),
+			buttonImageOnly: true,
+			changeMonth: true,
+			changeYear: true,
+			nextText: '',
+			prevText: ''
+	      });
+		
+		var new_row = parseInt(row_status) + 1;
+		$('#donation2member').val(new_row);
+	});
+	
+	
+	//###############################################################
+		//voluntary workers ls
+		$('#voluntary_name').live('change', function() {
+			$('#vw_id').val('');
+		}).liveSearch({
+			url: 'ajax/voluntaryworkers?q=',
+			id: 'livesearch_stammdaten_voluntaryworkers',
+			aditionalWidth: '50',
+			noResultsDelay: '900',
+			typeDelay: '900'
+		});
+	
+	if(member_type == "company"){
+	    $('.company_block').show();
+	} else{
+	    $('.company_block').hide();
+	    $('#person_type').prop('checked',true)
+	    
+	    
+	}
+	$("input[name=type]").bind('click',function() {
+	
+	    if($(this).val() == "person"){
+		    $('.company_block').hide();
+		    $('#company_block').val('');
+	    } else {
+		    $('.company_block').show();
+	    }
+	});
+			
+	//###############################################################
+	$('#btnsubmit').live('click',function(e){
+		e.preventDefault();
+		var submit_form = 1;
+		
+		if(submit_form == 1){
+			var error = 0;
+			var ajax_done = 0;
+			
+			
+			$("input[name=type]").bind('click',function() {
+
+			    if($(this).val() == "person"){
+			    if($('#first_name').val() == ""){
+			        error = 1
+			    }
+			  
+			    if($('#last_name').val() == ""){
+			        error = 2
+			    }
+			    } else {
+			    
+				    if($('#member_company').val() == ""){
+				        error = 3
+				    }
+			    }
+			});
+			
+			  $(".start_date_input, .start_a_date").each(function(){
+				  	if((this.value) == "00.00.0000"){
+			            error = 5
+			            var inpur_nr = $(this).attr("rel");
+			            $('input.'+inpur_nr+'').addClass("error_overlapping");
+			        }   
+				 	if($.trim(this.value) == ""){
+			            error = 4
+			            var inpur_nr = $(this).attr("rel");
+			            $('input.'+inpur_nr+'').addClass("error_overlapping");
+			        } /* else {
+			            error = 0
+			        } */
+			    })
+			    
+			    $(".end_date_input, .end_a_date").each(function(){  //TODO-2585 @Lore 08.10.2019
+				  //alert(this.value);
+			        if((this.value) == "00.00.0000"){
+			            error = 5
+ 			            var inpur_nr = $(this).attr("rel");
+			            $('input.'+inpur_nr+'').addClass("error_overlapping"); 
+			        }
+			    })
+			    
+			if(error == '1'){
+				alert("Vorname fehlt");
+			}
+			
+			if(error == '2'){
+				alert("Nachname");
+			}
+ 
+			if(error == '3'){
+				alert('<?php echo $this->translate("enter_member_company")?>');
+			}
+			
+			if(error == '4'){
+				alert("<?php echo $this->translate('PLease insert membership period'); ?>");
+			}
+			
+			if(error == '5'){
+				alert("<?php echo 'Invalid membership period' ?>");   
+			}
+			
+			if(error == '0'){
+				
+				$(this).attr('disabled', true);
+				setTimeout(function () {$('input[type=submit]').attr('disabled', true);}, 150);
+				setTimeout(function () {$('input[type=submit]').attr('disabled', false);}, 9000);
+				
+				$.ajax({
+					type: 'POST',
+					url: 'ajax/overlappingmemberships',
+					data: {
+						form_data: $('#member_form').serialize()
+					},
+	
+					success:function(data){
+						var visitdata = jQuery.parseJSON(data);
+					
+						if(visitdata.new_intersected == "1" || visitdata.intersected == "1" )
+						{
+					
+							if(visitdata.new_intersected == "1")
+							{
+								var new_overlapping = visitdata.inserted_overlapping; // overlapping for form visits
+								 $.each(new_overlapping, function(key,day_nr) {
+	 								 $('.'+day_nr).find('input').addClass("error_overlapping");
+								 });
+								
+								jAlert("<?php echo  $this->translate('membership period are overlapping') ?>");
+							}
+	 
+							 
+							 $('.save_form_btn').attr('disabled',false);
+							 $(".ui-button:first").attr("disabled", false)                                               
+							 .removeClass("ui-state-disabled").next("button").attr("disabled", false)                                               
+							 .removeClass("ui-state-disabled");
+							setTimeout(function () {$('input[type=submit]').attr('disabled', false);}, 10);
+							return false; // used with modal
+						} 
+						else 
+						{
+							$('.save_form_btn').attr('disabled',true);
+							 $(".ui-button:first").attr("disabled", true)                                               
+							 .addClass("ui-state-disabled").next("button").attr("disabled", true)                                               
+							 .addClass("ui-state-disabled");
+						 	
+	 					 	 $('#save_form').val('1');
+							 $('#member_form').submit();
+						 
+						}
+					},
+					error:function(){
+						ajax_done = 1;
+					}
+				});
+			}
+		}
+	});
+});/*-- END  $(document).ready ----------- --*/
+
+function selectVoluntary(vol_id)
+{
+	$('#vw_id').val($('#vol_id_'+vol_id).val());
+	$('#voluntary_name').val( $('#vol_lname_'+vol_id).val()+', '+$('#vol_fname_'+vol_id).val() );
+}
+</script>
+ 
+<div style="display: none"> <img id="calImg" src="<?php echo RES_FILE_PATH;  ?>/images/calendar.png" alt="Popup" class="trigger"> </div>
+<div class="back_list">
+	<a href="member/memberslist">&laquo; <?php echo $this->translate('members_list') ?></a>
+</div>
+<fieldset>
+
+<?php if($_REQUEST['id']):?>
+	<legend><?php echo $this->translate("Edit member") ?></legend>
+<?php else:?>
+	<legend><?php echo $this->translate("Add member") ?></legend>
+<?php endif;?>
+
+<form action="" method="post" name="member_form" id="member_form">
+<div class="member_block">
+<div id="addfamilydoctor_Msgerror" class="err"><?php echo $this->error_message ?></div>
+<?php if($_REQUEST['id']):?>
+<input type="hidden" name="member_id" value="<?php echo $_REQUEST['id'];?>" id="member_id" />
+<?php if($this->type == "person"):?>
+	<span class="span_page_title"><b><?php echo $this->translate("Member:") ?></b> <?php echo $this->first_name ?> <?php echo $this->last_name ?></span>
+<?php else: ?>
+	<span class="span_page_title"><b><?php echo $this->translate("Member:") ?></b> <?php echo $this->member_company ?></span>
+<?php endif;?>
+
+<?php endif;?>
+<div class="tab_container" >
+	<div>
+		<div id="tabs">
+			<ul>
+				<li><a href="#tabs-1">Stammdaten</a></li>
+				<li><a href="#tabs-2">Mitgliedschaft</a></li>
+				<li><a href="#tabs-3">Bankverbindung</a></li>
+				<li><a href="#tabs-4">Spende</a></li>
+			</ul>
+			
+			<div id="tabs-1">
+			
+				<label for="type" id="lbl_type"><?php echo $this->translate('type'); ?></label>
+				
+				<label for="person_type" ><?php echo $this->translate('person_type')?></label>
+				<input type="radio" name="type" id="person_type" value="person" <?php if($this->type =="person"):?>  checked="checked" <?php endif;?>/>
+				
+				<label for="company_type" ><?php echo $this->translate('company_type')?></label>
+				<input type="radio" name="type"  id="company_type"  value="company" <?php if($this->type =="company"):?>  checked="checked" <?php endif;?>>
+				<div id="addfamilydoctor_typeOneerror" class="error"><?php echo $this->error_type ?></div><div class="clearer"></div>
+				
+				<div class="company_block">
+				<label for="title" id="lbl_member_company"><?php echo $this->translate('member_company'); ?></label>
+				<input type="text" name="member_company" id="member_company" tabindex="3" value="<?php echo $this->member_company; ?>">
+				<div id="addfamilydoctor_member_companyOneerror" class="error"><?php echo $this->error_member_company ?></div><div class="clearer"></div>
+				</div>
+			
+				<label for="title" id="lbl_title"><?php echo $this->translate('title'); ?></label>
+				<input type="text" name="title" id="title" tabindex="3" value="<?php echo $this->title; ?>">
+				<div id="addfamilydoctor_titleOneerror" class="error"><?php echo $this->error_title ?></div><div class="clearer"></div>
+				
+				<label for="salutation" id="lbl_salutation"><?php echo $this->translate('salutation_letter'); ?></label>
+				<input type="text" name="salutation_letter" id="salutation" tabindex="3" value="<?php echo $this->salutation_letter; ?>">
+				<div id="addfamilydoctor_salutationOneerror" class="error"><?php echo $this->error_salutation ?></div><div class="clearer"></div>
+				
+				<label for="first_name" id="lbl_firstname"><?php echo $this->translate('firstname') ?></label>
+				<input type="text" name="first_name" id="first_name" tabindex="4" value="<?php echo $this->first_name ?>">
+				<div id="addfamilydoctor_firstNameerror" class="error"><?php echo $this->error_first_name ?></div><div class="clearer"></div>
+		
+				<label for="last_name" id="lbl_lastname"><?php echo $this->translate('lastname') ?></label>
+				<input type="text" name="last_name" tabindex="5" id="last_name" value="<?php echo $this->last_name ?>">
+				<div id="addfamilydoctor_lastNameerror" class="error"> <?php echo $this->error_last_name ?></div><div class="clearer"></div>
+		
+				<label for="birthd" id="lbl_birthd"><?php echo $this->translate('birthd') ?></label>
+				<input type="text" name="birthd" tabindex="5" id="birthd" style="width:115px;" value="<?php if(strlen($this->birthd) > 0): echo date('d.m.Y',strtotime($this->birthd)); endif;?>" class="birth_date"> 
+				<div id="addfamilydoctor_birthderror" class="error"> <?php echo $this->error_birthd ?></div><div class="clearer"></div>
+		
+				<label for="sex" id="lbl_sex"><?php echo $this->translate('gender') ?></label>
+				<?php echo $this->formSelect('gender', $this->gender, null, $this->genders) ?>
+				<div id="patientMsterAd_ErrorMsg" class="error"> <?php echo $this->error_sex ?></div>
+
+		
+		
+		
+				<label for="street1" id="lbl_street1"><?php echo $this->translate('street') ?></label>
+				<input type="text" name="street" id="street1" tabindex="6" value="<?php echo $this->street1 ?>">
+				<div id="addfamilydoctor_streetOneerror" class="error"><?php echo $this->error_street ?></div><div class="clearer"></div>
+		
+				<label for="zip" id="lbl_postcode"><?php echo $this->translate('postcode') ?></label>
+				<input type="text" name="zip" id="zip" tabindex="7" value="<?php echo $this->zip ?>">
+				<div id="addfamilydoctor_ziperror" class="error"> <?php echo $this->error_zip ?></div><div class="clearer"></div>
+		
+				<label for="city" id="lbl_city"><?php echo $this->translate('city') ?></label>
+				<input type="text" name="city" id="city" tabindex="8" value="<?php echo $this->city ?>">
+				<div id="addfamilydoctor_cityerror" class="error"> <?php echo $this->error_city ?></div><div class="clearer"></div>
+		
+		
+				<label for="phone_private" id="lbl_phone_private"><?php echo $this->translate('phone') ?></label>
+				<input type="text" name="phone" id="phone" tabindex="9" value="<?php echo $this->phone ?>">
+				<div id="addfamilydoctor_Privatephoneerror" class="error"> <?php echo $this->error_phone ?></div><div class="clearer"></div>
+		
+				<label for="phone_emergency" id="lbl_phone_private"><?php echo $this->translate('mobile') ?></label>
+				<input type="text" name="mobile" id="mobile" tabindex="10" value="<?php echo $this->mobile ?>">
+				<div id="addfamilydoctor_Privatephoneerror" class="error"> <?php echo $this->error_mobile ?></div><div class="clearer"></div>
+		
+				<label for="email" id="lbl_email"><?php echo $this->translate('email') ?></label>
+				<input type="text" name="email" id="email" tabindex="11" value="<?php echo $this->email ?>">
+				<div id="addfamilydoctor_emailerror" class="error"> <?php echo $this->error_email ?></div><div class="clearer"></div>
+		
+		
+				<div class="inactive_option_div" >
+				<label for="inactive" class="label_class100px" id="lbl_incative"><?php echo $this->translate('inactive') ?></label>
+					<select name="inactive" id="inactive_info">
+					<option value="0" <? if($this->inactive == "0"): ?> selected="selected" <? endif;?> >Nein</option>
+					<option value="1" <? if($this->inactive == "1"): ?> selected="selected" <? endif;?> >Ja</option>
+				</select>
+				</div>
+
+				<div id="inactive_from_div" class="<?php if($this->inactive == "1"):?> force_display <?php endif;?>" >
+					<input type="text" name="inactive_from" tabindex="5" id="inactive_from" style="width:115px;" value="<?php if(strlen($this->inactive_from) > 0 && $this->inactive_from != '0000-00-00'): echo date('d.m.Y',strtotime($this->inactive_from)); endif;?>" class="inactive_from"> 
+					<div id="inactive_fromerror" class="error"> <?php echo $this->error_inactive_from ?></div>
+				</div>
+				<div class="clearer"></div>
+
+				<!-- upload image -->
+				<table  style="width: 530px;">
+					<?php if(strlen($this->img_path)>0): ?>
+					<tr>
+						<td style="width: 115px; vertical-align: middle;"><?php echo $this->translate('member image') ?></td>
+						<td>
+						
+						<?php $img_file = 'icons_system/'.trim($this->img_path);?>
+						<img src="<?php echo $img_file; ?>" class="vw_img" style="width:100px;"/>
+						</td>
+					</tr>
+						<?php endif;?>
+					<tr>
+						<td style="width: 115px; vertical-align: middle;"><?php echo $this->translate('upload_img') ?></td>
+						<td>
+							<div id="file-uploader-demo1">
+								<noscript>
+								Please enable JavaScript to use file uploader.
+								</noscript>
+							</div>
+							<script>
+								function createUploader(){
+									var uploader = new qq.FileUploader({
+										element: document.getElementById('file-uploader-demo1'),
+										action: appbase+'iconsystem/iconimageupload',
+										params: {'op':'members'},
+										allowedExtensions: ['jpg','png','gif','jpeg'],
+										onSubmit: function(id, fileName){$('#btnsubmit').attr("disabled", "true");
+										},
+										onComplete: function(id, fileName, responseJSON){$('#btnsubmit').removeAttr("disabled");}
+									});
+								}
+					
+								// in your app create uploader as soon as the DOM is ready
+								// don't wait for the window to load
+								window.onload = createUploader;
+							</script>
+						 </td>
+					</tr>
+				</table>
+				
+				
+				
+				<div>
+				<label for="voluntary" id="lbl_voluntary_referance"><?php echo $this->translate('voluntary_referance'); ?></label>
+				<input type="text" name="voluntary_name" id="voluntary_name" tabindex="" value="<?php echo $this->voluntary_name; ?>">
+				<input type="hidden" name="vw_id" id="vw_id" tabindex="" value="<?php echo $this->vw_id; ?>">
+				
+				<div id="addfamilydoctor_titleOneerror" class="error"><?php echo $this->error_title ?></div><div class="clearer"></div>
+				</div>
+				
+				<div>
+					<label for="status" class="label_class100px" id="lbl_status"><?php echo $this->translate('mtstatus') ?></label>
+					<select name="status" class="w400" id="mt_status">
+						<option value="0" ><?php echo $this->translate('select_status'); ?></option>
+					<?php foreach($this->statuses as $status_id => $status_data):?>
+						<option value="<?php echo $status_id?>" <? if($this->status == $status_id): ?> selected="selected" <? endif;?> ><?php echo $status_data['status']; ?></option>
+					<?php endforeach; ?>
+				</select>
+					<div id="addfamilydoctor_sprofessionOneerror" class="error"></div>
+				</div>
+				<div class="clearer"></div>
+				
+				<div>				
+				<label for="profession" id="lbl_profession"><?php echo $this->translate('member_profession') ?></label>
+				<input type="text" name="profession" id="profession" tabindex="6" value="<?php echo $this->profession ?>">
+				<div id="addfamilydoctor_sprofessionOneerror" class="error"><?php echo $this->error_profession ?></div><div class="clearer"></div>
+				</div>
+		
+				
+			</div>
+			
+			<div id="tabs-2">
+					<h5 class="pat_tab_title"> <?php echo $this->translate('Add membership') ?></h5>
+					
+					<!-- table of patients where voluntary worker is associated -->
+					<table id="patient_table" class="PatientDetail_datatable">
+					<tr>
+						<th><? echo $this->translate('Membership')?></th>
+						<th><? echo $this->translate('start_date')?></th>
+						<th><? echo $this->translate('end_date')?></th>
+						<th style="width:63px;"><? echo $this->translate('th_membership_price')?></th>
+						<?php if($action_page =="edit"):?>
+						<th><? echo $this->translate('Membershipi invoice')?></th>
+						<?php endif; ?>
+						<th><? echo $this->translate('delete')?></th>
+					</tr>
+					<? foreach($membership_history as $ke =>$membership_data): ?>
+						<tr class="<? echo $membership_data['id']; ?>">
+							<td>
+								<select name="membership[<? echo $membership_data['id']?>][membership]" class="membership_select_sm update_price"   data-row_id="<? echo $membership_data['id']?>" >
+									<?php foreach($memberships as $k=>$mt):?>
+										<option value="<? echo $mt['id']?>" <? if($membership_data['membership'] == $mt['id'] ):?>  selected="selected" <? endif;?> > <?php echo $mt['membership']?></option>
+									<?php endforeach; ?>
+								</select>
+							</td>
+							<td><input type="text" name="membership[<? echo $membership_data['id']; ?>][start]" data-row_id="<? echo $membership_data['id']?>" value="<? echo $membership_data['start']?>" rel="<? echo $membership_data['id']; ?>" id="membership_start_<? echo $membership_data['id']; ?>" class=" update_price a_date start_a_date <? echo $membership_data['id']; ?>"></td>
+							<td>
+								<input type="text" name="membership[<? echo $membership_data['id']; ?>][end]"  data-row_id="<? echo $membership_data['id']?>" value="<? echo $membership_data['end']?>"   rel="<? echo $membership_data['id']; ?>" id="membership_end_<? echo $membership_data['id']; ?>" class=" update_price a_date end_a_date <? echo $membership_data['id']; ?>">
+							</td>
+							<td>
+								<input type="text" name="membership[<? echo $membership_data['id']; ?>][price]"  value="<? echo $membership_data['price']?>"  data-row_id="<? echo $membership_data['id']?>"  rel="<? echo $membership_data['id']; ?>" id="membership_price_<? echo $membership_data['id']; ?>" class="membership_price membership_price_<? echo $membership_data['id']; ?>"> &euro;
+								<input type="hidden" name="membership[<? echo $membership_data['id']; ?>][price_from_list]"  value="<? echo $membership_data['price_from_list']?>" data-row_id="<? echo $membership_data['id']?>"   rel="<? echo $membership_data['id']; ?>" id="membership_price_from_list_<? echo $membership_data['id']; ?>" class="membership_price membership_price_<? echo $membership_data['id']; ?>">
+								<input type="hidden" name="membership[<? echo $membership_data['id']; ?>][custom]"  value="0" >
+							</td>
+							<?php if($action_page =="edit"):?>
+							<td>
+							<?php if($this->billing_method =="membership"):?>
+								<? foreach ($this->membership_invoice_period[$membership_data['id']] as $interval =>$interval_data):?>
+									<!-- <a href="invoicenew/membersinvoice?member=<?php echo $membership_data['member']; ?>&membership_data=<?php echo $membership_data['id'];?>&int_start=<?php echo strtotime($interval_data['start']);?>&int_end=<?php echo strtotime($interval_data['end']);?>"  rel="<?php echo $membership_data['member']; ?>_<?php echo $membership_data['id'];?>_<?php echo strtotime($interval_data['start']);?>_<?php echo strtotime($interval_data['end']);?>"  class="invoice_element  <?php if($interval_data['invoiced'] > 0) :?> generated_flow_element<?php endif;?>" ><?php echo  $this->translate('generate invoice for period: ');?> <? echo $interval_data['start'].' - '.$interval_data['end']?></a> -->
+									<a href="javascript:void(0)"  rel="<?php echo $membership_data['member']; ?>_<?php echo $membership_data['id'];?>_<?php echo strtotime($interval_data['start']);?>_<?php echo strtotime($interval_data['end']);?>"  id="linkid_<?php echo $membership_data['member']; ?>_<?php echo $membership_data['id'];?>_<?php echo strtotime($interval_data['start']);?>_<?php echo strtotime($interval_data['end']);?>"   class="invoice_element  <?php if($interval_data['invoiced'] > 0) :?> generated_flow_element<?php endif;?>" ><?php echo  $this->translate('generate invoice for period: ');?> <? echo $interval_data['start'].' - '.$interval_data['end']?></a>
+								<?php endforeach;?>
+							<? else: ?>	
+								<? foreach ($this->membership_invoice_period[$membership_data['id']] as $interval =>$interval_data):?>
+									<!-- <a href="invoicenew/membersinvoice?member=<?php echo $membership_data['member']; ?>&membership_data=<?php echo $membership_data['id'];?>&int_start=<?php echo strtotime($interval_data['start']);?>&int_end=<?php echo strtotime($interval_data['end']);?>" rel="<?php echo $membership_data['member']; ?>_<?php echo $membership_data['id'];?>_<?php echo strtotime($interval_data['start']);?>_<?php echo strtotime($interval_data['end']);?>" class="invoice_element  <?php if($interval_data['invoiced'] > 0) :?> generated_flow_element<?php endif;?>" ><?php echo  $this->translate('generate invoice for period: ');?> <? echo $interval_data['start'].' - '.$interval_data['end']?></a> -->
+									<a href="javascript:void(0)" rel="<?php echo $membership_data['member']; ?>_<?php echo $membership_data['id'];?>_<?php echo strtotime($interval_data['start']);?>_<?php echo strtotime($interval_data['end']);?>"  id="linkid_<?php echo $membership_data['member']; ?>_<?php echo $membership_data['id'];?>_<?php echo strtotime($interval_data['start']);?>_<?php echo strtotime($interval_data['end']);?>" class="invoice_element  <?php if($interval_data['invoiced'] > 0) :?> generated_flow_element<?php endif;?>" ><?php echo  $this->translate('generate invoice for period: ');?> <? echo $interval_data['start'].' - '.$interval_data['end']?></a>
+								<?php endforeach;?>
+							<? endif; ?>
+							</td>
+							<?php endif; ?>
+							<td><a href="javascript:void(0)" class="delete_existing_row" rel="<? echo $membership_data['id']; ?>"   id="delete_<?php echo $k; ?>"><img src="<?php echo RES_FILE_PATH;  ?>/images/action_delete.png" /></a>
+							</td>
+						</tr>
+					<? endforeach;?>
+					</table>
+					<table>
+					<tr>
+					<td>
+					<input type="hidden" id="memberships2member" value="<?php echo 900000+count($membership_history) ?>" />
+					<a class="add_new_patient_line" rel=""  title="" href="javascript:void(0)"><img width="20" height="20" src="<?php echo RES_FILE_PATH;  ?>/images/edit_add.png"><span><?php echo $this->translate('add add membership')?></span> </a>
+					
+					</td>
+					</tr>
+					</table>
+					<input type="hidden" value="0" id="delete_ids" name="delete_memberships" />
+					
+				<!-- 	Generated invoices -->
+				<?php if($action_page =="edit"):?>
+				<table class="overalllistatable datatable" style="display: none;">
+					<tr> 
+						<th colspan="2"><b><?php echo $this->translate("Member- generated invoices")?></b></th>
+						<th><b><?php echo $this->translate("Rechnungsdatum")?></b></th>
+						<th colspan="2"><b><?php echo $this->translate("action")?></b></th>
+					</tr>
+					
+					<?php if(sizeof($invoices) > 0):?>
+						<?php $i=1;	foreach($invoices as $invoice):?>
+							<tr id="row-<?php echo $i; ?>" class="listItemData row">
+								<td class="columns"  width="5%">
+									<?php echo ($i+(($this->current_page-1)*$this->limit)); ?>
+								</td>
+								<td class="columns" width="65%" >
+									Rechnungen:  <?php echo $invoice['prefix']; ?><?php echo $invoice['invoice_number']; ?> (<?php echo date('d.m.Y',strtotime($invoice['invoice_start']))?> - <?php echo date('d.m.Y',strtotime($invoice['invoice_end']))?>)
+									<span style="color:#999;" id="i_status_<?php echo $invoice['id'] ?>"> <?php echo $this->translate('inv_type_'.$invoice['status']); ?> </span> 
+									<?php if($invoice['storno'] == 1):  ?>
+									- Storno
+									<?php endif; ?>
+								</td>
+								
+								<td class="columns" width="15%" >
+									<?php echo date('d.m.Y',strtotime($invoice['completed_date_sort']))?>
+								</td>
+								
+								<td class="columns" width="5%" >
+									<?php if($invoice['storno'] == 0 && $invoice['isdelete'] == '0'):  ?>
+										<a href="invoicenew/editmembersinvoice?invoiceid=<?php echo $invoice['id']; ?>"><img src="<?php echo RES_FILE_PATH;  ?>/images/edit.png" border="0" /></a>
+									<?php endif; ?>
+								</td>
+					
+								<td class="columns" width="5%" >
+									<?php if($invoice['storno'] == 0 && $invoice['isdelete'] == '0'):  ?>
+										<div class="ui-icon-printer">
+											<a class="print" target="_blank" href="invoicenew/membersinvoice?iid=<?php echo $invoice['id']; ?>&amp;only_invoice=1&amp;member=<?php echo $invoice['member']; ?>&membership_data=<?php echo $invoice['membership_data']; ?>&type=pdf"></a>
+										</div>
+									<?php elseif($invoice['storno'] == 1 && $invoice['isdelete'] == '0'):  ?>
+											<div class="ui-icon-printer"><a class="print" target="_blank" href="invoicenew/membersinvoice?iid=<?php echo $invoice['id']; ?>&amp;only_invoice=1&amp;member=<?php echo $invoice['member']; ?>&membership_data=<?php echo $invoice['membership_data']; ?>&stornopdf=1&stornoid=<?php echo $invoice['record_id']; ?>"></a></div>
+											
+									<?php endif; ?>
+								</td>
+							</tr>
+						<?php	$i++;	endforeach;?>
+					<?php else:?>
+						<tr>
+							<td colspan="5"><?php echo $this->translate('noinvoicesfound')?></td>
+						</tr>
+					<?php endif;?>
+					
+					</table>	
+					
+					<div id="existing_invoices">
+						
+					</div>
+					
+					
+					<?php endif; ?>
+					
+					
+			<!-- 	Bank Information -->				
+					
+			<div class="clearer"></div>
+			</div>
+			<div id="tabs-3">
+				<label for="bank_name" id="lbl_bank_name"><?php echo $this->translate('Bank Name'); ?></label>
+				<input type="text" name="bank_name" id="bank_name" tabindex="12" value="<?php echo $this->bank_name; ?>">
+				<div id="addfamilydoctor_titleOneerror" class="error"><?php echo $this->error_bank_name ?></div><div class="clearer"></div>
+				
+				<label for="iban" id="lbl_iban"><?php echo $this->translate('IBAN'); ?></label>
+				<input type="text" name="iban" id="iban" tabindex="13" value="<?php echo $this->iban; ?>">
+				<div id="addfamilydoctor_salutationOneerror" class="error"><?php echo $this->error_iban ?></div><div class="clearer"></div>
+				
+				<label for="bic" id="lbl_bic"><?php echo $this->translate('BIC') ?></label>
+				<input type="text" name="bic" id="bic" tabindex="14" value="<?php echo $this->bic ?>">
+				<div id="addfamilydoctor_firstNameerror" class="error"><?php echo $this->error_bic ?></div><div class="clearer"></div>
+		
+				<label for="account_holder" id="lbl_account_holder"><?php echo $this->translate('account_holder') ?></label>
+				<input type="text" name="account_holder" tabindex="15" id="account_holder" value="<?php echo $this->account_holder ?>">
+				<div id="addfamilydoctor_lastNameerror" class="error"> <?php echo $this->error_account_holder ?></div><div class="clearer"></div>
+				
+				<label for="mandate_reference" id="lbl_mandate_reference"><?php echo $this->translate('mandate_reference') ?></label>
+				<input type="text" name="mandate_reference" tabindex="16" id="mandate_reference" value="<?php echo $this->mandate_reference ?>">
+				<div id="addfamilydoctor_lastNameerror" class="error"> <?php echo $this->error_mandateref_valid ?></div><div class="clearer"></div>
+				<div id="addfamilydoctor_lastNameerror" class="error"> <?php echo $this->error_mandate_reference ?></div><div class="clearer"></div>
+			</div>
+			
+			
+			<div id="tabs-4">
+			<?php $donation_history = $this->donation_history;?>
+					<table id="donation_table" class="overalllistatable datatable">
+						<thead>
+							<tr>
+								<th width="20%"><?php echo $this->translate("date")?></th>
+								<th width="70%"><?php echo $this->translate("amount")?></th>
+								<th width="10%"><?php echo $this->translate("actions")?></th>
+							</tr>
+						</thead>
+						
+						<tbody>
+							<?php $d = 1; foreach($donation_history as $kd => $donation_data):?>
+							<tr class="donation_row_existing_<?php echo $donation_data['id'];?>">
+								<td> <input type="text" name="donation[<?php echo $donation_data['id'];?>][donation_date]" value="<?php echo $donation_data['donation_date'];?>" class="donation_date_input"></td>
+								<td> <input type="text" name="donation[<?php echo $donation_data['id'];?>][amount]" value="<?php echo $donation_data['amount'];?>" class="price"></td>
+								<!-- <td> <input type="text" name="donation[<?php echo $donation_data['id'];?>][amount]" value="<?php echo number_format($donation_data['amount'], '2', ',', '.');  ?>"></td> -->
+								<td><a href="javascript:void(0)" class="donation_delete_existing_row" rel="<?php echo $donation_data['id']; ?>" id="donation_delete_<?php echo $donation_data['id']; ?>"><img src="<?php echo RES_FILE_PATH;  ?>/images/action_delete.png" /></a></td>
+							</tr>
+							<?php $d++; endforeach; ?>
+						</tbody>
+						
+					</table>
+				
+				<input type="hidden" name="delete_donation_ids" id="delete_donation_ids" value="0" />
+				<input type="hidden" id="donation2member" value="<?php echo 1500000+count($donation_history) ?>" />
+				<a class="add_new_donation_line" rel=""  title="" href="javascript:void(0)"><img width="20" height="20" src="<?php echo RES_FILE_PATH;  ?>/images/edit_add.png"><span><?php echo $this->translate('add new donation')?></span> </a>
+					
+				
+			</div>
+			
+		</div>
+	</div>
+	
+	</div>
+
+
+
+ 
+
+
+</div>
+		<label for="btnsubmit" id="lbl_btnSubmit"></label>
+		<input type="submit" name="btnsubmit" id="btnsubmit" class="button save_form_btn" tabindex="30" value="<?php echo $this->translate('submit') ?>">
+		<input type="hidden" name="save_form" value="" id="save_form" class="save_form" /> 
+</form>
+	</fieldset>

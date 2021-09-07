@@ -1,0 +1,296 @@
+<!--  Maria:: Migration CISPC to ISPC 22.07.2020 -->
+<?php
+    $blockname = $this->config['belongsto']. '[med_array]';
+    $blocktimescheme = $this->config['belongsto']. '[timescheme]';
+?>
+
+<?php
+	$count_medis = 0;
+    foreach ($this->med_array as $medclass => $cat) {
+        if($medclass==="isschmerzpumpe"){
+            foreach ($cat['pumpe'] as $pno=>$pumpe){
+                foreach ($pumpe as $pindex=>$med){
+                    if ($pindex==="meta"){
+                        continue;
+                     }
+                    $count_medis++;
+            }
+        }
+        } else{
+            $count_medis += count($cat['medic']);
+        }
+    }
+
+?>
+
+<style>
+    #mediselect td, #mediselect th{
+        padding:0px;
+        border:1px solid #ccc;
+        border-collapse: collapse;
+        vertical-align: middle;
+    }
+    #mediselect th{
+        padding:4px;
+        background-color: #b4bed4;
+    }
+    #mediselect h1{
+        margin-top:12px;
+    }
+
+    #mediselect td.center{
+        text-align:center;
+    }
+    #mediselect input{
+        margin-left:4px;
+        margin-right:4px;
+    }
+
+    #mediselect .pumpecommcaption,
+    #mediselect .pumpecommvals{
+        padding:2px;
+    }
+
+    #mediselect{
+        border:2px solid #f08080;
+    }
+    #mediselect input.dosages{
+        padding:2px 0px;
+        border:0px;
+        text-align:center;
+        margin-left:0px;
+        margin-right:0px;
+    }
+
+</style>
+
+<script>
+    function medselect_reload(){
+    <?php $linkurl=APP_BASE."ajax/getnewmediselectwidget?id=".$_REQUEST['id'];?>
+        $( "#mediselect" ).load( "<?php echo $linkurl;?>  #mediselect" );
+        return false;
+    }
+    function medselect_swap(elem,dir){
+
+        var row_a=$(elem).parents('tr');
+        var row_b=$(row_a).next();
+        var move=0;
+        if(dir=="up" && $(row_a).prev().hasClass('medselctrow_b')){
+            var row_c=$(row_a).prev().prev();
+            var row_d=$(row_c).next();
+            $(row_c).before(row_a);
+            $(row_c).before(row_b);
+            move=-1;
+        }
+
+        if(dir=="down" && $(row_b).next().hasClass('medselctrow_a')){
+            var row_c=$(row_b).next();
+            var row_d=$(row_c).next();
+            $(row_d).after(row_b);
+            $(row_d).after(row_a);
+            move=+1;
+        }
+
+        function medselect_change_namenumber(row, movedir){
+            var rep=/\[(\d+?)\]/g;
+            $(row).find('input').each(function(){
+                var oldname=$(this).attr('name');
+                var newname = oldname.replace(rep,function(x,y){return "[" + (parseInt(y)+movedir) + "]";});
+                $(this).attr('name',newname);
+            });
+        }
+
+
+        if(move!=0){
+            medselect_change_namenumber(row_a, move);
+            medselect_change_namenumber(row_b, move);
+            medselect_change_namenumber(row_c, move*-1);
+            medselect_change_namenumber(row_d, move*-1);
+        }
+
+    }
+</script>
+
+<div id="mediselect">
+    <div style="color:red;font-weight:bold;padding:4px;"><?php echo $this->translate(medication_clinic_description); ?></div>
+    <?php $linkurl=APP_BASE."patientnew/medicationedit?id=".$_REQUEST['id'];?>
+     <?php if ($count_medis < 1) :?>
+        <p><?php echo $this->translate('medication_clinic_no_plan'); ?></p>
+    <?php else:?>
+        <p><?php echo $this->translate('medication_clinic_plan'); ?></p>
+    <?php endif;?>
+    <ul style="list-style-type: disc;margin-left:30px;">
+        <li><a target="_blank" href="<?php echo $linkurl;?>"><?php echo $this->translate('medication_clinic_change_plan'); ?></a></li>
+        <li><a href="javascript:medselect_reload();void 0"><?php echo $this->translate('medication_clinic_load_plan'); ?></a></li>
+    </ul>
+    <?php if ($count_medis > 0) :?>
+    <!-- all but schmerzpumpe-->
+    <?php foreach ($this->med_array as $medclass => $cat):?>
+        <?php if($medclass =="isschmerzpumpe" || $medclass =="count_medis"): {continue;} endif;?>
+
+        <!-- hidden fields for the category-name -->
+        <input type="hidden" name='<?php echo $blockname . "[" . $medclass . "][nice_name]";?>' value='<?php echo $cat['nice_name'];?>'>
+        <!-- hidden fields for the timescheme -->
+        <?php foreach ($this->timescheme[$medclass] as $dtime):?>
+            <input type="hidden" name='<?php echo $blocktimescheme . "[" . $medclass . "][" . $dtime ."]";?>' value='<?php echo $dtime;?>'>
+        <?php endforeach;?>
+        <?php if(count($cat['medic'])  < 1): {continue;} endif?>
+        <h1><?php echo $cat['nice_name'];?></h1>
+        <table>
+            <tr>
+                <th rowspan="2" style="width:20px;"></th>
+                <th rowspan="2" style="width:20px;"></th>
+                <th>Name</th>
+                <th rowspan="1" colspan="<?php echo count($this->timescheme[$medclass]);?>">Dosierung</th>
+                <th>Indikation</th>
+            </tr>
+            <tr>
+                <th>Wirkstoff</th>
+                <?php foreach ($this->timescheme[$medclass] as $dtime):?>
+                    <th style="text-align:center;font-size:10px;"><?php echo $dtime;?></td>
+                <?php endforeach;?>
+                <th>Kommentar</th>
+            </tr>
+        <?php $row=0;?>
+        <?php foreach ($cat['medic'] as $med):?>
+            <?php
+                    $fname=$blockname . "[" . $medclass . "][medic][" . $row ."]";
+                    $row++;
+            ?>
+            <tr class="medselctrow_a">
+            <td rowspan="2" class="center"><input type="hidden" name="<?php echo $fname;?>[check]" value="0"><input class="checkbox" type="checkbox" value="1" <?php if ($med['check']) echo " checked ";?> name="<?php echo $fname;?>[check]"></td>
+
+            <td rowspan="2" class="center">
+                <img style="width:18px;" onclick="medselect_swap(this, 'up')" src="<? echo RES_FILE_PATH;?>/images/ic_keyboard_arrow_up_48px.png">
+                <br>
+                <img style="width:18px;" onclick="medselect_swap(this, 'down')" src="<? echo RES_FILE_PATH;?>/images/ic_keyboard_arrow_down_48px.png">
+            </td>
+            <td>
+                <input style="width:180px;" class="medication" type="text" name="<?php echo $fname;?>[medication]" value="<?php echo $med['medication'];?>">
+            </td>
+            <?php
+                            $mydosage_t=$this->timescheme[$medclass];
+            $mydosage=[];
+            foreach ($mydosage_t as $dos){
+            $mydosage[]=0;
+            }
+            if(is_array($med['dosage'])){
+            $mydosage_x = $med['dosage'];
+            }else {
+            $mydosage_x = explode('-', $med['dosage']);
+            }
+            foreach($mydosage_x as $kdos=>$dos){
+            $mydos=0;
+            if(strlen($dos)>0){
+            $mydos=$dos;
+            }
+            if($kdos<count($mydosage) || $mydosage[0]=="! ALTE DOSIERUNG!") {
+            $mydosage[$kdos] = $mydos;
+            }
+            }
+            ?>
+            <?php foreach($mydosage as $dos):?>
+                <td rowspan="1"><input style="width:32px;" class="dosages" type="text" name="<?php echo $fname;?>[dosage][]" value="<?php echo $dos;?>"></td>
+            <?php endforeach;?>
+                <td><input style="width:180px;" class="indication" type="text" name="<?php echo $fname;?>[indication]" value="<?php echo $med['indication'];?>"></td>
+        </tr>
+            <tr class="medselctrow_b">
+            <td><input style="width:180px;" class="wirkstoff" type="text" name="<?php echo $fname;?>[drug]" value="<?php echo $med['drug'];?>"></td>
+
+            <td colspan="<?php if ($medclass=="bedarfs") {echo "2";} else{ echo count($this->timescheme[$medclass]);}?>" style="text-align:right;" rowspan="1">
+            <?php if (1||$medclass=="medic" || $medclass=="bedarfs"):?>
+            Form:<input style="width:30px;" class="type" type="text" name="<?php echo $fname;?>[dosage_form]" value="<?php echo $med['dosage_form'];?>">
+            App:<input style="width:30px;" class="type" type="text" name="<?php echo $fname;?>[type]" value="<?php echo $med['type'];?>">
+            <?php endif;?>
+
+            Einh:<input style="width:30px;" class="dosage_unit" type="text" name="<?php echo $fname;?>[unit]" value="<?php echo $med['unit'];?>"></td>
+
+            <td><input style="width:180px;" class="comments" type="text" name="<?php echo $fname;?>[comments]" value="<?php echo $med['comments'];?>"></td>
+        </tr>
+        <?php endforeach;?><!--($cat['medic'] as $med):?-->
+    </table>
+    <?php endforeach;?><!--($this->med_array as $medclass => $cat):?-->
+
+    <!-- only schmerzpumpe-->
+    <?php foreach ($this->med_array as $medclass => $cat):?>
+    <?php if($medclass !="isschmerzpumpe"): {continue;} endif;?>
+
+    <input type="hidden" name='<?php echo $blockname . "[" . $medclass . "][nice_name]";?>' value='<?php echo $cat['nice_name'];?>'>
+
+    <?php foreach ($cat['pumpe'] as $pno=>$pumpe):?>
+    <?php
+        $fnamep=$blockname . "[" . $medclass . "][pumpe][" . $pno ."]";
+    ?>
+    <h1>
+        <input type="hidden" name="<?php echo $fnamep;?>[meta][check]" value="0">
+        <input class="checkbox" type="checkbox" value="1" name="<?php echo $fnamep;?>[meta][check]" <?php if ($pumpe['meta']['check']) echo " checked ";?>>
+            <?php echo $cat['nice_name'];?>
+    </h1>
+    <table>
+        <tr>
+            <th>Name</th>
+            <th>Wirkstoff</th>
+            <th>Dosierung/h</th>
+            <th>Dos. 24h</th>
+            <th>Einheit</th>
+            <th>Indikation</th>
+        </tr>
+        <?php $row=0;?>
+        <?php foreach ($pumpe as $pindex=>$med):?>
+        <?php
+                    if ($pindex==="meta"){
+                        continue;
+                    }
+                    $fname=$blockname . "[" . $medclass . "][pumpe][" . $pno ."][" . $row ."]";
+                    $row++;
+                    ?>
+        <tr>
+            <td><input class="medication" type="text" name="<?php echo $fname;?>[medication]" value="<?php echo $med['medication'];?>"></td>
+            <td><input class="wirkstoff" type="text" name="<?php echo $fname;?>[drug]" value="<?php echo $med['drug'];?>"></td>
+            <td><input style="width:60px;" class="dosagen" type="text" name="<?php echo $fname;?>[dosage]" value="<?php echo $med['dosage'];?>"></td>
+            <td><input style="width:60px;" class="dosagen" type="text" name="<?php echo $fname;?>[dosage24h]" value="<?php echo $med['dosage24h'];?>"></td>
+            <td><input style="width:40px;" class="dosage_unit" type="text" name="<?php echo $fname;?>[unit]" value="<?php echo $med['unit'];?>"></td>
+            <td><input class="indication" type="text" name="<?php echo $fname;?>[indication]" value="<?php echo $med['indication'];?>"></td>
+        </tr>
+        <?php endforeach;?>
+        <tr>
+            <td class="pumpecommcaption" colspan="1">Kommentar</td>
+            <td class="pumpecommvals" colspan="5"><input style="width:300px;" type="text" name="<?php echo $fnamep;?>[meta][description]" value="<?php echo $pumpe['meta']['description']?>"></td>
+        </tr>
+        <tr>
+            <td class="pumpecommcaption" colspan="1">Applikationsart</td>
+            <td class="pumpecommvals" colspan="5"><input type="text" name="<?php echo $fnamep;?>[meta][pumpe_medication_type]" value="<?php echo $pumpe['meta']['pumpe_medication_type']?>"></td>
+        </tr>
+        <tr>
+            <td class="pumpecommcaption" colspan="1">Flussrate (ml/h)</td>
+            <td class="pumpecommvals" colspan="5"><input type="text" name="<?php echo $fnamep;?>[meta][flussrate]" value="<?php echo $pumpe['meta']['flussrate']?>"></td>
+        </tr>
+        <tr>
+            <td class="pumpecommcaption" colspan="1">Gesamtvolumen (ml):</td>
+            <td class="pumpecommvals" colspan="5"><input type="text" style="width:40px;" name="<?php echo $fnamep;?>[meta][carrier_solution]" value="<?php echo $pumpe['meta']['carrier_solution']?>"></td>
+        </tr>
+        <tr>
+            <td class="pumpecommcaption" colspan="1">Bolus (ml)</td>
+            <td class="pumpecommvals" colspan="5">
+                <input type="hidden" name="<?php echo $fnamep;?>[meta][bolus]" value="<?php echo $pumpe['meta']['bolus'];?>">
+                <input type="text" style="width:500px;" name="<?php echo $fnamep;?>[meta][bolus_text]" value="<?php echo $pumpe['meta']['bolus_text'];?>">
+            </td>
+        </tr>
+        <tr>
+            <td class="pumpecommcaption" colspan="1">Max Bolus</td>
+            <td class="pumpecommvals" colspan="5">
+                <input type="text" name="<?php echo $fnamep;?>[meta][max_bolus]" value="<?php echo $pumpe['meta']['max_bolus'];?>">
+            </td>
+        </tr>
+        <tr>
+            <td class="pumpecommcaption" colspan="1">Sperrzeit (in Min.)</td>
+            <td class="pumpecommvals" colspan="5"><input type="text" name="<?php echo $fnamep;?>[meta][sperrzeit]" value="<?php echo $pumpe['meta']['sperrzeit']?>"></td>
+        </tr>
+    </table>
+    <?php endforeach;?>
+
+    <?php endforeach;?><!--($this->med_array as $medclass => $cat):?-->
+    <?php endif;?> <!-- endif ($count_medis > 1)-->
+
+</div>
+

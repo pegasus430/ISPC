@@ -1,0 +1,82 @@
+<?php
+//anlage6billing
+//IE Freaking hack
+$url = APP_BASE . "invoice/invoicepatientlist?" . $_SERVER['QUERY_STRING'];
+if (str_replace("&list=" . $_REQUEST['list'] . "", "", $url))
+{
+	$finalJsUrl = str_replace("&list=" . $_REQUEST['list'] . "", "", $url);
+}
+else
+{
+	$finalJsUrl = $url;
+}
+?>
+<script type="text/javascript" >
+	function changeMonth(data){
+		var url = "<?php echo $finalJsUrl; ?>&list="+data;
+		$(location).attr('href',url);
+	}
+
+	function select_row(cell){
+		var check_box = $(cell).parent().find('td:first input');
+		$(check_box).prop('checked',!$(check_box).prop('checked'));
+	}
+
+	$(document).ready(function() {
+		$('#select_all').live('change', function(){
+			if($(this).is(':checked')){
+				$('.patient_selector').attr('checked', true);
+			} else {
+				$('.patient_selector').removeAttr('checked');
+			}
+		});
+	});
+</script>
+<style>
+.invoiced td{
+background: #99ff99 none repeat scroll 0 0;
+}
+</style>
+<h1><?php echo $this->translate('rechnung active patients'); ?></h1>
+
+<br />
+<?php echo $this->translate('select_month'); ?> : <?php echo $this->months_selector; ?>
+<br />
+
+<form method="POST" action="" name="generate_patient_invoices">
+	<p>
+		<?php echo $this->translate('if_empty_continue_from'); ?> (<?php echo $this->highest_invoice_number;  ?>)
+	</p>
+
+	<table class="datatable" id="active_patients" >
+		<thead>
+			<tr>
+				<th><input type="checkbox" id="select_all" value="1" /><!-- no name for this, we dont need it in post data --></th>
+				<th><?php echo $this->translate('no'); ?></th>
+				<th><?php echo $this->translate('epid'); ?></th>
+				<th><?php echo $this->translate('lastname'); ?></th>
+				<th><?php echo $this->translate('firstname'); ?></th>
+				<th><?php echo $this->translate('admissiondate'); ?></th>
+				<th><?php echo $this->translate('discharge_date'); ?></th>
+			</tr>
+		</thead>
+
+		<tbody>
+			<?php if ($this->active_patients): ?>
+				<?php $i = 1; foreach($this->active_patients as $active_ipid => $active_details):  ?>
+				<tr  class="inv_row <?php if($active_details['invoiced'] == "1"):?> invoiced<?php endif;?>" >
+					<td><input type="checkbox" id="pat_sel" name="patient_selected[]" class="patient_selector" value="<?php echo $active_details['id'];  ?>" /></td>
+					<td onclick="javascript:select_row(this);"><?php echo $i;  ?></td>
+					<td onclick="javascript:select_row(this);"><?php echo strtoupper($active_details['epid']); ?></td>
+					<td onclick="javascript:select_row(this);"><?php echo $active_details['last_name'];  ?></td>
+					<td onclick="javascript:select_row(this);"><?php echo $active_details['first_name'];  ?></td>
+					<td onclick="javascript:select_row(this);"><?php if($active_details['admission_date'] != '0000-00-00 00:00:00'): echo $active_details['admission_date']; else: echo '-'; endif; ?></td>
+					<td onclick="javascript:select_row(this);"><?php if($active_details['discharge_date'] != '0000-00-00 00:00:00'): echo $active_details['discharge_date']; else: echo '-'; endif; ?></td>
+				</tr>
+				<?php $i++; endforeach;  ?>
+			<?php endif; ?>
+		</tbody>
+
+	</table>
+	<input type="submit" value="<?php echo $this->translate('generate_invoices');  ?>" name="generate_invoices" />
+</form>

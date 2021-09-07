@@ -1,0 +1,308 @@
+<!-- Maria:: Migration ISPC to CISPC 08.08.2020 -->
+<?php $this->headScript()->appendFile(RES_FILE_PATH.'/javascript/pharmaindex/medi_pharmaindex.js?'.date('Ymd'));?>
+<?php $this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/pharmaindex/medi_pharmaindex.css?'.date('Ymd'));?>
+<script type="text/javascript">
+	// make the textarea grow
+	var jsmedcount = "";
+	var jsbmedcount = "0";
+	var patidencrypt = "<?php echo $_REQUEST['id']; ?>"
+	var healthinsuranceik = "<?php echo $this->kassen_no; ?>";
+	var medcount = '<?php echo $this->mcntr + 1 ?>';
+	var jsusers = <?php echo $this->jsusers ?>;
+	var medblur = Array();
+	var isdischarged = '<?php echo $this->isdischarged ?>';
+	var client = '<?php echo $this->clientid ?>';
+	
+	<?php if($this->show_mmi == "1"):?>
+	//used in mmi dialog
+	var active_recipe_row = null;
+
+	$(document).on('click', '.mmi_search_button', function(){
+		var receipt_field = $(this).prev().prev();
+		active_recipe_row = receipt_field;
+	});
+	
+	<?php endif; ?>
+		
+	$(document).ready(function(){
+	<?php if($this->show_mmi == "1"):?>
+		 //INSTALL MEDIINDEX-WIDGET
+		var pi = new pharmaindex();
+//		pi.input_medname = ".medication";
+		pi.input_medname = ".med";
+		pi.input_rowparent = "tr";
+		pi.input_receipe_butt = ".mmi_search_button";
+		pi.input_to_recipe = ".to_recipe";
+		pi.mode="recipe";
+		pi.ikno = "#ikno_input";
+		pi.use_suggestions = '0';
+		pi.otcWarningSw = '0';
+
+		//PATH FOR THE AJAX SCRIPTS
+		pi.ajaxPath = "pharmaindex";
+
+		//PATH FOR THE IMAGE FOLDER
+		pi.imagePath="images/pharmaindex";
+
+		
+		// ISPC-2329 Ancuta 03.04.2020
+		//Commented lines: 
+// 		pi.callback = function(recipe){
+// 			//console.log(active_recipe_row.attr('id'));
+// 			$(active_recipe_row).val(recipe);
+// 		};
+		//pi.callback = function(recipe){
+		//	$(active_recipe_row).val(recipe);
+		//}; 
+		
+		//Added lines:
+		pi.callback = function(recipe, drug, extra_object ){
+			
+			console.log(active_recipe_row);
+			var input_row = (active_recipe_row.attr('id').substr(('medication').length));
+			console.log(active_recipe_row);
+			var res = input_row.split("_"); 
+			var medication_type = res[0];
+			
+			var pzn = 0;
+			var source = "custom";
+			var dbf_id = 0;
+			
+			//extra_object
+			if (arguments.length == 3 && typeof arguments[2] == 'object') {
+
+				if (arguments[2]['source'] == "mmi_dialog_price" && typeof arguments[2]['PRICE_ITEM'] == 'object') {
+					//this is a medication selected from the mmi pricelist
+					var PRICE_ITEM = arguments[2]['PRICE_ITEM'];
+					pzn = PRICE_ITEM.PZN;
+					dbf_id = PRICE_ITEM.ID;
+					source = arguments[2]['source'];
+				} else if (arguments[2]['source'] == "mmi_dialog_product" && typeof arguments[2]['PRODUCT'] == 'object') {
+					var PRODUCT = arguments[2]['PRODUCT']
+					dbf_id = PRODUCT.ID;
+					source = arguments[2]['source'];
+					
+					//ISPC-2329 Ancuta 03.04.2020
+					//We now take the PZN for the FIRST item in PACKAGE_LIST
+					var PACKAGE_ITEM_0 = arguments[2]['PRODUCT']['PACKAGE_LIST'][0];
+					pzn = PACKAGE_ITEM_0.PZN;
+					//dbf_id = PACKAGE_ITEM_0.ID; // ?? 
+					
+				} else {
+					//error
+					pzn = 0;
+					source = "custom";
+					dbf_id = 0;
+				}
+			}
+			
+			//ISPC-2554 pct.3 Carmen 26.03.2020
+			var atcstring = '';
+			if(!$.isEmptyObject(extra_object) && extra_object.hasOwnProperty('PRODUCT'))
+			{
+				if(extra_object.PRODUCT.hasOwnProperty('ITEM_LIST') && !$.isEmptyObject(extra_object.PRODUCT.ITEM_LIST[0]))
+				{
+					if(extra_object.PRODUCT.ITEM_LIST[0].hasOwnProperty('ATCCODE_LIST') && !$.isEmptyObject(extra_object.PRODUCT.ITEM_LIST[0].ATCCODE_LIST[0]))
+					{
+			
+			            var atclist = extra_object.PRODUCT.ITEM_LIST[0].ATCCODE_LIST[0];
+			            var atcarr = {};
+			            
+			            atcarr['atc_code'] = atclist.CODE;
+			            atcarr['atc_description'] = atclist.NAME;
+			            atcarr['atc_groupe_code'] = atclist.PARENT.CODE;
+			            atcarr['atc_groupe_description'] = atclist.PARENT.NAME;
+			            
+			            atcstring = JSON.stringify(atcarr);
+					}
+				}
+			}
+			//--
+							
+            var parent_tr;
+            if (parent_tr = $(active_recipe_row).closest("tr")) {
+            	 $('.medication_pzn', parent_tr).val(pzn.toString().escapeValue());
+    	   	     $('.medication_source', parent_tr).val(source.toString().escapeValue());
+    	   	     $('.medication_dbf_id', parent_tr).val(dbf_id.toString().escapeValue());
+				 $('.medication_is_btm', parent_tr).val(is_btm.toString().escapeValue());//ISPC-2912,Elena,25.05.2021
+    	   	     $('.medication_atc', parent_tr).val(atcstring); //ISPC-2554 pct.3 Carmen 26.03.2020 < NOT SAVED YET
+            }
+   	     
+			
+			if( medication_type != "isschmerzpumpe"){
+			
+				if(drug){
+					$('#drug'+input_row).val(drug);
+				}else{
+					$('#drug'+input_row).val('');
+				}
+				
+				$('#medication'+input_row).val(recipe);
+				$('#hidd_medication'+input_row).val('');
+			} 
+			else
+			{
+
+			 	input_row = res[1];
+			 	var extra_pumpe_number = res[3];
+			 
+				$('#medication_'+medication_type+'_'+extra_pumpe_number+'_'+input_row).val(recipe);
+
+			 	if(drug){
+					$('#drug_'+medication_type+'_'+extra_pumpe_number+'_'+input_row).val(drug);
+				}else{
+					$('#drug_'+medication_type+'_'+extra_pumpe_number+'_'+input_row).val('');
+				}
+			 
+			 	$( "input[id^='hidd_medication_']" , $(active_recipe_row).parent()).val('');
+			 	$( "input[id^='edited_']" , $(active_recipe_row).parent()).val('1');
+			 	
+			 	
+				
+			}
+		};
+		// -- Until here! 
+		
+
+		pi.install();
+		
+		$('.livesearchmedinp').live('change', function() {
+			var input_row = parseInt($(this).attr('id').substr(('medication').length));
+			reset_medications(input_row);
+		}).liveSearch({
+			url: 'pharmaindex/getproductsmedils?ik_no='+healthinsuranceik+'&sm=0&client='+client+'&searchtext=',
+			id: 'livesearch_admission_medications',
+			aditionalWidth: '300',
+			noResultsDelay: '900',
+			typeDelay: '900',
+			returnRowId: function (input) {return parseInt($(input).attr('id').substr(('medication').length));}
+		});
+		<?php else: ?>
+			$('.livesearchmedinp').live('change', function() {
+				var input_row = parseInt($(this).attr('id').substr(('medication').length));
+				reset_medications(input_row);
+			}).liveSearch({
+				url: 'ajax/medications?q=',
+				id: 'livesearch_admission_medications',
+				aditionalWidth: '300',
+				noResultsDelay: '900',
+				typeDelay: '900',
+				returnRowId: function (input) {return parseInt($(input).attr('id').substr(('medication').length));}
+			});
+		<?php endif; ?>
+
+	});
+
+	function reset_medications(input_row)
+	{
+		if($('#hidd_medication'+input_row).val()){
+			$('#hidd_medication'+input_row).val('');
+			$('#drid'+input_row).val('');
+		}
+	}
+
+	function selectMedications(mid, row, mmi_handler)
+	{
+		$('#medication'+row).val($('#medi_me_'+mid).val());
+		if(!mmi_handler)
+		{
+			$('#comment'+row).val($('#medi_comment_'+mid).val());
+			$('#hidd_medication'+row).val($('#medi_id_'+mid).val());
+		}
+	}
+
+	function removeElem(ids)
+	{
+		$(ids).remove();
+	}
+
+	function createnewmedic()
+	{
+		var client = '<?php echo $this->clientid ?>';
+		<?php if($this->show_mmi == "1"): ?>
+			var mmi_medication_style = 'width:80%!important;';
+			var mmi_button_search = '&nbsp;<input type="button" name="mmi_search" id="mmi_search_'+medcount+'" value="<?php echo $this->translate('mmi_button')?>" class="mmi_search_button" />';
+			var mmi_dosage_style = 'width:87%!important;';
+		<?php else: ?>
+			var mmi_medication_style = '';
+			var mmi_button_search = '';
+			var mmi_dosage_style = '';
+		<?php endif; ?>
+				
+				
+		var usrstr = "";
+		for(var i in jsusers)
+		{
+			usrstr +='<option value="'+i+'">'+jsusers[i]+'</option>';
+		}
+
+		var userdrop = '<select class="verordnetvon_select" name="add[verordnetvon]['+medcount+']">'+usrstr+'</select>';
+		var trInnerHtml = $('<tr id="medadd'+medcount+'"><td align="left" valign="top"><input name="add[medication]['+medcount+']" value="" id="medication'+medcount+'" type="text" class="livesearchmedinp med" style="'+mmi_medication_style+'"><input name="add[hidd_medication]['+medcount+']" value="" id="hidd_medication'+medcount+'" type="hidden">'+mmi_button_search+'</td><td align="left" valign="top"><input  name="add[dosage]['+medcount+']" id="dosage" class="dosage" value="" style="'+mmi_dosage_style+'" /></td><td align="left" valign="top"><input  name="add[comments]['+medcount+']"    id="comment'+medcount+'" value=""  /></td><td align="left" valign="top">'+userdrop+'</td><td width="60" align="left" valign="top"><a href="javascript:void(0)" onclick="removeElem(\'#medadd'+medcount+'\')"><img src="images/action_delete.png" border="0" /></a></td></tr>');
+
+		$('#medaddtable').append(trInnerHtml);
+	
+		$('#medication'+medcount).bind('keyup keydown change paste',function(){
+			
+			<?php if($this->show_mmi == "1"): ?>
+			$(this).live('change', function() {
+				var input_row = parseInt($(this).attr('id').substr(('medication').length));
+				reset_medications(input_row);
+			}).liveSearch({
+				url: 'pharmaindex/getproductsmedils?ik_no='+healthinsuranceik+'&sm=0&client='+client+'&searchtext=',
+				id: 'livesearch_admission_medications',
+				aditionalWidth: '300',
+				noResultsDelay: '900',
+				typeDelay: '900',
+				returnRowId: function (input) {return parseInt($(input).attr('id').substr(('medication').length));}
+			});
+			<?php else: ?>
+			//livesearch medications ls
+			$(this).live('change', function() {
+				var input_row = parseInt($(this).attr('id').substr(('medication').length));
+				reset_medications(input_row);
+			}).liveSearch({
+				url: 'ajax/medications?q=',
+				id: 'livesearch_admission_medications',
+				aditionalWidth: '300',
+				noResultsDelay: '900',
+				typeDelay: '900',
+				returnRowId: function (input) {return parseInt($(input).attr('id').substr(('medication').length));}
+			});
+			<?php endif; ?>
+		});
+		medcount++;
+	}
+</script>
+
+<form action="" name="frmpatinethealth" id="frmpatinethealth" method="post" autocomplete="off" >
+	<?php echo $this->patientinfo ?>
+	<?php echo $this->tabmenus ?>
+	<input type="hidden" name="ikno_input" id="ikno_input" value="<?php echo $this->kassen_no; ?>" />
+<!-- 	<input type="text" name="acknowledge" id="acknowledge" value="<?php echo $this->acknowledge; ?>" /> -->
+	<div class="tab_container">
+		<br />
+		<fieldset>
+			<legend><?php echo $this->translate('add medication '.$this->medication_type) ?></legend>
+			<div id="med">
+				<?php echo $this->medicgrid; ?>
+			</div>
+
+			<div class="clearer"></div>
+			<div class="clearer"></div>
+
+			<div class="add_new_medi">
+				<a href="javascript:createnewmedic()">
+					<img src="<?php echo RES_FILE_PATH; ?>/images/edit_add.png" width="20" height="20" />
+					<div class="add_new_medi_link">
+						<?php echo $this->translate('addnewmedication'); ?>
+					</div>
+				</a>
+			</div>
+
+			<div class="clearer"></div>
+			<label></label>
+			<input type="button" name="btnsubmit" id="btnsubmit-save" value="<?php echo $this->translate('submit') ?>" class="button" onclick="checkdischargednew('frmpatinethealth');" />
+
+		</fieldset>
+	</div>
+</form>

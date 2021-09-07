@@ -1,0 +1,605 @@
+<!-- Maria:: Migration ISPC to CISPC 08.08.2020 -->
+<style>
+.wrongfilter{
+    color: #cccccc;
+    font-weight: normal;
+    text-decoration: line-through;
+}
+
+.ListCourseSumm {
+    color: #ff0000;
+    font-weight: normal;
+    margin: 5px 10px 5px 12px;
+    padding: 5px;
+}
+
+</style>
+
+<?php $no_color =  $_REQUEST['nc'];?>
+
+<h4>ISPC - Informationssystem Palliative Care</h4>
+
+<?php echo $this->patHeader; ?>
+<div><strong><? echo $this->patientname;?></strong></div>
+<div><strong><? echo $this->translate('date');?> : <? echo $this->currdate;?></strong></div>
+
+<h1><? echo $this->translate('patientcourse');?></h1>
+
+
+<table>
+	<?php //print_r($this->allblocks); exit;?>
+	<?php foreach($this->allblocks as $k => $det):?>
+	<?php
+		$dth = explode(" ", $det['date']);
+		$dt = date("d.m.Y", strtotime($dth[0]));
+		$hm = $dth[1];
+
+	$wrongfilterclass = "";
+	$greyclass = "";
+
+
+
+	$wrongcheck = "";
+
+	$logininfo = new Zend_Session_Namespace('Login_Info');
+
+	if ($logininfo->userid == $det['user'] || $logininfo->usertype == "SA")
+	{
+		if ($det['wrong'] == 1){
+			$wrongcheck = '<img src="'.PUBLIC_PATH.'/images/check02.jpg" />';
+		} else{
+			$wrongcheck = '<img src="'.PUBLIC_PATH.'/images/check01.jpg" />';
+		}
+	}
+
+
+
+	if ($det['wrong'] == 1)
+	{
+		$wrongfilterclass = "wrongfilter";
+		$greyclass = "greyclass";
+	 
+	}
+
+
+	if (!empty($det['source_ipid']))
+	{
+		$has_source = 'source_entry';
+		
+	}
+	else
+	{
+		$has_source = '';
+	}
+
+	?>
+	<tr>
+		<td width="20%" style="border:1px solid #ccc;">
+			<?php echo $dt; ?>, <br /><?php echo $hm; ?>
+			<br />
+			<?php 
+				if($this->print_user)
+				{
+					echo $det['user_lname'].',&nbsp;'.$det['user_fname'];
+				}
+			?>
+		</td>
+		<td width="75%" style="border:1px solid #ccc;" class="<?php echo $wrongfilterclass; ?> ">
+			<table>
+			<?php 
+			$course_title ="";
+				foreach($det['summary'] as $gk => $sum):?>
+			<?php 
+			
+
+	if ( $sum['isserialized'] != 1)
+	{
+		$sum['course_title'] =  htmlentities($sum['course_title']);
+		$sum['course_title'] = str_replace('&lt;', ' / ' ,$sum['course_title']); // todo-1334 hack - 03.01.2018
+		$sum['course_title'] = str_replace('&gt;', ' \ ',$sum['course_title']); // todo-1334 hack - 03.01.2018
+		$sum['course_title'] = str_replace(array('&lt;b&gt;','&lt;/b&gt;','&lt;br /&gt;','&lt;br/&gt;'),array('<b>','</b>','<br />','<br/>'), $sum['course_title']);
+
+		$course_title = nl2br($sum['course_title']);
+		$course_title = stripslashes($course_title);
+	}
+
+	if ($sum['isbold']  == 1)
+	{
+		$isbold[$gk] = "bold";
+	}
+	if ($sum['isitalic'] == 1)
+	{
+		$isitalic[$gk] = "italic";
+	}
+	if ($sum['isunderline'] == 1)
+	{
+		$isunderline[$gk] = "underline";
+	}
+
+	if(empty($sum['source_ipid']))
+	{
+		$letterclass = $sum['course_type']. " _owned ";
+	}
+	else
+	{
+		$letterclass = "_shared";
+	}
+
+
+	if ($sum['course_type'] == "W")
+	{
+		$clientusers_old = $this->users_todo;
+		$clientusers_new = $this->usersnewtodos_flat;
+				
+
+		$course = explode("|---------|", $course_title);
+		if (count($course) <= 1)
+		{
+			$course = explode("|", $sum['course_title']);
+		}
+
+		$courseusr = trim($course[1]);
+		
+		if ($courseusr != '0')
+	 	{
+			if(is_numeric($courseusr))
+			{
+		    	$course_user = $clientusers_old[trim($course[1])];
+			}
+			else
+			{
+				$courseusrs = explode(",", $courseusr);
+			
+				if(count($courseusrs) > 1)
+				{
+					$courseusrsname = array();
+					foreach($courseusrs as $idcourseseusr)
+					{
+						$courseusrsname[] = $clientusers_new[$idcourseseusr];
+					}
+					$course_user = implode('; ', $courseusrsname);
+				}
+				else
+				{	
+					$course_user = $clientusers_new[trim($course[1])];
+				}
+	         }
+		}
+		else
+		{		
+			$course_user = '-';
+		}
+
+		if(in_array($sum['id'], $this->patcompltodocourseids))
+		{
+				$coursetext = explode(',',$course[4]);
+				$supltext = "";
+				$sum['font_color'] = "FF6F6A";
+				$username = $sum['user'][$this->patcompltodosdata[$sum['id']]['complete_user']]['last_name'] . " " . $sum['user'][$this->patcompltodosdata[$sum['id']]['complete_user']]['first_name']; 
+				if(count($coursetext) > 1)
+				{					
+					for($nrelem=4; $nrelem<count($course); $nrelem++)
+					{
+						$coursetext = explode(',',$course[$nrelem]);
+						$supltext .= "<br />&nbsp; ".$coursetext[1];
+					}
+				}
+				else
+				{
+					$supltext .= "<br />&nbsp; Erledigt von " . $username . " am " . date('d.m.Y', strtotime($this->patcompltodosdata[$sum['id']]['complete_date']));					
+				}	
+					$course_title = "<font><i>&nbsp; geplante Maßnahme: " . html_entity_decode($course[0]) . " | " . $course_user . " | " . $course[2].$supltext."</i></font>";
+					/*if($this->patcompltodosdata[$sum['id']]['complete_comment'])
+					{
+						$course_title .= "<br />&nbsp; <font><b>Comment : </b></font>" . "<font>". $this->patcompltodosdata[$sum['id']]['complete_comment'] ."</font>";
+					}*/					
+		}
+		else
+		{
+			if(count($course)>4)
+			{
+				$supltext1 = "";
+				$supltext2 = "";
+				$sum['font_color'] = "FF6F6A";
+				for($nrelem=4; $nrelem<count($course); $nrelem++)
+				{
+					$coursetext = explode(',',$course[$nrelem]);
+					$supltextarr = explode('<br />', $coursetext[1]);
+					$supltext1 .= "<br />&nbsp; <i>" . $supltextarr[0] . "</i><br />";
+					if(count($supltextarr) > 1)
+					{
+						$supltext2 .= "<font><b>Comment : </b></font>" . "<font>". $todo_comment.$supltextarr[1]."</font>";
+					}
+					else
+					{
+						$supltext2 .= "";
+					}
+					//$supltext .= "<br />&nbsp; <i>".$coursetext[1]."</i>";
+				}
+
+					//$course_title = "<font><i>&nbsp; geplante Maßnahme: " . html_entity_decode($course[0]) . " | " . $course_user . " | " . $course[2].$supltext1."</i></font>".$supltext2;
+					$course_title = "<font><i>&nbsp; geplante Maßnahme: " . html_entity_decode($course[0]) . " | " . $course_user . " | " . $course[2].$supltext1."</i></font>";
+			}
+			else
+			{
+				$course_title = "&nbsp; geplante Maßnahme: " . html_entity_decode($course[0]) . " | " . $course_user . " | " . $course[2];
+			}
+		}
+		
+		//$clientusers = $this->users;
+
+		//$course_title = str_replace(array('&lt;b&gt;','&lt;/b&gt;','&lt;br /&gt;','&lt;br/&gt;'),array('<b>','</b>','<br />','<br/>'), $course_title);
+
+
+		/*$course = array();
+		$course = explode("|---------|", $sum['course_title']);
+		if (count($course) <= 1)
+		{
+			$course = array();
+			$course = explode("|", $sum['course_title']);
+		}*/
+
+		/* !!!!!!!!!!!!!!!!!!!!! */
+		/* !!!!!!!!!!!!!!!!!!!!! */
+		/* !!!! MULTIPLE USERS AND GROUPS !!!!!! */
+		/* !!!!!!!!!!!!!!!!!!!!! */
+
+		/*$w_users_arr = array();	
+		$w_user_names = array();	
+		$w_users_arr = explode(',',$course[1]);
+
+		foreach($w_users_arr as $k=>$uid){
+			if(is_numeric(trim($uid)) && !empty($this->usersnewtodos['u'.trim($uid)]))
+			{
+				$w_user_names[] = $this->usersnewtodos['u'.trim($uid)] ;
+			} else {
+				if(!empty($this->usersnewtodos[trim($uid)])){
+					$w_user_names[] = $this->usersnewtodos[trim($uid)] ;
+				}
+			}
+		}
+		$courseusr = implode(';',$w_user_names); 
+
+
+		if ( strlen($courseusr) > 0 )
+		{
+			$course_user_str = $courseusr;
+			$course_title = "geplante Maßnahme: " . $course[0] . " | " . $course_user_str . " | " . $course[2];
+		}
+		else
+		{
+			$course_user = '-';
+			$course_title = "geplante Maßnahme: " . $course[0] . " | " . $course_user . " | " . $course[2];
+		}*/
+	}
+	elseif ($sum['course_type'] == "D" || $sum['course_type'] == "H" || $sum['course_type'] == "HS")
+	{
+		$course = explode("|", $course_title);
+
+
+		if (count($course) == 3)
+		{
+			$icd = $course[1];
+			$diagnosis_name = $course[2];
+
+			$course_title = $icd . ' | ' . $diagnosis_name;
+		}
+	} 
+	elseif ($sum['course_type'] == "SB")
+	{
+		
+		$client_sb_users = $this->sb_users;
+		
+		$course = explode(" |__| ", $course_title);
+
+		$courseusr = trim($course[0]);
+
+		if ($courseusr > 0 && is_numeric($courseusr))
+		{
+			$course_user = $client_sb_users[trim($course[0])];
+			$course_title = "Sanitätshausbestellung an : " . $course_user . " <br/> " . $course[1];
+		}
+	} 
+	elseif ($sum['course_type'] == "S")
+	{
+		$course_title = $sum['course_title'] ;
+	}
+
+
+	if ($sum['tabname'] == "discharge")
+	{
+		$course_title = '<span style="background:#FC7272;">' . $course_title . '</span>';
+	}
+
+	if($no_color == "1"){
+		$sum['font_color']="#000000";
+	}
+
+
+	$cs_type = $sum['course_type'];
+	if ($sum['wrong'] == 1)
+	{
+	}
+	else
+	{
+
+		$sum['course_type'] = '<font color="#' . $sum['font_color'] . '" style="font-style:' . $isitalic[$gk] . ';font-weight:' . $isbold[$gk] . ';text-decoration:' . $isunderline[$gk] . ';">' . $sum['course_type'] . '</font>';
+		$course_title = '<font color="#' . $sum['font_color'] . '" style="font-style:' . $isitalic[$gk] . ';font-weight:' . $isbold[$gk] . ';text-decoration:' . $isunderline[$gk] . ';">' . $course_title . '</font>';
+		if($cs_type == "W")
+		{
+			if($this->patcompltodosdata[$sum['id']]['complete_comment'])
+			{
+				$course_title .= "<br />&nbsp; <font><b>Comment : </b></font>" . "<font>". $this->patcompltodosdata[$sum['id']]['complete_comment'] ."</font>";
+			}
+			elseif($supltext2 != "")
+			{
+				$course_title .= $supltext2; 
+			}
+		}
+		
+		$wrongfilterclass = "";
+	}
+
+	/*$wrongcheck = "";
+	if ( $sum['wrong'] == 1)
+	{
+		$wrongcheck = 'checked=checked';
+	}*/
+
+
+	$pid = $this->pid;
+
+	 
+	if ($sum['tabname'] == "fileupload")
+	{
+		//$course_title = '<font color="#' . $sum['font_color'] . '" style="font-style:' . $isitalic[$gk] . ';font-weight:' . $isbold[$gk] . ';text-decoration:' . $isunderline[$gk] . ';">Datei ' . '' . $course_title . '' . ' wurde angeh&auml;ngt</font>';
+		$course_title = '<font color="#' . $sum['font_color'] . '" style="font-style:' . $isitalic[$gk] . ';font-weight:' . $isbold[$gk] . ';text-decoration:' . $isunderline[$gk] . ';">Datei ' . '' . $course_title . '' . ' wurde angehängt</font>';
+
+	}
+
+	if ($sum['tabname'] == "receiptupload")
+	{
+		$course_title = '<font color="#' . $sum['font_color'] . '" style="font-style:' . $isitalic[$gk] . ';font-weight:' . $isbold[$gk] . ';text-decoration:' . $isunderline[$gk] . ';">' . '' . $course_title . '' . ' </font>';
+	}
+
+	if ($sum['tabname'] == "kvno_doctor_form")
+	{
+		$course_title = '<font color="#' . $sum['font_color'] . '" style="font-style:' . $isitalic[$gk] . ';font-weight:' . $isbold[$gk] . ';text-decoration:' . $isunderline[$gk] . ';">' . ' Besuchsbogen Arzt hinzugefügt.' . '</font>';
+	}
+
+	if ($sum['tabname'] == "lvn_doctor_form")
+	{
+		$course_title = '<font color="#' . $sum['font_color'] . '" style="font-style:' . $isitalic[$gk] . ';font-weight:' . $isbold[$gk] . ';text-decoration:' . $isunderline[$gk] . ';">' . ' Besuchsbogen Arzt hinzugefügt.' . '</font>';
+	}
+
+	if ($sum['tabname'] == "bayern_doctorvisit")
+	{
+		$course_title = '<font color="#' . $sum['font_color'] . '" style="font-style:' . $isitalic[$gk] . ';font-weight:' . $isbold[$gk] . ';text-decoration:' . $isunderline[$gk] . ';">' . ' Besuchsformular Bayern hinzugefügt.' . '</font>';
+	}
+
+	if ($sum['tabname'] == "sakvno_doctor_form")
+	{
+		$course_title = '<font color="#' . $sum['font_color'] . '" style="font-style:' . $isitalic[$gk] . ';font-weight:' . $isbold[$gk] . ';text-decoration:' . $isunderline[$gk] . ';">' . ' Besuchsbogen Arzt hinzugefügt.' . '</font>';
+	}
+
+	if ($sum['tabname'] == "wl_doctor_form")
+	{
+		$course_title = '<font color="#' . $sum['font_color'] . '" style="font-style:' . $isitalic[$gk] . ';font-weight:' . $isbold[$gk] . ';text-decoration:' . $isunderline[$gk] . ';">' . ' Besuchsbogen Arzt hinzugefügt.' . '</font>';
+	}
+
+
+	if ($sum['tabname'] == "kvno_assesment" && stripos($course_title, 'angelegt') !== false)
+	{
+		$course_title = '<font color="#' . $sum['font_color'] . '" style="font-style:' . $isitalic[$gk] . ';font-weight:' . $isbold[$gk] . ';text-decoration:' . $isunderline[$gk] . ';">' . ' ' . $course_title . '.' . '</font>';
+	}
+
+
+	if ($sum['tabname'] == "kvno_assesment_new")
+	{
+		$course_title = '<font color="#' . $sum['font_color'] . '" style="font-style:' . $isitalic[$gk] . ';font-weight:' . $isbold[$gk] . ';text-decoration:' . $isunderline[$gk] . ';">' . '' . $course_title . '.' . '</font>';
+	}
+
+	if ($sum['tabname'] == "recording_assesment")
+	{
+		$course_title = '<font color="#' . $sum['font_color'] . '" style="font-style:' . $isitalic[$gk] . ';font-weight:' . $isbold[$gk] . ';text-decoration:' . $isunderline[$gk] . ';">' . ' ' . $course_title . '.' . '</font>';
+	}
+
+	if ($sum['tabname'] == "reassesment")
+	{
+		$course_title = '<font color="#' . $sum['font_color'] . '" style="font-style:' . $isitalic[$gk] . ';font-weight:' . $isbold[$gk] . ';text-decoration:' . $isunderline[$gk] . ';">' . '' . $course_title . '.' . '</font>';
+	}
+
+	if ($sum['tabname'] == "kvno_nurse_form")
+	{
+		$course_title = '<font color="#' . $sum['font_color'] . '" style="font-style:' . $isitalic[$gk] . ';font-weight:' . $isbold[$gk] . ';text-decoration:' . $isunderline[$gk] . ';">' . ' Besuchsbogen Pflege hinzugefügt.' . '</font>';
+	}
+
+	if ($sum['tabname'] == "lvn_nurse_form")
+	{
+		$course_title = '<font color="#' . $sum['font_color'] . '" style="font-style:' . $isitalic[$gk] . ';font-weight:' . $isbold[$gk] . ';text-decoration:' . $isunderline[$gk] . ';">' . ' Besuchsbogen Pflege hinzugefügt.' . '</font>';
+	}
+
+	if ($sum['tabname'] == "visit_koordination_form")
+	{
+		$course_title = '<font color="#' . $sum['font_color'] . '" style="font-style:' . $isitalic[$gk] . ';font-weight:' . $isbold[$gk] . ';text-decoration:' . $isunderline[$gk] . ';">' . ' Besuchsformular Koordination hinzugefügt.' . '</font>';
+	}
+
+	if ($sum['tabname'] == "wl_nurse_form")
+	{
+		$course_title = '<font color="#' . $sum['font_color'] . '" style="font-style:' . $isitalic[$gk] . ';font-weight:' . $isbold[$gk] . ';text-decoration:' . $isunderline[$gk] . ';">' . ' Besuchsbogen Pflege hinzugefügt.' . '</font>';
+	}
+
+	if ($sum['tabname'] == "sakvno_nurse_form")
+	{
+		$course_title = '<font color="#' . $sum['font_color'] . '" style="font-style:' . $isitalic[$gk] . ';font-weight:' . $isbold[$gk] . ';text-decoration:' . $isunderline[$gk] . ';">' . ' Besuchsbogen Pflege hinzugefügt.' . '</font>';
+	}
+
+	if ($sum['tabname'] == "kvnoanlage7form")
+	{
+		$course_title = '<font color="#' . $sum['font_color'] . '" style="font-style:' . $isitalic[$gk] . ';font-weight:' . $isbold[$gk] . ';text-decoration:' . $isunderline[$gk] . ';">' . ' Besuchsbogen KVNO Anlage 7  hinzugefügt.' . '</font>';
+	}
+
+	if ($sum['tabname'] == "dgpanlage7form")
+	{
+		$course_title = '<font color="#' . $sum['font_color'] . '" style="font-style:' . $isitalic[$gk] . ';font-weight:' . $isbold[$gk] . ';text-decoration:' . $isunderline[$gk] . ';">' . ' DGP-Kerndatensatz - Besuchsbogen Anlage 7  hinzugefügt.' . '</font>';
+	}
+
+	if ($sum['tabname'] == "dgpkernform")
+	{
+		$course_title = '<font color="#' . $sum['font_color'] . '" style="font-style:' . $isitalic[$gk] . ';font-weight:' . $isbold[$gk] . ';text-decoration:' . $isunderline[$gk] . ';">' . ' DGP-Kerndatensatz  - Kerndatensatz für Palliativpatienten  hinzugefügt.' . '</font>';
+	}
+
+	if ($sum['tabname'] == "dgpsapvform")
+	{
+		$course_title = '<font color="#' . $sum['font_color'] . '" style="font-style:' . $isitalic[$gk] . ';font-weight:' . $isbold[$gk] . ';text-decoration:' . $isunderline[$gk] . ';">' . ' DGP-Kerndatensatz  - SAPV-Struktur-Modul  hinzugefügt.' . '</font>';
+	}
+
+	if ($sum['tabname'] == "ruhen")
+	{
+		$course_title = '<font color="#' . $sum['font_color'] . '" style="font-style:' . $isitalic[$gk] . ';font-weight:' . $isbold[$gk] . ';text-decoration:' . $isunderline[$gk] . ';">' . ' Ruhen der Teilnahme hinzugefügt.' . '</font>';
+	}
+
+	if ($sum['tabname'] == "feststellung")
+	{
+		$course_title = '<font color="#' . $sum['font_color'] . '" style="font-style:' . $isitalic[$gk] . ';font-weight:' . $isbold[$gk] . ';text-decoration:' . $isunderline[$gk] . ';">' . ' Feststellung des Nichtvorliegens der Teilnahmevorraussetzung  hinzugefügt.' . '</font>';
+	}
+
+	if ($sum['tabname'] == "genehmigungs")
+	{
+		$course_title = '<font color="#' . $sum['font_color'] . '" style="font-style:' . $isitalic[$gk] . ';font-weight:' . $isbold[$gk] . ';text-decoration:' . $isunderline[$gk] . ';">' . ' Genehmigungsformular hinzugefügt.' . '</font>';
+	}
+
+	if ($sum['tabname'] == "anlage4awl")
+	{
+		if(!$recordid)
+		{
+			$course_title = '<font color="#' . $sum['font_color'] . '" style="font-style:' . $isitalic[$gk] . ';font-weight:' . $isbold[$gk] . ';text-decoration:' . $isunderline[$gk] . ';">' . ' Anlage 4a wurde erstellt' . '</font>
+				<input type="hidden" name="type" id="type_[[id]]" class="anlage" value="anlage" />';
+		}
+		else
+		{
+			$course_title = '<font color="#' . $sum['font_color'] . '" style="font-style:' . $isitalic[$gk] . ';font-weight:' . $isbold[$gk] . ';text-decoration:' . $isunderline[$gk] . ';">' . 'Anlage 4a wurde erstellt' . '</font>
+				<input type="hidden" name="type" id="type_[[id]]" class="anlage" value="anlage" />';
+		}
+	}
+
+	if ($sum['tabname'] == "anlage4wl")
+	{
+		if(!$recordid)
+		{
+			$course_title = '<font color="#' . $sum['font_color'] . '" style="font-style:' . $isitalic[$gk] . ';font-weight:' . $isbold[$gk] . ';text-decoration:' . $isunderline[$gk] . ';">' . ' Anlage 4 wurde erstellt' . '</font>
+			<input type="hidden" name="type" id="type_[[id]]" class="anlage" value="anlage"/>';
+		}
+		else
+		{
+			$course_title = '<font color="#' . $sum['font_color'] . '" style="font-style:' . $isitalic[$gk] . ';font-weight:' . $isbold[$gk] . ';text-decoration:' . $isunderline[$gk] . ';">' . 'Anlage 4 wurde erstellt' . '</font>
+			<input type="hidden" name="type" id="type_[[id]]" class="anlage" value="anlage"/>';
+		}
+	}
+
+	if ($sum['tabname'] == "drletter")
+	{
+		$course_title = '<font color="#' . $sum['font_color'] . '" style="font-style:' . $isitalic[$gk] . ';font-weight:' . $isbold[$gk] . ';text-decoration:' . $isunderline[$gk] . ';">' . 'Ein  Brief wurde erstellt' . '</font>';
+	}
+
+	if ($sum['tabname'] == "drletterfaxvor")
+	{
+		$course_title = '<font color="#' . $sum['font_color'] . '" style="font-style:' . $isitalic[$gk] . ';font-weight:' . $isbold[$gk] . ';text-decoration:' . $isunderline[$gk] . ';">' . 'Ein  Brief wurde erstellt' . '</font>';
+	}
+
+	if ($sum['tabname'] == "drlettertodes")
+	{
+		$course_title = '<font color="#' . $sum['font_color'] . '" style="font-style:' . $isitalic[$gk] . ';font-weight:' . $isbold[$gk] . ';text-decoration:' . $isunderline[$gk] . ';">' . 'Ein  Brief wurde erstellt' . '</font>';
+	}
+
+	if ($sum['tabname'] == "MdkSchne")
+	{
+		if(!$recordid)
+		{
+			$course_title = '<font color="#' . $sum['font_color'] . '" style="font-style:' . $isitalic[$gk] . ';font-weight:' . $isbold[$gk] . ';text-decoration:' . $isunderline[$gk] . ';">' . ' MDK Schnellbegutachtungsbogen wurde erstellt' . '</font>';
+		}
+		else
+		{
+			$course_title = '<font color="#' . $sum['font_color'] . '" style="font-style:' . $isitalic[$gk] . ';font-weight:' . $isbold[$gk] . ';text-decoration:' . $isunderline[$gk] . ';">' . 'MDK Schnellbegutachtungsbogen wurde erstellt' . '</font>';
+		}
+	}
+
+	if ($sum['tabname'] == "Stammblattsapv")
+	{
+		if(!$recordid)
+		{
+			$course_title = '<font color="#' . $sum['font_color'] . '" style="font-style:' . $isitalic[$gk] . ';font-weight:' . $isbold[$gk] . ';text-decoration:' . $isunderline[$gk] . ';">' . ' Stammblatt wurde erstellt' . '</font>';
+		}
+		else
+		{
+			$course_title = '<font color="#' . $sum['font_color'] . '" style="font-style:' . $isitalic[$gk] . ';font-weight:' . $isbold[$gk] . ';text-decoration:' . $isunderline[$gk] . ';">' . 'Stammblatt wurde erstellt' . '</font>';
+		}
+	}
+	if ($sum['tabname'] == "Stammblatt4")
+	{
+		if(!$recordid)
+		{
+			$course_title = '<font color="#' . $sum['font_color'] . '" style="font-style:' . $isitalic[$gk] . ';font-weight:' . $isbold[$gk] . ';text-decoration:' . $isunderline[$gk] . ';">' . ' Stammblatt IV wurde erstellt' . '</font>';
+		}
+		else
+		{
+			$course_title = '<font color="#' . $sum['font_color'] . '" style="font-style:' . $isitalic[$gk] . ';font-weight:' . $isbold[$gk] . ';text-decoration:' . $isunderline[$gk] . ';">' . 'Stammblatt IV wurde erstellt' . '</font>';
+		}
+	}
+
+	if ($sum['tabname'] == "PatientStammblattsapv")
+	{
+		if(!$recordid)
+		{
+			$course_title = '<font color="#' . $sum['font_color'] . '" style="font-style:' . $isitalic[$gk] . ';font-weight:' . $isbold[$gk] . ';text-decoration:' . $isunderline[$gk] . ';">' . ' Patientenstammblatt  wurde erstellt' . '</font>';
+		}
+		else
+		{
+			$course_title = '<font color="#' . $sum['font_color'] . '" style="font-style:' . $isitalic[$gk] . ';font-weight:' . $isbold[$gk] . ';text-decoration:' . $isunderline[$gk] . ';">' . 'Patientenstammblatt  wurde erstellt' . '</font>';
+		}
+	}
+
+	if ($sum['tabname'] == "patient_death")
+	{
+		$course_title = '<span  style="background: none repeat scroll 0 0 #FC7272;" > ' . $course_title . ' </span>';
+	}
+
+	if ($sum['tabname'] == "formone")
+	{
+		$course_title = '<font color="#' . $sum['font_color'] . '" style="font-style:' . $isitalic[$gk] . ';font-weight:' . $isbold[$gk] . ';text-decoration:' . $isunderline[$gk] . ';">' . 'Formular SAPV-Einzelfallevaluation wurde erstellt.' . '</font>';
+	}
+		
+
+	
+	//TODO-3843 Ancuta 15.02.2021 
+	if ($sum['tabname'] == "contact_form")
+	{ 
+		$course_title .= $sum['recorddata'] ;
+	}	
+
+			?>
+			
+				<tr>
+					<td width="10%"><?php echo $sum['course_type'];?></td>
+					<td width="90%">
+						<?php echo html_entity_decode($course_title);?>
+					</td>
+				</tr>
+		
+			<?php endforeach;?>
+			
+			</table>
+			
+		<br/>
+		<div class="ListCourseSumm"><?php echo $det['wrongcomment']; ?></div>
+		</td>
+		<td width="5%" style="border:1px solid #cccccc;">
+			<? echo $wrongcheck;?>
+		</td>
+	</tr>	
+
+	<?php
+	 endforeach;?>
+</table>
+
+<?php echo $this->cshortcuts; ?>

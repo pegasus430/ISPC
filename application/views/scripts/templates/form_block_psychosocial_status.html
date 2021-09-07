@@ -1,0 +1,430 @@
+<!--  Maria:: Migration CISPC to ISPC 22.07.2020 -->
+<?php
+$blockname = $this->config['belongsto'];
+$pdf=$this->pdf;
+$f_values=$this->f_values;
+$actual_data=$this->actual_data;
+$emptylabel=array('2ndanderefree');
+
+//if(isset($this->f_values['data']) && strlen($this->f_values['data'])){
+//$fdata=json_encode($this->f_values['data']);
+//$actual_data=false;
+?>
+
+
+<?php if (!$pdf):?>
+
+<style>
+    .fb_psychosoz_empty{
+        height:8px;
+    }
+    .fb_psychosoz_col_head{
+        font-weight:bold;
+        border-bottom: 2px solid #b3bed7;
+    }
+    .fb_psychosoz_tab{
+        margin:4px;
+        width:356px;
+    }
+
+</style>
+
+<?php
+    $datas = $this->data;
+    $addresses = array();
+    $metaCategorys = array();
+
+/*
+* addNew template for each box
+*/
+
+foreach ($datas['__meta-categorys'] as $cat => $data) {
+    $id = $cat. '_addnewDialogHtml';
+    echo '<script type="text/template" id="' .$id. '" >' . $data['addnewDialogHtml'] . PHP_EOL . '</script>';
+
+    unset($data['addnewDialogHtml']);
+
+    if (isset($data['addnewDialogHtml_subForms'])) {
+    foreach ($data['addnewDialogHtml_subForms'] as $subcat => $subdata ) {
+        $subidid = $subcat. '_addnewDialogHtml_';
+        echo '<script type="text/template" id="' .$subidid. '" >' . $subdata . PHP_EOL . '</script>';
+    }
+        unset($data['addnewDialogHtml_subForms']);
+    }
+
+    unset($data['extract']);
+
+
+    $metaCategorys[$cat] = $data;
+}
+
+/*
+* update template for each box entry
+*/
+foreach ($datas as $cat => $data) {
+
+foreach ($data as $key=>$entry) {
+
+if (isset($entry['editDialogHtml'])){
+    $id = $cat. '_editDialogHtml_' .$key;
+    echo '<script type="text/template" id="' .$id. '" >' . $entry['editDialogHtml'] . PHP_EOL . '</script>';
+}
+
+if (isset($entry['editDialogHtml_subForms'])) {
+    foreach ($entry['editDialogHtml_subForms'] as $subcat => $subdata ) {
+        $subidid = $subcat. '_editDialogHtml';
+        echo '<script type="text/template" id="' .$subidid. '" >' . $subdata . PHP_EOL . '</script>';
+    }
+}
+
+    $addresses[$cat][$key] = $entry['address'];
+}
+}
+?>
+
+
+<script>
+    var memos = <?=json_encode($this->memos);?>;
+    var addresses = <?=json_encode($addresses);?>;
+    var metaCategorys = <?=json_encode($metaCategorys);?>;
+
+</script>
+<script>
+    $(document).ready(function(){
+
+        $('#fb_psychosocial_status_patientdetails_editor').hide();
+
+        //add the fb_versorger-entryeditor by Javascript (the form-tag is deleted by Zend-Form)
+        if($('#fb_versorger-contactform-entryeditor').length<1){
+            $('body').append('<div id="fb_versorger-contactform-entryeditor" style="display:none;"></div>');
+            $('#fb_versorger-contactform-entryeditor').append('<form></form>');
+            $('#fb_versorger-contactform-entryeditor form').append('<div class="content"></div>');
+        }
+
+        $(document).on('click', '#fb_psychosocial_status_content_header .fb_patientdetails_edit_butt', function(){
+
+            $('#fb_psychosocial_status_patientdetails_editor').dialog(
+                {
+                    width:870,<?php //ISPC-2822 ?>
+                    height:620,
+                    title: translate('psychosocial_status_edit_patientdata'),
+                    buttons:[{
+                        text: translate('psychosocial_status_take_on_data'),
+                        click: function( e ) {
+
+                          $("#fb_psychosocial_status_content").block({
+                                css: {
+                                    border: 'none',
+                                    padding: '15px',
+                                    backgroundColor: '#000',
+                                    '-webkit-border-radius': '10px',
+                                    '-moz-border-radius': '10px',
+                                    opacity: .5,
+                                    color: '#fff',
+                                    height: 'auto'
+                                },
+                                message: '<h2>' + translate('processing') + '</h2><div class="spinner_square"></div>'
+                            });
+
+                            $('#fb_psychosocial_status_patientdetails_editor').dialog('close');
+                            $('#fb_psychosocial_status_patientdetails_editor').hide();
+
+                         $.ajax({
+                                    //dataType: "text/html",
+                                url: "<?php echo APP_BASE . "patientnew/psychosocialstatusreport?id=" . $this->encid ;?>",
+                                success: function( data ){
+                                $('#wrapper_psychosocial_status').html(data);
+                                $("#fb_psychosocial_status_content").unblock("hide", 1);
+
+                            }
+                        });
+
+                        }
+                    }
+                    ]
+                }
+            );
+        });
+
+    });
+
+</script>
+
+
+<div id="fb_psychosocial_status_content_header" style="background-color: #ffffcc;border:1px solid #ccc;margin:4px;padding:4px;">
+    <?php if (!$actual_data):?>
+        <p><?php echo $this->translate('psychosocial_status_warning');?></p>
+    <?php endif;?>
+        <p>
+            <input type="button" style="padding:3px;margin:3px;" value="<?php echo $this->translate('psychosocial_status_btn_check');?>" class="fb_patientdetails_edit_butt"><?php echo $this->translate('psychosocial_status_note');?>
+        </p>
+</div>
+
+
+
+<div id="fb_psychosocial_status_patientdetails_editor">
+    <!-- start  div#tab_container_provider -->
+    <div id="tab_container_provider" class="tab_cont fb_versorger">
+        <?php foreach ($this->boxesPlacement as $colid=>$colcats) :?>
+        <div id="provider_<?=$colid;?>" class="fb_versorger-<?php echo $colid;?>"> <!-- start  div#provider_<?=$colid?> -->
+
+            <?php foreach ($colcats as $cc) : ?>
+            <?php $cat = $this->mappings[$cc]; ?>
+            <?php
+
+            /*
+             * set what boxes are opened and what closed
+             */
+            switch ($this->boxesOpened) {
+
+            case "ALL_OPENED":
+
+            $disp='active';
+
+            break;
+
+            case "ALL_CLOSED":
+
+            $disp='inactive';
+
+            break;
+
+            case "ONLY_WITH_CONTENT":
+
+            $with_data = array_filter($this->data[$cc], function ($item){
+            return ! empty($item['editDialogHtml']);
+
+            });
+            //var_dump($this->data[$cc]);
+            if($this->data[$cc][0]['meta']['table'] == 'PatientMaster_Hospiz_Hospizverein_SAPV_AAPV')
+            {
+            $disp="active";
+            }
+            elseif(count($with_data)>0 && $with_data[1]['editDialogHtml'] !="[") {
+            $disp="active";
+            } else {
+            $disp='inactive';
+            }
+
+            break;
+
+            default:
+            //                     dd("sssssssss", $cat['extra_form_ID'], $this->boxesOpened);
+            if (in_array($cat['extra_form_ID'], $this->boxesOpened)) {
+            $disp="active";
+            } else {
+            $disp='inactive';
+            }
+            break;
+            }
+
+
+            ?>
+
+            <!-- start box -->
+            <div id="box-<?php echo $cc;?>" class="catdetails fb_psy_stat">
+                <!-- start box header -->
+                <div class="fb_versorger-catheader <?php echo 'inactive';?>">
+                    <div class="headtitle"><?php echo $cat['label'];?></div>
+                    <div class="headtitle-img dontPrint">
+                        <?php if(isset($this->memos[$cc]) && $this->memos[$cc]['color']=="green"):?>
+                        <img src="<? echo RES_FILE_PATH;?>/images/circle_green24.png">
+                        <?php endif;?>
+                        <?php if(isset($this->memos[$cc]) && $this->memos[$cc]['color']=="red"):?>
+                        <img src="<? echo RES_FILE_PATH;?>/images/circle_red24.png">
+                        <?php endif;?>
+                    </div>
+                </div>
+                <!-- end box header -->
+
+                <div class="entries" <?=($disp=='inactive') ? "style='display:none;'" : "";?>><!-- start box body -->
+                <input type="hidden" class="category" value="<?php echo $cc;?>">
+                <?php foreach ($this->data[$cc] as $key => $entry): ?>
+
+                <!-- this IF has a continue -->
+                <?php if ($entry['meta']['inlineEdit'] == true): ?>
+                <!-- inline edit -->
+                <div class="entry" >
+                    <input type="hidden" class="hidden-json-data" value='<?=$key;?>'>
+                    <?php
+                    $first = reset($entry['extract']);
+                    echo ($first[1]);
+                    ?>
+                </div>
+
+                <div class="dontPrint">
+                    <span class="ibutton memobutton"><img src="<? echo RES_FILE_PATH;?>/images/edit-icon.gif"> <?=$this->translate("Memo")?></span>
+                    <?php if ($entry['meta']['hasHistory']) : ?>
+                    <span class="ibutton historybutton"><img src="<? echo RES_FILE_PATH;?>/images/history.png"> <?=$this->translate("History")?></span>
+                    <?php endif; ?>
+                </div>
+            </div></div>
+        <?php continue 2; endif; ?>
+
+        <?php if (empty($entry['editDialogHtml'])) continue;?>
+
+        <div class="entry" >
+            <?php foreach($entry['extract'] as $row):?>
+            <div class="entryline">
+                <?php if ( ! empty($row[0])) : ?>
+                <label><?=$row[0]?></label>
+                <?php endif; ?>
+
+                <span class="entrydetail">
+                                <?php if ($entry['meta']['extractEscape'] === false ): ?>
+                    <?= $row[1];?>
+                    <?php else :?>
+                    <?= nl2br($this->escape($row[1]));?>
+                    <?php endif;?>
+                            </span>
+            </div>
+            <?php endforeach;?>
+
+            <input type="hidden" class="hidden-json-data" value='<?=$key;?>'>
+            <div class="info-button"><img src="<? echo RES_FILE_PATH;?>/images/info_med.png"> Details</div>
+        </div>
+
+        <?php endforeach;?><!-- end foreach ($this->data[$cc] as $key => $entry)-->
+        <div class="dontPrint">
+            <span <?php echo $style;?> class="ibutton addbutton-contactform"><img src="<? echo RES_FILE_PATH;?>/images/btttt_plus.png"> <?php echo $cat['label'];?> hinzufügen</span>
+            <span class="ibutton memobutton"><img src="<? echo RES_FILE_PATH;?>/images/edit-icon.gif"> <?=$this->translate("Memo")?></span>
+            <?php if ($entry['meta']['hasHistory']) : ?>
+            <span class="ibutton historybutton"><img src="<? echo RES_FILE_PATH;?>/images/history.png"> <?=$this->translate("History")?></span>
+            <?php endif; ?>
+        </div>
+
+    </div> <!-- end div class="entries" -->
+
+</div> <!-- end start box -->
+
+<?php endforeach;?> <!-- end ?php foreach ($colcats as $cc) : ?-->
+</div> <!-- end  div#provider_<?=$colid?> -->
+
+<?php endforeach;?><!-- end foreach ($this->boxesPlacement as $colid=>$colcats)-->
+
+</div>    <!-- end  div#tab_container_provider -->
+</div><!-- end div id="fb_psychosocial_status_patientdetails_editor"-->
+<div class="clearer"></div>
+
+<!-- start dialog fb_versorger-clipboardcopy -->
+<div id="fb_versorger-clipboardcopy" style="display: none">
+    <textarea></textarea>
+</div>
+<!-- start dialog fb_versorger-memo -->
+<div id="fb_versorger-memo" style="display: none">
+    <form>
+        <input type="hidden" name="category" value="">
+        <div style="width:200px;display:inline-block;margin-right:8px;">
+            <textarea name="memo" style="height:80px;width:200px;"></textarea>
+        </div>
+        <div style="width:150px;display:inline-block;">
+            <ul>
+                <li><input name="color" value="none" type="radio"><?=$this->translate('no light');?></li>
+                <li><input name="color" value="green" type="radio"><?=$this->translate('green light');?> (<img style="width:16px;vertical-align:bottom;" src="<? echo RES_FILE_PATH;?>/images/circle_green24.png">)</li>
+                <li><input name="color" value="red" type="radio"><?=$this->translate('red light');?> (<img style="width:16px;vertical-align:bottom;" src="<? echo RES_FILE_PATH;?>/images/circle_red24.png">)</li>
+            </ul>
+        </div>
+        <div style="margin-top:4px;padding:4px;text-align:center;">
+            <input type="button" class="fb_versorger-memo-button" value="<?=$this->translate('save changes')?>">
+        </div>
+    </form>
+</div>
+
+<div id="wrapper_psychosocial_status">
+<!-- Data for POST-Request -->
+<?php foreach ($f_values as $catkey => $cat):?>
+  <input type="hidden" name="<?php echo $blockname;?>[<?php echo $catkey;?>][label]" value="<?php echo $cat['label'];?>">
+    <?php foreach ($cat['singleline'] as $linekey => $line):?>
+        <input type="hidden" name="<?php echo $blockname;?>[<?php echo $catkey;?>][singleline][]" value="<?php echo $line;?>">
+    <?php endforeach;?>
+    <?php foreach ($cat['keyvalue'] as $kvKey => $kv):?>
+    <?php foreach ($kv as $key => $value):?>
+            <input type="hidden" name="<?php echo $blockname;?>[<?php echo $catkey;?>][keyvalue][<?php echo $kvKey;?>][<?php echo $key;?>]" value="<?php echo $value;?>">
+    <?php endforeach;?>
+    <?php endforeach;?>
+<?php endforeach;?>
+<!-- END Data for Post Request -->
+
+<?php endif;?><!--endif (!$pdf):?-->
+
+<div id="fb_psychosocial_status_content">
+    <?php if(!$pdf || ($pdf && $f_values['is_data_empty'] == '1')) : ?><!-- ISPC-2381 Carmen 15.01.2021 -->
+    <?php $entryno=0;?>
+    <table id="tb_psychosoz" class="fb_psychosoz_tab_wrap">
+        <?php foreach ($f_values as $catkey => $cat):?>
+        <?php if (is_array($cat) && count($cat)):?>
+        <?php $entryno++;?>
+        <?php if($entryno%2==1):?><tr><?php $open=true;?><?php endif;?>
+        <td><table nobr="true" class="fb_psychosoz_tab">
+            <?php $content=0;?>
+            <tr><td colspan="2" class="fb_psychosoz_col_head" ><b><?php echo $cat['label'];?></b></td></tr>
+            <?php foreach ($cat['singleline'] as $linekey => $line):?>
+            <?php $content++;?>
+            <tr>
+                 <td ><?php echo $line;?></td>
+            </tr>
+            <?php endforeach;?>
+            <?php
+             //ISPC-2772 Ancuta 15.01.2021 - special display hack for contact person            
+             if($catkey == "contactperson"):?>
+	            <?php foreach ($cat['keyvalue'] as $kvKey => $kv):?>
+	             <?php foreach ($kv as $key => $value):?>
+	                <?php $content++;?>
+	            	<?php $label = (in_array($key,$emptylabel)) ? '' : $key ;?>
+	            	<?php if ($label == 'Vorname'): ?>
+	            	<?php elseif ($label == 'Nachname'): ?>
+		                <tr>
+		                    <td><?php echo $this->translate('name');?> </td>
+		                    <td><?php echo $kv['Vorname'].' '.$kv['Nachname'];?></td>
+		                </tr>
+	            	<?php else: ?>
+	                <tr>
+	                    <td><?php echo $label;?></td>
+	                    <td><?php echo $value;?></td>
+	                </tr>
+	                <?endif;?>
+	             <?php endforeach;?>
+	                <tr>
+	                     <td colspan="2" class="fb_psychosoz_empty"><br/></td>
+	                </tr>
+	            <?php endforeach;?>
+            <?php else: ?>
+            
+            
+            <?php foreach ($cat['keyvalue'] as $kvKey => $kv):?>
+             <?php foreach ($kv as $key => $value):?>
+                <?php $content++;?>
+            <?php $label = (in_array($key,$emptylabel)) ? '' : $key ;?>
+                <tr>
+                	<!-- ISPC-2381 Carmen 14.01.2021 -->
+                	<?php if($catkey != 'patient_aids') { ?>
+                    <td ><?php echo $label;?></td>
+                    <?php } ?>
+                    <?php if($catkey != 'patient_aids') { ?>
+                    <td  ><?php echo html_entity_decode($value);?></td>
+                    <?php } else { ?>
+                    <td colspan ="2"><?php echo html_entity_decode($value);?></td>
+                    <?php } ?>
+                    <!-- ISPC-2381 Carmen 14.01.2021 -->
+                </tr>
+             <?php endforeach;?>
+            <?php endforeach;?>
+            <?php endif; ?>
+            
+            <?php if($content==0):?>
+                <tr><td colspan="2">keine Einträge</td></tr>
+            <?php endif;?>
+            <tr><td></td><td class="fb_psychosoz_empty"></td></tr>
+        </table></td>
+        <?php if($entryno%2==0):?></tr><?php $open=false;?><?php endif;?>
+        <?php endif;?>
+        <?php endforeach;?>
+        <?php if($open):?></tr><?php endif;?>
+
+    </table>
+    <?php endif; ?>
+</div>
+
+<?php if (!$pdf):?>
+</div><!-- end Wrapper -->
+<?php endif;?><!--endif (!$pdf):?-->

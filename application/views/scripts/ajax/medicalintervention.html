@@ -1,0 +1,219 @@
+<?php
+ //Maria:: Migration CISPC to ISPC 20.08.2020
+ $cnt = $this->cnt;
+ $intervention = $this->intervention;
+
+ $client_medication_extra = $this->client_medication_extra;
+$dosis_other = false;
+
+if($intervention->dosis_absolute_unit != 'μg' &&
+$intervention->dosis_absolute_unit != 'mg' &&
+$intervention->dosis_absolute_unit != 'g'){
+$dosis_other = true;
+}
+
+$intervention_date_first = '';
+$intervention_time_first = '';
+$intervention_date_last = '';
+$intervention_time_last = '';
+if(!empty($intervention->first) && $intervention->first != '0000-00-00 00:00:00'){
+    $first_datetime = new DateTime($intervention->first);
+
+    $intervention_date_first = date_format($first_datetime, 'd.m.Y');
+    $intervention_time_first = date_format($first_datetime, 'H:i');
+
+
+}
+
+if($intervention->id > 0 ){
+$last = $intervention->get_field_last();
+
+    if(strlen(trim($last)) > 0 && $last != '0000-00-00 00:00:00'){
+    $last_datetime = new DateTime($last);
+
+
+    $intervention_date_last = date_format($last_datetime, 'd.m.Y');
+    $intervention_time_last = date_format($last_datetime, 'H:i');
+    }
+
+
+
+}
+
+?>
+<script>
+
+    $(document).ready(function(){
+
+        $('.datepicker').datepicker({
+            dateFormat: 'dd.mm.yy',
+            changeMonth: true,
+            changeYear: true,
+            nextText: '',
+            prevText: ''
+        });
+        $('.timepicker').timepicker({
+            hourText: 'Stunde',
+            minuteText: 'Minute'});
+
+        $('#frequency_freetext').hide();
+        <?php if($dosis_other == false): ?>
+        $('#dosis_absolute_unit_other').hide();
+        <?php endif; ?>
+        //$('#count_day_ui').hide();
+        $('#frequency_select').on('change', function(e){
+            var val = $(this).val();
+            console.log(val);
+            if(val == 'mehrfach täglich'){
+                $('#count_day_ui').show();
+            }else{
+                $('#count_day_ui').hide();
+            }
+            if(val.toLowerCase() == 'anderes'){
+                $('#frequency_freetext').show();
+            }else{
+                $('#frequency_freetext').hide();
+            }
+        })
+        $('#dosis_absolute_choice').on('change', function(e){
+            var val = $(this).val();
+            console.log(val);
+
+            if(val.toLowerCase() == 'other'){
+                $('#dosis_absolute_unit_other').show();
+            }else{
+                $('#dosis_absolute_unit_other').hide();
+            }
+        })
+    })
+</script>
+<div id="medical_errors"></div>
+<form id="medical_intervention_content_form" method="post">
+    <input type="hidden" name="interventions[id]" value="<?php echo $intervention->id; ?>">
+    <input type="hidden" name="interventions[typ]" value="medical">
+    <input type="hidden" name="interventions[proceed_group]" value="">
+    <input type="hidden" name="interventions[intervention_position]" value="">
+    <input type="hidden" name="interventions[intervention]" value="">
+    <table>
+        <tr>
+            <td>OPS-Code</td>
+            <td>
+                <input type="text" name="interventions[opscode]" value="<?php echo $intervention->opscode; ?>" id="opscode_0" class="ops_code livesearchopscode" />
+                <input name="add[hidd_opscode][<?php echo $cnt; ?>]" value="[[hidd_opscode]]" id="hidd_opscode[<?php echo $cnt; ?>]" type="hidden">
+                <div id="opsdropdown[<?php echo $cnt; ?>]" style="position:absolute;display:none;" class="listPatMedEd livesearchdropdown"></div>
+
+            </td>
+        </tr>
+        <tr>
+            <td>Name</td>
+            <td>
+                <input type="text" name="interventions[medication][praeparat]" value="<?php echo $intervention->preparation; ?>" id="medication_praep_0" class="medi_wirkstoff livesearchmedinp" />
+                <input type="button" name="mmi_search" id="mmi_search_0" value="<?php echo $this->translate('mmi_button'); ?>" class="mmi_search_button btnBlue btnMMI" />
+                <input name="addpraep[hidd_medication][[[cnt]]]" value="[[hidd_medication]]" id="hidd_medication_praep[[cnt]]" type="hidden">
+                <div id="medidropdown_preap[[cnt]]" style="position:absolute;display:none;" class="listPatMedEd livesearchdropdown"></div>
+            </td>
+        </tr>
+        <tr>
+            <td>Wirkstoff</td>
+            <td>
+                <input type="text" name="interventions[medication][wirkstoff]" value="<?php echo $intervention->active_ingredient; ?>" id="medication_0" class="medi_wirkstoff livesearchmedinp" />
+
+                <input name="add[hidd_medication][[[cnt]]]" value="[[hidd_medication]]" id="hidd_medication[[cnt]]" type="hidden">
+                <div id="medidropdown[[cnt]]" style="position:absolute;display:none;" class="listPatMedEd livesearchdropdown"></div>
+
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <?php echo $this->translate('medication_dosageform'); ?>
+            </td>
+            <td>
+                <select name="interventions[dosageform]"  data-medication_type="<?php echo $medication_type; ?>" class="medication_dosage_form referral  change_status small_input" title="<?php echo $medication_type; ?>_<?php echo $cnt;?>" rel="<?php echo $medication_type; ?>">
+                    <option value="0" >  </option>
+                    <?php foreach($client_medication_extra['dosage_form'] as $dosage_form_id => $dosage_form) :?>
+                    <?php if(!$this->err) { ?>
+                    <option value="<?php echo $dosage_form_id; ?>" <?php if($intervention->dosageform == $dosage_form_id):?> selected="selected" <?php endif; ?> ><?php echo $dosage_form;?></option>
+                    <?php } else { ?>
+                    <option value="<?php echo $dosage_form_id; ?>" <?php if($intervention->dosageform == $dosage_form_id):?> selected="selected" <?php endif; ?> ><?php echo $dosage_form;?></option>
+                    <?php } ?>
+                    <?php endforeach; ?>
+                </select>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <?php echo $this->translate('medication_type');?>:
+            </td>
+            <td>
+                <select name="interventions[medication_type]"  data-medication_type="<?php echo $medication_type; ?>"  class="medication_type referral  change_status small_input" title="<?php echo $medication_type; ?>_<?php echo $cnt;?>"  rel="<?php echo $medication_type; ?>">
+                    <option value="0" >  </option>
+                    <?php foreach($client_medication_extra['type'] as $type_id => $type) :?>
+                    <?php if(!$this->err) { ?>
+                    <option value="<?php echo $type_id; ?>" <?php if($intervention->medication_type == $type_id):?> selected="selected" <?php endif; ?> ><?php echo $type;?></option>
+                    <?php } else { ?>
+                    <option value="<?php echo $type_id; ?>" <?php if($intervention->medication_type  == $type_id):?> selected="selected" <?php endif; ?> ><?php echo $type;?></option>
+                    <?php } ?>
+                    <?php endforeach; ?>
+                </select>
+
+            </td>
+        </tr>
+        <tr>
+            <td>Häufigkeit der Gabe</td>
+            <td><?php echo $this->frequenz_ui; ?>
+                <div id="count_day_ui" style="display:inline-block;">
+                    <span class="anzahl_gaben"> Anzahl Gaben pro Tag:</span> <input type="text" class="small_input" value="<?php echo $intervention->count_day; ?>" name="interventions[count_day]">
+                </div>
+
+            </td>
+        </tr>
+
+        <tr>
+            <td>Einzeldosis absolut</td>
+
+            <td>
+                <input type="text" name="interventions[dosis_absolute]" value="<?php echo $intervention->dosis_absolute; ?>" class="small_input">&nbsp;
+                <select name="interventions[dosis_absolute_unit]" id="dosis_absolute_choice">
+                    <option value="μg" <?php if($intervention->dosis_absolute_unit == 'μg') echo 'selected="selected"'; ?>>μg</option>
+                    <option value="mg" <?php if($intervention->dosis_absolute_unit == 'mg') echo 'selected="selected"'; ?>>mg</option>
+                    <option value="g" <?php if($intervention->dosis_absolute_unit == 'g') echo 'selected="selected"'; ?>>g</option>
+                    <option value="Tropfen" <?php if($intervention->dosis_absolute_unit == 'Tropfen') echo 'selected="selected"'; ?>>Tropfen</option>
+                    <option value="other" <?php if($dosis_other == true){echo 'selected="selected"'; } ?>">Anderes</option>
+                </select>
+
+                <input id="dosis_absolute_unit_other" name="interventions[dosis_absolute_unit_other]" value="<?php echo $intervention->dosis_absolute_unit; ?>" type="text" class="small_input">
+            </td>
+
+        </tr>
+        <tr>
+            <td>Dauer in Stunden</td>
+            <td><input type="number" name="interventions[duration_hours]" value="<?php echo intval($intervention->duration_hours); ?>"></td>
+        </tr>
+        <tr>
+            <td>Interval in Stunden</td>
+            <td><input type="number"  name="interventions[interval_hours]" value="<?php echo intval($intervention->interval_hours); ?>" ></td>
+        </tr>
+        <tr>
+            <td>Erste Gabe</td>
+
+            <td><input type="text" class="datepicker small_input2" name="interventions[first]" value="<?php echo $intervention_date_first; ?>"> <input type="text" class="timepicker small_input" name="interventions[first_time]" value="<?php echo $intervention_time_first; ?>"></td>
+        </tr>
+        <tr>
+            <td>Letzte Gabe</td>
+            <td><input type="text" class="datepicker small_input2"  name="interventions[last]" value="<?php  echo $intervention_date_last; ?>"> <input type="text" class="timepicker small_input" name="interventions[last_time]" value="<?php echo $intervention_time_last; ?>">&nbsp; <label for="medical_ongoing">ist fortlaufend</label> <input type="checkbox" value="1" id="medical_ongoing" name="interventions[is_ongoing]" <?php if(intval($intervention->is_ongoing) == 1) {echo 'checked="checked"';} ?>></td>
+        </tr>
+        <tr>
+            <td>Ort der Durchführung</td>
+            <td><input type="text" name="interventions[action_place]" value="<?php echo $intervention->action_place; ?>"></td>
+        </tr>
+        <tr>
+            <td>Leitsymptom</td>
+            <td><?php echo $this->leitsymptom_ui; ?></td>
+        </tr>
+        <tr>
+            <td>Grund der Durchführung</td>
+            <td><textarea name="interventions[aim_reason]"><?php echo $intervention->aim_reason; ?></textarea></td>
+        </tr>
+
+    </table>
+</form>

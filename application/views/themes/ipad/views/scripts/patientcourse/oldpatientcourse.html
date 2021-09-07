@@ -1,0 +1,1031 @@
+<?php
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/autogrow/jquery.elastic.js');
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/jquery.blockUI.js?'.date('Ymd'));
+?>
+<script type="text/javascript">
+	//extend jquery dialog to be able to remove/add buttons on the fly!
+	$.extend($.ui.dialog.prototype, {
+		'addbutton': function(buttonName, func) {
+			var buttons = this.element.dialog('option', 'buttons');
+			buttons[buttonName] = func;
+			this.element.dialog('option', 'buttons', buttons);
+		}
+	});
+
+	$.extend($.ui.dialog.prototype, {
+		'removebutton': function(buttonName) {
+			var buttons = this.element.dialog('option', 'buttons');
+			delete buttons[buttonName];
+			this.element.dialog('option', 'buttons', buttons);
+		}
+	});
+
+var jscount = "1";
+var jcount = "1";
+var ltrjs = <?php echo $this->ltrjs ?>;
+var hotkeysjs = <?php echo $this->hotkeysjs ?>;
+var delaytrimer;
+
+	$('.anlage').each(function() {
+		$(this).parent().parent().parent().parent().prev().remove(); //remove all anlage checkboxes
+		$(this).remove(); // remove the curent selector to avoid conflicts
+	});
+
+	function keyupdelay(obj, cntr) {
+		clearTimeout(delaytrimer);
+		delaytrimer = setTimeout(function applydelay(){
+			upper(cntr);
+			chkmask(obj.value, cntr);
+			changeinput(obj.value, cntr);
+		},700);
+	}
+    function isInteger(k, edit)
+    {
+	var box = '';
+	if(edit == 1) {
+	    box = 'edit_value';
+	} else {
+	    box = 'sym_value';
+	}
+	var s = document.getElementById(box+k).value;
+	var chars = "0123456789";
+
+	if(s>10)
+	{
+	    document.getElementById(box+k).value = "";
+	    return false;
+	}
+
+	var i;
+	s = s.toString();
+	for (i = 0; i < s.length; i++)
+	{
+	    var c = s.charAt(i);
+	    if (chars.indexOf(c)==-1)
+	    {
+		document.getElementById(box+k).value = "";
+		return false;
+	    }
+	}
+	return true;
+
+
+    }
+  function chkmask(ltr,cnt)
+  {
+	var cnts = 0;
+		for(i=0; i<ltrjs.length;i++)
+	{
+
+
+	   if(ltrjs[i] == ltr)
+		{
+		  cnts++;
+		}
+	}
+
+	if(cnts<1)
+  	{
+	    document.getElementById('course_type'+cnt).value="";
+	}
+	else
+	{
+	  	$('#course_title'+cnt).focus();
+	}
+  }
+
+  $(function() {
+        $('textarea').elastic();
+
+		$('.divcheckbox').click(function(){
+
+		  var id = $(this).attr('id');
+
+		  if(this.checked==true)
+		  {
+		     $('.block_'+id).attr('checked', true);
+		  }
+		  else
+		  {
+		     $('.block_'+id).attr('checked', false);
+		  }
+		})
+    });
+
+
+  function checkboxurl(chkbx,isfilter)
+  {
+	if(!chkbx.checked)
+	{
+	   var ltrs = document.getElementsByName(chkbx.name);
+
+	   for(var j=0;j<ltrs.length;j++)
+	   {
+	    	ltrs[j].checked = false;
+	   }
+	}
+	else
+	{
+
+	  var ltrs = document.getElementsByName(chkbx.name);
+
+	   for(var j=0;j<ltrs.length;j++)
+	   {
+			ltrs[j].checked = true;
+	   }
+	}
+
+	 if(isfilter==1)
+	 {
+	     check3(chkbx);
+	 }
+	 else
+	 {
+	     check2();
+	 }
+ }
+
+ function check2()
+ {
+
+   $(".parentdiv").hide();
+    var cletters=[];
+	var chkurl = "";
+ 	var cnt = 0;
+		var hide_all = 0;
+	for (var i in ltrjs )
+	{
+			if(ltrjs[i] != '_owned'){
+				$("."+ltrjs[i]).hide();
+			}
+
+	   var ltrs = document.getElementsByName(ltrjs[i]);
+			for(var j=0;j<(ltrs.length-1);j++)
+			{
+				if($('#wrong').is(':checked')){
+					$('.wrongfilter:not(.source_entry)').show();
+					$('.wrongfilter *:not(.colleft2_inpwid):not(.source_entry)').each(function(){
+						$(this).show();
+						cnt++;
+					});
+				}
+				if(ltrs[j].name == '_owned' && ltrs[j].checked==true){
+					hide_all = (hide_all+1);
+				}
+
+				if(ltrs[j].name == '_shared' && ltrs[j].checked==true){
+					hide_all = (hide_all+1);
+				}
+
+				if(ltrs[j].checked == true )
+	   {
+
+				$("."+ltrs[j].name).parent().parent().parent().show();
+			    $("."+ltrs[j].name).show();
+				cnt++;
+			}
+				else if(ltrs[j].name != '_owned')
+			{
+			   $("."+ltrs[j].name).hide();
+			}
+	   }
+	}
+
+	if(cnt==0)
+    {
+		 $(".parentdiv").show();
+		 for (var i in ltrjs )
+		 {
+			$("."+ltrjs[i]).show();
+		 }
+    }
+
+		if(hide_all>=2) {
+			$(".parentdiv").hide();
+		}
+  }
+
+  function check3(chks)
+  {
+		var sel_chks = 1;
+	  var cletters=[];
+	  var chkurl = "";
+	  var cnt = 0;
+
+
+		for (var i in ltrjs )
+		{
+			var ltrs = document.getElementsByName(ltrjs[i]);
+
+			for(var j=0;j<(ltrs.length-1);j++)
+			{
+				if(ltrs[j].checked==true){
+					sel_chks = (sel_chks+1);
+				}
+			}
+		}
+
+		if(sel_chks ==1){
+			$(".parentdiv").hide();
+		}
+
+	 if(chks.checked)
+	 {
+			$(".wrongfilter:not(.source_entry)").show();
+			if($('#wrong').is(':checked')){
+				$('.wrongfilter:not(.source_entry)').show();
+				$('.wrongfilter *:not(.colleft2_inpwid):not(source_entry)').each(function(){
+					$(this).show();
+				});
+	 }
+		}
+	 else
+	 {
+		check2();
+	 }
+
+  }
+
+</script>
+<script type="text/javascript" src="<?php echo RES_FILE_PATH;  ?>/javascript/livesearch/patientcourse.js"></script>
+
+<script type="text/javascript">
+
+
+	<?php echo $this->callcourse; ?>
+
+	function upper(v)
+	{
+		document.getElementById("course_type"+v).value = document.getElementById("course_type"+v).value.toUpperCase();
+	}
+
+	for(var k=0; k<hotkeysjs.length;k++)
+	{
+		var ads = k+1;
+		shortcut.add('Ctrl+Alt+'+hotkeysjs[k],function(e) {
+			if($('input[name='+String.fromCharCode(e.keyCode)+']').is(':checked'))
+			{
+				$('input[name='+String.fromCharCode(e.keyCode)+']').removeAttr('checked');
+
+			}
+			else
+			{
+				$('input[name='+String.fromCharCode(e.keyCode)+']').attr('checked','checked');
+			}
+
+			checkboxurl(document.getElementById($('input[name='+String.fromCharCode(e.keyCode)+']').attr('id')));
+		});
+	}
+	var isdischarged = "<?php echo $this->isdischarged ?>";
+
+	function printaction()
+	{
+		document.frmcourse.action = "patientcourse/printcourse?id=<?php echo $this->pid ?>";
+		document.frmcourse.target = "_blank";
+		document.frmcourse.submit();
+	}
+
+	function closepopup()
+	{
+		disablePopup();
+	}
+
+
+function openPopup(chkbx,id, skip_modal){
+
+		var checkid = $(chkbx).attr('id');
+		var ids = "";
+		var quamma = "";
+
+		for(i=0;i<$('.block_'+checkid).length;i++)
+		{
+			ids = ids + quamma + ($('.block_'+checkid)[i].id);
+			quamma = ",";
+		}
+
+		if(chkbx.checked)
+		{
+			$("<input type='hidden' name='comments["+id+"]' id='comment_"+id+"' value='' />").appendTo("#frmcourse");
+
+			$('#contactArea').html('<iframe id="add_family_doc" frameborder="0" src="" scrolling="no" style="margin:0 auto;"></iframe>');
+
+
+			centerPopup({sr:'about:blank',ht:250,wt:450});
+			$('#contactArea').html('<div><?php echo $this->translate('wrongcomment'); ?><div align="right"><a id="popupContactClose" style="cursor:pointer;" onclick="uncheckbox(\''+checkid+'\');closepopup()">x</a></div></div><div><textarea name="comment" id="comment"></textarea></div><div><br/><br/><br/><br/><input type="button" class="koment-button2" name="" onClick="saveComment(\''+id+'\',\''+ids+'\',\''+checkid+'\');" value="<?php echo $this->translate('submit'); ?>" /> <br/></div>');
+			loadPopup();
+			} else {
+
+			$("#comment_"+id).remove();
+
+			ajaxCallserver({url:'patientcourse/savewrongcd?ids='+ids+'&val=0&blockcnt='+checkid});
+		}
+
+	}
+
+
+	function saveComment(id,ids,blockid)
+	{
+	var val = "";
+	var modal_mode = '0';
+
+		if($("#comment").val().length>0)
+		{
+			val="<?php echo ("Dieser Eintrag wurde als gelöscht markiert. Begründung : ") ?>" + $("#comment").val();
+
+			$("#comment_"+id).val(val);
+
+			ajaxCallserver({url:'patientcourse/savewrongcd',
+				method:'POST',
+				data:{comment:val,val:1,ids:ids,blockcnt:blockid}});
+
+			disablePopup();
+
+		var arr_medis = ["M", "N", "I", "Q"];
+		var arr_diag = ["D","H"];
+
+		$('.courses_types_'+blockid).each(function(){
+			if(jQuery.inArray($(this).val(), arr_medis)>=0){
+
+				if(modal_mode == '0'){
+					if($(this).val() == 'Q' && $(this).attr('rel') != 0){
+						modal_mode = '1';
+					} else if($(this).val() != 'Q') {
+						modal_mode = '1';
+					}
+
+
+				}
+
+			}
+			if(jQuery.inArray($(this).val(), arr_diag)>=0) {
+				if(modal_mode == 0){
+					modal_mode = '2';
+				}
+			}
+		});
+
+		switch (modal_mode) {
+			case '1':
+				//modal medis with ok
+				$('#delete_medis').show();
+				$('#modal_redir_type').val('M');
+
+				$('#modal_delete').dialog('open');
+				break;
+			case '2':
+				//modal diag with ok
+				$('#delete_diag').show();
+				$('#modal_redir_type').val('D');
+
+				$('#modal_delete').dialog('open');
+				break;
+			default:
+		}
+	}
+		else
+		{
+	  jAlert('<?php echo $this->translate('entercomment')?>');
+		}
+	}
+	
+	
+	function diag_button(){
+		window.location = appbase+'patient/patdiagnoedit?id=<?php echo $_REQUEST['id']; ?>';
+		$('#modal_delete').dialog('close');
+	}
+
+	function medi_button(){
+		window.location = appbase+'patient/patientmedication?id=<?php echo $_REQUEST['id']; ?>';
+		$('#modal_delete').dialog('close');
+	}
+	
+	var callBackWrong = function(params){
+
+		if(params.val==1)
+		{
+			$("#wrongcomment_"+params.id).show();
+			$("#wrongcomment_"+params.id).html(params.comment);
+			$('#maindiv_'+params.id).addClass('wrongfilter');
+
+			$('#maindiv_'+params.id).addClass('greyclass');
+			$('.wrc_'+params.id).find('font').attr('color','#cccccc');
+			$('.wrt_'+params.id).find('font').attr('color','#cccccc');
+		}
+		else
+		{
+			$('#maindiv_'+params.id).removeClass('greyclass');
+			$('#maindiv_'+params.id).removeClass('wrongfilter');
+
+			$('#wrongcomment_'+params.id).hide();
+
+
+
+			for(i=0;i<$('.wrc_'+params.id).length;i++)
+			{
+				var crid = ($('.wrc_'+params.id)[i].id);
+				var crtid = ($('.wrt_'+params.id)[i].id);
+				var oldcolor = $('#old_'+crid.substr(('wrc_').length)).val();
+
+				$('#'+crid).find('font').attr('color','#'+oldcolor);
+				$('#'+crtid).find('font').attr('color','#'+oldcolor);
+			}
+
+
+		}
+	}
+
+	function uncheckbox(chk)
+	{
+		$('#'+chk).attr('checked',false);
+
+	}
+	function appendto(rowId,inputValue){
+		var modulepriv = '<?php echo $this->modulepriv; ?>';
+		var modulepriv_bavaria = '<?php echo $this->modulepriv_bav; ?>';
+
+		//we get all inputs values every time something changes so if user skip a box.. we have the rest 2 and so on
+		if(($('#name'+rowId).val() != "Name" && $('#dosage'+rowId).val() != "Dosierung") || ($('#todo'+rowId).val() != "TODO" && $('#till'+rowId).val() != "Till When" && $('#user'+rowId).val() != "0")
+			|| ($('#diagnosis'+rowId).val() != "Beschreibung" )){
+
+			if($('#course_type'+rowId).val() == "M" || $('#course_type'+rowId).val() == "N" || $('#course_type'+rowId).val() == "I"){
+				text = $('#name'+rowId).val()+' | '+$('#dosage'+rowId).val()+' | '+$('#komment'+rowId).val()
+			} else if($('#course_type'+rowId).val() == "W"){
+				text = $('#todo'+rowId).val()+' |---------| '+$('#user'+rowId).val()+' |---------| '+$('#till'+rowId).val();
+
+			} else if($('#course_type'+rowId).val() == "P"){
+				text = $('#medi_name'+rowId).val()+' | '+$('#dosage'+rowId).val()+'  | '+$('#comments'+rowId).val();
+			} else if(($('#course_type'+rowId).val() == "U" || $('#course_type'+rowId).val() == "V") || ($('#course_type'+rowId).val() == "XT" && (modulepriv == "1" || modulepriv_bavaria == "1") )) {
+
+				if($('#course_type'+rowId).val() == "U" && modulepriv != "1"){
+					//appended the select value to time
+					if($('#time'+rowId).val() == "Zeit (in Minuten)" || $('#time'+rowId).val()=="" || $('#time'+rowId).val()==" "){//set time default value if left empty
+						time = $('#uSelect'+rowId).val()+" | 10";
+					} else {
+						time = $('#uSelect'+rowId).val()+" | "+$('#time'+rowId).val();
+					}
+				} else if($('#course_type'+rowId).val() == "U" && modulepriv == "1"){ //LNR client only
+					//appended the select value to time
+					if($('#time'+rowId).val() == "Zeit (in Minuten)" || $('#time'+rowId).val()=="" || $('#time'+rowId).val()==" "){//set time default value if left empty
+						time = $('#uSelect'+rowId).val()+" | 15";
+					} else {
+						time = $('#uSelect'+rowId).val()+" | "+$('#time'+rowId).val();
+					}
+				} else if($('#course_type'+rowId).val() == "XT" && modulepriv == "1"){//LNR CLient Z=>XT(telefon) shortcut
+					//appended the select value to time
+					if($('#time'+rowId).val() == "Zeit (in Minuten)" || $('#time'+rowId).val()=="" || $('#time'+rowId).val()==" "){//set time default value if left empty
+						time ="12";
+					} else {
+						time = $('#time'+rowId).val();
+					}
+				}
+				else if($('#course_type'+rowId).val() == "XT" && modulepriv_bavaria == "1"){//LNR CLient Z=>XT(telefon) shortcut
+					//appended the select value to time
+					if($('#time'+rowId).val() == "Zeit (in Minuten)" || $('#time'+rowId).val()=="" || $('#time'+rowId).val()==" "){//set time default value if left empty
+						time ="5";
+					} else {
+						time = $('#time'+rowId).val();
+					}
+				}
+
+				if($('#course_type'+rowId).val() == "V"){
+					if($('#time'+rowId).val() == "Zeit (in Minuten)" || $('#time'+rowId).val()=="" || $('#time'+rowId).val()==" "){//set time default value if left empty
+						time = "8";
+					} else {
+						time = $('#time'+rowId).val();
+					}
+				}
+
+				if($('#course_type'+rowId).val() == "U" && modulepriv != "1"){
+					if($('#komment'+rowId).val() == "Grund / Anlass" || $('#komment'+rowId).val()=="" || $('#komment'+rowId).val()==" "){//set kommentar default value if left empty
+						komment = "Situation stabil, heute kein Besuch notwendig, Kontakt f. Folgetag vereinbart";
+					} else {
+						komment = $('#komment'+rowId).val();
+					}
+				} else if($('#course_type'+rowId).val() == "U" && modulepriv == "1"){ //LNR Client Only
+					if($('#komment'+rowId).val() == "Grund / Anlass" || $('#komment'+rowId).val()=="" || $('#komment'+rowId).val()==" "){//set kommentar default value if left empty
+						komment = "Beratung";
+					} else {
+						komment = $('#komment'+rowId).val();
+					}
+				} else if($('#course_type'+rowId).val() == "XT" && modulepriv == "1"){
+					if($('#komment'+rowId).val() == "Grund / Anlass" || $('#komment'+rowId).val()=="" || $('#komment'+rowId).val()==" "){//set kommentar default value if left empty
+						komment = "Situation stabil, heute kein Besuch notwendig, Kontakt f. Folgetag vereinbart";
+					} else {
+						komment = $('#komment'+rowId).val();
+					}
+				}
+				else if($('#course_type'+rowId).val() == "XT" && modulepriv_bavaria =="1")
+				{
+					if($('#komment'+rowId).val() == "Grund / Anlass" || $('#komment'+rowId).val()=="" || $('#komment'+rowId).val()==" "){//set kommentar default value if left empty
+						komment = "Telefonat bzgl. der aktuellen Situation";
+					} else {
+						komment = $('#komment'+rowId).val();
+					}
+				}
+				if($('#course_type'+rowId).val() == "V"){
+					if($('#komment'+rowId).val() == "Grund / Anlass" || $('#komment'+rowId).val()=="" || $('#komment'+rowId).val()==" "){//set time default value if left empty
+						komment = "Koordinationsleistung";
+					} else {
+						komment = $('#komment'+rowId).val();
+					}
+				}
+
+				text = time+' | '+komment+' | '+$('#date'+rowId).val();
+			} else if($('#course_type'+rowId).val() == "D" || $('#course_type'+rowId).val() == "H"){
+				icdId = $('#hidd_icdnumber'+rowId).val();
+
+				if($('#icdnumber'+rowId).val() == "ICD"){
+					icdField = "";
+				} else {
+					icdField = $('#icdnumber'+rowId).val();
+				}
+
+				text = icdId + ' | '+icdField+' | '+$('#diagnosis'+rowId).val();
+			}
+
+			$('#course_title'+rowId).val(text);
+		} else {
+			$('#course_title'+rowId).text("");
+		}
+	}
+
+	var jarr = <?php echo $this->jdarr ?>;
+	var jsdiagnosismeta = <?php echo $this->jsdiagnosismeta ?>;
+	var jcount = jscount+1;
+	var dcntr = jscount;
+	var diagnosisblur = Array();
+	var icddiagnosisblur = Array();
+	var diagnosisblur_ed = Array();
+
+	function changeinput(shortcut, id){
+		idplus = id +1;
+		idminus = id -1;
+		$('#course_title'+id).val('');
+		if((shortcut == "M" || shortcut == "I" || shortcut == "N" || shortcut == "m" || shortcut == "i" || shortcut == "n")){ //medications
+			if($('#hidd'+id).length > 0){
+				$('#hidd'+id).hide("slow").remove();
+				$('#course_title'+id).text("");
+			}
+
+			newInputs = '<div id="hidd'+id+'" class="newRow"><input type="text" id="name'+id+'"class="caret" name="name[]" value="Name" onfocus="if(this.value == \'Name\') { this.value=\'\'}" onblur="if(this.value == \'\'){ this.value=\'Name\' } else { appendto(\''+id+'\',this.value) }" /><input type="text" id="dosage'+id+'" name="dosage[]" class="caret"  value="Dosierung" onfocus="if(this.value == \'Dosierung\') { this.value=\'\'}" onblur="if(this.value == \'\'){ this.value=\'Dosierung\' } else { appendto(\''+id+'\',this.value) }" /><input type="text" id="komment'+id+'" name="komment[]" class="caret"  value="Kommentar" onfocus="if(this.value == \'Kommentar\') { this.value=\'\'};" onblur="if(this.value == \'\'){ this.value=\'Kommentar\' } else { appendto(\''+id+'\',this.value) }"/></div>';
+			$('#listcoursesession_course_title'+id).append(newInputs);
+			$('#course_title'+id).hide("slow");
+			$('#listcoursesession_course_title'+id).show("slow");
+
+
+			if(jQuery.inArray(shortcut, ltrjs)){
+				$('#name'+id).focus();
+			}
+
+		} else if(shortcut == "W" || shortcut=="w") { // To Do
+
+			if($('#hidd'+id).length > 0){
+				$('#hidd'+id).hide("slow").remove();
+				$('#course_title'+id).text("");
+			}
+			usersSelect = '<?php $attrs = array ("onblur" => "appendto(\''+id+'\',this.value)", "", "class" => "caret");
+	echo str_replace("\n", "", $this->formSelect("user'+id+'", "", $attrs, $this->users)); ?>';
+			newInputs = '<div id="hidd'+id+'" class="newRow"><input type="text" id="todo'+id+'" class="caret" name="todo[]" value="TODO" onfocus="if(this.value == \'TODO\') { this.value=\'\'}" onblur="if(this.value == \'\'){ this.value=\'TODO\' } else { appendto(\''+id+'\',this.value) }" />'+usersSelect+'<input type="text" id="till'+id+'" name="till[]" class="caret" value="<?php echo date("d.m.Y"); ?>"  onfocus="appendto(\''+id+'\',this.value);" change="if(this.value == \'\'){ this.value=\'Till When\' } else { appendto(\''+id+'\',this.value);}"/></div>';
+
+			$('#listcoursesession_course_title'+id).append(newInputs);
+
+
+			$('#course_title'+id).hide("slow");
+			$('#listcoursesession_course_title'+id).show("slow", function(){
+				$('#till'+id).datepicker({
+					dateFormat: 'dd.mm.yy',
+					showOn: "both",
+					buttonImage: $('#calImg').attr('src'),
+					buttonImageOnly: true,
+					changeMonth: true,
+					changeYear: true,
+					nextText: '',
+					prevText: '',
+					onSelect: function(date) { appendto(id,date.value);}
+				});
+			});
+			appendto(id,'<?php echo date("d.m.Y"); ?>');
+			if(jQuery.inArray(shortcut, ltrjs)){
+				$('#todo'+id).focus();
+			}
+
+		} else if((shortcut == "U" || shortcut == "V" || shortcut == "XT" || shortcut == "u" || shortcut == "v" || shortcut == "xt")) { //Koordination and Telefon
+			if($('#hidd'+id).length > 0){
+				$('#hidd'+id).hide("slow").remove();
+				$('#course_title'+id).text("");
+			}
+
+			$("#time"+id).live("keyup input paste", function(){
+				setTimeout(jQuery.proxy(function() {
+					this.val(this.val().replace(/[^0-9]/g, ''));
+				}, $(this)), 0);
+			});
+
+			if(shortcut == "U" || shortcut == "u"){
+				var uSelect = '<select id="uSelect'+id+'" name="uSelect[]" class="bertrag_select"><option value="mit Betroffenen">mit Betroffenen</option><option value="mit Leistungserbringer">mit Leistungserbringer</option></select>';
+				var uSizeDate = '95';
+				var uclass_min = 'bertrag_min'
+			} else {
+				var uSelect = '';
+				var uclass_min = ''
+				var uSizeDate = '250';
+			}
+
+			newInputs = '<div id="hidd'+id+'" class="newRow">'+uSelect+'<input type="text" pattern="[0-9]*" id="time'+id+'"class="caret minutes '+uclass_min+'" name="time[]" value="Zeit (in Minuten)" onfocus="if(this.value == \'Zeit (in Minuten)\') { this.value=\'\'}" onblur="if(this.value == \'\'){ this.value=\'Zeit (in Minuten)\' } else { appendto(\''+id+'\',this.value) }" /><input type="text" id="komment'+id+'"class="caret komment" name="komment[]" value="Grund / Anlass" onfocus="if(this.value == \'Grund / Anlass\') { this.value=\'\'}" onblur="if(this.value == \'\'){ this.value=\'Grund / Anlass\' } else { appendto(\''+id+'\',this.value) }" /><input type="text" id="date'+id+'" name="date[]" class="caret dateselect"  value="<?php echo date("d.m.Y"); ?>" onfocus="appendto(\''+id+'\',this.value);" change="if(this.value == \'\'){ this.value=\'Date\' } else { appendto(\''+id+'\',this.value) }"/></div>';
+
+			$('#listcoursesession_course_title'+id).append(newInputs);
+			$('#course_title'+id).hide("slow");
+
+			$('#listcoursesession_course_title'+id).show("slow", function(){
+
+				$('#date'+id).datepick({onSelect: function(date) { appendto(id,date.value);}, showOnFocus:true,showTrigger: '#calImg'});
+			});
+			appendto(id,'<?php echo date("d.m.Y"); ?>');
+			if(jQuery.inArray(shortcut, ltrjs)){
+				$('#time'+id).focus();
+			}
+
+		} else if((shortcut == "D" || shortcut == "H" || shortcut == "d" || shortcut == "h")){ //Diagnosis and Hauptdiagnosen
+			if($('#hidd'+id).length > 0){
+				$('#hidd'+id).hide("slow").remove();
+				$('#course_title'+id).text("");
+			}
+			newInputs = '<div id="hidd'+id+'" class="newRow"><input name="icdnumber[1]" id="icdnumber'+id+'" class="livesearchicdinp caret" value="ICD"  style="width:45px;" type="text" onfocus="if(this.value == \'ICD\') { this.value=\'\'}" onblur="if(this.value == \'\'){ this.value=\'ICD\' } else { appendto(\''+id+'\',this.value) }" /><div id="icddiagnodropdown'+id+'"  class="icdlivesearchdropdown" style="position: absolute; display:none;"></div><input name="diagnosis['+id+']" id="diagnosis'+id+'" value="Beschreibung" size="33" class="livesearchinp caret" type="text"  onfocus="if(this.value == \'Beschreibung\') { this.value=\'\'}" onblur="if(this.value == \'\'){ this.value=\'Beschreibung\' } else { appendto(\''+id+'\',this.value) }" />     <input name="hidd_icdnumber['+id+']" value="" id="hidd_icdnumber'+id+'" type="hidden">    <input name="hidd_diagnosis['+id+']" value="" id="hidd_diagnosis'+id+'" type="hidden">    <input name="hidd_tab['+id+']" value="" id="hidd_tab" type="hidden"><div id="diagnodropdown'+id	+'" class="samtablistDiognoDrp livesearchdropdown" style="position: absolute; display:none;"></div></div>';
+
+			$('#listcoursesession_course_title'+id).append(newInputs);
+			$('#course_title'+id).hide("slow");
+			$('#listcoursesession_course_title'+id).show("slow");
+
+
+			//new version
+			$('.livesearchicdinp').live('keydown', function() {
+				var input_row = parseInt($(this).attr('id').substr(('icdnumber').length));
+				reset_diagnosis(input_row);
+			}).liveSearch({
+				url: 'ajax/diagnosis?mode=icdnumber&q=',
+				id: 'livesearch_admission_diagnosis',
+				aditionalWidth: '560',
+				noResultsDelay: '1200',
+				typeDelay: '1200',
+				returnRowId: function (input) {return parseInt($(input).attr('id').substr(('icdnumber').length));}
+			});
+
+			//livesearch diagnosis description ls
+			$('.livesearchinp').live('keydown', function() {
+				var input_row = parseInt($(this).attr('id').substr(('diagnosis').length));
+				reset_diagnosis(input_row);
+			}).liveSearch({
+				url: 'ajax/diagnosis?q=',
+				id: 'livesearch_admission_diagnosis',
+				aditionalWidth: '0',
+				noResultsDelay: '1200',
+				typeDelay: '1200',
+				returnRowId: function (input) {return parseInt($(input).attr('id').substr(('diagnosis').length));}
+			});
+
+		} else if(shortcut == "P" || shortcut == "p") {
+			$('#hidd'+id).remove();
+
+			var medications_list = <?php echo json_encode($this->patient_medications); ?>;
+
+			//create medication dropdown!
+			var dropdown_list = '<select id="medications-'+id+'" class="medications_dd" rel="'+id+'" name="verlauf_edit['+idminus+']">';
+
+			$.each(medications_list, function(i, item) {
+
+				if(i == '999999999'){
+					dropdown_list += '<option value="0">'+item+'</option>';
+				} else {
+					dropdown_list += '<optgroup label="'+jsTranslate[i]+'">';
+					$.each(item, function(key, value) {
+						dropdown_list += '<option value="'+key+'">'+value+'</option>';
+					});
+					dropdown_list += '</optgroup>';
+				}
+			});
+			dropdown_list += '</select>';
+
+
+			newInputs = '<div id="hidd'+id+'">'+dropdown_list+'<div id="medication-content-'+id+'" style="display:none;">';
+			newInputs += '<input type="hidden" id="medi_id'+id+'" name="id_medication['+idminus+']" value=""/>';
+			newInputs += '<input type="hidden" id="drid'+id+'" name="drid['+idminus+']" value=""/>';
+			newInputs += '<input type="text" id="medi_name'+id+'" name="medication['+idminus+']" value="" class="medi_name" />';
+			newInputs += '<input type="text" id="dosage'+id+'" name="dosage['+idminus+']" value="" class="medi_dosage" />';
+			newInputs += '<input type="text" id="comments'+id+'" name="comments['+idminus+']" value="" class="medi_comment" />';
+			newInputs += '<label for="delete'+id+'">absetzen<input type="checkbox" id="delete'+id+'" name="delete[]" value="1" class="medi_delete" /></label><br />';
+			newInputs +='</div></div>';
+
+
+			$('#listcoursesession_course_title'+id).append(newInputs);
+			$('#course_title'+id).hide("slow");
+			$('#listcoursesession_course_title'+id).show("slow");
+		} else if(shortcut == "S" || shortcut == "s") {
+			$('#hidd'+id).remove();
+
+			var symptoms = <?php echo json_encode($this->symptoms_data); ?>;
+			var symptoms_select = '<?php echo $this->sympt_view_select; ?>';
+
+			//create sym dropdown!
+			var dropdown_list = '<div style="clear:both;" ></div><table class="datatable" id="verlauf">';
+			$.each(symptoms, function(i, item) {
+			    if(i != '999999999'){
+					dropdown_list += '<tr><td colspan="3"><b>'+i+'</b></td></tr>';
+					$.each(item, function(key, value) {
+					    dropdown_list += '<tr>';
+						dropdown_list += '<td class="row_symptom">';
+						dropdown_list += '<span>'+value+'</span>';
+						dropdown_list += '<input type="hidden" value="'+key+'" id="symptom-'+id+'" name="symptom['+idminus+'][]" />';
+						dropdown_list += '</td>';
+					    dropdown_list += '<td class="row_value">';
+					    if(symptoms_select == "a"){
+					    	 dropdown_list += '<select  id="sym_value'+key+'-'+id+'" name="sym_value['+idminus+'][]"  class="sym_val" ><option value=""></option><option value="0">kein</option><option value="4">leicht</option><option value="7">mittel</option><option value="10">schwer</option> </select>';
+					    } else{
+						    dropdown_list += '<input pattern="[0-9]*" type="text" id="sym_value'+key+'-'+id+'" name="sym_value['+idminus+'][]" value="" class="sym_val" onkeyup="isInteger(\''+key+'-'+id+'\')" style="width:25px; margin-left:5px; text-align:left; float:left; padding: auto;" />';
+
+					    }
+					    dropdown_list += '</td>';
+					    dropdown_list += '<td class="row_comment">';
+					    dropdown_list += '<input type="text" id="sym_coment'+id+'" name="sym_coment['+idminus+'][]" value="" class="sym_coment" style="margin-left:5px; text-align:left; float:left; padding: auto;" />';
+					    dropdown_list += '</td>';
+					    dropdown_list += '</tr>';
+					});
+				}
+
+
+
+			});
+			dropdown_list += '</table>';
+
+
+			newInputs = '<div id="hidd'+id+'">'+dropdown_list+'';
+			newInputs +='</div>';
+
+
+			$('#listcoursesession_course_title'+id).append(newInputs);
+			$('#course_title'+id).hide("slow");
+			$('#listcoursesession_course_title'+id).show("slow");
+
+		} else {
+			$('#course_title'+id).show("slow");
+			$('#hidd'+id).hide("slow").remove();
+			$('#course_title'+id).val('');
+		}
+
+	}
+
+	function reset_diagnosis(input_row){
+		if($('#hidd_tab'+input_row).val() != 'text'){
+			$('#hidd_icdnumber'+input_row).val('');
+			$('#hidd_diagnosis'+input_row).val('');
+			$('#hidd_tab'+input_row).val('text');
+		}
+	}
+	function selectDiagnosis(did, row)
+	{
+		$('#icdnumber'+row).val($('#diag_icd_'+did).val());
+		$('#diagnosis'+row).val($('#diag_de_'+did).val());
+		$('#hidd_icdnumber'+row).val($('#diag_id_'+did).val());
+		$('#hidd_diagnosis'+row).val($('#diag_id_'+did).val());
+		$('#hidd_tab'+row).val('dig');
+		$('#icdnumber'+row).blur(); //why you no lose focus?
+	}
+	
+	function checkFields(formname){
+		$('.caret').each( function(){
+			if($(this).val() != "Name" && $(this).val != "Kommentar" && $(this).val() != "Dosierung" && $(this).val() != "TODO" && $(this).val() != "Beschreibung"){
+				if(checkdischargednew(formname)){
+					var submitstr = "document."+formname+".submit()";
+					eval(submitstr);
+				}
+			} else {
+
+				jConfirm('Empty fields, do you want to continue', '', function(r) {
+					if(r && checkdischargednew(formname)){
+						var submitstr = "document."+formname+".submit()";
+						eval(submitstr);
+						//return true;
+					}
+				});
+				return false;
+			}
+		});
+		return false;
+	}
+	function closediaearch(ele)
+	{
+		id = $(ele).attr('id');
+		$('#diagnodropdown'+id).hide();
+		$('#icddiagnodropdown'+id).hide();
+		$('.focused').removeClass('focused');
+
+	}
+	$(document).ready(function(){
+
+$('#modal_delete').dialog({
+	autoOpen: false,
+	modal: true,
+	resizable: false,
+	width:500,
+	buttons: {
+		"<?php echo $this->translate('yesconfirm'); ?>": function() {
+			switch($('#modal_redir_type').val()){
+				case 'D':
+					window.location = appbase+'patient/patdiagnoedit?id=<?php echo $_REQUEST['id']; ?>';
+					break;
+				case 'M':
+					window.location = appbase+'patient/patientmedication?id=<?php echo $_REQUEST['id']; ?>';
+					break;
+
+				default:
+					break;
+			}
+			$(this).dialog("close");
+		},
+		"<?php echo $this->translate('noconfirm'); ?>": function() {
+			$(this).dialog("close");
+		}
+	},
+	close: function () {
+		//reset message divs on close
+		$('#modal_delete p').each(function() { $(this).hide(); });
+		$('#modal_delete').dialog('removebutton', 'Medications');
+		$('#modal_delete').dialog('removebutton', 'Diagnosis');
+	}
+});
+});
+
+		$('.medications_dd').live('change', function(){
+			var medi_data = $(this).val().split('-');
+			var element_row = $(this).attr('rel');
+
+			//clear inputs
+			$('#medi_name'+element_row).val('');
+			$('#dosage'+element_row).val('');
+			$('#comments'+element_row).val('');
+			$('#ListNew').block({
+				message: "<h1>"+jsTranslate['loadingpleasewait']+"</h1>",
+				css: {
+					border: 'none',
+					padding: '15px',
+					backgroundColor: '#000',
+					'-webkit-border-radius': '10px',
+					'-moz-border-radius': '10px',
+					opacity: .5,
+					color: '#fff'
+				}
+			});
+			$.ajax({
+				type: "POST",
+				url: "patientcourse/requestmedicationdata?id=<?php echo $_REQUEST['id']; ?>&mid="+medi_data[0]+"&mmid="+medi_data[1],
+				async: true,
+				success: function(response)	{
+					var obj = $.parseJSON(response);
+
+					$('#medi_name'+element_row).val(''+obj.medi_name+'');
+					$('#dosage'+element_row).val(''+obj.dosage+'');
+					$('#comments'+element_row).val(''+obj.comments+'');
+					$('#delete'+element_row).val(''+obj.id+'');
+					$('#delete'+element_row).attr('name','delete['+obj.id+']');
+					$('#medi_id'+element_row).val(''+obj.medication_master_id+'');
+					$('#drid'+element_row).val(''+obj.id+'');
+					$('#medication-content-'+element_row).show('slow');
+					$('#ListNew').unblock();
+					selectdignosis('<?php echo $_REQUEST['id']; ?>',new Number(element_row+1));
+				}
+			});
+		});
+function switch_inputs(that)
+{
+    if(that.val() != "0") {
+	$('#sym_value'+that.attr('rel')).attr("readonly", false);
+	$('#sym_coment'+that.attr('rel')).attr("readonly", false);
+    } else {
+	$('#sym_value'+that.attr('rel')).attr("readonly", true);
+	$('#sym_coment'+that.attr('rel')).attr("readonly", true);
+    }
+}
+</script>
+
+<div style="display: none;"> <img id="calImg" src="<?php echo RES_FILE_PATH;  ?>/images/calendar.png" alt="Popup" class="trigger"> </div>
+<?php echo $this->patientinfo ?>
+<?php echo $this->tabmenus ?>
+<div class="tab_container">
+<br />
+
+<div id="MainContent">
+	 <h1><?php echo $this->translate('patientcoursedocs')?></h1>
+	<div class="CheckBoxes" style="display:<?php echo $this->style ?>">
+
+		<div class="scroll_item">
+			<a href="javascript:scroll(99999999,999999999)" id="upscroll"><span class="scroll_item_label">Zum Ende der Seite scollen</span><img src="images/gobottom.png" class="gotobottom" alt="" /></a>
+		</div>
+		<p><strong>Filter:</strong></p>
+
+		<div class="listcoursechecks_main_div">
+			<?php echo $this->gridchecks ?>
+			<label>
+				<input name="wrong" id="wrong" type="checkbox" value="1" onclick="checkboxurl(this,1)" />
+				<?php echo $this->translate('wrongfilter') ?>
+			</label>
+		</div>
+		<div class="listcoursechecks_main_div">
+	 <?php if($this->hasSharedShortcuts):  ?>
+			<label>
+				<input name="_shared" id="shared" type="checkbox" value="1" onclick="checkboxurl(this,0)" />
+				<font><?php echo $this->translate('hide_owned_entryes');  ?></font>
+			</label>
+			<?php endif;  ?>
+		</div>
+		<div class="listcoursechecks_main_div">
+			<?php if($this->hasSharedShortcuts):  ?>
+			<label>
+				<input name="_owned" id="shared" type="checkbox" value="1" onclick="checkboxurl(this,0)" />
+				<font><?php echo $this->translate('hide_other_client_entryes');  ?></font>
+			</label>
+			<?php endif;  ?>
+		</div>
+	 </div>
+
+	<div id="ListBox" class="clearer"  style="display:<?php echo $this->style ?>">
+      <?php echo $this->gridcourse ;?>
+	</div>
+
+	<div class="ClrBoth"></div>
+
+<form action="<?php echo $this->act ?>" method="post" name="frmcourse" id="frmcourse" autocomplete="off" >
+		<input type="hidden" id="1" name="triggerformid" value="1"/>
+
+		<div class="ListNew" style="display:<?php echo $this->coursestyle ?>" id="ListNew">
+			<div class="LeftContent01 left" id="focusdate">
+				<?php echo $this->curr_date ?>
+			</div>
+			<div class="RightContent01 left">
+				<span class="err"><?php echo $this->error_shortcut; ?></span>
+				<?php echo $this->gridcoursetaks; ?>
+			</div>
+			<div class="ClrBoth"></div>
+			<div class="ClrBoth"></div>
+			<p>
+				<input type="submit" name="btnsubmit" id="btnsubmit" value="<?php echo $this->translate('submit') ?>" class="button">
+			</p>
+		</div>
+
+
+		<div class="CheckBoxes">
+			<p><strong><?php echo $this->translate('filter'); ?>:</strong></p>
+			<div class="listcoursechecks_main_div">
+				<?php echo $this->gridchecks ?>
+				<label>
+					<input name="wrong" id="wrong" type="checkbox" value="1" onclick="checkboxurl(this,1)" />
+					<?php echo $this->translate('wrongfilter') ?>
+				</label>
+			</div>
+		<div class="listcoursechecks_main_div">
+	 <?php if($this->hasSharedShortcuts):  ?>
+			<label>
+				<input name="_shared" id="shared" type="checkbox" value="1" onclick="checkboxurl(this,0)" />
+				<font><?php echo $this->translate('hide_owned_entryes');  ?></font>
+			</label>
+			<?php endif;  ?>
+		</div>
+		<div class="listcoursechecks_main_div">
+			<?php if($this->hasSharedShortcuts):  ?>
+			<label>
+				<input name="_owned" id="shared" type="checkbox" value="1" onclick="checkboxurl(this,0)" />
+				<font><?php echo $this->translate('hide_other_client_entryes');  ?></font>
+			</label>
+			<?php endif;  ?>
+			</div>
+		</div>
+		<div class="clearer"></div>
+
+		<br />
+		<br />
+		<div class="shortcutlist">
+			<?php echo $this->cshortcuts ?>
+		</div>
+</div>
+<a href="patientcourse/printcourse?id=<?echo $this->pid ?>" target="_blank"><img src="images/print.gif" /></a>
+	<div class="scroll_item">
+		<a href="javascript:scroll(0,0)" id="btmscroll"><span class="scroll_item_label">Zum Anfang der Seite scrollen</span><img src="images/top.png" alt=""/></a>
+	</div>
+
+</div>
+</form>
+<script type="text/javascript">
+var callcheck2 = <?php echo $this->callcheck2 ?>;
+
+$('html,body').animate({scrollTop: $("#btmscroll").offset().top}, 500, 'easeOutCubic');
+
+</script>
+<div id="modal_delete">
+	<p id="delete_medis" style="display:none;">
+		<?php echo $this->translate('medis_redirect');  ?>
+	</p>
+	<p id="delete_diag" style="display:none;">
+		<?php echo $this->translate('diag_redirect');  ?>
+	</p>
+	<p id="delete_medis_diag" style="display:none;">
+	</p>
+	<input type="hidden" value="" id="modal_redir_type" name="modal_redir_type" />
+</div>

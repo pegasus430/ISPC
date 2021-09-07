@@ -1,0 +1,211 @@
+<?php
+$btmseal_lang = $this->translate('btmseal_lang');
+?>
+<script type="text/javascript">
+
+/*------ Start $(document).ready --------------------*/
+$(document).ready(function() { 
+	$( "#new_seal_date_input" ).datepicker({
+
+		dateFormat: 'dd.mm.yy',
+		showOn: "both",
+		buttonImage: $('#calImg').attr('src'),
+		buttonImageOnly: true,
+		
+		changeMonth: true,
+		changeYear: true,
+		
+		nextText: '',
+		prevText: '',
+		
+		maxDate: '<?php echo date('d.m.Y'); ?>',
+		minDate: '<?php echo date('d.m.Y', $this->highest_seal_date); ?>',
+				
+		yearRange: '2010:c',
+		onSelect: function(dateText) {
+			//membercheckduplicate('birthd', this.value);
+		}
+	});
+});
+
+//used as sprintf()
+if (!String.prototype.format) {
+	  String.prototype.format = function() {
+	    var args = arguments;
+	    return this.replace(/\%(\d+)\%/g, function(match, number) { 
+	      return typeof args[number] != 'undefined'
+	        ? args[number]
+	        : match
+	      ;
+	    });
+	  };
+	}
+	
+function confirmdelete(_this)
+{
+	var data_id = $(_this).data('id');
+	var data_date = $(_this).data('date');
+	
+	var extra_text = translate("btmseal_lang");
+	var confirm_delete_title = extra_text.confirm_delete_title;
+	var confirm_delete_text = extra_text.confirm_delete_text;
+	confirm_delete_text = confirm_delete_text.format(confirm_delete_text, data_date);
+	
+	jConfirm(confirm_delete_text, confirm_delete_title, function(r) {
+		if(r)
+		{	
+			var params = {};
+			params.delete_seal = 1;
+			params.id = data_id;
+			params.seal_date = data_date;
+			
+			post(appbase + "medication/btmseal", params, "post");
+		}
+	});
+
+}
+
+function post(path, params, method) {
+    method = method || "post"; // Set method to post by default if not specified.
+
+    // The rest of this code assumes you are not using a library.
+    // It can be made less wordy if you use one.
+    var form = document.createElement("form");
+    form.setAttribute("method", method);
+    form.setAttribute("action", path);
+
+    for(var key in params) {
+        if(params.hasOwnProperty(key)) {
+            var hiddenField = document.createElement("input");
+            hiddenField.setAttribute("type", "hidden");
+            hiddenField.setAttribute("name", key);
+            hiddenField.setAttribute("value", params[key]);
+
+            form.appendChild(hiddenField);
+         }
+    }
+
+    document.body.appendChild(form);
+    form.submit();
+}
+
+</script>
+
+<style>
+
+.inactive_seal td:first-child{
+	text-decoration: line-through;
+}
+.active_seal td{
+	font-weight:bold;
+}
+
+
+</style>
+
+<br/>
+
+<div style="display: none"> <img id="calImg" src="<?php echo RES_FILE_PATH;  ?>/images/calendar.png" alt="Popup" class="trigger"> </div>
+
+<a href="medication/btmbuch" class="back_button"><?php echo $this->translate("back")?></a>
+
+
+<?php if ($this->has_edit_permissions) : ?>
+
+
+<form action="<?php echo APP_BASE ?>medication/btmseal" method="post" >
+
+	<fieldset>
+	
+		<legend><?php echo $btmseal_lang['legend_addnew']; ?></legend>
+
+		<br/>
+		
+		<div id="add_error" class="err"><?php echo $this->error_date; ?></div>
+
+		<table class="medtable">
+			<tr>
+				<td width="260px">
+					<label style="font-weight:bold">
+						<?php echo $btmseal_lang['add_new_seal']; ?>
+						&nbsp;
+						<input type="text" name="seal_date" id="new_seal_date_input" value="<?php echo $this->seal_date; ?>" style="width:100px;">
+					</label>
+				</td>
+				
+				<td>
+					<input type="hidden" name="new_seal_date" value="1">
+					<input type="submit" name="btnsubmit" id="btnsubmit" class="button" value="<?php echo $btmseal_lang['button_label']; ?>">
+				</td>
+				
+			</tr>
+		
+			<tr>
+				<td colspan="2">
+					<?php echo nl2br($btmseal_lang['addnew_explain_text']); ?>
+				</td>
+			</tr>
+		
+		</table>
+		
+	</fieldset>
+</form>
+
+<?php endif; ?>
+
+	<fieldset>
+	
+		<legend><?php echo $btmseal_lang['legend_history']; ?></legend>
+
+		<br/>
+		
+		<div id="delete_error" class="err"><? echo $this->error_delete; ?></div>
+
+		<table class="medtable">
+			<tr>
+				<th>
+					<?php echo $btmseal_lang['seal_date']; ?>
+				</th>
+				
+				<th>
+					<?php echo $btmseal_lang['seal_by_user']; ?>
+				</th>
+				
+				<?php if ($this->has_edit_permissions) : ?>
+				<th>
+					<?php echo $this->translate('action'); ?>
+				</th>
+				<?php endif; ?>
+			</tr>
+		
+		<?php
+		$cnt = 0;
+		foreach ($this->history as $row) :
+		$cnt++;
+
+		?>
+		
+		<tr <?php if($cnt==1) {echo "class='active_seal'";} else { echo "class='inactive_seal'"; } ?> >
+			<td> <?php echo  $row['seal_date']; ?> </td>
+			<td>
+				<?php echo  $row['seal_by_user']; ?> 
+				<br/>
+				<?php echo date("d.m.Y" , strtotime($row['create_date'])) ; ?>
+			</td>
+			
+			<?php if ($this->has_edit_permissions) : ?>
+			<td> 							
+				<a onclick="confirmdelete(this);" data-id="<?php echo  $row['id']; ?>" data-date="<?php echo  $row['seal_date']; ?>" href="javascript:void(0);" title="<?php echo $btmseal_lang['delete_row']; ?>">
+					<img src="<?php echo RES_FILE_PATH; ?>/images/action_delete.png" border="0" class="edt_tag_remove"/>
+				</a>
+ 			</td>
+			<?php endif; ?>
+		</tr>
+		
+		<?php
+		endforeach;
+		?>
+		
+		</table>
+		
+	</fieldset>

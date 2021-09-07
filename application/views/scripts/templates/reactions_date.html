@@ -1,0 +1,136 @@
+<?php
+//ISPC-2657, elena, 25.08.2020 (ELSA: Reaktionen)
+//Maria:: Migration CISPC to ISPC 02.09.2020 
+$date = (isset($this->date)) ? date_format( date_create_from_format('Y-m-d', $this->date), 'd.m.Y') : '';
+$date_knowledge = isset($this->date_knowledge) ? $this->date_knowledge : '';
+?>
+<style>
+    .ui-datepicker-calendar.hidden{
+        display:none !important;
+    }
+    .ui-datepicker-month.hidden{
+        display:none !important;
+    }
+    .ui-datepicker-prev.hidden{
+        display:none !important;
+    }
+    .ui-datepicker-next.hidden{
+        display:none !important;
+    }
+</style>
+<script>
+    $(document).ready(function(){
+        var daysclass = '';
+        var monthclass = '';
+        var data_knowledge = "<?php echo $date_knowledge?>";
+        switch_picker = function(knowledge){
+            console.log('siwtched ' + knowledge);
+            var val = $('.datepicker').val();
+            console.log(val);
+            var aVal = val.split('.');
+            console.log(aVal);
+            if(knowledge !='' && knowledge != 'full'){
+                console.log($('table.ui-datepicker-calendar'));
+                console.log('should change');
+                daysclass='hidden';
+
+                if(knowledge == 'year and month only'){
+                    monthclass='';
+                    if(aVal.length == 3){
+                        $('.datepicker').val(aVal[1] + '.' + aVal[2])
+                    }else if(aVal.length == 1){
+                        $('.datepicker').val('01' + '.' + aVal[0])
+                    }
+
+
+                }else{
+                    monthclass='hidden';
+                    if(aVal.length == 2){
+                        $('.datepicker').val(aVal[1])
+                    }else if(aVal.length == 3){
+                        $('.datepicker').val(aVal[2])
+                    }
+                }
+
+
+            }else{
+                daysclass='';
+                monthclass='';
+                if(aVal.length == 2){
+                    $('.datepicker').val('01.' + aVal[0] + '.' + aVal[1]);
+                }else if(aVal.length == 1 && val != ''){
+                    $('.datepicker').val('01.01.' + aVal[0]);
+                }
+
+
+            }
+        }
+        switch_picker(data_knowledge);
+        $('.knowledge_select').on('change', function(e){
+            data_knowledge = $(this).val();
+            console.log('knowldge ' + data_knowledge);
+            switch_picker(data_knowledge);
+
+
+        })
+
+     $('.datepicker').datepicker({
+            dateFormat: 'dd.mm.yy',
+            changeMonth: true,
+            changeYear: true,
+            nextText: '',
+            prevText: '',
+            showButtonPanel : false,
+            beforeShow: function () {
+                console.log('beforeshow');
+                setTimeout(function () {
+                    console.log('addclass');
+                    $('table.ui-datepicker-calendar').addClass(daysclass);
+                    $('.ui-datepicker-month').addClass(monthclass);
+                    $('.ui-datepicker-next').addClass(monthclass);
+                    $('.ui-datepicker-prev').addClass(monthclass);
+                }, 0);
+            },
+            onChangeMonthYear: function(year, month){
+                console.log('beforeshow');
+                if(parseInt(month)< 10){
+                    month = '0' + month;
+                }
+                if(data_knowledge == 'year only'){
+                    $(this).val(year);
+                }else if(data_knowledge == 'year and month only'){
+                    $(this).val(month + '.' + year);
+                }
+
+                setTimeout(function () {
+                    console.log('addclass');
+                    $('table.ui-datepicker-calendar').addClass(daysclass);
+                    $('.ui-datepicker-month').addClass(monthclass);
+                    $('.ui-datepicker-next').addClass(monthclass);
+                    $('.ui-datepicker-prev').addClass(monthclass);
+                }, 0);
+
+            }
+     });
+
+    })
+</script>
+<div style="display:table;width:100%;">
+    <div style="display:table-row;">
+        <div style="display:table-cell;width:50%;">
+            <input type="text" class="datepicker"
+                   name="<?php echo $this->blockconfig['blockname']; ?>[<?php echo $this->blockconfig['blockfield']; ?>]"
+                   value="<?php echo $date; ?>">
+
+        </div>
+        <div style="display:table-cell;width:50%;text-align:right;">
+            <select class="knowledge_select" name="<?php echo $this->blockconfig['blockname']; ?>[<?php echo $this->blockconfig['blockfield']; ?>_knowledge]">
+                <?php foreach($this->options_array as $option): ?>
+                <option value="<?php echo $option; ?>"
+                <?php if($option == $date_knowledge || ($option == 'full' && $date_knowledge == '')) echo 'selected="selected"' ?> ><?php echo $this->translate('reaction_date_knowledge_' .$option); ?></option>
+                <?php endforeach; ?>
+
+            </select>
+        </div>
+    </div>
+</div>

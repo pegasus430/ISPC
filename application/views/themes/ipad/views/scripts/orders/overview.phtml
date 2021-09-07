@@ -1,0 +1,853 @@
+<div id="layout_result_messages">
+    <?php if (count($this->SuccessMessages)) : ?>
+    <!--  SuccessMessages -->
+        <ul id="messages" class="success">
+        <?php foreach ($this->SuccessMessages as $message) : ?>
+            <li><?php echo $this->escape($message); ?></li>
+        <?php endforeach; ?>
+        </ul>
+    <?php endif; ?>
+    <?php if (count($this->ErrorMessages)) : ?>
+    <!--  ErrorMessages -->
+        <ul id="messages" class="err">
+        <?php foreach ($this->ErrorMessages as $message) : ?>
+            <li><?php echo $this->escape($message); ?></li>
+        <?php endforeach; ?>
+        </ul>
+    <?php endif; ?>
+</div>
+
+<?php
+$this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/pagination_style.css');
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/data_tables/jquery.dataTables.js');
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/data_tables/dataTables.jqueryui.js');
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/data_tables/dataTables.jqueryui.css');
+
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/page-css/orders.css');
+//$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/chosen_v1.6.2/chosen.jquery.js');
+//$this->headLink()->appendStylesheet(RES_FILE_PATH.'/javascript/chosen_v1.6.2/chosen_2016.09.22.css');
+
+$selected_period = $this->selected_period;
+$national_holidays = $this->national_holidays;
+$order_grid_patients = $this->order_grid_patients;
+
+if(empty($_REQUEST['tab'])){
+    $selected_tab = 'own_active_orders';
+}else{
+    $selected_tab = $_REQUEST['tab'];
+}
+?>
+
+<script type="text/javascript">
+
+var month_days = '<?php echo $selected_period["days"];?>';
+var selected_tab= '<?php echo $selected_tab;?>';
+
+
+
+var selected_date = '<?php echo $selected_period["days"];?>';
+
+    var btm_special_user = false;
+    <?php if ( $this->btm_special_user ) : ?>
+    btm_special_user =  true;
+    <?php endif; ?>
+        
+    var DEBUGMODE = <?=APPLICATION_ENV == 'development' ? 'true' : 'false' ?>;
+    
+</script>
+
+<style>
+.outer {
+	width: 100% !important;
+}
+
+#Wrapper {
+	width: 80% !important;
+	min-height: 5px;
+	overflow: hidden;
+}
+
+#Wrapper .LeftDiv {
+	float: left;
+	width: 200px;
+	overflow: hidden;
+	min-height: 100px;
+}
+
+#MainContent {
+	width: auto !important;
+	display: block; /*default display for div */
+	float: none; /*default float for div*/
+	padding-left: 10px;
+	padding-right: 30px;
+	min-height: 100px;
+	overflow: hidden;
+}
+
+body {
+	overflow-x: hidden;
+}
+</style>
+<br/>
+<h1>
+<?php echo $this->translate('Order management page'); ?>
+</h1>
+<div class="tab_container" style="width: 100%;">
+    <div style="width: 100%;">
+        <div id="tabs_orders" style="width: 100%;">
+        
+            <ul>
+                <li><a href="#tabs-1" id="own_active_orders" data-tab="own_active_orders"><?=$this->translate('[Orders - assigned to me (active and paused)]');?></a></li>
+                <li><a href="#tabs-2" id="all_active_orders" data-tab="all_active_orders"><?=$this->translate('[Orders - all (active and paused)]');?></a></li>
+                <li><a href="#tabs-3" id="closed_orders" data-tab="closed_orders"><?=$this->translate('[Orders - completed/ended]');?></a></li>
+            </ul>
+
+            <div id="tabs-1">
+                        
+            <br/>
+            <br/>
+            <h4>
+                 <?php echo $this->translate("Active and paused orders - of user")?>
+            </h4>
+            
+            
+                <table class="month_selection_table">
+                 	<tr>
+                 		<td rowspan="2" 
+                 		data-tab="own_active_orders"  
+                 		data-month="<?php echo "12";?>"  
+                 		data-year="<?php echo ($selected_period['year']-1);?>"
+                 		onClick='onclick_changeMonth(this)' >
+                 		 <span>
+                 		     &lt;&lt;
+                 		 </span>
+                 		</td>
+                 		<td colspan="12" align="center"><?php echo $selected_period['year'];?></td>
+                 		<td rowspan="2" 
+                 		data-tab="own_active_orders"    
+                 		data-month="<?php echo "01";?>"  
+                 		data-year="<?php echo ($selected_period['year']+1);?>"  onClick='onclick_changeMonth(this)'>
+                 		<span  >
+                 		&gt;&gt;
+                 		</span>
+                 		</td>
+                 	</tr>
+                 	
+                 	<tr>
+                 		<? foreach($this->month_arr as $month_id=>$month ):?>
+                 		<td data-tab="own_active_orders"   data-month="<?php echo $month_id;?>" class="pmonths <? if ($selected_period['month']== $month_id): ?> active_month <?php endif;?>"  data-month="<?php echo $month_id;?>"  data-year="<?php echo $selected_period['year'];?>"  onClick='onclick_changeMonth(this)'>
+                 		 <span  >
+                 		 <?php echo $month; ?>
+                 		 </span>
+                 		</td>
+                 		<?php endforeach;?>
+                 	</tr>
+                 </table>
+           
+               
+                <div class="orders_management_grid">
+    				<table class="o_patients">
+    					<thead>
+    					<tr>
+    						<th width="20%"><?php echo $this->translate("[Patients name column]"); ?></th>
+    						<?php foreach($selected_period['days'] as $k => $m_date):?>
+    						<?
+    							$curent_Date_class = ($m_date == date("Y-m-d")) ? ' current_day': "";
+    							$hollyday_class = (in_array($m_date,$national_holidays)) ? ' hollyday': "";
+    							$day_type = date('w', strtotime($m_date));
+    							$weekend_class = ($day_type == 0 || $day_type == 6 ) ? ' weekend': "";
+    							
+    						?>
+    						<th class="tdate <?php echo $curent_Date_class.$hollyday_class.$weekend_class; ?>">
+    						<?php echo date("d",strtotime($m_date));?>
+    						<br/><?php echo strftime('%a', strtotime($m_date));  ?>
+    						</th>
+    						<?php endforeach; ?>
+    					</tr>
+    					</thead>
+    					<tbody>
+    						
+    					
+    					</tbody>
+    					<?php foreach($order_grid_patients['own'] as $pid=>$p_details):?>
+    					<tr>
+    						<td class="p_name">
+    							<span class="span_name"><?php echo $p_details['nice_name_small'];?></span>
+    							<span class="order_status_change">
+                                    <?php if($p_details['has_orders'] == '0'):?>
+    							     <a href="javascript:void(0)" class="order_action_btn _right _remove" data-patient ="<?php echo $p_details['pat_id_enc']; ?>" data-tab="own_active_orders"></a>
+                                    <?php else:?>							 
+    							     <a href="javascript:void(0)" class="order_action_btn  _stop" data-patient ="<?php echo $p_details['pat_id_enc']; ?>" data-tab="own_active_orders"></a>
+    							     <a href="javascript:void(0)" class="order_action_btn _pause" data-patient ="<?php echo $p_details['pat_id_enc']; ?>" data-tab="own_active_orders" ></a>
+    							     <?php endif;?>
+    							</span>
+    							
+    						</td>					
+    					   <?php foreach($selected_period['days'] as $k => $m_date):?>
+    						<?
+    							$curent_Date_class = ($m_date == date("Y-m-d")) ? ' current_day': "";
+    							$hollyday_class = (in_array($m_date,$national_holidays)) ? ' hollyday': "";
+    							$day_type = date('w', strtotime($m_date));
+    							$weekend_class = ($day_type == 0 || $day_type == 6 ) ? ' weekend': "";
+    						?>
+    						<td class="po order_cell <?php echo $curent_Date_class.$hollyday_class.$weekend_class; ?>" 
+    						data-date="<?php echo $m_date; ?>"  
+    						data-odmy="<?php echo date('d.m.Y',strtotime($m_date)); ?>"
+    						data-patient="<?php echo $p_details['pat_id_enc']; ?>"
+    						data-tab="own_active_orders"
+    						<?php if($p_details['order_scheduled_details'][$m_date]['status'] != "canceled"):?>
+        						data-order_id ="<?php echo $p_details['order_scheduled_details'][$m_date]['order_id']; ?>"
+        						data-current_order_id ="<?php echo $p_details['order_scheduled_details'][$m_date]['current_order_id']; ?>"
+        						data-order_parent_id ="<?php echo $p_details['order_scheduled_details'][$m_date]['parent_id']; ?>"
+        						data-order_step_parent_id ="<?php echo $p_details['order_scheduled_details'][$m_date]['step_parent_id']; ?>"
+        						data-is_parent ="<?php echo $p_details['order_scheduled_details'][$m_date]['is_parent']; ?>"
+        						data-interval_type ="<?php echo $p_details['order_scheduled_details'][$m_date]['interval_type']; ?>"
+        						data-interval_options ="<?php echo $p_details['order_scheduled_details'][$m_date]['interval_options']; ?>"
+    						<?php endif;?>
+    						>
+    						
+    						      
+    						      <?php  if( isset($p_details['order_scheduled_details']) && array_key_exists($m_date, $p_details['order_scheduled_details'])):?>
+    						      <?php
+    						         $status_map = array(
+    						             'active'=>"_yellow",
+    						             'verified'=>"_green",
+    						             'paused'=>"_pause_gray",
+    						             'planned'=>"_planned_gray",
+    						             'canceled'=>"",//'canceled'=>"_canceled_red",
+    						             'completed'=>"",
+    						             'stopped'=>"_stopped",//      'stopped'=>"_stopped",
+    						         );
+    						         
+    						          $order_Status_class[$p_details['pat_id_enc']][$m_date][ $p_details['order_scheduled_details'][$m_date]['id'] ] = "";
+    					              $order_Status_class[$p_details['pat_id_enc']][$m_date][ $p_details['order_scheduled_details'][$m_date]['id'] ] = isset($status_map[$p_details['order_scheduled_details'][$m_date]['status']]) ? $status_map[$p_details['order_scheduled_details'][$m_date]['status']] : "";
+    						      ?>
+    						          
+    						      <?php endif;?>
+    						      <div style="display: none">
+    						      <?php if($p_details['order_scheduled_details'][$m_date]['status'] != "canceled"):?>
+    						      <?php echo 'i '.$p_details['order_scheduled_details'][$m_date]['order_id']; ?><br/>
+    						      <?php echo 'p '.$p_details['order_scheduled_details'][$m_date]['parent_id']; ?><br/>
+    						      <?php echo 'sp '.$p_details['order_scheduled_details'][$m_date]['step_parent_id']; ?><br/>
+    						      <?php endif;?>
+    						      </div>
+    						      
+    						      					                                       
+                                  <!--TODO-2872 Ancuta 25.03.2020 (start)-->
+    						      <?php 
+    						      $orders_of_the_day = 0 ;
+    						      foreach($p_details['Xorder_scheduled_details'][$m_date] as $oid=>$odata){
+    						          if($odata['status'] != 'canceled'){
+    						              $orders_of_the_day++;
+    						          }
+    						      }
+    						      ?>
+    						      
+    						      <?php if($orders_of_the_day >1 ):?>
+    						      	<sup class="multiple_orders_dot"><?php echo $orders_of_the_day; ?></sup>
+    						      <?php endif;?>
+    						      <!--TODO-2872 Ancuta 25.03.2020 (end)-->
+    						      <span class="order_status_cell <?php echo $order_Status_class[$p_details['pat_id_enc']][$m_date][ $p_details['order_scheduled_details'][$m_date]['id'] ];?>">
+    						      </span>
+    						      
+    						</td>
+    						<?php endforeach; ?>
+    					</tr>
+    					<?php endforeach; ?>
+    				</table>
+    				
+    				<br/>
+    				<div class="add_patient_div">
+    					<a class="add_patient" data-tab="own_active_orders" data-start_date="<?php echo $selected_period['days'][0] ?>"><?php echo $this->translate('[add patient to active grid]')?></a>
+    				</div>
+    				<br/>
+    				
+				
+                        
+    				<table class="o_patients" cellspacing="10">
+    					<thead>
+    					<tr>
+    						<th class="table_header" colspan="<?php echo count($selected_period['days'])+1 ?>" >
+    							<h1><?php echo $this->translate('paused')?></h1>
+    						</th>
+    					</tr>
+    					<tr>
+    						<th width="20%"><?php echo $this->translate("[Patients name column]"); ?></th>
+    						<?php foreach($selected_period['days'] as $k => $m_date):?>
+    						<?
+    							$curent_Date_class = ($m_date == date("Y-m-d")) ? ' current_day': "";
+    							$hollyday_class = (in_array($m_date,$national_holidays)) ? ' hollyday': "";
+    							$day_type = date('w', strtotime($m_date));
+    							$weekend_class = ($day_type == 0 || $day_type == 6 ) ? ' weekend': "";
+    						?>
+    						<th class="tdate <?php echo $curent_Date_class.$hollyday_class.$weekend_class; ?>"><?php echo date("d",strtotime($m_date));?>
+    						<br/><?php echo strftime('%a', strtotime($m_date));  ?>
+    						</th>
+    						<?php endforeach; ?>
+    					</tr>
+    					</thead>
+    					<tbody>
+    					
+    					</tbody>
+    					<?php foreach($order_grid_patients['own_paused']  as $pid=>$p_details):?>
+                        <tr>
+    						<td class="p_name">
+    							<span class="span_name"><?php echo $p_details['nice_name_small'];?></span>
+    							<span class="order_status_change">
+    							     <a href="javascript:void(0)" class="order_action_btn _play" 
+    							     data-patient ="<?php echo $p_details['pat_id_enc']; ?>" 
+    							     data-tab="own_active_orders" 
+    							     data-patient_status="paused" 
+    							     ></a>
+    							</span>
+    							
+    						</td>					
+    					   <?php foreach($selected_period['days'] as $k => $m_date):?>
+    						<?
+    							$curent_Date_class = ($m_date == date("Y-m-d")) ? ' current_day': "";
+    							$hollyday_class = (in_array($m_date,$national_holidays)) ? ' hollyday': "";
+    							$day_type = date('w', strtotime($m_date));
+    							$weekend_class = ($day_type == 0 || $day_type == 6 ) ? ' weekend': "";
+    						?>
+    						<td class="po  <?php echo $curent_Date_class.$hollyday_class.$weekend_class; ?>">
+    						      <?php  if( isset($p_details['order_scheduled_details']) && array_key_exists($m_date, $p_details['order_scheduled_details'])):?>
+    						      <?php
+    						         $status_map = array(
+    						             'active'=>"_yellow",
+    						             'verified'=>"_green",
+    						             'paused'=>"_pause_gray",
+    						             'planned'=>"_planned_gray",
+    						             'canceled'=>"",//'canceled'=>"_canceled_red",
+    						             'completed'=>"",
+    						             'stopped'=>"_stopped",//      'stopped'=>"_stopped",
+    						         );
+    						         
+    						          $order_Status_class[$p_details['pat_id_enc']][$m_date][ $p_details['order_scheduled_details'][$m_date]['id'] ] = "";
+    					              $order_Status_class[$p_details['pat_id_enc']][$m_date][ $p_details['order_scheduled_details'][$m_date]['id'] ] = isset($status_map[$p_details['order_scheduled_details'][$m_date]['status']]) ? $status_map[$p_details['order_scheduled_details'][$m_date]['status']] : "";
+    						      ?>
+    						          
+    						      <?php endif;?>
+    						      
+    						          					                                       
+                                  <!--TODO-2872 Ancuta 25.03.2020 (start)-->
+    						      <?php 
+    						      $orders_of_the_day = 0 ;
+    						      foreach($p_details['Xorder_scheduled_details'][$m_date] as $oid=>$odata){
+    						          if($odata['status'] != 'canceled'){
+    						              $orders_of_the_day++;
+    						          }
+    						      }
+    						      ?>
+    						      
+    						      <?php if($orders_of_the_day >1 ):?>
+    						      	<sup class="multiple_orders_dot"><?php echo $orders_of_the_day; ?></sup>
+    						      <?php endif;?>
+    						      <!--TODO-2872 Ancuta 25.03.2020 (end)-->
+    						      <span class="order_status_cell <?php echo $order_Status_class[$p_details['pat_id_enc']][$m_date][ $p_details['order_scheduled_details'][$m_date]['id'] ];?>">
+    						      </span>
+    						      
+    						</td>
+    						<?php endforeach; ?>
+    					</tr>
+    					<?php endforeach; ?>
+    				</table>
+				</div>
+            
+            </div>
+            
+            
+            
+            
+            
+            <div id="tabs-2">
+            
+            <br/>
+            <br/>
+            <h4>
+                <?php echo $this->translate("Active and paused orders - of client")?>
+            </h4>
+            
+            
+                <table class="month_selection_table">
+                 	<tr>
+                 		<td rowspan="2" 
+                 		data-tab="all_active_orders"  
+                 		data-month="<?php echo "12";?>"  
+                 		data-year="<?php echo ($selected_period['year']-1);?>"
+                 		onClick='onclick_changeMonth(this)' >
+                 		 <span>
+                 		     &lt;&lt;
+                 		 </span>
+                 		</td>
+                 		<td colspan="12" align="center"><?php echo $selected_period['year'];?></td>
+                 		<td rowspan="2" 
+                 		data-tab="all_active_orders"    
+                 		data-month="<?php echo "01";?>"  
+                 		data-year="<?php echo ($selected_period['year']+1);?>"  onClick='onclick_changeMonth(this)'>
+                 		<span  >
+                 		&gt;&gt;
+                 		</span>
+                 		</td>
+                 	</tr>
+                 	
+                 	<tr>
+                 		<? foreach($this->month_arr as $month_id=>$month ):?>
+                 		<td data-tab="all_active_orders"   data-month="<?php echo $month_id;?>" class="pmonths <? if ($selected_period['month']== $month_id): ?> active_month <?php endif;?>"  data-month="<?php echo $month_id;?>"  data-year="<?php echo $selected_period['year'];?>"  onClick='onclick_changeMonth(this)'>
+                 		 <span  >
+                 		 <?php echo $month; ?>
+                 		 </span>
+                 		</td>
+                 		<?php endforeach;?>
+                 	</tr>
+                 </table>
+                 
+                        
+                <div class="orders_management_grid">
+    				<table class="o_patients">
+    					<thead>
+    					<tr>
+    						<th width="20%"><?php echo $this->translate("[Patients name column]"); ?></th>
+    						<?php foreach($selected_period['days'] as $k => $m_date):?>
+    						<?
+    							$curent_Date_class = ($m_date == date("Y-m-d")) ? ' current_day': "";
+    							$hollyday_class = (in_array($m_date,$national_holidays)) ? ' hollyday': "";
+    							$day_type = date('w', strtotime($m_date));
+    							$weekend_class = ($day_type == 0 || $day_type == 6 ) ? ' weekend': "";
+    						?>
+    						<th class="tdate <?php echo $curent_Date_class.$hollyday_class.$weekend_class; ?>"><?php echo date("d",strtotime($m_date));?>
+    						<br/><?php echo strftime('%a', strtotime($m_date));  ?>
+    						</th>
+    						<?php endforeach; ?>
+    					</tr>
+    					</thead>
+    					<tbody>
+    						
+    					
+    					</tbody>
+    					<?php foreach($order_grid_patients['all_active']  as $pid=>$p_details):?>
+    					<tr>
+    						<td class="p_name">
+    							<span class="span_name"><?php echo $p_details['nice_name_small'];?></span>
+    							<span class="order_status_change">
+                                    <?php if($p_details['has_orders'] == '0'):?>
+    							     <a href="javascript:void(0)" class="order_action_btn _right _remove" data-patient ="<?php echo $p_details['pat_id_enc']; ?>" ></a>
+                                    <?php else:?>							 
+    							     <a href="javascript:void(0)" class="order_action_btn  _stop" data-patient ="<?php echo $p_details['pat_id_enc']; ?>" ></a>
+    							     <a href="javascript:void(0)" class="order_action_btn _pause" data-patient ="<?php echo $p_details['pat_id_enc']; ?>" ></a>
+    							     <?php endif;?>
+    							</span>
+    							
+    						</td>					
+    					   <?php foreach($selected_period['days'] as $k => $m_date):?>
+    						<?
+    							$curent_Date_class = ($m_date == date("Y-m-d")) ? ' current_day': "";
+    							$hollyday_class = (in_array($m_date,$national_holidays)) ? ' hollyday': "";
+    							$day_type = date('w', strtotime($m_date));
+    							$weekend_class = ($day_type == 0 || $day_type == 6 ) ? ' weekend': "";
+    						?>
+    						<td class="po order_cell <?php echo $curent_Date_class.$hollyday_class.$weekend_class; ?>" 
+    						data-date="<?php echo $m_date; ?>"  
+    						data-odmy="<?php echo date('d.m.Y',strtotime($m_date)); ?>"
+    						data-patient="<?php echo $p_details['pat_id_enc']; ?>"
+    						data-tab="all_active_orders"  
+    						<?php if($p_details['order_scheduled_details'][$m_date]['status'] != "canceled"):?>
+        						data-order_id ="<?php echo $p_details['order_scheduled_details'][$m_date]['order_id']; ?>"
+        						data-current_order_id ="<?php echo $p_details['order_scheduled_details'][$m_date]['current_order_id']; ?>"
+        						data-order_parent_id ="<?php echo $p_details['order_scheduled_details'][$m_date]['parent_id']; ?>"
+        						data-order_step_parent_id ="<?php echo $p_details['order_scheduled_details'][$m_date]['step_parent_id']; ?>"
+        						data-is_parent ="<?php echo $p_details['order_scheduled_details'][$m_date]['is_parent']; ?>"
+        						data-interval_type ="<?php echo $p_details['order_scheduled_details'][$m_date]['interval_type']; ?>"
+        						data-interval_options ="<?php echo $p_details['order_scheduled_details'][$m_date]['interval_options']; ?>"        						
+    						<?php endif;?>
+    						>
+    						
+    						      
+    						      <?php  if( isset($p_details['order_scheduled_details']) && array_key_exists($m_date, $p_details['order_scheduled_details'])):?>
+    						      <?php
+    						         $status_map = array(
+    						             'active'=>"_yellow",
+    						             'verified'=>"_green",
+    						             'paused'=>"_pause_gray",
+    						             'planned'=>"_planned_gray",
+    						             'canceled'=>"",//_canceled_red
+    						             'completed'=>"",
+    						             'stopped'=>"_stopped",//      'stopped'=>"_stopped",
+    						         );
+    						         
+    						          $order_Status_class[$p_details['pat_id_enc']][$m_date][ $p_details['order_scheduled_details'][$m_date]['id'] ] = "";
+    					              $order_Status_class[$p_details['pat_id_enc']][$m_date][ $p_details['order_scheduled_details'][$m_date]['id'] ] = isset($status_map[$p_details['order_scheduled_details'][$m_date]['status']]) ? $status_map[$p_details['order_scheduled_details'][$m_date]['status']] : "";
+    						      ?>
+    						          
+    						      <?php endif;?>
+    						      <div style="display: none">
+    						      <?php echo 'i '.$p_details['order_scheduled_details'][$m_date]['order_id']; ?><br/>
+    						      <?php echo 'p '.$p_details['order_scheduled_details'][$m_date]['parent_id']; ?><br/>
+    						      <?php echo 'sp '.$p_details['order_scheduled_details'][$m_date]['step_parent_id']; ?><br/>
+    						      </div>
+                                 
+                                  <!--TODO-2872 Ancuta 25.03.2020 (start)-->
+    						      <?php 
+    						      $orders_of_the_day = 0 ;
+    						      foreach($p_details['Xorder_scheduled_details'][$m_date] as $oid=>$odata){
+    						          if($odata['status'] != 'canceled'){
+    						              $orders_of_the_day++;
+    						          }
+    						      }
+    						      ?>
+    						      
+    						      <?php if($orders_of_the_day >1 ):?>
+    						      	<sup class="multiple_orders_dot"><?php echo $orders_of_the_day; ?></sup>
+    						      <?php endif;?>
+    						      <!--TODO-2872 Ancuta 25.03.2020 (end)-->
+    						      
+    						      <span class="order_status_cell <?php echo $order_Status_class[$p_details['pat_id_enc']][$m_date][ $p_details['order_scheduled_details'][$m_date]['id'] ];?>">
+    						      </span>
+    						</td>
+    						<?php endforeach; ?>
+    					</tr>
+    					<?php endforeach; ?>
+    				</table>
+    				
+    				<br/>
+    				<div class="add_patient_div">
+    					<a class="add_patient"  data-tab="own_active_orders"  data-start_date="<?php echo $selected_period['days'][0] ?>"><?php echo $this->translate('[add patient to active grid]')?></a>
+    				</div>
+    				<br/>
+    				
+				
+                        
+    				<table class="o_patients" cellspacing="10">
+    					<thead>
+    					<tr>
+    						<th class="table_header" colspan="<?php echo count($selected_period['days'])+1 ?>" >
+    							<h1><?php echo $this->translate('paused')?></h1>
+    						</th>
+    					</tr>
+    					<tr>
+    						<th width="20%"><?php echo $this->translate("[Patients name column]"); ?></th>
+    						<?php foreach($selected_period['days'] as $k => $m_date):?>
+    						<?
+    							$curent_Date_class = ($m_date == date("Y-m-d")) ? ' current_day': "";
+    							$hollyday_class = (in_array($m_date,$national_holidays)) ? ' hollyday': "";
+    							$day_type = date('w', strtotime($m_date));
+    							$weekend_class = ($day_type == 0 || $day_type == 6 ) ? ' weekend': "";
+    						?>
+    						<th class="tdate <?php echo $curent_Date_class.$hollyday_class.$weekend_class; ?>"><?php echo date("d",strtotime($m_date));?>
+    						<br/><?php echo strftime('%a', strtotime($m_date));  ?>
+    						</th>
+    						<?php endforeach; ?>
+    					</tr>
+    					</thead>
+    					<tbody>
+    					
+    					</tbody>
+    					<?php foreach($order_grid_patients['all_paused']  as $pid=>$p_details):?>
+                        <tr>
+    						<td class="p_name">
+    							<span class="span_name"><?php echo $p_details['nice_name_small'];?></span>
+    							<span class="order_status_change">
+    							     <a href="javascript:void(0)" class="order_action_btn _play" 
+    							     data-patient ="<?php echo $p_details['pat_id_enc']; ?>" 
+    							     data-tab="own_active_orders" 
+    							     data-patient_status="paused"
+    							     ></a>
+    							</span>
+    							
+    						</td>					
+    					   <?php foreach($selected_period['days'] as $k => $m_date):?>
+    						<?
+    							$curent_Date_class = ($m_date == date("Y-m-d")) ? ' current_day': "";
+    							$hollyday_class = (in_array($m_date,$national_holidays)) ? ' hollyday': "";
+    							$day_type = date('w', strtotime($m_date));
+    							$weekend_class = ($day_type == 0 || $day_type == 6 ) ? ' weekend': "";
+    						?>
+    						<td class="po  <?php echo $curent_Date_class.$hollyday_class.$weekend_class; ?>">
+    						      <?php  if( isset($p_details['order_scheduled_details']) && array_key_exists($m_date, $p_details['order_scheduled_details'])):?>
+    						      <?php
+    						         $status_map = array(
+    						             'active'=>"_yellow",
+    						             'verified'=>"_green",
+    						             'paused'=>"_pause_gray",
+    						             'planned'=>"_planned_gray",
+    						             'canceled'=>"",//'canceled'=>"_canceled_red",
+    						             'completed'=>"",
+    						             'stopped'=>"_stopped",//      'stopped'=>"_stopped",
+    						         );
+    						         
+    						          $order_Status_class[$p_details['pat_id_enc']][$m_date][ $p_details['order_scheduled_details'][$m_date]['id'] ] = "";
+    					              $order_Status_class[$p_details['pat_id_enc']][$m_date][ $p_details['order_scheduled_details'][$m_date]['id'] ] = isset($status_map[$p_details['order_scheduled_details'][$m_date]['status']]) ? $status_map[$p_details['order_scheduled_details'][$m_date]['status']] : "";
+    						      ?>
+    						          
+    						      <?php endif;?>
+    						      
+    						      					          					                                       
+                                  <!--TODO-2872 Ancuta 25.03.2020 (start)-->
+    						      <?php 
+    						      $orders_of_the_day = 0 ;
+    						      foreach($p_details['Xorder_scheduled_details'][$m_date] as $oid=>$odata){
+    						          if($odata['status'] != 'canceled'){
+    						              $orders_of_the_day++;
+    						          }
+    						      }
+    						      ?>
+    						      
+    						      <?php if($orders_of_the_day >1 ):?>
+    						      	<sup class="multiple_orders_dot"><?php echo $orders_of_the_day; ?></sup>
+    						      <?php endif;?>
+    						      <!--TODO-2872 Ancuta 25.03.2020 (end)-->
+    						      <span class="order_status_cell <?php echo $order_Status_class[$p_details['pat_id_enc']][$m_date][ $p_details['order_scheduled_details'][$m_date]['id'] ];?>">
+    						      </span>
+    						      
+    						</td>
+    						<?php endforeach; ?>
+    					</tr>
+    					<?php endforeach; ?>
+    				</table>
+				</div>
+            </div>
+            
+            
+            
+            
+            
+            <div id="tabs-3">
+                                    
+            <br/>
+            <br/>
+            <h4>
+                <?php echo $this->translate("All closed orders of client")?>
+            </h4>
+            
+                <table class="month_selection_table">
+                 	<tr>
+                 		<td rowspan="2" 
+                 		data-tab="closed_orders"  
+                 		data-month="<?php echo "12";?>"  
+                 		data-year="<?php echo ($selected_period['year']-1);?>"
+                 		onClick='onclick_changeMonth(this)' >
+                 		 <span>
+                 		     &lt;&lt;
+                 		 </span>
+                 		</td>
+                 		<td colspan="12" align="center"><?php echo $selected_period['year'];?></td>
+                 		<td rowspan="2" 
+                 		data-tab="closed_orders"    
+                 		data-month="<?php echo "01";?>"  
+                 		data-year="<?php echo ($selected_period['year']+1);?>"  onClick='onclick_changeMonth(this)'>
+                 		<span  >
+                 		&gt;&gt;
+                 		</span>
+                 		</td>
+                 	</tr>
+                 	
+                 	<tr>
+                 		<? foreach($this->month_arr as $month_id=>$month ):?>
+                 		<td data-tab="closed_orders"   data-month="<?php echo $month_id;?>" class="pmonths <? if ($selected_period['month']== $month_id): ?> active_month <?php endif;?>"  data-month="<?php echo $month_id;?>"  data-year="<?php echo $selected_period['year'];?>"  onClick='onclick_changeMonth(this)'>
+                 		 <span  >
+                 		 <?php echo $month; ?>
+                 		 </span>
+                 		</td>
+                 		<?php endforeach;?>
+                 	</tr>
+                 </table>          
+                <div class="orders_management_grid">
+    				<table class="o_patients">
+    					<thead>
+    					<tr>
+    						<th width="20%"><?php echo $this->translate("[Patients name column]"); ?></th>
+    						<?php foreach($selected_period['days'] as $k => $m_date):?>
+    						<?
+    							$curent_Date_class = ($m_date == date("Y-m-d")) ? ' current_day': "";
+    							$hollyday_class = (in_array($m_date,$national_holidays)) ? ' hollyday': "";
+    							$day_type = date('w', strtotime($m_date));
+    							$weekend_class = ($day_type == 0 || $day_type == 6 ) ? ' weekend': "";
+    						?>
+    						<th class="tdate <?php echo $curent_Date_class.$hollyday_class.$weekend_class; ?>"><?php echo date("d",strtotime($m_date));?>
+    						<br/><?php echo strftime('%a', strtotime($m_date));  ?>
+    						</th>
+    						<?php endforeach; ?>
+    					</tr>
+    					</thead>
+    					<tbody>
+    						
+    					
+    					</tbody>
+    					<?php foreach($order_grid_patients['closed']  as $pid=>$p_details):?>
+    					<tr>
+    						<td class="p_name">
+    							<span class="span_name"><?php echo $p_details['nice_name_small'];?></span>
+    							<span class="order_status_change">
+                                    <?php if($p_details['has_orders'] == '0'):?>
+    							     <a href="javascript:void(0)" class="order_action_btn _right _remove" data-patient ="<?php echo $p_details['pat_id_enc']; ?>" ></a>
+                                    <?php else:?>							 
+    							     <a href="javascript:void(0)" class="order_action_btn _play" 
+    							     data-patient ="<?php echo $p_details['pat_id_enc']; ?>"
+    							     data-tab="closed_orders"
+    							     data-patient_status="closed"
+    							      ></a>
+    							     <?php endif;?>
+    							</span>
+    							
+    						</td>					
+    					   <?php foreach($selected_period['days'] as $k => $m_date):?>
+    						<?
+    							$curent_Date_class = ($m_date == date("Y-m-d")) ? ' current_day': "";
+    							$hollyday_class = (in_array($m_date,$national_holidays)) ? ' hollyday': "";
+    							$day_type = date('w', strtotime($m_date));
+    							$weekend_class = ($day_type == 0 || $day_type == 6 ) ? ' weekend': "";
+    						?>
+    						<td class="po order_cell <?php echo $curent_Date_class.$hollyday_class.$weekend_class; ?>" 
+    						data-date="<?php echo $m_date; ?>"
+    						data-odmy="<?php echo date('d.m.Y',strtotime($m_date)); ?>"  
+    						data-patient="<?php echo $p_details['pat_id_enc']; ?>"
+    						data-tab="all_active_orders"  
+    						<?php if($p_details['order_scheduled_details'][$m_date]['status'] != "canceled"):?>
+        						data-order_id ="<?php echo $p_details['order_scheduled_details'][$m_date]['order_id']; ?>"
+        						data-current_order_id ="<?php echo $p_details['order_scheduled_details'][$m_date]['current_order_id']; ?>"
+        						data-order_parent_id ="<?php echo $p_details['order_scheduled_details'][$m_date]['parent_id']; ?>"
+        						data-order_step_parent_id ="<?php echo $p_details['order_scheduled_details'][$m_date]['step_parent_id']; ?>"
+        						data-is_parent ="<?php echo $p_details['order_scheduled_details'][$m_date]['is_parent']; ?>"
+        						data-interval_type ="<?php echo $p_details['order_scheduled_details'][$m_date]['interval_type']; ?>"
+        						data-interval_options ="<?php echo $p_details['order_scheduled_details'][$m_date]['interval_options']; ?>"
+    						<?php endif; ?>
+    						>
+    						
+    						      
+    						      <?php  if( isset($p_details['order_scheduled_details']) && array_key_exists($m_date, $p_details['order_scheduled_details'])):?>
+    						      <?php
+    						         $status_map = array(
+    						             'active'=>"_yellow",
+    						             'verified'=>"_green",
+    						             'paused'=>"_pause_gray",
+    						             'planned'=>"_planned_gray",
+    						             'canceled'=>"",//
+    						             'completed'=>"",
+    						             'stopped'=>"_stopped",//      'stopped'=>"_stopped",
+    						         );
+    						         
+    						          $order_Status_class[$p_details['pat_id_enc']][$m_date][ $p_details['order_scheduled_details'][$m_date]['id'] ] = "";
+    					              $order_Status_class[$p_details['pat_id_enc']][$m_date][ $p_details['order_scheduled_details'][$m_date]['id'] ] = isset($status_map[$p_details['order_scheduled_details'][$m_date]['status']]) ? $status_map[$p_details['order_scheduled_details'][$m_date]['status']] : "";
+    						      ?>
+    						          
+    						      <?php endif;?>
+    						      <div style="display: none">
+    						      <?php echo 'i '.$p_details['order_scheduled_details'][$m_date]['order_id']; ?><br/>
+    						      <?php echo 'p '.$p_details['order_scheduled_details'][$m_date]['parent_id']; ?><br/>
+    						      <?php echo 'sp '.$p_details['order_scheduled_details'][$m_date]['step_parent_id']; ?><br/>
+    						      </div>
+    						      
+    						      					          					                                       
+                                  <!--TODO-2872 Ancuta 25.03.2020 (start)-->
+    						      <?php 
+    						      $orders_of_the_day = 0 ;
+    						      foreach($p_details['Xorder_scheduled_details'][$m_date] as $oid=>$odata){
+    						          if($odata['status'] != 'canceled'){
+    						              $orders_of_the_day++;
+    						          }
+    						      }
+    						      ?>
+    						      
+    						      <?php if($orders_of_the_day >1 ):?>
+    						      	<sup class="multiple_orders_dot"><?php echo $orders_of_the_day; ?></sup>
+    						      <?php endif;?>
+    						      <!--TODO-2872 Ancuta 25.03.2020 (end)-->
+    						      <span class="order_status_cell <?php echo $order_Status_class[$p_details['pat_id_enc']][$m_date][ $p_details['order_scheduled_details'][$m_date]['id'] ];?>">
+    						      </span>
+    						</td>
+    						<?php endforeach; ?>
+    					</tr>
+    					<?php endforeach; ?>
+    				</table>
+				</div>
+				
+            </div>
+   
+            
+
+            
+                
+        </div>
+        
+    </div>
+
+    
+</div>
+
+
+
+<!-- datapicker image -->
+<div id="calImgs" style="display: none;">
+    <img id="calImg" src="<?php echo RES_FILE_PATH; ?>/images/calendar.png" alt="Popup" class="trigger">
+</div>
+
+
+<!-- Add an new order DIALOG, also edit an order -->
+<div id="order_dialog" style="overflow-y: none; display:none">
+ 
+ 
+</div>
+
+<!-- Add a new patient DIALOG -->
+<div id="add_patient" style="overflow-y: none; display:none">
+<input type="hidden" value="" id="period_start_date" name="period_start_date" />
+
+
+<input type="hidden"  id="go2tab" value=""/>
+<input type="text" name="patientsearch_share" id="patientsearch_share" class="patientsearch_share" value="" autocomplete="off"/>
+<input type="hidden" value="" name="patientid" id="patientid" />
+<div id="searchdropdown_share_selected" style="display:none;"></div>
+
+</div>
+
+
+<!-- remove patient DIALOG -->
+<div id="remove_patient" style="overflow-y: none; display:none">
+    <input type="hidden" value="" name="remove_patientid" id="remove_patientid" />
+    <?php echo $this->translate('Are you sure you want to remove patient from order grid')?>
+</div>
+
+<!-- pause_patient_orders DIALOG -->
+<div id="pause_patient_orders" style="overflow-y: none; display:none">
+    <input type="hidden" value="" name="pause_patientid" id="pause_patientid" />
+    <label>
+        <?php echo $this->translate('pause orders starting with')?>
+    </label>
+    <input type="text" value="<?php echo date('d.m.Y')?>" name="pause_start_date" id="pause_start_date" class="date" />
+    <div id="error_messages_pause" style="color: red;">
+    
+    </div>
+</div>
+
+<!-- stop_patient_orders DIALOG -->
+<div id="stop_patient_orders" style="overflow-y: none; display:none">
+    <input type="hidden" value="" name="stop_patientid" id="stop_patientid" />
+    <label>
+        <?php echo $this->translate('stop orders starting with')?>
+    </label>
+    <input type="text" value="<?php echo date('d.m.Y')?>" name="stop_start_date" id="stop_start_date" class="date" />
+    <div id="error_messages_stop" style="color: red;">
+    
+    </div>
+</div>
+
+
+<!-- ISPC-2464 Ancuta 29.10.2019 -->
+<!-- cancel_orders_options DIALOG -->
+<div id="place_order_options" >
+    <label>
+        <?php echo $this->translate("[are you sure you want to change? Select which orders you want the changes to be applied! Please note that the Pharmacy will be notified]")?>
+    </label>
+    <div class="following_orders">
+    </div>
+</div>
+
+
+
+ 
+<!-- //TODO-2872 Ancuta 24.03.2020(start) -->
+<!-- Add an new order DIALOG, also edit an order-->
+<div id="choose_order_dialog" style="overflow-y: none; display:none">
+
+</div>
+<!-- //TODO-2872 Ancuta 24.03.2020(end) -->
+ 

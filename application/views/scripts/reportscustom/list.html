@@ -1,0 +1,628 @@
+<?php
+
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/data_tables/jquery.dataTables.js?'.date('Ymd'));
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/data_tables/dataTables.jqueryui.js?'.date('Ymd'));
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/data_tables/dataTables.jqueryui.css?' . date('Ymd'));
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/reportscustom.css?' . date('Ymd'));
+?>
+ 
+<script type="text/javascript">
+$(document).ready(function() { /*------ Start $(document).ready --------------------*/
+	
+	// DATATABLE
+	var tableProjects = $('#table-projects').DataTable({
+		// ADD language
+		 "language": {
+                "url": "<?php echo RES_FILE_PATH.'/javascript/data_tables/de_language.json?'.date('Ymd')?>"
+         },
+ 
+		"lengthMenu": [[10, 25, 50, -1], [10, 25, 50, "All"]],
+			
+		processing: true,
+
+		info: false,
+		filter: true,
+		paginate: true,
+
+		serverSide: true,
+		"autoWidth": false,
+		"stateSave": true,
+		"scrollX": false,
+		"scrollCollapse": true,
+
+		columns: [
+		          { data: "name", className: "","width": "30%"},
+		          { data: "description", className: "cr_description","width": "40%"},
+		          { data: "create_date", className: "","width": "10%"},
+		          { data: "created_by", className: "","width": "10%"},
+		          { data: "actions", className: " ","width": "10%" }
+			],
+			
+		columnDefs: [ 
+				       	{ "targets": -1, "searchable": false, "orderable": false }
+				],
+ 		order: [[ 0, "asc" ]],
+		
+ 		ajax: {
+			url:'reportscustom/getlist',
+			type: 'POST'
+		}, 
+		
+		initComplete: function()
+		{
+		}
+		
+	});
+ 
+	
+	// DELETE REPORT
+	$(".delete").live('click', function() {
+		$.confirmdeleteid = $(this).attr('rel');
+			jConfirm('<? echo $this->translate('confirmdeleterecord'); ?>', '<? echo $this->translate('confirmdeletetitle'); ?>', function(r) {
+			if(r)
+			{	
+				location.href = "<? echo APP_BASE ?>reportscustom/delete?id="+ $.confirmdeleteid;
+			}
+		});
+	});
+
+	
+	
+	// DELETE REPORT
+	$(".duplicate").live('click', function() {
+		$.confirm_duplicate_id = $(this).data('id');
+			jConfirm('<? echo $this->translate('confirm_duplicate_record'); ?>', '<? echo $this->translate('confirm_duplicate_title'); ?>', function(r) {
+			if(r)
+			{	
+				location.href = "<? echo APP_BASE ?>reportscustom/duplicate?id="+ $.confirm_duplicate_id;
+			}
+		});
+	});
+
+	
+	
+	// create report
+	$('#create_report').live('click', function(e){
+		e.preventDefault();
+		$('#firststep').load('<?php  echo APP_BASE."reportscustom/step1"; ?>', function() {
+			$('#firststep').dialog('open');
+		});
+	});
+
+	
+	$('.edit').live('click', function(e){
+		e.preventDefault();
+		var report_id = $(this).data('id'); 
+		var report_status = $(this).data('saved');
+		$('#firststep').load('<?php  echo APP_BASE."reportscustom/step1?report_id='+report_id+'"; ?>', function() {
+			$('#firststep')
+			.data('status',report_status)
+			.dialog('open');
+		});
+	});
+
+	
+	$( "#firststep" ).dialog({
+		autoOpen: false,
+		resizable: false,
+		title: "<?php echo $this->translate('Report options - date and search criterias')?>",
+		height: 750,
+		width: 750,
+		modal: true,
+		open: function() {
+			var report_status  = $(this).data('status');
+			
+			$(this).dialog( "option", "buttons", 
+					[ 
+						{
+							text: "<?php echo $this->translate('cancel')?>", 
+							"class": 'cancelButtonClass  nofloat', //ISPC-2508 to reverse the buttons
+							click: function() {
+								$( this ).dialog( "close" );
+							}
+						},
+						
+						{
+							text: function() {
+									if(report_status == "1"){
+										var name = "<?php echo $this->translate('SAVE and go to step 2')?>";
+									} else {
+										var name = "<?php echo $this->translate('go to step 2')?>";
+									}
+									return name;
+									}, 
+									
+							click: function() {
+								$('.year_filter').removeClass("required");
+								$('.group_details').removeClass("required");
+								$('.search_criterias_table').removeClass("required");
+								$('.start_date').removeClass("required");
+								
+								$.ajax({
+									type: 'POST',
+									url: 'reportscustom/step1',
+									data: $("#step1").serialize(),
+									success:function(data){
+										var visitdata = jQuery.parseJSON(data);
+										if(visitdata.error == 0){
+											if(visitdata.report_id){
+												$('#firststep').dialog( "close" );
+												$('#secondstep').load('<?php  echo APP_BASE."reportscustom/step2?report_id='+visitdata.report_id+'"; ?>', function() {
+													$('#secondstep')
+													.data('status',report_status)
+													.data('report_id',visitdata.report_id)
+													.dialog('open');
+												});
+											}
+										} 
+										else 
+										{
+											$.each( visitdata.error_text, function( key, value ) {
+													$('.'+ key).addClass("required");	
+												});
+											alert("<?php echo $this->translate('please_check_mandatory_fields'); ?>")
+										}
+										
+									},
+									error:function(){
+										ajax_done = 1;
+										// failed request; give feedback to user
+									}
+								});
+							}
+						}					 
+				]
+			);
+		},
+		close: function() {
+			$('.date_period input').prop("checked", false);
+			$('#spf input').val('');
+			
+		}
+
+	});
+ 
+	//second step
+	$( "#secondstep" ).dialog({
+		autoOpen: false,
+		resizable: false,
+		title: "<?php echo $this->translate('Report options - coulmns')?>",
+		height:560,
+		width: 690,
+		modal: true,
+		open: function() {
+			var report_status  = $(this).data('status');
+			var report_id  = $(this).data('report_id');
+			
+			$(this).dialog( "option", "buttons", 
+					[ 
+						{
+							text: function() {
+									var name = "<?php echo $this->translate('Back')?>";
+									return name;
+								}, 
+							'class': 'nofloat', //ISPC-2508 to reverse the buttons
+						      click: function() {
+						    	 $("#secondstep").dialog( "close" );
+						  		$('#firststep').load('<?php  echo APP_BASE."reportscustom/step1?report_id='+report_id+'"; ?>', function() {
+									$('#firststep')
+									.data('status',report_status)
+									.data('report_id',report_id)
+									.dialog('open');
+								});
+						      }
+						},
+						{
+							text: function() {
+								if(report_status == "1"){
+									var name = "<?php echo $this->translate('SAVE and go to step 3')?>";
+								} else {
+									var name = "<?php echo $this->translate('go to step 3')?>";
+								}
+								return name;
+								}, 
+								click: function() {
+									
+									$.ajax({
+										type: 'POST',
+										url: 'reportscustom/step2',
+										data: $("#step2").serialize(),
+										success:function(data){
+											var visitdata = jQuery.parseJSON(data);
+											if(visitdata.error !=1){
+												$("#secondstep").dialog( "close" );
+												
+												if(visitdata.skipstep3 == "0"){
+													$('#thirdstep').load('<?php  echo APP_BASE."reportscustom/step3?report_id='+visitdata.report_id+'"; ?>', function() {
+														$('#thirdstep')
+														.data('status',report_status)
+														.data('report_id',visitdata.report_id)
+														.data('skipstep3',visitdata.skipstep3)
+														.dialog('open');
+													});
+												} else {
+													$('#forthstep').load('<?php  echo APP_BASE."reportscustom/step4?report_id='+visitdata.report_id+'"; ?>', function() {
+														$('#forthstep')
+														.data('status',report_status)
+														.data('report_id',visitdata.report_id)
+														.data('skipstep3',visitdata.skipstep3)
+														.dialog('open');
+													});
+												}
+												
+											} else{
+												alert(visitdata.error_text);
+											}
+										},
+										error:function(){
+											ajax_done = 1;
+											// failed request; give feedback to user
+										}
+									});
+								}	
+						}
+			]
+			);
+		} 
+	 
+	});
+	
+	
+	//third step
+	$( "#thirdstep" ).dialog({
+		autoOpen: false,
+		resizable: false,
+		title: "<?php echo $this->translate('Report options - average, median and order')?>",
+		height:560,
+		width: 690,
+		modal: true,
+		open: function() {
+			var report_status  = $(this).data('status');
+			var report_id  = $(this).data('report_id');
+			var skipstep3  = $(this).data('skipstep3');
+			
+			$(this).dialog( "option", "buttons", 
+					[ 
+						
+						{
+							text: function() {
+									var name = "<?php echo $this->translate('Back')?>";
+									return name;
+								}, 
+							 'class': 'nofloat', //ISPC-2508 to reverse the buttons
+						      click: function() {
+									$("#thirdstep").dialog( "close" );
+									
+									$('#secondstep').load('<?php  echo APP_BASE."reportscustom/step2?report_id='+report_id+'"; ?>', function() {
+										$('#secondstep')
+										.data('status',report_status)
+										.data('report_id',report_id)
+										.dialog('open');
+									});
+						      }
+						},
+						
+						{
+							text: function() {
+								if(report_status == "1"){
+									var name = "<?php echo $this->translate('SAVE and go to step 4')?>";
+								} else {
+									var name = "<?php echo $this->translate('go to step 4')?>";
+								}
+								return name;
+								}, 
+								
+						      click: function() {
+									$.ajax({
+										type: 'POST',
+										url: 'reportscustom/step3',
+										data: $("#step3").serialize(),
+										success:function(data){
+											var visitdata = jQuery.parseJSON(data);
+											if(visitdata.error == "0"){
+												
+												$("#thirdstep").dialog( "close" );
+												
+													$('#forthstep').load('<?php  echo APP_BASE."reportscustom/step4?report_id='+visitdata.report_id+'"; ?>', function() {
+														$('#forthstep')
+														.data('status',report_status)
+														.data('report_id',visitdata.report_id)
+														.data('skipstep3',skipstep3)
+														.dialog('open');
+													});
+													
+													
+											} else{
+												alert("<?php echo $this->translate('please check columns!'); ?>");
+											}
+											
+										},
+										error:function(){
+											ajax_done = 1;
+											// failed request; give feedback to user
+										}
+									});
+						      }
+						}
+					]
+			);
+		} 
+	 
+	});
+	
+	//third step
+	$( "#forthstep" ).dialog({
+		autoOpen: false,
+		resizable: false,
+		title: "<?php echo $this->translate('Report options - Name and generate')?>",
+		height:560,
+		width: 690,
+		modal: true,
+		open: function() {
+			var report_status  = $(this).data('status');
+			var report_id  = $(this).data('report_id');
+			var skipstep3  = $(this).data('skipstep3');
+			
+			$(this).dialog( "option", "buttons",
+					[ 
+					 
+						{
+							text: function() {
+									var name = "<?php echo $this->translate('Back')?>";
+									return name;
+								}, 
+							  'class': 'nofloat', //ISPC-2508 to reverse the buttons
+						      click: function() {
+						    	  $("#forthstep").dialog( "close" );
+									if(skipstep3 == "0"){
+										$('#thirdstep').load('<?php  echo APP_BASE."reportscustom/step3?report_id='+report_id+'"; ?>', function() {
+											$('#thirdstep')
+											.data('status',report_status)
+											.data('report_id',report_id)
+											.data('skipstep3',skipstep3)
+											.dialog('open');
+										});
+										
+									} else {
+										$('#secondstep').load('<?php  echo APP_BASE."reportscustom/step2?report_id='+report_id+'"; ?>', function() {
+											$('#secondstep')
+											.data('status',report_status)
+											.data('report_id',report_id)
+											.data('skipstep3',skipstep3)
+											.dialog('open');
+										});
+									}
+						      }
+						},
+					 
+						{
+							text: function() {
+								if(report_status == "1"){
+									var name = "<?php echo $this->translate('SAVE')?>";
+								} else {
+									var name = "<?php echo $this->translate('Generate report')?>";
+								}
+								return name;
+							}, 
+								
+							click: function() {
+								$.ajax({
+									type: 'POST',
+									url: 'reportscustom/step4',
+									data: $("#step4").serialize(),
+									success:function(data){
+										var visitdata = jQuery.parseJSON(data);
+										if(visitdata.error !=1 && visitdata.error_name !=1){
+											
+											if(report_status == "1")
+											{
+												var url = "<?php echo APP_BASE . 'reportscustom/list'; ?>";
+												$(location).attr('href',url);
+											} 
+											else
+											{
+												if(visitdata.sortby != ""){
+													var sort_str = '&sortby='+visitdata.sortby;
+												} else {
+													var sort_str = '';
+												}
+												
+											   var url = '<?php  echo APP_BASE."reportscustom/generate?report_id='+visitdata.report_id+'&generate=1&export_type='+visitdata.export_type+sort_str+'"; ?>';
+ 											   $(location).attr('href',url);
+											}
+											
+
+										} else {
+											if( visitdata.error_name == "1"){
+												alert("<?php echo $this->translate('please enter report name'); ?>");
+											} else{
+												alert("<?php echo $this->translate('please check inputs!'); ?>");
+											}
+											
+										}
+									},
+									error:function(){
+										ajax_done = 1;
+										// failed request; give feedback to user
+									}
+								});
+							}
+						}
+						
+					]
+			);
+			
+		},
+		close: function() {
+			
+// 			setTimeout('redirect()', 3000);
+			
+
+		} 
+	});
+
+	
+	
+	// ADD NEW GROUP 
+	$('.generate').live('click', function(){
+		
+		$('.year_filter').removeClass("required");
+		$('.group_details').removeClass("required");
+		$('.search_criterias_table').removeClass("required");
+		$('.start_date').removeClass("required");
+		
+		var report_id =$(this).data('id');
+		
+		$('#generate').load('<?php  echo APP_BASE."reportscustom/generate?report_id='+report_id+'"; ?>', function() {
+			$('#generate').dialog('open');
+		});
+		
+ 
+	});
+	
+	$( "#generate" ).dialog({
+		autoOpen: false,
+		resizable: false,
+		title: "<?php echo $this->translate('Generate report')?>",
+		height: 730,
+		width: 750,
+		modal: true,
+		buttons: {
+			
+			"<?php echo $this->translate('Generate')?>": function() {
+				
+				$('.year_filter').removeClass("required");
+				$('.group_details').removeClass("required");
+				$('.search_criterias_table').removeClass("required");
+				$('.start_date').removeClass("required");
+				
+				var error = false;
+				if($('#period_type_1').is(":checked")) {
+					
+					var year = 0;
+					$('.ycheckss').each(function(){
+						if($(this).is(":checked")) {
+							 year++;
+						}
+					});
+					
+					if(year == 0){
+						error = "Bitte notwendige Felder füllen - Jahr";
+					}
+				} else if($('#period_type_2').is(":checked")) {
+					var start = 0;
+					if($('#from').val() == ""){
+						error = "Bitte notwendige Felder füllen - Zeitrahmen: von";	
+					} 
+				} 
+				else
+				{
+					error = false;	
+				}
+				
+				if(error){
+					
+					alert (error)	
+				}
+				else
+				{
+					$("#generate_form").submit();
+				}
+			/* 	$.ajax({
+					type: 'POST',
+					url: 'reportscustom/generate',
+					data: $("#generate_form").serialize(),
+					success:function(data){
+						var visitdata = jQuery.parseJSON(data);
+						if(!visitdata){
+								alert("generate");
+						}
+						else 
+						{
+							$.each( visitdata.error_text, function( key, value ) {
+									$('.'+ key).addClass("required");	
+								});
+							alert("<?php echo $this->translate('please_check_mandatory_fields'); ?>")
+						}
+						
+					},
+					error:function(){
+						ajax_done = 1;
+						// failed request; give feedback to user
+					}
+				}); */
+				
+			
+			} 
+		},
+		close: function() {
+			$('.date_period input').prop("checked", false);
+			$('#spf input').val('');
+			
+		},
+		open: function() {
+
+		}
+	});
+	
+	
+});/*-- END  $(document).ready ----------- --*/
+
+function redirect() {
+// 	var url = "<?php echo APP_BASE . 'reportscustom/list'; ?>";
+// 	$(location).attr('href',url);
+	window.location.href = "<?php echo APP_BASE . 'reportscustom/list'; ?>";
+}
+
+</script>
+ 
+<div class="buttonsBar">
+	<button  id="create_report" class="bigbutton ui-state-default ui-corner-all" name="create_report" value="1"><?php echo $this->translate('create_new_report')?></button>
+</div> 
+
+<div style="clear:both;"></div>	
+<form action="" method="post" id="report_list">
+
+<div class="row" id="projects-list">
+	<!-- Table -->
+  
+	  <table id="table-projects" class="table table-striped table-bordered table-hover table-condensed dataTable no-footer">
+	  	<thead>
+	  		<tr>
+	  			<th><?php echo $this->translate('name');?></th>
+	  			<th><?php echo $this->translate('description'); ?></th>
+	  			<th><?php echo $this->translate('cr_create_date'); ?></th>
+	  			<th><?php echo $this->translate('cr_created_by');?></th>
+	  			<th><?php echo $this->translate('actions'); ?></th>
+	  		</tr>
+	  	</thead>
+	  </table>
+</div>
+</form>
+
+
+<div id="firststep">
+
+</div><!--FIRSTSTEp DIALOG END -->
+
+<div id="secondstep">
+ 
+</div> <!--SECONDSTEP DIALOG END -->
+
+
+<div id="thirdstep">
+
+
+</div> <!--THIRD DIALOG END -->
+
+
+<div id="forthstep">
+
+</div> <!--FORTH DIALOG END -->
+
+
+<div id="generate">
+
+</div> <!-- GENERATE DIALOG END -->
+
+

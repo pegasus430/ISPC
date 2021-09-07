@@ -1,0 +1,1125 @@
+<script>
+var roster_page = '0';
+</script>
+<?php
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/jquery.ui.touch.js');
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/jquery.blockUI.js');
+
+//$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/fullcalendar/fullcalendar.js');
+//$this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/fullcalendar/fullcalendar.css');
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/fullcalendar_1.6/fullcalendar.js');
+$this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/fullcalendar_1.6/fullcalendar.css');
+
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/calendars.js');
+
+?>
+<script type='text/javascript'>
+
+var created_calendar_patientCalendar = false;
+
+$(document).ready(function() {
+	/*
+		$( "#tabs" ).tabs({
+			show: function(event, ui) {
+				if(ui.index == 0){ //patient tab
+					$('#patientCalendar').fullCalendar('render');
+				} else if (ui.index == 1) {
+					$('#calendar').fullCalendar('render');
+				} else if(ui.index == 2) {
+					$('#teamCalendar').fullCalendar('render');
+				}
+			},
+			select: function(event, ui) {
+				var selected_tab = ui.index;
+
+				if (selected_tab == 0) {
+
+					$('#patientCalendar').fullCalendar('refetchEvents');
+
+				} else if (selected_tab == 1) {
+
+					$('#calendar').fullCalendar('render');
+					$('#calendar').fullCalendar('refetchEvents');
+
+				} else if (selected_tab == 2) {
+
+					$('#teamCalendar').fullCalendar('render');
+					$('#teamCalendar').fullCalendar('refetchEvents');
+
+				}
+			}
+		});
+		$( "#tabs" ).tabs({
+
+		});
+*/
+    $( "#tabs" ).tabs({
+    	
+    	show: function(event, ui) {	
+    		switch(ui.index) {
+    			case 0:
+    				if ( ! created_calendar_patientCalendar) {
+    					//create_calendar_patientCalendar();
+    					created_calendar_patientCalendar = true;
+    					$('#patientCalendar').fullCalendar('render');
+    				} else {
+    					$('#patientCalendar').fullCalendar('changeView', 'month');
+    					$('#patientCalendar').fullCalendar('render');
+    					$('#patientCalendar').fullCalendar('refetchEvents');							
+    				}
+    				break;
+    			case 1:
+    				
+    				if ( ! created_calendar_calendar) {
+    					create_calendar_calendar();
+    				} else {
+    					$('#calendar').fullCalendar('changeView', 'month');
+    					$('#calendar').fullCalendar('render');
+    					$('#calendar').fullCalendar('refetchEvents');							
+    				}
+    				break;
+    			case 2:
+    				if ( ! created_calendar_teamCalendar) {
+    					create_calendar_teamCalendar();
+    				} else {
+    					$('#teamCalendar').fullCalendar('changeView', 'month');
+    					$('#teamCalendar').fullCalendar('render');
+    					$('#teamCalendar').fullCalendar('refetchEvents');							
+    				}
+    				break;
+    		}
+    	}
+    
+    });
+		$( "#addneweventpatient" ).dialog({
+			autoOpen: false,
+			resizable: false,
+			height: 350,
+			width: 620,
+			modal: true,
+			buttons: {
+				"Termin hinzufügen": function(){
+
+					if($("input[name='allDayP']:checked").val() == '1'){
+						var startDateTimeEntered = " 00:00:00";
+						var endDateTimeEntered = " 00:00:00";
+					} else {
+						var startDateTimeEntered = " "+$('#startDateTimeP').val()+":00";
+						var endDateTimeEntered = " "+$('#endDateTimeP').val()+":00";
+					}
+					var eventTitle = $('#eventTitleP').val();
+					//transform dd.mm.yyyy h:i in yyyy-mm-dd h:i:00
+					var startDateEntered = $('#startDateP').val().split('.');
+					var endDateEntered = $('#endDateP').val().split('.');
+
+					var allDay = $("input[name='allDayP']:checked").val();
+
+					var _comments = $('textarea[name=comments]', this).val() || '';
+					
+					$.ajax({
+						type: 'POST',
+						url: 'patient/savepatientevents?id=<?php echo $_REQUEST[id]; ?>',
+						async: true,
+						data: {
+							'eventTitle' : eventTitle,
+							'startDate' : startDateEntered[2]+"-"+startDateEntered[1]+"-"+startDateEntered[0]+startDateTimeEntered ,
+							'endDate' : endDateEntered[2]+"-"+endDateEntered[1]+"-"+endDateEntered[0]+endDateTimeEntered ,
+							'allDay' : allDay ,
+							'eventType': 14,
+							'comments' : _comments
+						},
+						success: function(responseText) {
+							$('#patientCalendar').fullCalendar( 'refetchEvents' );
+						}
+					});
+					$( "#addneweventpatient" ).dialog("close");
+				}
+			},
+			close: function(){
+				$( "#startDateP, #endDateP" ).datepicker('hide');
+				$( "#startDateP, #endDateP" ).datepicker('destroy');
+				$( "#ui-timepicker-div" ).hide();
+			},
+			open: function() {
+				$('#eventTitleP').val("");
+				//datepicker
+				$( "#startDateP, #endDateP" ).datepicker({
+					dateFormat: 'dd.mm.yy',
+					showOn: "both",
+					buttonImage: '<? echo RES_FILE_PATH;  ?>/images/calendar.png',
+					buttonImageOnly: true
+				});
+				//timepicker
+				$('#startDateTimeP, #endDateTimeP').timepicker({
+					minutes: {
+						interval: 5
+					},
+					showPeriodLabels: false,
+					rows: 4,
+					hourText: 'Stunde',
+					minuteText: 'Minute'
+				});
+				
+				$('textarea[name=comments]', this).val('');
+				
+				$('#allDayOffP', this).attr('checked', true).trigger('click');
+				
+			}
+		});
+		$( "#editEventP" ).dialog({
+			autoOpen: false,
+			resizable: false,
+			height: 350,
+			width: 620,
+			modal: true,
+			open: function() {
+				var eventType = $('#eventTypeEP').val();
+			
+				if(eventType == "14") {
+					$(".ui-dialog-buttonpane button:contains('Entfernen')").attr("disabled", false).addClass("ui-state-default");
+				} else {
+					$(".ui-dialog-buttonpane button:contains('Entfernen')").attr("disabled", true).addClass("ui-state-disabled");
+				}
+				
+				
+			    //ISPC-2175
+	            var _eventType_DoctorCustomEvents = [10, 14];  //this are on Patient... in Calendar you have 10, 11        
+	            var _calEvent = $(this).data('calEvent') || {};
+	            if (_eventType_DoctorCustomEvents.indexOf(Number(_calEvent.eventType)) != -1) {
+	                $('textarea[name=comments]', this).val(_calEvent.comments).show();
+	            } else {
+	                $('textarea[name=comments]', this).val('').hide();
+	            }
+			},
+			buttons: {
+				"Termin bearbeiten": function(){
+
+					var eventId = $('#eventIdEP').val();
+
+					if($("input[name='allDayEP']:checked").val() == '1'){
+						var startDateTimeEntered		=	" 00:00:00";
+						var endDateTimeEntered		=	" 00:00:00";
+					} else {
+						var startDateTimeEntered		=	" "+$('#startDateTimeEP').val()+":00";
+						var endDateTimeEntered		=	" "+$('#endDateTimeEP').val()+":00";
+					}
+					var eventTitle			=	$('#eventTitleEP').val();
+					var startDateEntered	=	$('#startDateEP').val().split('.');
+					var endDateEntered		=	$('#endDateEP').val().split('.');
+					var eventType			=	$('#eventTypeEP').val();
+					var allDay			=	$("input[name='allDayEP']:checked").val();
+					var cDate			=	$('#createDateEP').val();
+					
+					var _comments = $('textarea[name=comments]', this).val() || '';
+					
+					$.ajax({
+						type: 'POST',
+						url: 'patient/savepatientevents?id=<?php echo $_REQUEST[id]; ?>',
+						async: true,
+						data: {
+							'eventId' : eventId,
+							'eventTitle' : eventTitle,
+							'startDate' : startDateEntered[2]+"-"+startDateEntered[1]+"-"+startDateEntered[0]+startDateTimeEntered ,
+							'endDate' : endDateEntered[2]+"-"+endDateEntered[1]+"-"+endDateEntered[0]+endDateTimeEntered ,
+							'eventType' : eventType,
+							'allDay' : allDay,
+							'cDate' : cDate,
+							'comments' : _comments,
+							
+						},
+						success: function(responseText) {
+
+							$('#patientCalendar').fullCalendar('unselect');
+
+							$('#patientCalendar').fullCalendar('refetchEvents');
+						}
+					});
+					$( "#editEventP" ).dialog("close");
+				},
+				"Entfernen": function(){
+					var eventId		=	$('#eventIdEP').val();
+					var eventTitle		=	$('#eventTitleEP').val();
+
+					$('#evTitleP').html('<b>'+eventTitle+'</b>');
+					$('#parentModalP').val($(this).attr('id'));
+					$( "#delEventP" ).dialog('open');
+
+
+				}
+			},
+			close: function() {
+				$( "#startDateEP, #endDateEP" ).datepicker('hide');
+				$( "#startDateEP, #endDateEP" ).datepicker('destroy');
+				$( "#ui-timepicker-div" ).hide();
+			}
+		});
+
+
+		$( "#delEventP" ).dialog({
+			autoOpen: false,
+			resizable: false,
+			height: 150,
+			width: 300,
+			modal: true,
+			title:'Entfernen',
+			buttons: {
+				"Ja": function(){
+					var eventId		=	$('#eventIdEP').val();
+					var eventType		=	$('#eventTypeEP').val();
+
+					$.ajax({
+						type: 'POST',
+						url: 'patient/delevents?calendar=doc&id=<?php echo $_REQUEST[id]; ?>',
+						async: true,
+						data: 'eventId='+eventId+'&eventType='+eventType,
+						success: function(responseText) {
+							$('#patientCalendar').fullCalendar('unselect');
+							$('#patientCalendar').fullCalendar('refetchEvents');
+						}
+					});
+
+					$('#'+$( "#parentModalP" ).val()+'').dialog("close");
+					$( "#delEventP" ).dialog("close");
+				},
+				"Nein": function(){
+					$( "#delEventP" ).dialog('close');
+				}
+			},
+
+			close: function() {
+				$( "#startDateEP, #endDateEP" ).datepicker('hide');
+				$( "#startDateEP, #endDateEP" ).datepicker('destroy');
+				$( "#ui-timepicker-div" ).hide();
+			}
+		});
+
+		$('#patientCalendar').fullCalendar({
+			editable: true,
+			allDayText: 'ganztags',
+			events: "patient/fetchcalendarevents?id=<?php echo $_REQUEST[id]; ?>",
+			
+			dayHeaderNumberClick : function(date, jsEvent, view){
+                $('#patientCalendar').fullCalendar('gotoDate', date);
+                $('#patientCalendar').fullCalendar('changeView', 'agendaDay');
+            },
+			eventClick: function(calEvent, jsEvent, view) {
+				var view = $('#patientCalendar').fullCalendar('getView')
+				if(view.name != "agendaDay" && (calEvent.eventType == 14 || calEvent.eventType == 1 || calEvent.eventType == 2 || calEvent.eventType == 3 || calEvent.eventType == 4 || calEvent.eventType == 9 || calEvent.eventType == 10 || calEvent.eventType == 11 || calEvent.eventType == 12 || calEvent.eventType == 13 || calEvent.eventType == 15 || calEvent.eventType == 16 || calEvent.eventType == 17)){
+					$('#ui-dialog-title-editEventP').html("Termin bearbeiten: " + calEvent.title + '' );
+
+					//bind to dialog on opening event our clicked event values!
+					$( "#editEventP" ).bind( "dialogopen", function(event, ui) {
+						//event title
+						$('#eventTitleEP').val(calEvent.title);
+						if(calEvent.eventType == 1 || calEvent.eventType == 2 || calEvent.eventType == 4 || calEvent.eventType == 9 || calEvent.eventType == 13 || calEvent.eventType == 15 || calEvent.eventType == 16 || calEvent.eventType == 17){
+							$('#eventTitleRowEP').hide();
+						} else {
+							$('#eventTitleRowEP').show();
+						}
+
+
+						//event id(hidden)
+						$('#eventIdEP').val(calEvent.id);
+
+						//event start-end date
+						var start		= new Date(calEvent.start);
+						var startDay	=	""+start.getDate();
+						var startMonth	=	""+(start.getMonth()+1);
+						var startYear	=	""+start.getFullYear();
+						var startHours	=	""+start.getHours();
+						var startMinutes	=	""+start.getMinutes();
+						var startSeconds	=	""+start.getSeconds();
+
+						if(startDay.length == "1"){
+							startDay = "0"+startDay;
+						}
+						if(startMonth.length == "1"){
+							startMonth = "0"+startMonth;
+						}
+						if(startHours.length == "1"){
+							startHours = "0"+startHours;
+						}
+						if(startMinutes.length == "1"){
+							startMinutes = "0"+startMinutes;
+						}
+						if(startSeconds.length == "1"){
+							startSeconds = "0"+startSeconds;
+						}
+
+
+						if(calEvent.end == null){
+							calEvent.end = calEvent.start;
+						}
+						var end		= new Date(calEvent.end);
+						var endDay	=	""+end.getDate();
+						var endMonth	=	""+(end.getMonth()+1);
+						var endYear	=	""+end.getFullYear();
+						var endHours	=	""+end.getHours();
+						var endMinutes	=	""+end.getMinutes();
+						var endSeconds	=	""+end.getSeconds();
+
+						if(endDay.length == "1"){
+							endDay = "0"+endDay;
+						}
+						if(endMonth.length == "1"){
+							endMonth = "0"+endMonth;
+						}
+						if(endHours.length == "1"){
+							endHours = "0"+endHours;
+						}
+						if(endMinutes.length == "1"){
+							endMinutes = "0"+endMinutes;
+						}
+						if(endSeconds.length == "1"){
+							endSeconds = "0"+endSeconds;
+						}
+
+						var finalStartDate = startDay+"."+startMonth+"."+startYear;
+						var finalStartDateTime = startHours+":"+startMinutes;
+
+						var finalEndDate = endDay+"."+endMonth+"."+endYear;
+						var finalEndDateTime = endHours+":"+endMinutes;
+
+						$('#startDateEP').val(finalStartDate);
+						$('#startDateTimeEP').val(finalStartDateTime);
+
+						$('#endDateEP').val(finalEndDate);
+						$('#endDateTimeEP').val(finalEndDateTime);
+						//event type
+						$('#eventTypeEP').val(calEvent.eventType);
+						$('#createDateEP').val(calEvent.createDate);
+
+
+
+						//allDay
+						if(calEvent.allDay == true){
+							$('#allDayEP').show();
+							$('#allDayOnEP').attr('checked', true);
+							$('#allDayOffEP').attr('checked', false);
+
+							$('#startDateTimeEP').hide();
+							$('#endDateTimeEP').hide();
+						} else {
+							$('#allDayEP').show();
+							$('#allDayOnEP').attr('checked', false);
+							$('#allDayOffEP').attr('checked', true);
+
+							$('#startDateTimeEP').show();
+							$('#endDateTimeEP').show();
+						}
+
+
+						if(calEvent.eventType == 1 || calEvent.eventType == 2 || calEvent.eventType == 9 || calEvent.eventType == 13 || calEvent.eventType == 15 || calEvent.eventType == 16 || calEvent.eventType == 17){
+							$('#allDayRowEP').hide();
+							if(calEvent.eventType == 9 || calEvent.eventType == 15 || calEvent.eventType == 16 ){
+								$('#endDateRowEP').hide();
+							}
+						} else {
+							$('#allDayRowEP').show();
+							$('#endDateRowEP').show();
+
+						}
+						/* Initialize datepicker and timepicker in modal */
+						//datepicker
+						$( "#startDateEP, #endDateEP" ).datepicker({
+							dateFormat: 'dd.mm.yy',
+							showOn: "both",
+							buttonImage: '<? echo RES_FILE_PATH;  ?>/images/calendar.png',
+							buttonImageOnly: true,
+							onSelect: function(dates) {
+							}
+						});
+						//timepicker
+						$('#startDateTimeEP, #endDateTimeEP').timepicker({
+							minutes: {
+								interval: 5
+							},
+							showPeriodLabels: false,
+							rows: 4,
+							hourText: 'Stunde',
+							minuteText: 'Minute'
+						});
+
+					});
+					$('#editEventP').data('calEvent', calEvent).dialog('open');
+				}
+
+			},
+			eventDrop: function(event, delta) { //save when drag and drop
+				var start		= new Date(event.start);
+				var startDay	=	""+start.getDate();
+				var startMonth	=	""+(start.getMonth()+1);
+				var startYear	=	""+start.getFullYear();
+				var startHours	=	""+start.getHours();
+				var startMinutes	=	""+start.getMinutes();
+				var startSeconds	=	""+start.getSeconds();
+
+				if(startDay.length == "1"){
+					startDay = "0"+startDay;
+				}
+				if(startMonth.length == "1"){
+					startMonth = "0"+startMonth;
+				}
+				if(startHours.length == "1"){
+					startHours = "0"+startHours;
+				}
+				if(startMinutes.length == "1"){
+					startMinutes = "0"+startMinutes;
+				}
+				if(startSeconds.length == "1"){
+					startSeconds = "0"+startSeconds;
+				}
+
+				var finalStartDate = startYear+"-"+startMonth+"-"+startDay+" "+startHours+":"+startMinutes+":"+startSeconds+"";
+
+				var eventFinal = event;
+				var deltaFinal = delta;
+				var end		= new Date(event.end);
+				var endDay	=	""+end.getDate();
+				var endMonth	=	""+(end.getMonth()+1);
+				var endYear	=	""+end.getFullYear();
+				var endHours	=	""+end.getHours();
+				var endMinutes	=	""+end.getMinutes();
+				var endSeconds	=	""+end.getSeconds();
+
+				if(endDay.length == "1"){
+					endDay = "0"+endDay;
+				}
+				if(endMonth.length == "1"){
+					endMonth = "0"+endMonth;
+				}
+				if(endHours.length == "1"){
+					endHours = "0"+endHours;
+				}
+				if(endMinutes.length == "1"){
+					endMinutes = "0"+endMinutes;
+				}
+				if(endSeconds.length == "1"){
+					endSeconds = "0"+endSeconds;
+				}
+
+				var finalEndDate = endYear+"-"+endMonth+"-"+endDay+" "+endHours+":"+endMinutes+":"+endSeconds+"";
+				if(eventFinal.allDay === true){
+					var allDay = "1";
+				} else {
+					var allDay = "0";
+				}
+				jConfirm('Wollen Sie diesen Termin verschieben.', 'Bestätigung', function(r) {
+					var view = $('#patientCalendar').fullCalendar('getView');
+					if(r){
+						$.ajax({
+							type: 'POST',
+							url: 'patient/savepatientevents?id=<?php echo $_REQUEST[id]; ?>',
+							async: true,
+							data: {
+								'eventId' : eventFinal.id ,
+								'eventTitle' : eventFinal.title ,
+								'startDate' : finalStartDate ,
+								'endDate' : finalEndDate ,
+								'eventType' : eventFinal.eventType ,
+								'allDay' : allDay ,
+								'delta' : deltaFinal,
+								'cDate' : eventFinal.createDate,
+								'comments' : eventFinal.comments || '',
+							},
+							
+							success: function(responseText) {
+								if(view.name != "agendaDay"){//fix for moving in agendaDay!
+									$('#patientCalendar').fullCalendar( 'refetchEvents' ); //reload saved data
+								}
+							}
+						});
+					} else {
+						if(view.name != "agendaDay"){//fix for moving in agendaDay!
+							$('#patientCalendar').fullCalendar( 'refetchEvents' ); //reload saved data
+						}
+					}
+				});
+			},
+			header: {
+				left: 'prev,next today',
+				center: 'title',
+				right: 'agendaDay,basicWeek,month'
+			},
+ 
+			loading: function(bool) {
+				if (bool)
+					$('#tabs-1').block({
+						css: {
+							border: 'none',
+							padding: '15px',
+							backgroundColor: '#000',
+							'-webkit-border-radius': '10px',
+							'-moz-border-radius': '10px',
+							opacity: .5,
+							color: '#fff',
+							height: 'auto'
+						},
+					message: '<h2>Verarbeitung</h2>'
+				});
+				else
+					$('#tabs-1').unblock();
+			},
+			select: function(start, end, allDay) { //selected nonevent slot opens modal
+				
+				//modal title
+				$('#ui-dialog-title-addneweventpatient').html("neuen Termin hinzufügen");
+				//get selected start/end date if is interval (start!= end) else is same day)
+				//vars + put leading zeros to day and month
+				var startDay	=	""+start.getDate();
+				var startMonth	=	""+(start.getMonth()+1);
+				var startYear	=	start.getFullYear();
+				var startHour	=	""+start.getHours();
+				var startMinutes =	""+start.getMinutes();
+
+				if(startDay.length == "1"){
+					startDay = "0"+startDay;
+				}
+				if(startMonth.length == "1"){
+					startMonth = "0"+startMonth;
+				}
+				if(startHour.length == "1"){
+					startHour = "0"+startHour;
+				}
+				if(startMinutes.length == "1"){
+					startMinutes = "0"+startMinutes;
+				}
+				var startSelectedDate = startDay+'.'+startMonth+'.'+startYear;
+				var startSelectedTime = startHour+':'+startMinutes;
+
+				//insert start date
+				$('#startDateP').val(startSelectedDate);
+
+
+				var endDay	=	""+end.getDate();
+				var endMonth	=	""+(end.getMonth()+1);
+				var endYear	=	end.getFullYear();
+				var endHour	=	""+end.getHours();
+				var endMinutes	=	""+end.getMinutes();
+
+				if(endDay.length == "1"){
+					endDay = "0"+endDay;
+				}
+				if(endMonth.length == "1"){
+					endMonth = "0"+endMonth;
+				}
+				if(endHour.length == "1"){
+					endHour = "0"+endHour;
+				}
+				if(endMinutes.length == "1"){
+					endMinutes = "0"+endMinutes;
+				}
+				var endSelectedDate = endDay+'.'+endMonth+'.'+endYear;
+				var endSelectedTime = endHour+':'+endMinutes;
+				//insert end date
+				$('#endDateP').val(endSelectedDate);
+
+				if(startSelectedDate == endSelectedDate && startSelectedTime == endSelectedTime){
+
+					$("#allDayOnP").attr('checked', true);
+					//disable and hide time selects
+					$('#startDateTimeP').val(" ");
+					$('#startDateTimeP').hide();
+
+					$('#endDateTimeP').val(" ");
+					$('#endDateTimeP').hide();
+				} else {
+					$("#allDayOffP").attr('checked', true);
+					//enable and show time selects
+					$('#startDateTimeP').val(startSelectedTime);
+					$('#startDateTimeP').show();
+
+					$('#endDateTimeP').val(endSelectedTime);
+					$('#endDateTimeP').show();
+
+				}
+				//remove selection!
+				$('#patientCalendar').fullCalendar('unselect');
+				
+				$( "#addneweventpatient" ).dialog('open');
+			},
+			editable: true,
+			timeFormat: 'HH:mm{ - HH:mm}\n', //H pt 24h
+			axisFormat: 'HH:mm',
+			aspectRatio: 2,
+			height: 900,
+			firstDay: 1,
+			defaultView: 'month',
+			weekMode: 'liquid',
+			slotMinutes: 30,
+			selectable: true,
+			selectHelper: true,
+			theme:true,
+			monthNames: ["Januar","Februar","März","April","Mai","Juni","Juli", "August", "September", "Oktober", "November", "Dezember" ],
+			monthNamesShort: ['Jän','Feb','März','Apr','Mai','Juni','Juli','Aug','Sept','Okt','Nov','Dez'],
+			dayNames: [ 'Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'],
+			dayNamesShort: ['So','Mo','Di','Mi','Do','Fr','Sa'],
+			buttonText: {
+				today: 'heute',
+				month: 'monat',
+				week: 'woche',
+				day: 'tag'
+			},
+			columnFormat: {
+				month: 'ddd',    // Mon
+				week: 'ddd, d.M', // Mon 9/7
+				day: 'dddd, d.M.yyyy'  // Monday 9/7
+			},
+			titleFormat: {
+			    month: 'MMMM yyyy',                             // September 2009
+			    week: "MMM d[ yyyy]{ '&#8212;'[ MMM] d yyyy}", // Sep 7 - 13 2009
+			    day: 'dddd d.M.yyyy'                  // Tuesday, Sep 8, 2009
+			},
+			monthNames: ["Januar","Februar","März","April","Mai","Juni","Juli", "August", "September", "Oktober", "November", "Dezember" ],
+			monthNamesShort: ['Jän','Feb','März','Apr','Mai','Juni','Juli','Aug','Sept','Okt','Nov','Dez'],
+			dayNames: [ 'Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'],
+			dayNamesShort: ['So','Mo','Di','Mi','Do','Fr','Sa'],
+			buttonText: {
+				today: 'heute',
+				month: 'monat',
+				week: 'woche',
+				day: 'tag'
+			}
+		});
+
+		$('#tabs-1').append('<a onclick="print_pat_calendar_action()"><img src="<?php echo RES_FILE_PATH; ?>/images/print.gif" /></a>');
+		$('#tabs-2').append('<a onclick="print_doc_calendar_action()"><img src="<?php echo RES_FILE_PATH; ?>/images/print.gif" /></a>');
+		$('#tabs-3').append('<a onclick="printaction()"><img src="<?php echo RES_FILE_PATH; ?>/images/print.gif" /></a>');
+	});
+	function print_pat_calendar_action() {
+		var date = $("#patientCalendar").fullCalendar('getDate');
+		var d = '';
+		if(date.getDay() == '0'){
+			d = '1';
+		} else {
+			d = date.getDay();
+		}
+		document.calendarprint.action = "<?php echo APP_BASE; ?>calendar/printpatientcalendar?id=<?php echo $_REQUEST['id']; ?>&y="+date.getFullYear()+"&m="+date.getMonth()+'&d='+d;
+		document.calendarprint.target = "_blank";
+		document.calendarprint.submit();
+	}
+</script>
+<?php echo $this->patientinfo ?>
+<?php echo $this->tabmenus ?>
+<div style="display: none;"><img id="calImg" src="<? echo RES_FILE_PATH;  ?>/images/calendar.png" alt="Popup" class="trigger"></div>
+<div class="tab_container" >
+	<div>
+		<div id="tabs">
+			<ul>
+				<li><a href="#tabs-1">Patient</a></li>
+				<li><a href="#tabs-2">Benutzer</a></li>
+				<li><a href="#tabs-3">Team</a></li>
+			</ul>
+
+			<div id="tabs-1">
+				<div id="patientCalendar"></div>
+			</div>
+			<div id="tabs-2">
+				<div id="calendar"></div>
+			</div>
+			<div id="tabs-3">
+				<div id="teamCalendar" ></div>
+			</div>
+		</div>
+	</div>
+	<div id="addneweventpatient" style="display:none">
+		<div id="contactArea" >
+			<table border="0" cellspacing="2" cellpadding="2" width="100%">
+				<tbody>
+					<tr>
+						<td style="width:200px;">Name Termin: </td>
+						<td colspan="2"><input type="text" width="100%" name="eventTitleP" value="" id="eventTitleP" /></td>
+					</tr>
+					<tr>
+                        <td>ganztags: </td>
+                        <td>
+                            <label for="allDayOn">Ja</label>
+                            <input type="radio" name="allDayP" id="allDayOnP" value="1" onclick="toggleEventAllDayP($(this));" />
+                            <label for="allDayOff">Nein</label>
+                            <input type="radio" name="allDayP" id="allDayOffP" value="0" onclick="toggleEventAllDayP($(this));" />
+                        </td>
+                        <td></td>
+                    </tr>
+					<tr>
+						<td>Begin Datum: </td>
+						<td colspan="2" style="width:auto;">
+							<input type="text" name="startDateP" value="" id="startDateP" />
+							<input type="text" name="startDateTimeP" value="" id="startDateTimeP" style="width: 50px;"/>
+						</td>
+					</tr>
+					<tr>
+						<td>Ende Datum: </td>
+						<td style="width:auto;">
+							<input type="text" name="endDateP" value="" id="endDateP" />
+							<input type="text" name="endDateTimeP" value="" id="endDateTimeP" style="width: 50px;" />
+						</td>
+					</tr>
+					
+				</tbody>
+			</table>
+            
+            <?php echo $this->formTextarea('comments', '', array(
+                                'id'=>null, 
+                                'style'=>'width:570px; position:absolute;bottom:0;', 
+                                'rows'=>3, 
+                                'placeholder'=>$this->translate('comments')))
+            ?>
+            
+		</div>
+	</div>
+	<div id="editEventP" style="display:none">
+		<div id="contactArea" >
+			<table border="0" cellspacing="2" cellpadding="2" width="100%">
+				<tbody>
+					<tr id="eventTitleRowEP">
+						<td style="width:200px;">Name Termin: </td>
+						<td colspan="2">
+							<input type="text" name="eventTitleEP" value="" id="eventTitleEP" />
+							<input type="hidden" name="eventIdEP" value="" id="eventIdEP" />
+							<input type="hidden" name="eventTypeEP" id="eventTypeEP">
+							<input type="hidden" name="createDateEP" id="createDateEP" value="">
+						</td>
+					</tr>
+                    <tr id="allDayRowEP">
+                        <td>ganztags: </td>
+                        <td>
+                            <label for="allDayOnEP">Ja</label>
+                            <input type="radio" name="allDayEP" id="allDayOnEP" value="1" onclick="toggleEventAllDayEP($(this));" />
+                            <label for="allDayOffE">Nein</label>
+                            <input type="radio" name="allDayEP" id="allDayOffEP" value="0" onclick="toggleEventAllDayEP($(this));" />
+                        </td>
+                        <td></td>
+                    </tr>
+					<tr>
+						<td>Begin Datum: </td>
+						<td colspan="2" style="width:auto;">
+							<input type="text" name="startDateEP" value="" id="startDateEP" readonly="readonly"/>
+							<input type="text" name="startDateTimeEP" value="" id="startDateTimeEP" style="width: 50px;" readonly="readonly"/>
+						</td>
+					</tr>
+					<tr id="endDateRowEP">
+						<td>Ende Datum: </td>
+						<td style="width:auto;">
+							<input type="text" name="endDateEP" value="" id="endDateEP" readonly="readonly"/>
+							<input type="text" name="endDateTimeEP" value="" id="endDateTimeEP" style="width: 50px;" readonly="readonly"/>
+						</td>
+					</tr>
+					
+				</tbody>
+			</table>
+            
+            <?php echo $this->formTextarea('comments', '', array(
+                                'id'=>null, 
+                                'style'=>'width:570px; position:absolute;bottom:0;', 
+                                'rows'=>3, 
+                                'placeholder'=>$this->translate('comments')))
+            ?>
+            
+		</div>
+	</div>
+	<div id="addnewevent" style="display:none">
+		<div id="contactArea" >
+			<table border="0" cellspacing="2" cellpadding="2" width="100%">
+				<tbody>
+					<tr>
+						<td style="width:200px;"><label>Name Termin: </label></td>
+						<td colspan="2"><input type="text" width="100%" name="eventTitle" value="" id="eventTitle" /></td>
+						<input type="hidden" name="selectPatient" id="selectPatient" value="<?php echo $this->ipid; ?>"/>
+					</tr>
+					<tr>
+                        <td>ganztags: </td>
+                        <td>
+                            <label for="allDayOn">Ja</label>
+                            <input type="radio" name="allDay" id="allDayOn" value="1" onclick="toggleEventAllDay($(this));" />
+                            <label for="allDayOff">Nein</label>
+                            <input type="radio" name="allDay" id="allDayOff" value="0" onclick="toggleEventAllDay($(this));" />
+                        </td>
+                        <td></td>
+                    </tr>
+					<tr>
+						<td>Begin Datum: </td>
+						<td colspan="2" style="width:auto;">
+							<input type="text" name="startDate" value="" id="startDate" readonly="readonly"/>
+							<input type="text" name="startDateTime" value="" id="startDateTime" style="width: 50px;"/>
+						</td>
+					</tr>
+					<tr>
+						<td>Ende Datum: </td>
+						<td style="width:auto;">
+							<input type="text" name="endDate" value="" id="endDate" readonly="readonly"/>
+							<input type="text" name="endDateTime" value="" id="endDateTime" style="width: 50px;" />
+						</td>
+					</tr>
+					<tr>
+						<td>Art des Termin:</td>
+						<td>
+							<select name="eventType" id="eventType">
+								<option value="10">Termin</option>
+								<option value="11">Notiz</option>
+							</select>
+						</td>
+					</tr>
+					
+					<tr id="allViewRow">
+						<td><?php echo $this->translate('visibleforallmodal'); ?> :</td>
+						<td>
+							<input type="checkbox" name="viewForAll" id="viewForAll" value="1" />
+						</td>
+						<td></td>
+					</tr>
+					
+					<tr id="dayplan_inform_Row">
+						<td><?php echo $this->translate('customevent_inform_dayplaning') ?>:</td>
+						<td>
+							<label for="dayplan_inform_on">Ja</label>
+							<input type="radio" name="dayplan_inform" id="dayplan_inform_on" value="1" />
+							<label for="dayplan_inform_off">Nein</label>
+							<input type="radio" name="dayplan_inform" id="dayplan_inform_off" value="0" />
+						</td>
+						<td></td>
+					</tr>
+					
+					<tr>
+						<td></td>
+						<td></td>
+						<td></td>
+					</tr>
+				</tbody>
+			</table>
+            
+            <?php echo $this->formTextarea('comments', '', array(
+                                'id'=>null, 
+                                'style'=>'width:570px; position:absolute;bottom:0;', 
+                                'rows'=>3, 
+                                'placeholder'=>$this->translate('comments')))
+            ?>
+            
+		</div>
+	</div>
+
+	<div id="editEvent" style="display:none">
+		<div id="contactArea" >
+			<table border="0" cellspacing="2" cellpadding="2" width="100%">
+				<tbody>
+					<tr id="eventTitleERow">
+						<td style="width:200px;">Name Termin: </td>
+						<td colspan="2">
+							<input type="text" name="eventTitleE" value="" id="eventTitleE" />
+							<input type="hidden" name="eventIdE" value="" id="eventIdE" />
+							<input type="hidden" name="eventTypeE" id="eventTypeE">
+							<input type="hidden" name="selectPatientE" id="selectPatientE" value="<?php echo $this->ipid; ?>">
+							<input type="hidden" name="createDateE" id="createDateE" value="">
+
+						</td>
+					</tr>
+                    <tr id="allDayEventERow">
+                        <td>ganztags: </td>
+                        <td>
+                            <label for="allDayOnE">Ja</label>
+                            <input type="radio" name="allDayE" id="allDayOnE" value="1" onclick="toggleEventAllDayE($(this));" />
+                            <label for="allDayOffE">Nein</label>
+                            <input type="radio" name="allDayE" id="allDayOffE" value="0" onclick="toggleEventAllDayE($(this));" />
+                        </td>
+                        <td></td>
+                    </tr>
+					<tr>
+						<td>Begin Datum: </td>
+						<td colspan="2" style="width:auto;">
+							<input type="text" name="startDateE" value="" id="startDateE" readonly="readonly"/>
+							<input type="text" name="startDateTimeE" value="" id="startDateTimeE" style="width: 50px;" readonly="readonly"/>
+						</td>
+					</tr>
+					<tr id="endDateRowE">
+						<td>Ende Datum: </td>
+						<td style="width:auto;">
+							<input type="text" name="endDateE" value="" id="endDateE" readonly="readonly"/>
+							<input type="text" name="endDateTimeE" value="" id="endDateTimeE" style="width: 50px;" />
+						</td>
+					</tr>
+					
+					<tr id="allViewRowE">
+						<td><?php echo $this->translate('visibleforallmodal'); ?> :</td>
+						<td>
+							<input type="checkbox" name="viewForAll" id="viewForAllE" value="1" />
+						</td>
+						<td></td>
+					</tr>
+					
+					<tr id="dayplan_inform_Row">
+						<td><?php echo $this->translate('customevent_inform_dayplaning') ?>:</td>
+						<td>
+							<label for="dayplan_inform_on">Ja</label>
+							<input type="radio" name="dayplan_inform" id="dayplan_inform_on" value="1" />
+							<label for="dayplan_inform_off">Nein</label>
+							<input type="radio" name="dayplan_inform" id="dayplan_inform_off" value="0" />
+						</td>
+						<td></td>
+					</tr>
+					
+				</tbody>
+			</table>
+            
+            <?php echo $this->formTextarea('comments', '', array(
+                                'id'=>null, 
+                                'style'=>'width:570px; position:absolute;bottom:0;', 
+                                'rows'=>3, 
+                                'placeholder'=>$this->translate('comments')))
+            ?>
+            
+		</div>
+	</div>
+
+	<div id="editEventTeam" style="display:none">
+		<div id="contactArea" >
+			<table border="0" cellspacing="2" cellpadding="2" width="100%">
+				<tbody>
+					<tr id="nameRow">
+						<td style="width:200px;"><label>Name Termin: </label></td>
+						<td colspan="2">
+							<input type="text" name="eventTitleET" value="" id="eventTitleET" />
+							<input type="hidden" name="eventIdET" value="" id="eventIdET" />
+							<input type="hidden" name="eventTypeET" id="eventTypeET">
+						</td>
+					</tr>
+                    <tr id="allDayET">
+                        <td>ganztags: </td>
+                        <td>
+                            <label for="allDayOnET">Ja</label>
+                            <input type="radio" name="allDayET" id="allDayOnET" value="1" onclick="toggleEventAllDayET($(this));" />
+                            <label for="allDayOffET">Nein</label>
+                            <input type="radio" name="allDayET" id="allDayOffET" value="0" onclick="toggleEventAllDayET($(this));" />
+                        </td>
+                        <td></td>
+                    </tr>
+					<tr>
+						<td>Begin Datum: </td>
+						<td colspan="2" style="width:auto;">
+							<input type="text" name="startDateET" value="" id="startDateET" readonly="readonly"/>
+							<input type="text" name="startDateTimeET" value="" id="startDateTimeET" style="width: 50px;"/>
+						</td>
+					</tr>
+					<tr id="endDateRowET">
+						<td>Ende Datum: </td>
+						<td style="width:auto;">
+							<input type="text" name="endDateET" value="" id="endDateET" readonly="readonly"/>
+							<input type="text" name="endDateTimeET" value="" id="endDateTimeET" style="width: 50px;" />
+						</td>
+					</tr>
+					
+					<tr id="dayplan_inform_Row">
+					<td><?php echo $this->translate('customevent_inform_dayplaning') ?>:</td>
+						<td>
+							<label for="dayplan_inform_on">Ja</label>
+							<input type="radio" name="dayplan_inform" id="dayplan_inform_on" value="1" />
+							<label for="dayplan_inform_off">Nein</label>
+							<input type="radio" name="dayplan_inform" id="dayplan_inform_off" value="0" />
+						</td>
+						<td></td>
+					</tr>
+				</tbody>
+			</table>
+            
+            <?php echo $this->formTextarea('comments', '', array(
+                                'id'=>null, 
+                                'style'=>'width:570px; position:absolute;bottom:0;', 
+                                'rows'=>3, 
+                                'placeholder'=>$this->translate('comments')))
+            ?>
+            
+</div>
+	</div>
+
+	<div id="addneweventteam" style="display:none">
+		<div id="contactArea" >
+			<table border="0" cellspacing="2" cellpadding="2" width="100%">
+				<tbody>
+					<tr id="eventNameRow">
+						<td style="width:200px;">Name Termin: </td>
+						<td colspan="2"><input type="text" width="100%" name="eventTitleT" value="" id="eventTitleT" /></td>
+					</tr>
+                    <tr id="allDayRow">
+                        <td>ganztags: </td>
+                        <td>
+                            <label for="allDayOn">Ja</label>
+                            <input type="radio" name="allDayT" id="allDayOnT" value="1" onclick="toggleEventAllDayT($(this));" />
+                            <label for="allDayOff">Nein</label>
+                            <input type="radio" name="allDayT" id="allDayOffT" value="0" onclick="toggleEventAllDayT($(this));" />
+                        </td>
+                        <td></td>
+                    </tr>
+					<tr id="startDateRow">
+						<td>Begin Datum: </td>
+									<td colspan="2" style="width:auto;">
+										<input type="text" name="startDateT" value="" id="startDateT" readonly="readonly"/>
+										<input type="text" name="startDateTimeT" value="" id="startDateTimeT" style="width: 50px;"/>
+									</td>
+								</tr>
+					<tr id="endDateRow">
+						<td>Ende Datum: </td>
+									<td style="width:auto;">
+										<input type="text" name="endDateT" value="" id="endDateT" readonly="readonly"/>
+										<input type="text" name="endDateTimeT" value="" id="endDateTimeT" style="width: 50px;" />
+									</td>
+								</tr>
+					
+							<tr>
+						<td>Art des Termin:</td>
+								<td>
+									<select name="eventTypeT" id="eventTypeT">
+										<option value="12" selected="selected">Ferien</option>
+										<option value="13">Team Sitzungen</option>
+										<option value="14">Fortbildung</option>
+										<option value="15">Supervision</option>
+										<option value="16">Kongress</option>
+										<option value="17">Rufbereitschaft</option>
+										<option value="20">Einsatzleitung</option>
+										<option value="21">Termin</option>
+										<option value="22">Freier Termin</option>
+									</select>
+								</td>
+						<td></td>
+							</tr>
+					<tr>
+						<td><?php echo $this->translate('customevent_inform_dayplaning') ?>:</td>
+						<td>
+							<label for="dayplan_inform_on">Ja</label>
+							<input type="radio" name="dayplan_inform" id="dayplan_inform_on" value="1" />
+							<label for="dayplan_inform_off">Nein</label>
+							<input type="radio" name="dayplan_inform" id="dayplan_inform_off" value="0" />
+						</td>
+						<td></td>
+					</tr>
+				</tbody>
+			</table>
+            
+            <?php echo $this->formTextarea('comments', '', array(
+                                'id'=>null, 
+                                'style'=>'width:570px; position:absolute;bottom:0;', 
+                                'rows'=>3, 
+                                'placeholder'=>$this->translate('comments')))
+            ?>
+            
+		</div>
+	</div>
+	<div id="delEventP" style="display:none">
+		<div id="contactArea" >
+			<input type="hidden" name="parentModalP" id="parentModalP" value="" />
+			<? echo $this->translate('deleteCustomEvents') ?>
+		</div>
+	</div>
+	<div id="delEvent" style="display:none">
+		<div id="contactArea" >
+			<input type="hidden" name="parentModal" id="parentModal" value="" />
+			<? echo $this->translate('deleteCustomEvents') ?>
+		</div>
+	</div>
+	<div id="delEventT" style="display:none">
+		<div id="contactArea" >
+			<input type="hidden" name="parentModalT" id="parentModalT" value="" />
+			<? echo $this->translate('deleteCustomEvents') ?>
+		</div>
+	</div>
+	<form action="" method="post" name="calendarprint" id="calendarprint" autocomplete="off" >
+
+	</form>
+</div>

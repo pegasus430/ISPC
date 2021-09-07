@@ -1,0 +1,244 @@
+<?php
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/jquery.blockUI.js');
+$this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/page-css/member_style.css');
+
+$this->headScript()->appendFile(APP_BASE.'javascript/fine-uploader/fine-uploader.min.js');
+$this->headLink()->appendStylesheet(APP_BASE.'javascript/fine-uploader/fine-uploader.css');
+
+
+$email_data = $this->email_data;
+
+function return_bytes($val) {
+    $val = trim($val);
+    $last = strtolower($val[strlen($val)-1]);
+    switch($last) {
+        // The 'G' modifier is available since PHP 5.1.0
+        case 'g':
+            $val *= 1024;
+        case 'm':
+            $val *= 1024;
+        case 'k':
+            $val *= 1024;
+    }
+
+    return $val;
+}
+
+$upload_max_filesize = return_bytes(ini_get('upload_max_filesize'));
+$my_upload_max_filesize =  (5 * 1000 * 1024);
+
+
+if ($upload_max_filesize > $my_upload_max_filesize ) {
+	$upload_max_filesize = $my_upload_max_filesize;
+}
+?>
+
+<script type="text/template" id="qq-template">
+									<div class="qq-uploader-selector qq-uploader w400" qq-drop-area-text="Drop files here">
+
+										<div class="qq-upload-drop-area-selector qq-upload-drop-area" qq-hide-dropzone>
+											<span class="qq-upload-drop-area-text-selector"></span>
+										</div>
+
+										<div class="qq-upload-button-selector qq-upload-button">
+											<div><?php echo $this->translate('uploadafile'); ?></div>
+										</div>
+
+										<span class="qq-drop-processing-selector qq-drop-processing">
+											<span>Processing dropped files...</span>
+											<span class="qq-drop-processing-spinner-selector qq-drop-processing-spinner"></span>
+										</span>
+
+										<div class="qq-total-progress-bar-container-selector qq-total-progress-bar-container">
+											<div role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" class="qq-total-progress-bar-selector qq-progress-bar qq-total-progress-bar"></div>
+										</div>
+
+
+										<ul class="qq-upload-list-selector qq-upload-list qq-upload-list-visible" aria-live="polite" aria-relevant="additions removals">
+											<li>
+												<div class="qq-progress-bar-container-selector">
+													<div role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" class="qq-progress-bar-selector qq-progress-bar"></div>
+												</div>
+
+												<div class="qq-file-info">
+													<div class="qq-file-name">
+														<span class="qq-upload-file-selector qq-upload-file"></span>
+													</div>
+													<span class="qq-upload-size-selector qq-upload-size"></span>
+													
+												</div>
+
+											</li>
+										</ul>
+
+
+
+									</div>
+								</script>
+
+<div style="float:left;">
+	<a class="button" href="<?php echo APP_BASE; ?>voluntaryworkers/workersdetailslist"><?php echo $this->translate('Back') ?></a>
+</div>
+<?php if (defined("DEBUGMODE") && DEBUGMODE) : ?>
+<div style="float:right;">
+	<a class="button" href="<?php echo APP_BASE; ?>voluntaryworkers/sendemail2vwshistory" style="width:120px;"><?php echo $this->translate('sendemail2vwshistory') ?></a>
+</div>
+<?php endif; ?>
+
+<form action="" method="post" id="send_emails" name="send_emails">
+<input type="hidden" name="email[initial_vws]" value="<? echo  implode(',',$email_data['recipients']['ids'])?>">
+<!-- ISPC - 2114 - archive function for vw -->
+<input type="hidden" name="tabs" value="<?php echo $this->email_tabs; ?>" />
+<!-- ISPC - 2114 - archive function for vw -->
+	<fieldset>
+		<legend><?php echo $this->translate('send email')?></legend>
+		
+		<table>
+			<tr>
+				<td colspan="3"><div class="error"><?php echo $this->error_recipients; ?></div></td>
+			</tr>
+			<tr>
+				<td colspan="3"><div class="error"><?php echo $this->error_subject; ?></div></td>
+			</tr>
+			<tr>
+				<td colspan="3"><div class="error"><?php echo $this->error_content; ?></div></td>
+			</tr>
+	
+			<tr>
+				<td><?php echo $this->translate('receiver')?></td>
+				<td></td>
+				<td>
+					<ul>
+						<?php foreach($email_data['client_vworkers'] as $voluntary_worker_id => $voluntary_worker_data):?>
+						<?php if(in_array($voluntary_worker_id,$email_data['recipients']['ids'])): ?>
+						<li>
+							<input type="checkbox" id="recipient_<?php echo $voluntary_worker_id;?>" name="email[recipients][]" value="<?php echo $voluntary_worker_id;?>"  <?php if(in_array($voluntary_worker_id,$email_data['recipients']['ids'])): ?> checked="checked" <?php endif; ?>/>
+							<label for="recipient_<?php echo $voluntary_worker_id;?>"><?php echo $voluntary_worker_data['nice_name'];?></label>
+						</li>
+						<?php endif;?>
+						<?php endforeach; ?>
+					</ul>
+					
+					<ul>
+						<?php foreach($email_data['no_email_vw_array'] as $member_data):?>
+						<li>
+							<label><?php echo $member_data['nice_name'];?> (<?php echo $this->translate('no email'); ?>)</label>
+						</li>
+						<?php endforeach; ?>
+					</ul>
+						
+				</td>
+			</tr>
+	
+			<tr>
+				<td  valign="top"><?php echo $this->translate('email_subject')?></td>
+					<td></td>
+				<td><input type="text" name="email[subject]" value="<?php echo $email_data['subject'];?>" class="w400" /></td>
+			</tr>
+
+			
+			<tr>
+				<td style="vertical-align: top;"><label style="line-height: 26px;"><?php echo $this->translate('email_content')?></label></td>
+				<td></td>
+				<td><textarea name="email[content]" cols="60" rows="8" class="w400"><?php echo $email_data['content'];?></textarea></td>
+			</tr>
+
+			
+			
+			
+			
+			<tr>
+				<td style="vertical-align: top;"><label style="line-height: 26px;"><?php echo $this->translate('email_attachment')?></label></td>
+				<td></td>
+				<td>
+					<div id="file-uploader-demo1">
+								<noscript>
+								Please enable JavaScript to use file uploader.
+								</noscript>
+					</div>
+				
+				
+					<script type="text/javascript">
+							var uploader = new qq.FineUploader({
+								debug: false,
+								multiple : false,
+								element: document.getElementById('file-uploader-demo1'),
+								template: 'qq-template',
+								request: {
+									
+									endpoint: appbase+'voluntaryworkers/sendemail2vws',
+									params: {
+										'action':'upload_file_attachment',
+										'date': new Date()
+									},
+								},
+								retry: {
+								   enableAuto: false
+								},
+								validation: {
+									allowedExtensions: ['pdf'],
+									sizeLimit: <?php echo $upload_max_filesize;?>
+								},
+								messages: {
+									sizeError: translate("FineUploader sizeError"),
+									typeError: translate("FineUploader typeError"),
+								},
+								callbacks: {
+									onComplete: function(id, fileName, responseJSON){	
+										
+										$('#btnsubmit').removeAttr("disabled");
+										
+										if (responseJSON.success == true){
+											//update
+											$("#fileuploads").val(responseJSON.qquuid);	
+										}
+									},
+									onSubmit: function(id, fileName){
+										$('#btnsubmit').attr("disabled", "true");
+										$("#fileuploads").val("0");	 
+									},
+								}
+								
+							});
+					</script>	
+						
+			</tr>
+			
+			
+			<tr>
+				<td colspan="3">&nbsp;</td>
+			</tr>
+			
+
+			<tr>
+				<td colspan="2">&nbsp;</td>
+				<td>
+					<input type="submit" name="submit" value="<?php echo $this->translate('Send email')?>" class="button" />
+					<a href="voluntaryworkers/workersdetailslist" class="button"><?php echo  $this->translate('CANCEL')?></a>
+					<input type="hidden" name="email[attachment]" id="fileuploads" value="0" />
+					
+				</td>
+			</tr>
+			
+			<tr>
+				<td colspan="3">&nbsp;</td>
+			</tr>
+			 
+			<tr>
+				<td colspan="3">
+					<?php 
+					
+						echo $this->tabulate(
+								$this->email_tokens,
+								array("class"=>"datatable token-list")
+						);
+
+					?>
+					
+				</td>
+			</tr>
+		</table>
+		
+	</fieldset>
+	
+</form>

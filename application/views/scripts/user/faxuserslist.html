@@ -1,0 +1,98 @@
+<script type="text/javascript">
+
+	var assigned_user = function (userid) {
+	    $("#loading_placeholder_" + userid).last().append('<img class="row_loader" width="14px" src="<?php echo RES_FILE_PATH; ?>/images/loading-transp.gif">');
+	}
+
+	var select_assigned_patient = function (params)
+	{
+		var userid = params.user;
+
+		if(params.assigned == "1")
+		{
+			$('#list_user_row_'+userid).addClass('rederr');
+			$('#select_print_user_'+userid).attr('checked', true);
+		}
+		else if(params.assigned == "0")
+		{
+			$('#list_user_row_'+userid).removeClass('rederr');
+		}
+
+	    $(".row_loader").remove();
+	}
+
+	$(document).ready(function () {
+	    $('.select_user').live('click', function () {
+			if(!$(this).is(':checked'))
+			{
+				var userid = $(this).val();
+				ajaxCallserver({url: '<?php echo APP_BASE; ?>ajax/checkfaxuserassigned?user=' + userid, callLoading: assigned_user(userid)});
+			}
+	    });
+	});
+
+	var pl_loading = function () {
+	    var dlist = '<div class="loadingdiv" align="center"><img src="<?php echo RES_FILE_PATH; ?>/images/pageloading.gif"><br /><?php echo $this->translate('loading_tables_data'); ?></div>';
+	    document.getElementById('content').innerHTML = dlist;
+	}
+
+	function loadpage(ord, clm)
+	{
+	    if($('#hdnlastpage').val() >= parseInt($('#pageno').val())) {
+			if((parseInt($('#pageno').val())) > 0) {
+				pgno = (parseInt($('#pageno').val() - 1));
+			} else {
+				pgno = 0;
+			}
+			ajaxCallserver({url: '<?php echo APP_BASE; ?>user/fetchfaxuserslist?clm=' + clm + '&ord=' + ord + '&pgno=' + pgno, callLoading: pl_loading});
+	    } else {
+			jAlert("<?php echo $this->translate('invalidpageno'); ?>");
+	    }
+	}
+
+	var callBack = function (params)
+	{
+	    document.getElementById('content').innerHTML = params.userlist;
+	}
+
+	function checkedall(allid)
+	{
+//	    checkbox = document.getElementsByName('user_id[]');
+	    checkbox = $('[name="user_id[]"]').not('.assigned');
+
+	    if(allid.checked == true)
+	    {
+			for(i = 0; i < checkbox.length; i++)
+			{
+				checkbox[i].checked = true;
+			}
+	    } else {
+			for(i = 0; i < checkbox.length; i++)
+			{
+				checkbox[i].checked = false;
+			}
+	    }
+	}
+</script>
+<style>
+    table.datatable tr:hover:not(:last-child) {
+          background-color: #e1e1e1;
+    }
+</style>
+<h1><?php echo $this->translate('fax_users_list'); ?></h1>
+<form action="" method="post" name="frmuser" id="frmuser">
+	<div style="clear:both;"></div>
+	<p>
+	<div id="userlisterror" class="err"><?php echo $this->error_message; ?></div>
+	<fieldset>
+		<em><?php echo $this->translate("currently_assigned_fax_user"); ?></em>
+	</fieldset>
+</p>
+<div id="content">
+	<?php echo $this->usergrid; ?>
+</div>
+</form>
+
+<script type="text/javascript">
+	ajaxCallserver({url: '<?php echo APP_BASE; ?>user/fetchfaxuserslist?clm=un&ord=ASC&pgno=0', callLoading: pl_loading});
+</script>

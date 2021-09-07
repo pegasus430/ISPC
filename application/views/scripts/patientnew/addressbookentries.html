@@ -1,0 +1,102 @@
+<!-- ISPC-2241, elena, 02.09.2020 (took from clinic) -->
+<?php
+$entries_count=0;
+$used_sortkeys=array();
+$hidden=array('ist Palliativ-Pflegedienst','gesetzl. Betreuer','Beziehung','ist Kontaktnummer','ist die Kontakt-Telefonnummer','Versichertennummer','Gebührenbefreiung','Privatpatient','Direktabrechnung','BG Patient','Versicherungsstatus');
+$alphas= range('a', 'w');
+$nums= range(0,9);
+$accchars=array_merge($alphas, $nums);
+;?>
+<?php if($this->tab != "patient"):?>
+<div class="nadrbk-searchbar">
+    <input type="text">
+</div>
+<?php endif;?>
+
+<div class="nadrbk-entries">
+
+
+    <?php foreach ($this->entries as $catc=>$entries):?>
+    <?php if(!count($entries)){continue;}?>
+
+    <?php foreach ($entries as $entry){
+            if($this->tab == "patient") {
+    $titlename= $this->categories[$catc]['label'];#
+    $class="nadrbk-entry-details-open";
+    }else{
+    $titlename= $entry['data']['sortname'];
+    $class="";
+    }
+    $eclass="";
+    foreach ($entry['data']['sortkeys'] as $sortkey){
+    $eclass = $eclass . " nadrbk-entry-sortletter_" . $sortkey;
+    $used_sortkeys[$sortkey]=$sortkey;
+    }
+    $entries_count++;
+    ;?>
+    <div class="nadrbk-entry <?php echo $eclass;?>">
+        <div class="nadrbk-entry-title"><?php echo htmlspecialchars($titlename);?>
+            <!-- TODO-3496, elena, 12.10.2020 -->
+            <?php if($this->tab == 'all'): ?>
+            &nbsp;(<?php echo $this->cattypes[$entry['cat']]; ?>)
+            <?php endif;?>
+            <span class="nadrbk-entry-toolbar">
+                        <img class="nadrbk-icon nadrbk-icon-copy" data-address="<?php echo implode("\n",array_map(htmlspecialchars, array_column($entry['address'],1)));?>" src="<?php echo RES_FILE_PATH;?>/images/copy.gif">
+                    </span>
+        </div>
+        <table class="nadrbk-entry-details <?php echo $class;?>">
+            <!-- TODO-3496, elena, 12.10.2020 -->
+            <?php if($this->tab != 'all'): ?>
+            <?php foreach($this->categories[$catc]['cols'] as $col):?>
+            <?php if (in_array($col['label'], $hidden)){continue;}?>
+            <tr>
+                <td><?php echo $col['label'];?></td>
+                <td><?php echo htmlspecialchars($entry['data'][$col['class']]);?></td>
+            </tr>
+            <?php endforeach;?>
+            <!-- TODO-3496, elena, 12.10.2020 -->
+            <?php else: ?>
+            <?php foreach($this->categories as $catkey => $cat):?>
+            <?php if($entry['cat'] == $catkey ): ?>
+
+            <?php foreach($cat['cols'] as $col): ?>
+            <?php if (in_array($col['label'], $hidden)){continue;}?>
+            <tr>
+                <td><?php echo $col['label'];?></td>
+                <td><?php echo htmlspecialchars($entry['data'][$col['class']]);?></td>
+            </tr>
+
+            <?php endforeach; ?>
+            <?php endif; ?>
+            <?php endforeach; ?>
+            <?php endif; ?>
+        </table>
+    </div>
+    <?php }//endforeach;?>
+
+    <?php endforeach;?>
+</div>
+<?php if($this->tab != "patient"):?>
+<?php
+    $jumpies=array();
+    sort($used_sortkeys, SORT_STRING) ;
+    foreach ($used_sortkeys as $sortkey){
+        $ord=ord($sortkey);
+        if(($ord>47 && $ord<58) || ($ord>96 && $ord<123))
+$jumpies[]=strtoupper($sortkey);
+}
+?>
+<div class="nadrbk-ltrjump-bar">
+    <div class="nadrbk-ltrjump-ltr nadrbk-ltrjump-ltr-selected">*</div>
+    <?php foreach ($jumpies as $ltr):?>
+    <div class="nadrbk-ltrjump-ltr"><?php echo $ltr;?></div>
+    <?php endforeach;?>
+</div>
+<?php endif;?>
+
+
+<?php if ($entries_count==0):?>
+<div style="padding:80px;font-size:20px;text-align: center;color:#eee;">
+    Hier sind noch keine Einträge vorhanden.
+</div>
+<?php endif;?>

@@ -1,0 +1,562 @@
+<?php
+	$this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/page-css/muster1a1.css');
+
+	$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/jquery.blockUI.js'); 
+?>
+<script type="text/javascript">
+
+ 
+	$(document).ready(function() {
+		var stampusers_val = $('#stampusers').val();
+		if (stampusers_val != '0' ){
+			stampusers_change();
+		}
+	
+
+		//calulate lenght now
+		maxlength( "maxlength_icd_freetext" , $('input[name=icd_freetext]').val().length );
+		//attach event to re-calculate length
+		$('input[name=icd_freetext]').keyup(function(){
+			maxlength( "maxlength_icd_freetext" , $(this).val().length );
+		});
+		
+		//calulate lenght now sonstige_freetext
+		maxlength( "maxlength_sonstige_freetext" , $('input[name=sonstige_freetext]').val().length );
+		//attach event to re-calculate length
+		$('input[name=sonstige_freetext]').keyup(function(){
+			maxlength( "maxlength_sonstige_freetext" , $(this).val().length );
+		});
+		
+		
+		//form submit from buttons
+		//mouse enter is ignored
+		$('.form_btnsubmit').click(function(e) {
+			e.preventDefault();
+
+			var btn_name = $(e.target).attr('name');
+			$("#post_status").val(btn_name);
+			
+			if ( btn_name == "pdf_print" ||  btn_name == "pdf_pre_print"){
+				$("#pdf_print_template").val("pdf_print_template");
+			}else{
+				$("#pdf_print_template").val("");
+			}		
+			
+			setTimeout(function () {$('.form_btnsubmit').attr('disabled', true).addClass('disabled');}, 50);
+			setTimeout(function () {$('.form_btnsubmit').attr('disabled', false).removeClass('disabled');}, 7000);	
+			
+			$("#muster1a1_form").submit();
+		});
+			
+		
+		
+		//livesearch diagnosis icd ls
+		$('.icd_10_code')
+			.liveSearch({
+			url: 'ajax/diagnosis?mode=icdnumber&q=',
+			id: 'livesearch_admission_diagnosis',
+			aditionalWidth: '300',
+			noResultsDelay: '900',
+			typeDelay: '900',
+			returnRowId: function (input) {return parseInt($(input).attr('id').substr(('icdnumber').length));}
+		});
+		
+		
+		//only_one_digit
+		//delete, tab, enter, escape, backspace ,  home, end, left, right
+        var allowedKeys = [8,9,13,27,46];
+        jQuery("input[class=only_one_digit]")
+            .attr('maxlength', 1)
+            .keyup(function(event) {
+            // Allow: , delete, tab, escape, enter and .
+            if ( jQuery.inArray(event.keyCode,allowedKeys) !== -1
+                || (event.keyCode == 65 && event.ctrlKey === true)
+                || (event.keyCode >= 35 && event.keyCode <= 39)) {
+				
+				return;
+            }else if( (event.keyCode >= 48 && event.keyCode <= 57)
+					 ||
+					 ( event.keyCode >= 96 && event.keyCode <= 105)
+					){
+				//$(this).val( String.fromCharCode(event.keyCode) );
+				
+	        	next_input($(this).next('.only_one_digit'));
+	        	
+				return;
+			}
+            else 
+            {
+                if (    event.shiftKey
+                        || (event.keyCode < 48
+                        || event.keyCode > 57)
+                    && (
+                        event.keyCode < 96
+                        || event.keyCode > 105
+                    )) {
+                	
+                    event.preventDefault();
+                    $(this).val("");
+                    return false;
+                }
+            }
+        });
+		
+	});
+	function next_input(input){
+		
+		$(input).focus();
+	}
+	
+	var default_maxlength = {};
+	default_maxlength.maxlength_icd_freetext = 120;
+	default_maxlength.maxlength_sonstige_freetext = 120;
+	
+	
+	function maxlength(infobox_id , textlen){
+
+		var max = default_maxlength[infobox_id] - textlen;
+		
+	    if(max < 0 )
+		{
+			 $('#'+infobox_id)
+				 .html((-max )+ ' <?php echo $this->translate('characters over limit') ?>')
+				 .css("color", "red");
+		}
+		else
+		{
+			 $('#'+infobox_id)
+				 .html(max + ' <?php echo $this->translate('characters remaining') ?>')
+				 .css("color", "green");
+		}
+		
+
+	}
+	
+	
+	function selectDiagnosis(did, row)
+	{
+		
+		$('#icdnumber'+row).val($('#diag_icd_'+did).val());
+	}
+	
+	function stampusers_change(){
+		
+		var stampusers_val = $('#stampusers').val();
+
+		$('#user_stamp_display').html('');
+
+		$.get(appbase + 'ajax/userstampinfo?stamp-info=' + stampusers_val, function(result) {
+
+			if (result != 0) {
+				var resultx = jQuery.parseJSON(result);
+				var user_lanr = resultx.lanr;
+				var user_bsnr = resultx.bsnr;
+				$('#Veror63_NameBetrinInpt').val(user_bsnr);
+				$('#Veror63_NamearztnInpt').val(user_lanr);
+
+
+				var row1 = resultx.row1;
+				var row2 = resultx.row2;
+				var row3 = resultx.row3;
+				var row4 = resultx.row4;
+				var row5 = resultx.row5;
+				var row6 = resultx.row6;
+				var row7 = resultx.row7;
+
+				var user_stamp = '<span>' + row1 + '<br/>' + row2 + '<br/>' + row3 + '<br/>' + row4 + '<br/>' + row5 + '<br/>' + row6 + '<br/>' + row7 + '</span>';
+				var user_stamp_hidden = '<textarea name="stamp_block" style="display: none">' + row1 + '<br/>' + row2 + '<br/>' + row3 + '<br/>' + row4 + '<br/>' + row5 + '<br/>' + row6 + '<br/>' + row7 + '</textarea>';
+
+				$('#user_stamp_display').append(user_stamp + user_stamp_hidden);
+
+				
+			} else {
+				$('.stamp_alert').show('fast').delay(1000).hide('slow');
+			}
+
+		});
+		return false;
+	}
+	
+	
+</script>
+
+<div class="tab_container">
+<form id="muster1a1_form" name="muster1a1_form" action="" method="post">
+
+
+	<!-- top div left -->
+	<div id="Veror_main" class="pallnetz_topform">
+		<label for="Krankenkasse">Krankenkasse bzw. Kostenträger</label>
+		<br />
+		<input name="krankenkasse" value="<?php echo $this->insurance_company_name ?>" class="insurnace" type="text" />    
+
+		<div class="blackline"></div>
+
+		<div class="formleftdiv">
+			<label for="Name">Name, Vorname des Versicherten</label>
+			<br />
+			<textarea name="patient_name"  cols="45" rows="2" class="textArea" ><?php echo $this->patientname ?></textarea>
+		</div>
+
+		<div class="formrightdiv" >
+			<label for="geb">geb. am</label>
+			<br />
+			<input type="text" name="geb" value="<?php echo $this->birthdate ?>" />
+		</div>
+
+		<div class="ClrBoth"></div>
+		<div class="blackline"></div>
+
+		<div id="Veror63_NameKassnr" class="formShortDiv">
+			<label for="Kassen-Nr.">Kostenträgerkennung</label>
+			<br />
+			<input name="kassen_nr" type="text" value="<?php echo $this->kvnumber ?>" />
+		</div>
+
+		<div class="VerLine"></div>
+
+		<div class="formShortDiv">
+			<label for="Versicherten-Nr" >Versicherten-Nr.</label>
+			<br />
+			<input name="versicherten_nr" type="text" value="<?php echo $this->insurance_no ?>" />
+		</div>
+
+		<div class="VerLine" ></div>
+
+		<div class="formShortDiv">
+			<label for="Status">Status</label><br />
+			<input name="status" type="text" value="<?php echo $this->insurance_status ?>" />
+		</div>
+
+		<div class="ClrBoth"></div>
+
+		<div class="blackline"></div>
+
+		<div class="formShortDiv">
+			<label for="Vertragsarzt-Nr.">Betriebsstätten-Nr.</label><br />
+			<input name="betriebsstatten_nr"  id="Veror63_NameBetrinInpt" type="text" value="<?php echo $this->betriebsstatten_nr ?>" /></div>
+		<div class="VerLine"></div>
+
+		<div class="formShortDiv">
+			<label for="VK gültig bis">Arzt-Nr.</label>
+			<br />
+			<input name="arzt_nr" id="Veror63_NamearztnInpt" type="text" value="<?php echo $this->arzt_nr?>" />
+		</div>
+
+		<div class="VerLine" ></div>
+
+		<div class="formShortDiv">
+			<label for="Datum">Datum</label><br />
+			<input name="topdatum" type="text" value="<?php echo date('d.m.Y')?>" />
+		</div>
+
+	</div>
+
+	<!-- top div right -->
+	<div class="pallnetz_topform_right">
+		 <h2>
+			 Arbeitsunfähigkeits- 1<br />
+				bescheinigung
+		</h2>
+
+		<div class="veror50">
+			<label>
+				<input type="checkbox" name="erstbescheinigung" value="1" size="1" <?php if($this->lastformular_erstbescheinigung == '1'): ?> checked="checked" <?php endif;  ?> />
+				Erstbescheinigung
+			</label>
+		</div>
+
+		<div class="veror50">
+			<label>
+				<input type="checkbox" name="folgebescheinigung" value="1" size="1" <?php if($this->lastformular_folgebescheinigung == '1'): ?> checked="checked" <?php endif;  ?> />
+				Folgebescheinigung
+			</label>
+		</div>
+
+	</div>
+
+
+	<div class="ClrBoth"></div>
+
+	<!-- second row -->
+	<div class="pallnetz_second">
+
+		<div class="div50 fleft">
+			<label>
+				<input type="checkbox" name="arbeitsunfall" value="1" size="1" <?php if($this->lastformular_arbeitsunfall == '1'): ?> checked="checked" <?php endif;  ?> />
+				Arbeitsunfall, Arbeitsunfall-folgen, Berufskrankheit
+			</label>
+		</div>
+
+		<div class="div50 fright">
+			<label>
+				<input type="checkbox" name="durchgangsarzt" value="1" size="1" <?php if($this->lastformular_durchgangsarzt == '1'): ?> checked="checked" <?php endif;  ?> />
+				dem Durchgangsarzt zugewiesen
+			</label>
+		</div>
+
+
+		<div class="ClrBoth"></div>
+
+		<div class="div50 fleft">
+			<label>arbeitsunfähig seit</label>
+		</div>
+
+		<div class="div50 fright input10">
+			<input type="text" pattern="[0-9]*" inputmode="numeric" class="only_one_digit" name="arbeitsunfahig[0]" value="<?php echo ($this->lastformular_arbeitsunfahig_0); ?>" size="1" />
+			<input type="text" pattern="[0-9]*" inputmode="numeric" class="only_one_digit" name="arbeitsunfahig[1]" value="<?php echo ($this->lastformular_arbeitsunfahig_1); ?>" size="1" />
+			<input type="text" pattern="[0-9]*" inputmode="numeric" class="only_one_digit" name="arbeitsunfahig[2]" value="<?php echo ($this->lastformular_arbeitsunfahig_2); ?>" size="1" />
+			<input type="text" pattern="[0-9]*" inputmode="numeric" class="only_one_digit" name="arbeitsunfahig[3]" value="<?php echo ($this->lastformular_arbeitsunfahig_3); ?>" size="1" />
+			<input type="text" pattern="[0-9]*" inputmode="numeric" class="only_one_digit" name="arbeitsunfahig[4]" value="<?php echo ($this->lastformular_arbeitsunfahig_4); ?>" size="1" />
+			<input type="text" pattern="[0-9]*" inputmode="numeric" class="only_one_digit" name="arbeitsunfahig[5]" value="<?php echo ($this->lastformular_arbeitsunfahig_5); ?>" size="1" />
+		</div>
+
+		<div class="ClrBoth"></div>
+
+		<div class="div50 fleft">
+			<label>voraussichtlich arbeitsunfähig
+	bis einschließlich oder letzter
+	Tag der Arbeitsunfähigkeit
+	</label>
+		</div>
+
+		<div class="div50 fright input10">
+
+			<input type="text" pattern="[0-9]*" inputmode="numeric" class="only_one_digit" name="voraussichtlich[0]" value="<?php echo ($this->lastformular_voraussichtlich_0); ?>" size="1" />
+			<input type="text" pattern="[0-9]*" inputmode="numeric" class="only_one_digit" name="voraussichtlich[1]" value="<?php echo ($this->lastformular_voraussichtlich_1); ?>" size="1" />
+			<input type="text" pattern="[0-9]*" inputmode="numeric" class="only_one_digit" name="voraussichtlich[2]" value="<?php echo ($this->lastformular_voraussichtlich_2); ?>" size="1" />
+			<input type="text" pattern="[0-9]*" inputmode="numeric" class="only_one_digit" name="voraussichtlich[3]" value="<?php echo ($this->lastformular_voraussichtlich_3); ?>" size="1" />
+			<input type="text" pattern="[0-9]*" inputmode="numeric" class="only_one_digit" name="voraussichtlich[4]" value="<?php echo ($this->lastformular_voraussichtlich_4); ?>" size="1" />
+			<input type="text" pattern="[0-9]*" inputmode="numeric" class="only_one_digit" name="voraussichtlich[5]" value="<?php echo ($this->lastformular_voraussichtlich_5); ?>" size="1" />
+			
+		</div>
+
+		<div class="ClrBoth"></div>
+
+		<div class="div50 fleft">
+			<label>festgestellt am</label>
+		</div>
+
+		<div class="div50 fright input10">
+
+			<input type="text" pattern="[0-9]*" inputmode="numeric" class="only_one_digit" name="arbeitsunfafestgestellt[0]" value="<?php echo ($this->lastformular_arbeitsunfafestgestellt_0); ?>" size="1" />
+			<input type="text" pattern="[0-9]*" inputmode="numeric" class="only_one_digit" name="arbeitsunfafestgestellt[1]" value="<?php echo ($this->lastformular_arbeitsunfafestgestellt_1); ?>" size="1" />
+			<input type="text" pattern="[0-9]*" inputmode="numeric" class="only_one_digit" name="arbeitsunfafestgestellt[2]" value="<?php echo ($this->lastformular_arbeitsunfafestgestellt_2); ?>" size="1" />
+			<input type="text" pattern="[0-9]*" inputmode="numeric" class="only_one_digit" name="arbeitsunfafestgestellt[3]" value="<?php echo ($this->lastformular_arbeitsunfafestgestellt_3); ?>" size="1" />
+			<input type="text" pattern="[0-9]*" inputmode="numeric" class="only_one_digit" name="arbeitsunfafestgestellt[4]" value="<?php echo ($this->lastformular_arbeitsunfafestgestellt_4); ?>" size="1" />
+			<input type="text" pattern="[0-9]*" inputmode="numeric" class="only_one_digit" name="arbeitsunfafestgestellt[5]" value="<?php echo ($this->lastformular_arbeitsunfafestgestellt_5); ?>" size="1" />
+		</div>
+
+
+		<div class="ClrBoth"></div>
+
+		<div class="ausfertigung">
+			<label>Ausfertigung zur Vorlage bei der Krankenkasse</label>
+		</div>
+	</div>
+
+
+	<div class="pallnetz_second_right">
+		<div id="user_stamp_display" class="user_stamp_block"><span></span></div>
+		
+		<div class="select_user_stamp">
+			<div class="stamp_alert"><?php echo $this->translate("no stamp information")?></div>
+			<label>Vertragsarztstempel / Unterschrift des Arztes</label>
+			<?php if ($this->showselect == 1): ?>
+				<?php if($this->multiplestamps_option === true): ?>
+					<div class="userstamps">
+						<!--<label>Arztstempel</label>-->
+						<select id="stampusers" name="stampusers" onchange="stampusers_change();">
+						<option value=""><?php echo $this->translate('selectuserstamp')?></option>
+						<?php foreach($this->users_mstamps as $user=>$stamp):?>
+						 <optgroup label="<?php echo $stamp['user_name'];?>" value="<?php echo $stamp['user_id'];?>">
+							<?php foreach( $stamp['user_stamps'] as $stamp_id => $stamp_name):?>
+								<option value="<?php echo $stamp['user_id'];?>-<?php echo $stamp_id;?>" ><?php echo $stamp_name;?></option>
+							<?php endforeach;?>
+						 </optgroup>
+						<?php endforeach;?>
+						</select>
+					</div>
+				<?php else: ?>
+					<div class="userstamps">
+						<!--<label>Arztstempel</label>-->
+						<?php echo $this->formSelect('stampusers',  $this->lastformular_stampusers, array('onchange' => 'stampusers_change();'), $this->users); ?>
+					</div>
+				<?php endif; ?>
+			<?php endif; ?>
+
+		</div>
+		
+	</div>
+
+	<div class="ClrBoth" style="padding-bottom:15px;"></div>
+
+	<hr/>
+
+	<!-- third row -->
+	<div class="pallnetz_third">
+		<h2>AU-begründende Diagnose(n) (ICD-10)</h2>
+		<div class="formShortDiv">
+			<label>ICD-10 - Code</label>
+			<br />
+			<input class="icd_10_code"  id="icdnumber1" name="icd_10_code[0]" type="text" value="<?php echo ($this->lastformular_icd_10_code_0); ?>" />
+		</div>
+		<div class="formShortDiv">
+			<label>ICD-10 - Code</label>
+			<br />
+			<input class="icd_10_code" id="icdnumber2" name="icd_10_code[1]" type="text" value="<?php echo ($this->lastformular_icd_10_code_1); ?>" />
+		</div>
+		<div class="formShortDiv">
+			<label>ICD-10 - Code</label>
+			<br />
+			<input class="icd_10_code" id="icdnumber3" name="icd_10_code[2]" type="text" value="<?php echo ($this->lastformular_icd_10_code_2); ?>" />
+		</div>
+		<div class="ClrBoth"></div>
+		<div class="formShortDiv">
+			<label>ICD-10 - Code</label>
+			<br />
+			<input class="icd_10_code" id="icdnumber4" name="icd_10_code[3]" type="text" value="<?php echo ($this->lastformular_icd_10_code_3); ?>" />
+		</div>
+		<div class="formShortDiv">
+			<label>ICD-10 - Code</label>
+			<br />
+			<input class="icd_10_code"  id="icdnumber5" name="icd_10_code[4]" type="text" value="<?php echo ($this->lastformular_icd_10_code_4); ?>" />
+		</div>
+		<div class="formShortDiv">
+			<label>ICD-10 - Code</label>
+			<br />
+			<input class="icd_10_code"  id="icdnumber6" name="icd_10_code[5]" type="text" value="<?php echo ($this->lastformular_icd_10_code_5); ?>" />
+		</div>
+		<div class="ClrBoth"></div>
+		<div class="third_last_div">
+			<input name="icd_freetext" type="text" value="<?php echo ($this->lastformular_icd_freetext); ?>" />
+			<div id="maxlength_icd_freetext" class="maxlength"></div>
+		</div>
+	</div>
+
+	<div class="ClrBoth"></div>
+
+	<!-- fourth row -->
+	<div class="pallnetz_fourth">
+		<div class="div50 fleft">
+			<label>
+				<input type="checkbox" name="sonstiger_unfall" value="1" size="1" <?php if($this->lastformular_sonstiger_unfall == '1'): ?> checked="checked" <?php endif;  ?> />
+				sonstiger Unfall, Unfallfolgen
+			</label>
+		</div>
+		<div class="div50 fright">
+			<label>
+				<input type="checkbox" name="versorgungs_leiden" value="1" size="1" <?php if($this->lastformular_versorgungs_leiden == '1'): ?> checked="checked" <?php endif;  ?> />
+				Versorgungs-leiden (z.B. BVG)
+			</label>
+		</div>
+		<div class="ClrBoth"></div>
+		<span>Es wird die Einleitung folgender besonderer Maßnahmen für erforderlich gehalten</span>
+		<div class="ClrBoth"></div>
+		<div class="div50 fleft">
+			<label>
+				<input type="checkbox" name="leistungen" value="1" size="1" <?php if($this->lastformular_leistungen == '1'): ?> checked="checked" <?php endif;  ?> />
+				Leistungen zur medizinischen Rehabilitation
+			</label>
+		</div>
+		<div class="div50 fright">
+			<label>
+				<input type="checkbox" name="stufenweise" value="1" size="1" <?php if($this->lastformular_stufenweise == '1'): ?> checked="checked" <?php endif;  ?> />
+				stufenweise Wiedereingliederung
+			</label>
+		</div>
+		<div class="ClrBoth"></div>
+		<div class="div30 fleft">
+			<label>
+				<input type="checkbox" name="sonstige" value="1" size="1" <?php if($this->lastformular_sonstige == '1'): ?> checked="checked" <?php endif;  ?> />
+				Sonstige
+			</label>
+		</div>
+		<div class="div70 fright">
+				<input type="text" name="sonstige_freetext" value="<?php echo($this->lastformular_sonstige_freetext);?>" />
+				<div id="maxlength_sonstige_freetext" class="maxlength"></div>
+
+		</div>
+	</div>
+
+
+
+	<div class="ClrBoth"></div>
+
+
+	<!-- fifth row -->
+	<div class="pallnetz_fifth">
+		<div class="div30 fleft">
+			<label>Im Krankengeldfall</label>
+		</div>
+		<div class="div30 fleft">
+			<label>
+				<input type="checkbox" name="oder_sonstiger" value="1" size="1" <?php if($this->lastformular_oder_sonstiger == '1'): ?> checked="checked" <?php endif;  ?> />
+				ab 7. AU-Woche oder sonstiger Krankengeldfall
+			</label>
+		</div>
+		<div class="div30 fleft">
+			<label>
+				<input type="checkbox" name="endbescheinigung" value="1" size="1" <?php if($this->lastformular_endbescheinigung == '1'): ?> checked="checked" <?php endif;  ?> />
+				Endbescheinigung
+			</label>
+		</div>
+	</div>
+
+	<div class="ClrBoth"></div>
+	
+	<div class="fright">
+		Muster 1a (1.2016)
+	</div>
+
+
+	<div class="ClrBoth"></div>
+	
+	
+  <input type="hidden" name="lastformular_formular_id" value="<?php echo $this->lastformular_formular_id; ?>"/>
+  <input type="hidden" name="post_status"  id="post_status" value=""/>
+  <input type="hidden" name="pdf_print_template"  id="pdf_print_template" value=""/>
+	
+  <input type="submit" name="save"          rel="save"          id="btnsubmit_save"    value="<?php echo $this->translate('save'); ?>"  class="form_btnsubmit  btnsubmit_usersessions" />
+  <input type="submit" name="pdf_print"     rel="pdf_print"     id="pdf_btnsubmit"     value="<?php echo $this->translate('PDF erstellen und unter Dokumente ablegen') ?>"  class="form_btnsubmit  btnsubmit_usersessions" />
+  <input type="submit" name="pdf_pre_print" rel="pdf_pre_print" id="pdf_pre_btnsubmit" value="<?php echo $this->translate('generatepdf pre') ?>"  class="form_btnsubmit  btnsubmit_usersessions" />
+  <?php if($this->lastformular_formular_id): ?>
+  	<input type="submit" name="reset" rel="reset" id="reset" value="<?php echo $this->translate('reset and create new instance') ?>"  class="form_btnsubmit btnsubmit_usersessions" />
+  <?php endif;?>
+
+</form>
+
+
+<!--  form_files -->
+<?php if(!empty($this->muster1a_files_history)):?>
+	<fieldset>
+		<legend><?php echo $this->translate('muster1a_files_history'); ?></legend>
+			<table class="datatable">
+				<tr>
+					<th>#</th>
+					<th><?php echo $this->translate('title'); ?></th>
+					<th><?php echo $this->translate('user'); ?></th>
+					<th class="date_col"><?php echo $this->translate('date'); ?></th>
+				</tr>
+				<?php $i = 1;
+				foreach ($this->muster1a_files_history as $k_contact_file => $muster_file): ?>
+					<tr>
+						<td><a href="<?php echo APP_BASE . 'stats/patientfileupload?doc_id='.$muster_file['id'].'&id='.$_REQUEST['id'];?>"><?php echo $i; ?></a></td>
+						<td><a href="<?php echo APP_BASE . 'stats/patientfileupload?doc_id='.$muster_file['id'].'&id='.$_REQUEST['id'];?>"><?php echo $muster_file['title']; ?></a></td>
+						<td><a href="<?php echo APP_BASE . 'stats/patientfileupload?doc_id='.$muster_file['id'].'&id='.$_REQUEST['id'];?>"><?php echo $this->users[$muster_file['create_user']]; ?></a></td>
+						<td><a href="<?php echo APP_BASE . 'stats/patientfileupload?doc_id='.$muster_file['id'].'&id='.$_REQUEST['id'];?>"><?php echo date('d.m.Y H:i', strtotime($muster_file['create_date'])); ?></a></td>
+					</tr>
+				<?php $i++; endforeach; ?>
+			</table>
+		<?php else:?>
+		<table class="datatable">
+			<tr>
+				<td colspan="4"><?php echo $this->translate('no_history_files_found');?></td>
+			</tr>
+		</table>
+		
+	</fieldset>
+<?php endif;?>
+
+	
+</div>

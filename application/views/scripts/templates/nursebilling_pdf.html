@@ -1,0 +1,250 @@
+ <table wisth="100%">
+ 
+ <tr>
+ 	<td colspan="3" height="50">&nbsp;</td>
+ </tr>
+ <tr>
+ 	<td colspan="3" align="center"><b><font size="14pt">Abrechnung spezialisierter ambulanter Versorgung</font></b></td>
+ </tr>
+ <tr>
+ 	<td colspan="3" height="20">&nbsp;</td>
+ </tr>
+ <tr>
+ 	<td width="70%"><font size="10pt">Angaben	zum Versicherten:  <b><? echo $this->patient_name; ?></b> 	 geb: <b><? echo $this->patient_birthd; ?>,</b>  	 Vers.nr.: <b><? echo $this->patient_health_insurance_nr; ?></b></font></td>
+ 	<td width="5%"></td>
+ 	<td width="25%" align="right"><font size="10pt">  Monat: <? echo $this->monthsel;?></font></td>
+ <tr>
+ 	<td colspan="3" height="10">&nbsp;</td>
+ </tr>
+ </tr>
+ 
+     <? $visit_details = $this->visits_array; // All visits details ?> 
+     <? $visit_p = $this->nurse_visit_day_p; // Visit details - according to p - shortcuts?> 
+     <? $visit_p_price = $this->visit_price; // Visit PRICE - according to p - shortcuts - client specific?> 
+     <? $current_date = array();  $current_date[date("Y-m-d")] = 'bgcolor="#FFFDD0"';?> 
+     <? $current_date_zeit = array();  $current_date_zeit[date("Y-m-d")] = 'bgcolor="#BBFFFF"';?> 
+     <? $INACTIVE = 'bgcolor="#FFCCCC" color="#000"';?> 
+     <? $INACTIVE_BILLING = 'bgcolor="#FF9999" color="#000"';?> 
+     <? $inactive_day = 'bgcolor="#FFCCCC" color="#000"';?> 
+     <? $added_from_bf = '<img src="<?php echo PUBLIC_PATH;?>/images/document_pdf.png" height="13" />';?> 
+ 
+ </table>
+ 
+ <table border="1" style="font-size: 9pt;" align="center">
+    
+    <tr>
+		<td width="50"></td>
+		<td></td>
+    	<? foreach($this->month_days as $day_nr => $day_value):?>
+			<td  <? if(!in_array($day_value, $this->total_active_days)): echo $INACTIVE; endif;?> ><? echo $day_nr; ?></td>
+	    <? endforeach; ?>
+		<td><font size="7pt"> Anzahl insg.</font></td>
+    </tr>
+    
+      
+ <? foreach($this->nr_visits as $visit_number): ?>
+    
+	<tr>
+		<td width="50"><font size="7pt">&nbsp;<br/>Einsatz <? echo $visit_number+1; ?> </font></td>
+		<td><font size="7pt">&nbsp;<br/>Beginn</font></td>
+			<? foreach($this->complete_month_days as $day_nr => $day_value):?>
+				<td <? echo $current_date[$day_value]?>  <? if(!in_array($day_value, $this->total_active_days)): echo $INACTIVE; endif;?>  >
+					<? if( $visit_details[$day_value][$visit_number]['visit_added_from'] != 'billing_form'):?>
+						<font size="7pt">&nbsp;<br/><? echo $visit_details[$day_value][$visit_number]['visit_start'] ;?></font>
+					<? else:?>
+						<font size="7pt"><? echo $visit_details[$day_value][$visit_number]['visit_start'] ;?></font>
+						<br/><img src="<?php echo PUBLIC_PATH;?>/images/document_pdf.png" height="13" />
+					<? endif;?>
+			
+				</td>
+			<? endforeach; ?>
+		<td></td>
+	</tr>
+
+	<tr>
+		<td></td>
+		<td><font size="7pt">&nbsp;<br/>Ende</font></td>
+			<? foreach($this->complete_month_days as $day_nr => $day_value):?>
+				<td  <? echo $current_date[$day_value]?>   <? if(!in_array($day_value, $this->total_active_days)): echo $INACTIVE; endif;?> >
+					<font size="7pt">&nbsp;<br/><? echo $visit_details[$day_value][$visit_number]['visit_end'] ;?></font>
+				</td>
+			<? endforeach; ?>
+		<td></td>
+	</tr>
+
+
+	<tr class="billing_count_duration">
+		<td bgcolor="#F0FFFF"></td>
+		<td  bgcolor="#F0FFFF"><font size="7pt">&nbsp;<br/>Zeit</font></td>
+			<? foreach($this->complete_month_days as $day_nr => $day_value):?>
+				<td  bgcolor="#F0FFFF" <? echo $current_date_zeit[$day_value]?>  <? if(!in_array($day_value, $this->total_active_days)): echo $INACTIVE_BILLING; endif;?> >
+					<font size="7pt">&nbsp;<br/><? echo $visit_details[$day_value][$visit_number]['visit_duration'] ;?></font>
+				</td>
+			<? endforeach; ?>
+		<td></td>
+	</tr>
+
+<? endforeach; ?> 
+    
+
+<? foreach($this->nr_visits as $visit_number): ?>
+    <? $p_shortcut = $visit_number+1; ?>
+      	<tr>
+		<td></td>
+		<td><font size="7pt">&nbsp;<br/>P<? echo $p_shortcut; ?></font></td>
+			<?php  $total_p['P'.$p_shortcut] = 0;?> 
+
+			<?php foreach($this->complete_month_days as $day_nr => $day_value):?>
+			<? if($visit_p[$day_value]['day_price_shortcut_P'.$p_shortcut]):?>
+				<td <? echo $current_date[$day_value]?> <? if(!in_array($day_value, $this->total_active_days)): echo $INACTIVE; endif;?>><font size="7pt">&nbsp;<br/><? echo $visit_p[$day_value]['day_price_shortcut_P'.$p_shortcut] ;?></font></td>
+			<? else:?>
+			<td <? echo $current_date[$day_value]?> <? if(!in_array($day_value, $this->total_active_days)): echo $INACTIVE; endif;?>><font size="7pt">&nbsp;<br/>0</font></td>
+			<? endif;?>
+			<? $total_p['P'.$p_shortcut] += $visit_p[$day_value]['day_price_shortcut_P'.$p_shortcut];?>
+				<? if( $this->price_details[$day_value]['P'.$p_shortcut]['shortcut'] ):?>
+					<?php
+						$totals['shortcuts']['P'.$p_shortcut] += $this->price_details[$day_value]['P'.$p_shortcut]['shortcut'];
+									?>
+					<?php
+						$t_lists['P'.$p_shortcut] [ $this->price_details[$day_value]['P'.$p_shortcut]['list'] ]['qty'] += $this->price_details[$day_value]['P'.$p_shortcut]['shortcut'];
+						$t_lists['P'.$p_shortcut] [ $this->price_details[$day_value]['P'.$p_shortcut]['list'] ]['price'] += $this->price_details[$day_value]['P'.$p_shortcut]['price'];
+						$t_lists['P'.$p_shortcut] [ $this->price_details[$day_value]['P'.$p_shortcut]['list'] ]['list_price'] = $this->price_details[$day_value]['P'.$p_shortcut]['price'];
+					?>
+				<? endif;?>
+			<? endforeach; ?>
+		<td>  <font size="7pt">&nbsp;<br/><? echo  $total_p['P'.$p_shortcut]  ;?></font></td>
+	</tr>
+<? endforeach;?>
+    </table>
+ 
+<br/>
+<table border="0" align="center">
+	<tr>
+		<td width="450">
+			<table width="100%" border="1">
+<tr>
+	<th>Pauschale</th>
+	<th>Anzahl</th>
+	<th>x Vergütung</th>
+	<th>Rechnungssumme</th>
+</tr>
+<? foreach ($this->used_shortcuts as $shortcut):?>
+<? if (!$t_lists[$shortcut]) :?>
+		<?php
+		$t_lists[$shortcut][0]['qty'] = 0;
+		$t_lists[$shortcut][0]['price'] = 0;
+		$t_lists[$shortcut][0]['list_price'] = 0;
+		?>
+	<? endif;?>
+
+	<? foreach ($t_lists[$shortcut] as $shkey => $shortcut_details):?>
+		
+		<tr>
+			<td><? echo $shortcut ?></td>
+			<td><? echo $shortcut_details['qty'] ?></td>
+			<td><? echo $shortcut_details['list_price'] ?></td>
+			<td><? echo $total_shortcut_price_per_month = round(($shortcut_details['qty'] * $shortcut_details['list_price']),2) ?>&euro;</td>
+		</tr>
+	<? $total_costs_per_month += $total_shortcut_price_per_month;?>	
+	<? endforeach?>
+
+<? endforeach; ?>
+<tr>
+	<td colspan="3" align="right">Ingesamt = </td>
+	<td><? echo $total_costs_per_month; ?>&euro;</td>
+</tr>
+
+</table>
+		</td>
+		<td width="440"></td>
+		<td  border="1" width="380" align="left">
+		<? $nurse_data = $this->nurse_details;?>
+<table class="billing_client_details" >
+	<tr>
+		<td colspan="3">Wir bestätigen die angegebenen Leistungen entsprechend den<br />
+			gesetzlichen und vertraglichen Regelungen erbracht zu haben:
+		</td>
+	</tr>
+	<tr>
+		<td width="1%">&nbsp;</td>
+		<td width="98%"> </td>
+		<td width="1%">&nbsp;</td>
+	</tr>
+	<tr>
+		<td width="1%">&nbsp;</td>
+		<td width="98%" style="border-bottom:1px solid #000; vertical-align: bottom;" > Name des SAPV Leistungserbringers</td>
+		<td width="1%">&nbsp;</td>
+	</tr>
+	<tr>
+		<td></td>
+		<td  style="  vertical-align: middle;" > <b><? echo $nurse_data['nursing_service'];?></b> </td>
+		<td></td>
+	</tr>
+
+
+	<tr>
+		<td></td>
+			<td style="border-bottom:1px solid #000; vertical-align: bottom;" >Anschrift</td>
+		<td></td>
+	</tr>
+	<tr>
+		<td></td>
+		<td  style="  vertical-align: middle;" > <b><? echo $nurse_data['nursing_service_address'];?></b> </td>
+		<td></td>
+	</tr>
+
+	<tr>
+		<td></td>
+		<td style="border-bottom:1px solid #000; vertical-align: bottom;" >IK - Nummer</td>
+		<td></td>
+	</tr>
+	<tr>
+		<td></td>
+		<td  style="  vertical-align: middle;" > <b><? echo $nurse_data['nursing_service_iknumber'];?></b></td>
+		<td></td>
+	</tr>
+
+
+	<tr>
+		<td></td>
+		<td class="bigfont" style="border-bottom:1px solid #000; vertical-align: bottom;" >Datum und Unterschrift</td>
+		<td></td>
+	</tr>
+	<tr>
+		<td></td>
+		<td>&nbsp;</td>
+		<td></td>
+	</tr>
+	<tr>
+		<td></td>
+		<td>&nbsp;</td>
+		<td></td>
+	</tr>
+</table>
+
+		</td>
+	</tr>
+	<tr>
+		<td  colspan="2" height="10" align="left">Folgende Kooperationspartner haben ganz oder Teilweise die	Leistungen erbracht</td>
+		<td ></td>
+	</tr>
+	<tr>
+		<td align="center">
+		<table>
+				<tr>
+					<td height="10" align="left" style=" vertical-align: baseline;">
+						<font size="8pt"><b><? echo $nurse_data['nursing_service'];?></b></font>
+					</td>
+				</tr>
+				<tr>
+					<td height="2">
+						<img src="<?php echo PUBLIC_PATH;?>/images/black-line.jpg" width="500"	height="1" />
+					</td>
+				</tr>
+			</table>
+
+		</td>
+		<td   colspan="2" ></td>
+	</tr>
+	
+</table>

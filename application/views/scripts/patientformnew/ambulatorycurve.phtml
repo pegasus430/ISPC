@@ -1,0 +1,878 @@
+<?php //ISPC-2825 Dragos 08.03.2021 ?>
+<div class="clear"></div>
+
+<?php $this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/page-css/ambulatorycurve.css?' . date('Ymd')); ?>
+
+<div style="display: none;"> <img id="calImg" src="<?php echo RES_FILE_PATH;  ?>/images/calendar.png" alt="Popup" class="trigger" /> </div>
+<?php //echo $this->patientinfo ?>
+<?php //echo $this->tabmenus ?>
+<?php $temp_ddarray = array(
+    '1' => 'im Ohr',
+    '2' => 'oral',
+    '3' => 'rektal',
+    '4' => 'in der Blase',
+    '5' => 'axillar',
+    '6' => 'an der Stirn'
+); 
+$view_type = $this->display_length==1 ? 'oneday': 'threedays';
+?>
+<div class="modal_overlay" style="display: none">
+</div>
+<input type="hidden" readonly disabled id="selected_chart_type" value="<?php echo $this->display_length==1 ? 'oneday': 'threedays';?>" />
+<input type="hidden" readonly disabled id="interval_start_date" value="<?php echo $this->start_date_ts;?>" />
+<input type="hidden" readonly disabled id="interval_end_date"  value="<?php echo $this->end_date_ts;?>"  />
+<div class="view_selector">
+    <input type="hidden" value="" id="selected_from_datePicker" >
+<!--    <h2>--><?php //echo $this->translate('select view');?><!--</h2>-->
+
+<!--    <div class="default" style="width: 300px;">-->
+<!--        <input type="button" class="change_view" id="oneday" value="--><?php //echo $this->translate('oneday_interval')?><!--" onClick = "$('.change_view').each(function(){ $(this).css('background-color', backcol); }); showPicker('oneday')">-->
+<!--        <input type="button" class="change_view" id="threedays" value="--><?php //echo $this->translate('threedays_interval')?><!--"  onClick = "$('.change_view').each(function(){ $(this).css('background-color', backcol); }); showPicker('threedays')">-->
+        <!--    <input type="button" class="change_view" id="week" value="--><?php //echo $this->translate('week_interval')?><!--" onClick = "$('.change_view').each(function(){ $(this).css('background-color', backcol); }); showPicker('week')">-->
+
+<!--        <input type="button" class="change_view btnGotoDate" data-godate='--><?php //echo date('d.m.Y'); ?><!--' value="--><?php //echo $this->translate('goTo_today')?><!--">-->
+<!--    </div>-->
+
+    <div class="interval_selection" id="select_oneday">
+        <div class="dp_view_title"><?php echo $this->translate('select_oneday')?></div>
+        <div class="datepickerSelector oneday-picker"></div>
+    </div>
+    <div class="interval_selection" id="select_threedays">
+        <div class="dp_view_title"><?php echo $this->translate('select_threedays')?></div>
+        <div class="datepickerSelector threedays-picker"></div>
+    </div>
+    <div class="interval_selection" id="select_week">
+        <div class="dp_view_title"><?php echo $this->translate('select_week')?></div>
+        <div class="datepickerSelector week-picker"></div>
+    </div>
+    <div class="error_info"><?php echo $this->translate('please select specific period !');?></div>
+    <div class="select_view_buttons">
+        <input type="button" class="btn greyBtn cancel_btn" value="<?php echo $this->translate('Cancel_select_view')?>" />
+        <input type="button" class="btn blueBtn apply_btn" value="<?php echo $this->translate('Apply select view')?>" />
+    </div>
+
+</div>
+<?php if (!empty($this->date_error_message)) : ?>
+<div><?=$this->date_error_message?></div>
+<?php endif;?>
+<div class="kurve_date_selector_button">
+	<input type="button" class="change_view" value="<?php echo $this->translate('select_date')?>" onClick="showDatePicker('<?=$view_type?>')">
+</div>
+<div class="ambulatory-curve-wrapper">
+    <?php if ($this->display_rows['admin']) : //if this is not displayed... we have no data in the table ?>
+    <div class="ambulatory-curve-table-wrapper">
+        <table class="datatable ambulatory-curve-table">
+            <thead>
+                <tr>
+                    <th class="ambulatory-curve-header" style="width: 5% !important;min-width: 14em !important;max-width: 14em!important;" ">
+                        <?php if (!empty($this->navigation['threeforms']['prev'])) :?>
+                        <a href="<?php echo APP_BASE;?>/patientformnew/ambulatorycurve?id=<?php echo $this->encid;?>&fid=<?=$this->navigation['threeforms']['prev']?>">
+                            <input type="button" value="" class="btn btnPrevMultiple" title="<?=$this->translate('three_forms_previous')?>" >
+                        </a>
+                        <?php endif;
+                        if (!empty($this->navigation['oneform']['prev'])) :?>
+                        <a href="<?php echo APP_BASE;?>/patientformnew/ambulatorycurve?id=<?php echo $this->encid;?>&fid=<?=$this->navigation['oneform']['prev']?>">
+                            <input type="button" value="" class="btn btnPrev" title="<?=$this->translate('one_form_previous')?>" >
+                        </a>
+                        <?php endif;?>
+                    </th>
+                    <?php $i=0; foreach ($this->dates as $date) :
+                        $colspan = $this->formsByDate[$date->format('d.m.Y')]['colspan'];
+                        for ($j=0; $j<$colspan; $j++):?>
+                            <th class="ambulatory-curve-header">
+                                <?php if ($i == 2) :
+                                    if (!empty($this->navigation['threeforms']['next'])) :?>
+                                        <a href="<?php echo APP_BASE;?>/patientformnew/ambulatorycurve?id=<?php echo $this->encid;?>&fid=<?=$this->navigation['threeforms']['next']?>">
+                                            <input type="button" value="" class="btn btnNextMultiple" title="<?=$this->translate('three_forms_next')?>">
+                                        </a>
+                                    <?php endif;
+                                    if (!empty($this->navigation['oneform']['next'])) :?>
+                                        <a href="<?php echo APP_BASE;?>/patientformnew/ambulatorycurve?id=<?php echo $this->encid;?>&fid=<?=$this->navigation['oneform']['next']?>">
+                                            <input type="button" value="" class="btn btnNext" title="<?=$this->translate('one_form_next')?>">
+                                        </a>
+                                    <?php endif;
+                                endif;
+                                $i++;?>
+                                <div class="btn top_date_column">
+                                    <a href="javascript:void()" onClick="showDatePicker('<?=$view_type?>')">
+                                        <?=$date->format('d.m.Y')?>
+                                    </a>
+                                </div>
+                            </th>
+                    <?php endfor;
+                    endforeach;
+                    ?>
+                </tr>
+            </thead>
+            <tbody>
+            <?php if($this->display_rows['admin']) :?>
+                <tr class="section-row">
+                    <td class="toggle-details-row headcol">
+                        Admin
+                    </td>
+                    <?php foreach ($this->dates as $date) :
+                        $forms = $this->formsByDate[$date->format('d.m.Y')];
+                            if (!empty($forms)) :
+                                foreach ($forms['forms'] as $contactForm): ?>
+                                    <td>
+                                        <table class="ambulatory-curve-admin section_content">
+                                            <thead>
+                                                <tr>
+                                                     <td class="open_for_more"><?=$this->translate('open_for_more')?></td>
+                                                </tr>
+                                            </thead>
+                                            <tbody style="display: none">
+                                            <?php /*
+                                            <tr><td><?= $contactForm['id']?></td></tr>
+                                            */
+                                            //ISPC-2827+ISPC-2825 Dragos 14.04.2021 (shared cf) ?>
+                                            <tr><td><?=$this->client_details[$this->client_ids[$contactForm['ipid']]]['team_name']?></td></tr>
+                                            <?php // -- ?>
+                                            <tr><td><?=date('H:i',strtotime($contactForm['date']))?></td></tr>
+                                            <tr><td><?= $contactForm['form_type']['name']?></td></tr>
+                                            <tr><td>Begin: <?= date('d.m.Y H:i',strtotime($contactForm['start_date']))?></td></tr>
+                                            <tr><td>End: <?= date('d.m.Y H:i',strtotime($contactForm['end_date']))?></td></tr>
+                                            <tr><td><?= $contactForm['user']['user_title'].' '.$contactForm['user']['last_name'].' '.$contactForm['user']['first_name']?></td></tr>
+                                            </tbody>
+                                        </table>
+                                    </td>
+                        <?php endforeach;
+                        else: ?>
+                        <td>&nbsp;</td>
+                        <?php endif;
+                    endforeach;?>
+                </tr>
+            <?php endif;
+            if ($this->display_rows['vital_signs']) : ?>
+                <tr class="section-row">
+                    <td class="toggle-details-row headcol">
+                        Vitalwerte
+                    </td>
+                    <?php foreach ($this->dates as $date) :
+                        $forms = $this->formsByDate[$date->format('d.m.Y')];
+                        if (!empty($forms)) :
+                            foreach ($forms['forms'] as $contactForm): ?>
+                                <td>
+                                    <?php if (!empty($contactForm['vital_signs']) && is_array($contactForm['vital_signs'])):?>
+                                        <table class="ambulatory-curve-vital section_content">
+                                            <thead>
+                                                <tr>
+                                                     <td class="open_for_more"><?=$this->translate('open_for_more')?></td>
+                                                </tr>
+                                            </thead>
+                                            <tbody style="display: none">
+                                                <tr>
+                                                    <th>
+                                                        Datum
+                                                    </th>
+                                                    <?php foreach ($contactForm['vital_signs'] as $vitalSign) :?>
+                                                    <td>
+                                                        <?= date('d.m.Y',strtotime($vitalSign['signs_date']))?><br>
+                                                        <?= date('H:i',strtotime($vitalSign['signs_date']))?>
+                                                    </td>
+                                                    <?php endforeach;?>
+                                                </tr>
+                                                <tr>
+                                                    <th>
+                                                        RR(mmHg)
+                                                    </th>
+                                                    <?php foreach ($contactForm['vital_signs'] as $vitalSign) :?>
+                                                        <td>
+                                                            <?= $vitalSign['blood_pressure_a'].'/'.$vitalSign['blood_pressure_b']?>
+                                                        </td>
+                                                    <?php endforeach;?>
+                                                </tr>
+                                                <tr>
+                                                    <th>
+                                                        Puls(/min.)
+                                                    </th>
+                                                    <?php foreach ($contactForm['vital_signs'] as $vitalSign) :?>
+                                                        <td>
+                                                            <?= $vitalSign['puls']?>
+                                                        </td>
+                                                    <?php endforeach;?>
+                                                </tr>
+                                                <tr>
+                                                    <th>
+                                                        Atemfrequenz(/min.)
+                                                    </th>
+                                                    <?php foreach ($contactForm['vital_signs'] as $vitalSign) :?>
+                                                        <td>
+                                                            <?= $vitalSign['respiratory_frequency']?>
+                                                        </td>
+                                                    <?php endforeach;?>
+                                                </tr>
+                                                <tr>
+                                                    <th>
+                                                        Temperatur(°C)
+                                                    </th>
+                                                    <?php foreach ($contactForm['vital_signs'] as $vitalSign) :?>
+                                                        <td>
+                                                            <?= $vitalSign['temperature']?><br>
+                                                            <?= $temp_ddarray[$vitalSign['temperature_dd']]?>
+                                                        </td>
+                                                    <?php endforeach;?>
+                                                </tr>
+                                                <tr>
+                                                    <th>
+                                                        Sauerstoffsättigung(%)
+                                                    </th>
+                                                    <?php foreach ($contactForm['vital_signs'] as $vitalSign) :?>
+                                                        <td>
+                                                            <?= $vitalSign['oxygen_saturation']?>
+                                                        </td>
+                                                    <?php endforeach;?>
+                                                </tr>
+                                                <tr>
+                                                    <th>
+                                                        BZ(mg/dl)
+                                                    </th>
+                                                    <?php foreach ($contactForm['vital_signs'] as $vitalSign) :?>
+                                                        <td>
+                                                            <?= $vitalSign['blood_sugar']?>
+                                                        </td>
+                                                    <?php endforeach;?>
+                                                </tr>
+                                                <tr>
+                                                    <th>
+                                                        Gewicht(kg)
+                                                    </th>
+                                                    <?php foreach ($contactForm['vital_signs'] as $vitalSign) :?>
+                                                        <td>
+                                                            <?= $vitalSign['weight']?>
+                                                        </td>
+                                                    <?php endforeach;?>
+                                                </tr>
+                                                <tr>
+                                                    <th>
+                                                        Größe(cm)
+                                                    </th>
+                                                    <?php foreach ($contactForm['vital_signs'] as $vitalSign) :?>
+                                                        <td>
+                                                            <?= $vitalSign['height']?>
+                                                        </td>
+                                                    <?php endforeach;?>
+                                                </tr>
+                                                <tr>
+                                                    <th>
+                                                        Kopfumfang(cm)
+                                                    </th>
+                                                    <?php foreach ($contactForm['vital_signs'] as $vitalSign) :?>
+                                                        <td>
+                                                            <?= $vitalSign['head_circumference']?>
+                                                        </td>
+                                                    <?php endforeach;?>
+                                                </tr>
+                                                <tr>
+                                                    <th>
+                                                        Bauchumfang(cm)
+                                                    </th>
+                                                    <?php foreach ($contactForm['vital_signs'] as $vitalSign) :?>
+                                                        <td>
+                                                            <?= $vitalSign['waist_circumference']?>
+                                                        </td>
+                                                    <?php endforeach;?>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    <?php endif;?>
+                                </td>
+                            <?php endforeach;
+                        else: ?>
+                            <td>&nbsp;</td>
+                        <?php endif;
+                    endforeach;?>
+                </tr>
+            <?php endif;
+            if ($this->display_rows['symptoms']) : ?>
+                <tr class="section-row">
+                    <td class="toggle-details-row headcol">
+                        Symptome
+                    </td>
+                    <?php foreach ($this->dates as $date) :
+                        $forms = $this->formsByDate[$date->format('d.m.Y')];
+                        if (!empty($forms)) :
+                            foreach ($forms['forms'] as $contactForm): ?>
+                                <td>
+                                    <?php if (!empty($contactForm['symptoms']) && is_array($contactForm['symptoms'])):?>
+                                        <table class="ambulatory-curve-symptoms section_content">
+                                            <thead>
+                                            <tr>
+                                                 <td class="open_for_more"><?=$this->translate('open_for_more')?></td>
+                                            </tr>
+                                            </thead>
+                                            <tbody style="display: none">
+                                                <tr>
+                                                    <td style="padding-right: 5px">
+                                                        <table class="symptom_1_table">
+                                                            <thead>
+                                                                <tr>
+                                                                    <th>Item</th>
+                                                                    <th>Letzter Wert</th>
+                                                                    <th>Aktueller Wert</th>
+                                                                    <th>Kommentar</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                            <?php foreach ($contactForm['symptoms'] as $symptom) :?>
+                                                                <?php if($symptom['entered_value'] != '') :?>
+                                                                    <tr>
+                                                                        <td><?=$symptom['sym_description']?></td>
+                                                                        <td><?=$symptom['input_value']?></td>
+                                                                        <td><?=$symptom['entered_value']?></td>
+                                                                        <td><?php echo $symptom['comment'];?></td>
+                                                                    </tr>
+                                                                <?php endif; endforeach;?>
+                                                            </tbody>
+                                                        </table>
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    <?php endif;?>
+                                </td>
+                            <?php endforeach;
+                        else: ?>
+                            <td>&nbsp;</td>
+                        <?php endif;
+                    endforeach;?>
+                </tr>
+            <?php endif;
+            if ($this->display_rows['symptoms_2']) : ?>
+                <tr class="section-row">
+                    <td class="toggle-details-row headcol">
+                        Symptome II
+                    </td>
+                    <?php foreach ($this->dates as $date) :
+                        $forms = $this->formsByDate[$date->format('d.m.Y')];
+                        if (!empty($forms)) :
+                            foreach ($forms['forms'] as $contactForm): ?>
+                                <td>
+                                    <?php if (!empty($contactForm['symptoms_2']) && is_array($contactForm['symptoms_2'])):?>
+                                    <table class="ambulatory-curve-symptoms-2 section_content">
+                                        <thead>
+                                            <tr>
+                                                 <td class="open_for_more"><?=$this->translate('open_for_more')?></td>
+                                            </tr>
+                                        </thead>
+                                        <tbody style="display: none">
+                                        <?php foreach ($contactForm['symptoms_2'] as $symptom) :?>
+                                            <tr>
+                                                <?php //ISPC-2827+ISPC-2825 Dragos 14.04.2021 (shared cf) ?>
+                                                <td>Symptom: <?=$this->client_sym_all_details[$contactForm['ipid']][$symptom['symptom_id']]['description']?><br>
+                                                    Schweregrad:
+                                                    <?php
+                                                    $severity_map = array(""=>"","0"=>"keine","4"=>"leicht","7"=>"mittel","10"=>"schwer");
+                                                    echo $severity_map[$symptom['severity']];
+                                                    ?><br>
+                                                    leidvoll?:
+                                                    <?php if($symptom['sorrowfully'] == "1"):?>
+                                                        Ja
+                                                    <?php else :?>
+                                                        Nein
+                                                    <?php endif;?>
+                                                    <br>
+                                                    Kommentar: <?php echo $symptom['comment'];?>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach;?>
+                                        </tbody>
+                                    </table>
+                                    <?php endif;?>
+                                </td>
+                            <?php endforeach;
+                        else: ?>
+                            <td>&nbsp;</td>
+                        <?php endif;
+                    endforeach;?>
+                </tr>
+            <?php endif;
+            if ($this->display_rows['case_history']) : ?>
+                <tr class="section-row">
+                    <td class="toggle-details-row headcol">
+                        Anamnese
+                    </td>
+                    <?php foreach ($this->dates as $date) :
+                        $forms = $this->formsByDate[$date->format('d.m.Y')];
+                        if (!empty($forms)) :
+                            foreach ($forms['forms'] as $contactForm): ?>
+                                <?php if (!empty($contactForm['case_history'])):?>
+                                <td>
+                                    <table class="ambulatory-curve-history section_content">
+                                        <thead>
+                                            <tr>
+                                                 <td class="open_for_more"><?=$this->translate('open_for_more')?></td>
+                                            </tr>
+                                        </thead>
+                                        <tbody style="display: none">
+                                            <?php if ($contactForm['case_history'] != '') :?>
+                                                <tr><th>Anamnese</th></tr>
+                                                <tr><td><?=$contactForm['case_history']?></td></tr>
+                                            <?php else: ?>
+                                                <tr><td>&nbsp;</td></tr>
+                                            <?php endif;?>
+                                        </tbody>
+                                    </table>
+                                </td>
+                                <?php else : ?>
+                                <td>&nbsp</td>
+                                <?php endif;?>
+                            <?php endforeach;
+                        else: ?>
+                            <td>&nbsp;</td>
+                        <?php endif;
+                    endforeach;?>
+                </tr>
+            <?php endif;
+            if ($this->display_rows['anamnese_2']) : ?>
+                <tr class="section-row">
+                    <td class="toggle-details-row headcol">
+                        Anamnese II
+                    </td>
+                    <?php foreach ($this->dates as $date) :
+                        $forms = $this->formsByDate[$date->format('d.m.Y')];
+                        if (!empty($forms)) :
+                            foreach ($forms['forms'] as $contactForm): ?>
+                                <?php if (!empty($contactForm['anamnese_2'])):?>
+                                <td>
+                                    <table class="ambulatory-curve-history section_content">
+                                        <thead>
+                                        <tr>
+                                             <td class="open_for_more"><?=$this->translate('open_for_more')?></td>
+                                        </tr>
+                                        </thead>
+                                        <tbody style="display: none">
+                                        <?php if (!empty($contactForm['anamnese_2'])) :
+                                            $birth_anamnese = json_decode($contactForm['anamnese_2']['birth_anamnese']);
+                                            $development_anamnese = json_decode($contactForm['anamnese_2']['development_anamnese']);?>
+                                            <tr><th colspan="2">Datum: <?=date('d.m.Y',strtotime($contactForm['anamnese_2']['datum']))?></th></tr>
+                                            <tr><th colspan="2">Geburtsanamnese</th></tr>
+                                            <tr><th>Länge bei Geburt (cm)</th><td><?=$birth_anamnese->laenge_bei_geburt?></td></tr>
+                                            <tr><th>Gewicht bei Geburt (g)</th><td><?=$birth_anamnese->gewicht_bei_geburt?></td></tr>
+                                            <tr><th>Kopfumfang bei Geburt (cm)</th><td><?=$birth_anamnese->kopfumfang_bei_geburt?></td></tr>
+                                            <tr><th>Schwangerschaftsverlauf</th><td><?=$birth_anamnese->schwangerschaftsverlauf?></td></tr>
+                                            <tr><th>Schwangerschaftsdauer (SSW)</th><td><?=$birth_anamnese->schwangerschaftsdauer?></td></tr>
+                                            <tr><th>Geburtsverlauf</th><td><?=$birth_anamnese->geburtsverlauf?></td></tr>
+                                            <tr><th>Apgar</th><td><?=$birth_anamnese->apgar?></td></tr>
+                                            <tr><th>Nabelschnur-pH</th><td><?=$birth_anamnese->nabelschnur_ph?></td></tr>
+                                            <tr><th>Mehrling</th>
+                                                <td><?php if ($birth_anamnese->mehrling == 0) {
+                                                        echo 'Ja';
+                                                    } elseif ($birth_anamnese->mehrling == 1) {
+                                                        echo 'Nein';
+                                                    } elseif ($birth_anamnese->mehrling == 2) {
+                                                        echo 'Sonstiges: ', $birth_anamnese->mehrling_details;
+                                                    }
+                                                    ?>
+                                                </td>
+                                            </tr>
+                                            <tr><th colspan="2">Entwicklungsanamnese</th></tr>
+                                            <tr><th>Allgemeiner Entwicklungsstand</th>
+                                                <td><?php if ($development_anamnese->allgemeiner_entwicklungsstand == 0) {
+                                                        echo 'Altersentsprechend';
+                                                    } elseif ($development_anamnese->allgemeiner_entwicklungsstand == 1) {
+                                                        echo 'Verzögert';
+                                                    } elseif ($development_anamnese->allgemeiner_entwicklungsstand == 2) {
+                                                        echo 'Sonstiges: ', $development_anamnese->allgemeiner_entwicklungsstand_details;
+                                                    }
+                                                    ?>
+                                                </td>
+                                            </tr>
+                                            <tr><th>Besonderheiten/ Bemerkungen</th><td><?=$development_anamnese->besonderheiten_bemerkungen?></td></tr>
+                                            <tr><th>Fixieren</th><td><?=$development_anamnese->fixieren?></td></tr>
+                                            <tr><th>Greifen</th><td><?=$development_anamnese->greifen?></td></tr>
+                                            <tr><th>Kopfhalten</th><td><?=$development_anamnese->kopfhalten?></td></tr>
+                                            <tr><th>Sitzen</th><td><?=$development_anamnese->sitzen?></td></tr>
+                                            <tr><th>Sprechen</th><td><?=$development_anamnese->sprechen?></td></tr>
+                                            <tr><th>Laufen</th><td><?=$development_anamnese->laufen?></td></tr>
+                                            <tr><th>Sauber</th>
+                                                <td><?=$development_anamnese->laenge_bei_geburt?>
+                                                    <?php if ($development_anamnese->sauber == 0) {
+                                                        echo 'Altersentsprechend';
+                                                    } elseif ($development_anamnese->sauber == 1) {
+                                                        echo 'Verzögert';
+                                                    } elseif ($development_anamnese->sauber == 2) {
+                                                        echo 'Sonstiges: ', $development_anamnese->sauber_details;
+                                                    }
+                                                    ?>
+                                                </td>
+                                            </tr>
+                                            <tr><th>Zahnungsbeginn</th><td><?=$development_anamnese->zahnungsbeginn?></td></tr>
+                                        <?php else: ?>
+                                            <tr><td>&nbsp;</td></tr>
+                                        <?php endif;?>
+                                        </tbody>
+                                    </table>
+                                </td>
+                                <?php else: ?>
+                                <td>&nbsp</td>
+                                <?php endif;?>
+                            <?php endforeach;
+                        else: ?>
+                            <td>&nbsp;</td>
+                        <?php endif;
+                    endforeach;?>
+                </tr>
+            <?php endif;
+            if ($this->display_rows['art_en_exit']) : ?>
+                <tr class="section-row">
+                    <td class="toggle-details-row headcol">
+                        Zu- und Ableitungen
+                    </td>
+                    <?php foreach ($this->dates as $date) :
+                        $forms = $this->formsByDate[$date->format('d.m.Y')];
+                        if (!empty($forms)) :
+                            foreach ($forms['forms'] as $contactForm): ?>
+                                <?php if (!empty($contactForm['art_en_exit'])):?>
+                                <td>
+                                    <table class="ambulatory-curve-history section_content">
+                                        <thead>
+                                        <tr>
+                                             <td class="open_for_more"><?=$this->translate('open_for_more')?></td>
+                                        </tr>
+                                        </thead>
+                                        <tbody style="display: none">
+                                        <?php if (!empty($contactForm['art_en_exit'])) :?>
+                                            <tr>
+                                                <td style="padding-right: 5px">
+                                                    <table class="art_en_ex_table">
+                                                        <thead>
+                                                        <tr>
+                                                            <th>Name</th>
+                                                            <th>Datum</th>
+                                                            <th>Zeit</th>
+                                                            <th>Status</th>
+                                                            <th>Kommentar</th>
+                                                        </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                        <?php foreach ($contactForm['art_en_exit'] as $art_en_ex) :?>
+                                                            <?php if(is_array($art_en_ex)) :?>
+                                                                <tr>
+                                                                    <td><?=$art_en_ex['option_name']?></td>
+                                                                    <td><?=date('d.m.Y',strtotime($art_en_ex['option_date']))?></td>
+                                                                    <td><?=date('H:i',strtotime($art_en_ex['option_date']))?></td>
+                                                                    <td>
+                                                                        <?php if ($art_en_ex['option_status']== "ok") {
+                                                                            echo 'in Ordnung';
+                                                                        } elseif ($art_en_ex['option_status']== "not ok") {
+                                                                            echo 'Nicht in Ordnung';
+                                                                        }?>
+                                                                    </td>
+                                                                    <td><?php echo $art_en_ex['option_comment'];?></td>
+                                                                </tr>
+                                                            <?php endif; endforeach;?>
+                                                        </tbody>
+                                                    </table>
+                                                </td>
+                                            </tr>
+                                        <?php endif;?>
+                                        </tbody>
+                                    </table>
+                                </td>
+                                <?php else:?>
+                                <td>&nbsp</td>
+                                <?php endif;?>
+                            <?php endforeach;
+                        else: ?>
+                            <td>&nbsp;</td>
+                        <?php endif;
+                    endforeach;?>
+                </tr>
+            <?php endif;
+            if ($this->display_rows['patient_hzimex']) : ?>
+                <tr class="section-row">
+                    <td class="toggle-details-row headcol">
+                        Ausscheidung
+                    </td>
+                    <?php foreach ($this->dates as $date) :
+                        $forms = $this->formsByDate[$date->format('d.m.Y')];
+                        if (!empty($forms)) :
+                            foreach ($forms['forms'] as $contactForm): ?>
+                                <?php if (!empty($contactForm['patient_hzimex']['import']) || !empty($contactForm['patient_hzimex']['export'])):?>
+                                <td>
+                                    <table class="ambulatory-curve-history section_content">
+                                        <thead>
+                                        <tr>
+                                            <td class="open_for_more"><?=$this->translate('open_for_more')?></td>
+                                        </tr>
+                                        </thead>
+                                        <tbody style="display: none">
+                                            <?php if (!empty($contactForm['patient_hzimex']['import']) || !empty($contactForm['patient_hzimex']['export'])) :?>
+                                                <tr><th width="10%" style="padding-right: 5px">Einfuhr</th><td><?=$contactForm['patient_hzimex']['import']?></td></tr>
+                                                <tr><th width="10%" style="padding-right: 5px">Ausfuhr</th><td><?=$contactForm['patient_hzimex']['export']?></td></tr>
+                                            <?php endif;?>
+                                        </tbody>
+                                    </table>
+                                </td>
+                                <?php else: ?>
+                                <td>&nbsp</td>
+                                <?php endif;?>
+                            <?php endforeach;
+                        else: ?>
+                            <td>&nbsp;</td>
+                        <?php endif;
+                    endforeach;?>
+                </tr>
+            <?php endif;
+            if ($this->display_rows['comment']) : ?>
+                <tr class="section-row">
+                    <td class="toggle-details-row headcol">
+                        Kommentar
+                    </td>
+                    <?php foreach ($this->dates as $date) :
+                        $forms = $this->formsByDate[$date->format('d.m.Y')];
+                        if (!empty($forms)) :
+                            foreach ($forms['forms'] as $contactForm): ?>
+                                <?php if (!empty($contactForm['comment'])):?>
+                                <td>
+                                    <table class="ambulatory-curve-history section_content">
+                                        <thead>
+                                        <tr>
+                                             <td class="open_for_more"><?=$this->translate('open_for_more')?></td>
+                                        </tr>
+                                        </thead>
+                                        <tbody style="display: none">
+                                        <?php if (!empty($contactForm['comment'])) :?>
+                                            <tr><th>Kommentar</th></tr>
+                                            <tr><td><?=$contactForm['comment']?></td></tr>
+                                        <?php endif;?>
+                                        </tbody>
+                                    </table>
+                                </td>
+                                <?php else: ?>
+                                <td>&nbsp</td>
+                                <?php endif;?>
+                            <?php endforeach;
+                        else: ?>
+                            <td>&nbsp;</td>
+                        <?php endif;
+                    endforeach;?>
+                </tr>
+            <?php endif;?>
+            </tbody>
+        </table>
+    </div>
+    <?php else : //no data for patient ?>
+        <?=$this->translate('No data available for this patient');?>
+    <?php endif; ?>
+</div>
+
+<script type="application/javascript">
+    $(document).ready(function () {
+        $('.toggle-details-row').on('click', function () {
+            if ($(this).hasClass('open')) {
+                $(this).removeClass('open')
+            } else {
+                $(this).addClass('open')
+            }
+            $(this).siblings('td').each(function () {
+                $(this).find('table.section_content > thead').toggle();
+                if ($(this).find('table.section_content > tbody:visible').length) {
+                    $(this).find('table.section_content > tbody').toggle();
+                } else {
+                    $(this).find('table.section_content > tbody').toggle('slow');
+                }
+            })
+        })
+    })
+    var pid = '<?php echo $this->encid; ?>';
+    var backcol = $("#<?php echo $view_type; ?>").css('backgroundColor');
+
+
+
+    function showDatePicker(type){
+        if(type === undefined) {
+            type = 'threedays';
+        }
+        $('.view_selector').show();
+// 	var overlay = new $.ui.dialog.overlay();
+        $('.modal_overlay').show();
+
+        showPicker(type);
+    }
+
+
+    function showPicker(type, fromwhere){
+        if(type === undefined) {
+            type = 'oneday';
+        }
+        if(fromwhere === undefined) {
+            fromwhere = null;
+        }
+        $('.interval_selection').hide();
+        $('#select_'+type).show();
+        $('#selected_chart_type').val(type);
+
+        var chart_view_type = type;
+        $("."+chart_view_type+'-picker').find('.ui-datepicker-current-day a').click();
+        if(fromwhere)
+        {
+            $('.view_selector').hide();
+            $('.modal_overlay').hide();
+            loadPage(); // navigation and charts
+        }
+        //--
+    }
+
+
+    $.date = function(dateObject) {
+        var d = new Date(dateObject);
+        var day = d.getDate();
+        var month = d.getMonth() + 1;
+        var year = d.getFullYear();
+        if (day < 10) {
+            day = "0" + day;
+        }
+        if (month < 10) {
+            month = "0" + month;
+        }
+        var date = month + "/" + day + "/" + year;
+
+        return date;
+    };
+
+    $(function() {
+
+
+
+        // if($('#selected_chart_type').val() == 'oneday' || $('#selected_chart_type').val() == '12hours' || $('#selected_chart_type').val() == '4hours'){
+        //     $('.btnPrevMultiple').hide();
+        //     $('.btnNextMultiple').hide();
+        //
+        // }
+        $(document).off('click',".modal_overlay").on('click',".modal_overlay", function(){
+            $('.view_selector').hide();
+            $('.modal_overlay').hide();
+        });
+
+
+        $(".cancel_btn").click(function() {
+            $('.view_selector').hide();
+            $('.modal_overlay').hide();
+        });
+
+
+        $(".apply_btn").click(function() {
+
+            //if($('#selected_from_datePicker').val()){
+
+            $('.view_selector').hide();
+            $('.modal_overlay').hide();
+            var chart_view_type = $('#selected_chart_type').val();
+            let start = $('#interval_start_date').val();
+            let end = $('#interval_end_date').val();
+            let days = 3;
+
+            if (chart_view_type === "oneday") {
+                days = 1
+            }
+
+            location.href = appbase + '/patientformnew/ambulatorycurve?id=' + pid +'&start_date='+start+'&days='+days
+
+
+        });
+
+        $(".btnTop").click(function() {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+
+        $("#date").datepicker();
+        $(".gotoDate").datepicker();
+
+        var startDate;
+        var endDate;
+
+        var selectCurrentInterval = function() {
+            window.setTimeout(function() {
+                $('.threedays-picker').find('.ui-datepicker-current-day a').addClass('ui-state-active')
+            }, 1);
+        }
+        $('.threedays-picker').datepicker({
+            changeMonth: true,
+            changeYear: true,
+            showOtherMonths: true,
+            selectOtherMonths: true,
+            onSelect: function(dateText, inst) {
+                var date = $(this).datepicker('getDate');
+                startDate = new Date(date.getFullYear(), date.getMonth(), date.getDate() -2); //ISPC-2661 pct.9 Carmen 14.09.2020
+                endDate = new Date(date.getFullYear(), date.getMonth(), date.getDate()); //ISPC-2661 pct.9 Carmen 14.09.2020
+
+                var dateFormat = inst.settings.dateFormat || $.datepicker._defaults.dateFormat;
+                $("#interval_start_date").val($.datepicker.formatDate(dateFormat, startDate, inst.settings));
+                $("#interval_end_date").val($.datepicker.formatDate(dateFormat, endDate, inst.settings));
+                selectCurrentInterval();
+
+                $('#selected_from_datePicker').val($.datepicker.formatDate(dateFormat, startDate, inst.settings));
+
+            },
+            beforeShowDay: function(date) {
+                var cssClass = '';
+                if (date >= startDate && date <= endDate)
+                    cssClass = 'ui-datepicker-current-day';
+                return [true, cssClass];
+            },
+            onChangeMonthYear: function(year, month, inst) {
+                selectCurrentInterval();
+            }
+        });
+
+        var selectCurrentWInterval = function() {
+            window.setTimeout(function() {
+                $('.week-picker').find('.ui-datepicker-current-day a').addClass('ui-state-active')
+            }, 1);
+        }
+
+        $('.week-picker').datepicker({
+            changeMonth: true,
+            changeYear: true,
+            showOtherMonths: true,
+            selectOtherMonths: true,
+            onSelect: function(dateText, inst) {
+                var date = $(this).datepicker('getDate');
+                startDate = new Date(date.getFullYear(), date.getMonth(), date.getDate() -6); //ISPC-2661 pct.9 Carmen 14.09.2020
+                endDate = new Date(date.getFullYear(), date.getMonth(), date.getDate()); //ISPC-2661 pct.9 Carmen 14.09.2020
+                var dateFormat = inst.settings.dateFormat || $.datepicker._defaults.dateFormat;
+                $("#interval_start_date").val($.datepicker.formatDate(dateFormat, startDate, inst.settings));
+                $("#interval_end_date").val($.datepicker.formatDate(dateFormat, endDate, inst.settings));
+                selectCurrentWInterval();
+                $('#selected_from_datePicker').val($.datepicker.formatDate(dateFormat, startDate, inst.settings));
+            },
+            beforeShowDay: function(date) {
+                var cssClass = '';
+                if (date >= startDate && date <= endDate)
+                    cssClass = 'ui-datepicker-current-day';
+                return [true, cssClass];
+            },
+            onChangeMonthYear: function(year, month, inst) {
+                selectCurrentInterval();
+            }
+        });
+
+
+        $('.oneday-picker').datepicker({
+            changeMonth: true,
+            changeYear: true,
+            showOtherMonths: true,
+            selectOtherMonths: true,
+            onSelect: function(dateText, inst) {
+                var date = $(this).datepicker('getDate');
+                startDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+                endDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+                var dateFormat = inst.settings.dateFormat || $.datepicker._defaults.dateFormat;
+                $("#interval_start_date").val($.datepicker.formatDate(dateFormat, startDate, inst.settings));
+                $("#interval_end_date").val($.datepicker.formatDate(dateFormat, endDate, inst.settings));
+
+                $('#selected_from_datePicker').val($.datepicker.formatDate(dateFormat, startDate, inst.settings));
+            },
+
+            beforeShowDay: function(date) {
+                var cssClass = '';
+                if (date >= startDate && date <= endDate)
+                    cssClass = 'ui-datepicker-current-day';
+                return [true, cssClass];
+            }
+        });
+
+    });
+</script>

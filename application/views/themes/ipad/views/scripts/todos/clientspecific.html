@@ -1,0 +1,153 @@
+<?php
+//ISPC-2491
+$this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/page-css/client_specific.css'); //TODO-3332 carmen 17.08.2020
+ $this->headLink()->appendStylesheet(RES_FILE_PATH.'/javascript/chosen_v1.6.2/chosen_2016.09.22.css');
+	$block_todos = $this->block_todos ; 
+	$client_todos_values = $block_todos['client_todos_values'];
+
+	$flat_todo_users = array();
+	foreach($block_todos['todo_users'] as $k=>$row_user) {
+		if ( ! is_array( $row_user)) { $row_user = array($k => $row_user); }
+		$flat_todo_users = array_merge($flat_todo_users, $row_user );
+	}
+?>
+<!--  ############################################################################## -->
+<!--  ###############################  todo ######################################## -->
+<!--  ############################################################################## -->
+	<script type="text/javascript">
+	$(document).ready(function(){
+ 
+		 $( ".todo_date" ).datepicker({
+				dateFormat: 'dd.mm.yy',
+				showOn: "both",
+				buttonImage: $('#calImg').attr('src'),
+				buttonImageOnly: true,
+				changeMonth: true,
+				changeYear: true,
+				nextText: '',
+				prevText: ''
+			}).mask("99.99.9999");
+		 
+		$(".todo_date").mask("99.99.9999");
+		
+		$('.todo_selectbox').chosen({
+			placeholder_text_single: translate('please select'),
+			placeholder_text_multiple : translate('please select'),
+			multiple:1,
+			width:'250px',
+			"search_contains": true,
+			no_results_text: translate('noresultfound')
+		});
+		
+		
+		
+		//remove custom items
+		$('.remove_item').live('click', function(){
+			$(this).parent().parent().remove();
+		});
+		
+	});
+
+	function todo_checkinput( element )
+	{
+		var parent = $(element).parents("tr.todorow");	
+		if ( $(".todo_text", parent).val() != "" && $(".todo_selectbox", parent).val() !== null)
+		{
+			$(parent).next("tr.todorow"). show();					
+		}
+		return;
+	}
+	</script>			
+	
+<h1> <? echo $this->translate('Todos - auto added at admission') ?></h1>
+
+<form method="post" id="client_specific_todos">	
+<fieldset>
+<h5>
+<? echo $this->translate('short page description- here you can set - todo text that are sent when a patient is admited') ?>
+</h5>
+		<table class="todotable datatable table-striped">
+			<tr>
+				<th width="330px">Aufgabe</th>
+				<th >zu erledigen von</th>
+				<!-- TODO-3332 Carmen 17.08.2020 -->
+				<th ><?php echo $this->translate('clienttodos_lang')['[patient_type]']; ?></th>
+				<!-- // -->
+				<th ></th>
+			</tr>
+			
+		<?php $r = 0 ; foreach ($client_todos_values as $saved_row=>$row): ?>
+				<tr class="todorow">
+					<td>
+						<input class="todo_text" type="text" name="todos[<?php echo $saved_row;?>][text]" value="<?php echo $row['todo'];?>" style="width:310px;" onChange="todo_checkinput(this)">
+						
+					</td>
+					<td>
+					<?php 
+						echo $this->formSelect(
+							"todos[{$saved_row}][user][]", 
+							$row['todo_recipients'], 
+							array(
+								"class" => "todo_selectbox",
+								"multiple" => true,
+								"size" => 1,
+								"onChange" => "todo_checkinput(this)",
+								"disable" => array("0")
+							),
+							$block_todos['todo_users']
+						);
+					?>	
+						
+					</td>
+					<!-- TODO-3332 Carmen 17.08.2020 -->
+					<td>
+					<?php
+						echo $this->formRadio("todos[{$saved_row}][triggered_for]", $row['triggered_for'], array("class"=>"triggered_for_radio", "onChange" => "todo_checkinput(this)"), $this->triggered_for , "<br/>");
+					?>
+					
+					</td>
+					<!-- // -->
+					<td align="left" valign="top"><a href="javascript:void(0)" class="remove_item"><img src="images/action_delete.png" border="0" /></a></td>
+ 
+				</tr>
+		<?php $r++; endforeach; ?>
+		
+		<?php for ($rownum = 1000; $rownum < 1006; $rownum++ ): ?>
+			<tr class="todorow" <?php if ($rownum > 1000 ) {echo 'style="display:none"';}?>>
+				<td style="vertical-align:top">
+					<input class="todo_text" type="text" name="todos[<?php echo $rownum;?>][text]" value="" style="width:310px;" onChange="todo_checkinput(this)">
+				</td>
+				<td style="vertical-align:top" >						
+					<?php 
+						echo $this->formSelect(
+							"todos[{$rownum}][user][]", 
+							null, 
+							array(
+								"class" => "todo_selectbox",
+								"multiple" => true,
+								"size" => 1,
+								"onChange" => "todo_checkinput(this)",
+								"disable" => array("0")
+							),
+							$block_todos['todo_users']
+						);
+					?>	
+				</td>
+				<!-- TODO-3332 Carmen 17.08.2020 -->
+				<td>
+					<?php
+						echo $this->formRadio("todos[{$rownum}][triggered_for]", '0', array("class"=>"triggered_for_radio", "onChange" => "todo_checkinput(this)",), $this->triggered_for, "<br />");
+					?>					
+				</td>
+				<!-- // -->
+ 				<td align="left" valign="top"><a href="javascript:void(0)" class="remove_item"><img src="images/action_delete.png" border="0" /></a></td>
+			</tr>
+			
+		<?php endfor; ?>	
+
+
+		</table>
+	
+<input type="submit" value="<?php echo $this->translate('save')?>">
+</fieldset> 
+</form>

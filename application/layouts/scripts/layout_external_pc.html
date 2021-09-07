@@ -1,0 +1,294 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<?php
+/*
+	Build Page Title
+*/
+	$appname = "ISPC";
+	$lower_controllername = strtolower(Zend_Controller_Front::getInstance()->getRequest()->getControllerName());
+	$lower_actionname = strtolower(Zend_Controller_Front::getInstance()->getRequest()->getActionName());
+	if($lower_controllername==$lower_actionname) {
+		$ispc_pagetitle = $appname." | ".$this->translate($lower_actionname);
+	}else{
+		$ispc_pagetitle = $appname." | ".$this->translate($lower_controllername)." - ".$this->translate($lower_actionname);
+	}
+
+
+    /* last_update, version, isMaintenanceMode */
+    $appInfo = Zend_Registry::get('appInfo');
+
+    /* Banner for upload on maintenance mode*/
+    $show_upload_banner = isset($appInfo['isMaintenanceMode']) && $appInfo['isMaintenanceMode'] == 1 ? true : false;
+
+	$not_allowed_pages = Pms_CommonData::remove_from_css_hack();
+	$current_page = $lower_controllername.'/'.$lower_actionname ;
+?>
+<html lang="de" xml:lang="de" >
+    <head>
+        <base href="<?php echo APP_BASE; ?>" />
+        <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <title><?php echo $ispc_pagetitle; ?></title>
+        <script type="text/javascript">
+        var appbase = '<?php echo APP_BASE; ?>';
+        var res_path = '<?php echo RES_FILE_PATH; ?>';
+        var idpd = '<?php if(isset($_REQUEST['id'])): echo $_REQUEST['id']; endif; ?>';
+        var reset_datatable = '<?php echo ((isset($_REQUEST['lf']) && $_REQUEST['lf'] == "list" ) ? '1' : '0') ?>';
+        <?php 
+        	/**
+        	const idcidpd is the current clientid
+        	**/
+        	$logininfo = new Zend_Session_Namespace('Login_Info');
+        	$idcidpd_encrypt = Pms_Uuid::encrypt($logininfo->clientid);
+           	$client_modules = $logininfo->_clientModules;//ISPC-2561 Ancuta 11.05.2020
+        ?>
+        var idcidpd = '<?php echo $idcidpd_encrypt;?>';
+        // Maria:: Migration ISPC to CISPC 08.08.2020
+        //ISPC-2561 Ancuta 11.05.2020
+        var connected_patient_search = '<?php if ( ! empty($client_modules) && $client_modules[221]) : echo "1"; else: echo "0"; endif; ?>';
+        //--       	
+		
+        </script>
+    
+    <?php
+// ISPC-2409 Ancuta -11.11.2019 - Added  custom_jQueryDialog.css
+$headlinks = $this->headLink()
+	->appendStylesheet(RES_FILE_PATH.'/css/cupertino/jquery-ui-1.8.23.custom.css')
+	->appendStylesheet(RES_FILE_PATH.'/css/reset.css','all')
+	->appendStylesheet(RES_FILE_PATH.'/css/custom.css','all')
+	->appendStylesheet(RES_FILE_PATH.'/css/left_menu/left_menu.css','all')//ISPC-2782 CRISTI C.
+	->appendStylesheet(RES_FILE_PATH.'/css/custom_jQueryDialog.css','all')
+    ->appendStylesheet(RES_FILE_PATH.'/css/ispctopbar.css','all')
+	->appendStylesheet(RES_FILE_PATH.'/css/top_menu/top_menu.css','all')//ISPC-2782 CRISTI C.
+	->appendStylesheet(RES_FILE_PATH.'/css/ie8.css','all','IE 8')
+	->appendStylesheet(RES_FILE_PATH.'/css/ie7.css','all','IE 7')
+	->appendStylesheet(RES_FILE_PATH.'/css/ie6.css','all','IE 6')
+	->appendStylesheet(RES_FILE_PATH.'/css/ie9.css','all','IE 9')
+;
+
+//ISPC-2512 Ancuta 08.05.2020
+if($lower_controllername == 'charts') {
+    $headlinks->appendStylesheet(RES_FILE_PATH.'/css/page-css/overview_charts_viewmode.css','all');
+}
+if( ! in_array($current_page,$not_allowed_pages)){
+	$headlinks->appendStylesheet(RES_FILE_PATH.'/css/ispc-fs.css','all');
+}
+
+
+$headlinks->appendStylesheet(RES_FILE_PATH.'/css/ispc-efa.css','all');
+//--
+
+echo $headlinks."\n";
+
+echo $this->headscripts;
+
+echo $this->headScript();
+?>
+     
+    
+    <!--<link rel="icon" href="<?php echo APP_BASE ?>images/favicon.ico" type="image/ico">
+    <link rel="shortcut icon" href="<?php echo APP_BASE ?>images/favicon.ico">-->
+    </head>
+
+<script type="text/javascript">
+var notifymessage = "<?php echo $this->msgnotify ?>";
+var sysnews = "<?php echo $this->systemnews ?>";
+//this is used for patient memo script to pass the curent patient id to the request vars
+setVarsForm('id='+idpd);
+function getClientvalues(val,url){ location.href =appbase+'client/setclientid?cid='+val.value+'&url='+url; }
+
+	function getClientUservalues(val, url) {
+		location.href = appbase + 'client/setclientiduserid?cid=' + val.value + '&url=' + url;
+	}
+function disable(){	$('.button').attr("disabled", true);}
+function clearvalue(input){ $('#'+input.attr('id')).val(''); }
+function setSuche(input){ $('#'+input.attr('id')).val('Suche'); }
+function selectPat(i) { document.location.href = appbase+'patientcourse/patientcourse?id='+i; }
+
+	function newsearch(ltrval) {
+		ajaxCallserver({
+			url : 'Patient/directpatientsearch',
+			callLoading : searchr_loading,
+			method : 'POST',
+			data : {
+				ltr : ltrval
+			}
+		});
+	}	
+	function topcookieSelected(menuid, params) {
+		setCookie('openmenu', menuid + "_menu");
+		window.location.href = appbase + params;		
+	}
+	function setSelected(menuid, params) {
+		window.name = "parent";
+		setCookie('selectedmenu', menuid);
+		window.location.href = appbase + params;
+		// claudiu
+		// window.open( appbase + params , "_blank");
+		return false;
+	}	
+	<?php echo $this->disable ?>
+	
+	$(document).ready(function()
+	{
+	
+		$('.logo').click(function(evt) {
+			window.location.href = appbase;
+			
+		})
+	});
+	
+</script>
+
+<?php
+	$body_class='newbody2018';
+	if($show_upload_banner == true){
+		$body_class .= ' upload_body';
+	}
+    $body_class = 'class="' . $body_class. '"';
+?>
+
+    <body <?php echo $body_class; ?>>
+    
+    <!--<div class="maintenance_info" style="display: block;">
+    <!--Wartungsarbeiten verschoben.<br />-->
+    <!--Die Wartungsarbeiten werden am Montag gegen 21 Uhr durchgeführt. Das System wird dann ca. 1 Stunde nicht erreichbar sein.-->
+    <!--</div>-->
+    <div id="browserwarning">
+    	<strong>ACHTUNG:</strong> Sie verwenden einen veralteten Browser, der die Anwendung nicht richtig darstellt.<br />Neue und sichere Versionen gibt es hier:
+    	<a href="http://www.mozilla.com" target="_blank" title="Mozilla Firefox">Firefox</a>, <a href="http://www.apple.com/de/safari/" target="_blank" title="Apple Safari">Safari</a>, <a href="http://de.opera.com" target="_blank" title="Opera">Opera</a> oder <a href="http://www.microsoft.com/germany/windows/internet-explorer/" target="_blank" title="Microsoft Internet Explorer">Internet Explorer</a>.
+    </div>
+    
+<?php if ($show_upload_banner == true) : ?>
+    <div class="maintenance_alert_info" style="display: block;">
+    In den nächsten 15 Minuten werden Wartungsarbeiten durchgeführt. Wir erwarten keine bzw. minimale Einschränkungen für die Benutzung des Systems.<br/>
+    </div>
+<?php endif; /* end of maitenance banner */?>
+    
+        <!-- newheader start -->
+        <!--ISPC-2782 Cristi.C 19.01.2021 -->
+        <div class="newheader">
+        
+            <?php if ($logininfo->clientid=='59'): ?>
+            <div class="logo client_specific_logo" ><img src="<?php echo RES_FILE_PATH;  ?>/images/medicq_logo.jpg" /></div>
+            <?php elseif ($logininfo->clientid=='136'): ?>
+            <div class="logo"><img src="<?php echo RES_FILE_PATH;  ?>/images/bielefeld_logo.jpg" /></div>
+            <?php elseif ($logininfo->clientid== '210'): ?>
+            <div class="logo"><img src="<?php echo RES_FILE_PATH;  ?>/images/wl_unna_logo.png" /></div>
+            <?php elseif ($logininfo->clientid== '269'): ?>
+            <div class="logo"><img src="<?php echo RES_FILE_PATH;  ?>/images/nrl_mambo_logo.png" /></div>
+            <?php elseif(in_array($logininfo->clientid,array('313','318','319')) ): ?>
+            <div class="logo"><img src="<?php echo RES_FILE_PATH;  ?>/images/nrl_mambo_logo.png" /></div>
+            <?php else:?>
+            <div class="logo"><img src="<?php echo RES_FILE_PATH;  ?>/images/logo-new2021.png" /></div><!-- ISPC-2782 Ancuta 04.02.2021-->
+            <?php endif;?>
+            
+           
+            
+            <div class="TopMenu">
+                <ul class="quicknav">
+                <?php echo $this->topmenus?>
+                </ul>
+            </div>
+            
+             <div class="search">
+                <input value="Suche" onBlur="setSuche($(this));"  onFocus="clearvalue($(this));"type="text" name="patientsearch_second"  id="patientsearch_second" autocomplete="off">
+            </div>
+            
+            <div class="right">            
+                <?php if($logininfo->usertype=='SA' || $logininfo->sca=='1' || $logininfo->multiple_clients=='1'): ?>
+                <div class="dropdown">
+                    <label for="connectedclients" > <?=$this->translate('client')?>:</label>
+                    <?php if($logininfo->usertype=='SA' || $logininfo->sca=='1'): ?>
+                        <?=$this->formSelect('adminclientid', $logininfo->clientid, array("id"=>"connectedclients", "onChange"=>"getClientvalues(this,'".urlencode(substr($_SERVER['REQUEST_URI'],1))."');"), $this->adminclientarray); ?>
+                    <?php  elseif( $logininfo->multiple_clients=='1'): ?>
+                        <?=$this->formSelect('connectedclients', $logininfo->clientid, array("id"=>"connectedclients", "onChange"=>"getClientUservalues(this,'".urlencode(substr($_SERVER['REQUEST_URI'],1))."');"), $this->adminclientarray); ?>
+                    <?php  endif; ?>
+                    
+                </div>
+                <?php endif; ?>
+                
+                <div class="btnNotify messages">
+                    <a href="<?php echo APP_BASE?>message/inbox"><?php if ($this->inboxmailcount > 0 ): ?><span><?=$this->inboxmailcount;?></span><?php endif; ?></a>
+                </div>
+                
+                <div class="btnNotify todo">
+                    <a href="<?php echo APP_BASE?>todos/management"><?php if ($this->countTodosOfUserFromIpids > 0 ): ?><span><?=$this->countTodosOfUserFromIpids;?></span><?php endif; ?></a>
+                </div>
+                
+                
+                <?php if ( ! empty($logininfo->_clientModules) && $logininfo->_clientModules[175]) :?>
+                <div class="btnNotify elvi_button">                
+                    <a href="#" onClick="elviroom_user_login(this); return false;"></a>
+                </div>
+                <?php endif; ?>               
+               
+                 <!--ISPC-2782 Cristi.C 19.01.2021 -->
+                <div  class="myaccount">
+                    <span class="username" onClick="(function(){ $('.dropdownUserMenu').slideToggle(280);})();"><!-- <?=$this->loguname;?>  --></span>
+                   
+                    <ul class="dropdownUserMenu">   
+                   	    <li><span class="userName"><?php echo $this->loguname;?></span></li>                   	
+                    	<li><a href="<?php echo APP_BASE?>user/editprofile" class=""><?php echo $this->translate('user_menu_1');?></a></li>
+	                    <li><a href="<?php echo APP_BASE?>addressbook/addressbook" class=""><?php echo $this->translate('user_menu_2'); ?></a></li>
+	                    <li><a href="<?php echo APP_BASE?>Index/logout" class=""><?php echo $this->translate('user_menu_3');?></a></li>
+                    </ul>                    
+                    <span class="update"><?=$this->translate('last_updated');?>: <a href="https://forum.smart-q.de/viewforum.php?f=9" target="new" class="header_update_link"><?=$appInfo['last_update']; ?></a></span>
+                </div>
+                
+            </div>
+        </div><!-- newheader end -->
+ 
+    
+        
+        <!-- outer start -->
+        <div class="outer">
+            <!-- Wrapper start -->
+            <div id="Wrapper">
+            
+            <?php if($this->efa_patient_menu):?> 
+                <div class="LeftDiv left">
+                  <?php echo $this->efa_patient_menu?>
+                </div>
+            <?php endif; ?>    
+                
+                
+                <!-- MainContent start -->
+                <div id="MainContent" class="right">
+                <?php if($this->efa_patient_header):?>
+	                 <?php echo $this->efa_patient_header?>
+            	<?php endif; ?>    	                
+            		<div class="content_wrapp">
+                    <?php echo $this->layout()->content  ?>
+                    </div>
+                </div><!-- MainContent end -->
+            </div><!-- Wrapper end -->
+            <div style="clear:both;"></div>
+        </div><!-- outer end -->
+    
+    
+    
+        <div id="btm_actions_modal">
+        	<form action="<?php echo APP_BASE.'patient/btmbuch?id='.$_REQUEST['id']; ?>" name="patient_btm_icon" id="patient_btm_icon" method="POST" onsubmit="return checkclientchanged();" ></form>
+        </div>
+    
+        <div class="footer">
+          <p><?php echo $this->translate("copyright"); ?></p>
+        </div>
+        
+        <div id="popupContact">
+        		<p id="contactArea">
+        		 <iframe id='add_family_doc' frameborder='0' src='' scrolling="no" style="margin:0 auto;"></iframe>
+        		</p>
+        </div>
+    
+        <div id="backgroundPopup"></div>
+    
+        <div id='session_expired'></div>
+        <div id='warning_expire'></div>
+        <div id='connection_lost'></div>
+        <div id='usersession_client_changed'></div>
+		<!--  ISPC-2615 Ancuta 13.07.2020 -->
+        <div id='patientWrongClient'></div>
+    </body>
+</html>

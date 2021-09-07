@@ -1,0 +1,237 @@
+<?php
+$patient_details = $this->patients_details;
+$discharge_details = $this->discharge_details;
+?>
+
+<script>
+$( document ).ready(function() {
+	$('#sapv_tabs').tabs({
+		show: function(event, ui) {
+			$('form#xml_gen input[type=checkbox]').attr('checked', false);
+		},
+		activate: function( event, ui ) {
+			alert('ZZZZ');
+		}
+	});
+
+	$('#filter_button').click(function(event){
+		event.preventDefault();
+
+		if ($('#st').val() == '') {
+			alert('<?php echo $this->translate('start_date_mandatory'); ?>');
+			$('#filter_switch').val('0');
+		} else {
+			$('#filter_switch').val('1');
+			$('#filter').submit();
+		}
+	});
+
+
+	$('.dp').mask("99.99.9999");
+	$('.dp').datepicker({
+		changeMonth: true,
+		changeYear: true,
+		showOn: "both",
+		buttonImage: "<?php echo RES_FILE_PATH  ?>/images/calendar.png",
+		buttonImageOnly: true,
+		dateFormat: 'dd.mm.yy'
+	});
+
+
+
+	$('#select_all_primary').live('click', function() {
+		if ($(this).is(':checked')) {
+			$('.userid_chk_primary').attr('checked', true);
+		} else {
+			$('.userid_chk_primary').attr('checked', false);
+		}
+	});
+	$('#select_all_secondary').live('click', function() {
+		if ($(this).is(':checked')) {
+			$('.userid_chk_secondary').attr('checked', true);
+		} else {
+			$('.userid_chk_secondary').attr('checked', false);
+		}
+	});
+
+	$('.userid_chk').live('click', function() {
+		var all_checked = 1;
+		$('.userid_chk').each(function() {
+			if (!$(this).is(':checked')) {
+				all_checked = 0;
+			}
+		});
+
+		if (all_checked) {
+			$('#select_all').attr('checked', true);
+		} else {
+			$('#select_all').attr('checked', false);
+		}
+	});
+
+	$('#submit_button').click(function(e){
+		e.preventDefault();
+		$('#submit_button').attr('disabled', true);
+		var checked = 0;
+		$('.userid_chk_primary').each(function() {
+			var row = $(this).parent().parent();
+			if ($(this).is(':checked')) {
+				row.addClass('checked');
+
+				checked = 1;
+			} else {
+				if(row.hasClass('checked')){
+
+					row.removeClass('checked');
+				}
+			}
+		});
+		$('.userid_chk_secondary').each(function() {
+			if ($(this).is(':checked')) {
+				checked = 1;
+			}
+		});
+
+		if(checked == '1'){
+			$('#xml_gen').submit();
+			setTimeout(function() { $('tr.checked').remove(); $('#submit_button').attr('disabled', false); $('input[type=checkbox]').attr('checked', false);},5000);
+		} else {
+			$('#submit_button').attr('disabled', false);
+			alert('<?php echo $this->translate('select_at_least_one_patient'); ?>');
+		}
+	});
+})
+</script>
+
+
+<h1>
+	<?php echo $this->translate('sapv_bulk_export_title'); ?>
+</h1>
+
+<br />
+
+<form name="filter" id="filter" action="" method="POST">
+	<p>
+		<?php echo $this->translate('date_filter_label');  ?>
+	</p>
+	<label for="st"><?php echo $this->translate('datefrom_xml');  ?></label>
+	<input type="text" name="start_date" id="st" value="<?php echo $_POST['start_date'];  ?>" class="dp">
+	&nbsp;&nbsp;&nbsp;
+	<label for="st"><?php echo $this->translate('datetill_xml');  ?></label>
+	<input type="text" name="end_date" id="ed"  value="<?php echo $_POST['end_date'];  ?>" class="dp">
+	&nbsp;&nbsp;&nbsp;
+	<input type="hidden" name="f" value="0" id="filter_switch"/>
+	<input type="submit" name="filter" value="<?php echo $this->translate('filter');  ?>" id="filter_button" />
+	<input type="reset" value="<?php echo $this->translate('clear_filter');  ?>" name="reset" id="reset" onclick="window.location = '<?php echo APP_BASE;?>misc/sapvbulkexport';" />
+
+</form>
+<form name="xml_gen" id="xml_gen" action="" method="POST">
+	<div id="sapv_tabs">
+		<ul>
+			<li><a href="#sapv_export"><?php echo $this->translate('sapv_export');  ?></a></li>
+			<li><a href="#sapv_exported"><?php echo $this->translate('sapv_exported');  ?></a></li>
+		</ul>
+		<div id="sapv_export">
+			<table border="0" class="datatable">
+				<thead>
+					<tr>
+						<th><input type="checkbox" name="select_all" value="1" id="select_all_primary" /></th>
+						<th><?php echo $this->translate('ePid'); ?></th>
+						<th><?php echo $this->translate('lastname'); ?></th>
+						<th><?php echo $this->translate('firstname'); ?></th>
+						<th><?php echo $this->translate('discharge_date'); ?></th>
+						<th><?php echo $this->translate('sapv_start'); ?></th>
+						<th><?php echo $this->translate('sapv_end'); ?></th>
+					</tr>
+				</thead>
+				<tbody>
+				<?php if($this->sapv_reeval_export):  ?>
+					<?php foreach ($this->sapv_reeval_export as $k_sapv_reeval => $v_sapv_reeval): ?>
+						<tr>
+							<td><input type="checkbox" name="userid[]" value="<?php echo Pms_Uuid::encrypt($patient_details[$v_sapv_reeval['ipid']]['id']); ?>" id="userid" class="userid_chk_primary"/> </td>
+							<td><?php echo strtoupper($v_sapv_reeval['epid']); ?></td>
+							<td><?php echo $patient_details[$v_sapv_reeval['ipid']]['last_name']; ?></td>
+							<td><?php echo $patient_details[$v_sapv_reeval['ipid']]['first_name']; ?></td>
+							<td>
+							<?php if($discharge_details[$v_sapv_reeval['ipid']]):  ?>
+								<?php foreach($discharge_details[$v_sapv_reeval['ipid']]['discharge_date'] as $k_dis_date=> $v_dis_date):  ?>
+									<?php echo date('d.m.Y', strtotime($v_dis_date));  ?><br />
+								<?php endforeach;  ?>
+							<?php else:  ?>
+								--
+							<?php endif;  ?>
+							</td>
+					<td>
+						<?php if(strlen($v_sapv_reeval['beginSapvFall']) > '3'): echo date('d.m.Y', strtotime($v_sapv_reeval['beginSapvFall'])); else: echo $v_sapv_reeval['beginSapvFall']; endif;  ?>
+					</td>
+					<td>
+						<?php if(strlen($v_sapv_reeval['endSapvFall']) > '3'): echo date('d.m.Y', strtotime($v_sapv_reeval['endSapvFall'])); else: echo $v_sapv_reeval['endSapvFall']; endif;  ?>
+					</td>
+						</tr>
+					<?php endforeach; ?>
+				<?php else:  ?>
+						<tr>
+							<td colspan="7" style="text-align: center;">
+								<?php echo $this->translate('sapv_bulk_export_no_patients_found');  ?>
+							</td>
+						</tr>
+				<?php endif;  ?>
+				</tbody>
+			</table>
+		</div>
+		<div id="sapv_exported">
+			<table border="0" class="datatable">
+				<thead>
+					<tr>
+						<th><input type="checkbox" name="select_all" value="1" id="select_all_secondary" /></th>
+						<th><?php echo $this->translate('ePid'); ?></th>
+						<th><?php echo $this->translate('lastname'); ?></th>
+						<th><?php echo $this->translate('firstname'); ?></th>
+						<th><?php echo $this->translate('discharge_date'); ?></th>
+						<th><?php echo $this->translate('sapv_start'); ?></th>
+						<th><?php echo $this->translate('sapv_end'); ?></th>
+						<th><?php echo $this->translate('export_date'); ?></th>
+					</tr>
+				</thead>
+				<tbody>
+				<?php if($this->sapv_reeval_exported):  ?>
+					<?php foreach ($this->sapv_reeval_exported as $k_sapv_reevalued => $v_sapv_reevalued): ?>
+						<tr>
+							<td><input type="checkbox" name="userid[]" value="<?php echo Pms_Uuid::encrypt($patient_details[$v_sapv_reevalued['ipid']]['id']); ?>" id="userid" class="userid_chk_secondary"/> </td>
+							<td><?php echo strtoupper($v_sapv_reevalued['epid']); ?></td>
+							<td><?php echo $patient_details[$v_sapv_reevalued['ipid']]['last_name']; ?></td>
+							<td><?php echo $patient_details[$v_sapv_reevalued['ipid']]['first_name']; ?></td>
+							<td>
+							<?php if($discharge_details[$v_sapv_reevalued['ipid']]):  ?>
+								<?php foreach($discharge_details[$v_sapv_reevalued['ipid']]['discharge_date'] as $k_dis_date=> $v_dis_date):  ?>
+									<?php echo date('d.m.Y', strtotime($v_dis_date));  ?><br />
+								<?php endforeach;  ?>
+							<?php else:  ?>
+								--
+							<?php endif;  ?>
+							</td>
+							<td>
+								<?php if(strlen($v_sapv_reevalued['beginSapvFall']) > '3'): echo date('d.m.Y', strtotime($v_sapv_reevalued['beginSapvFall'])); else: echo $v_sapv_reevalued['beginSapvFall']; endif;  ?>
+							</td>
+							<td>
+								<?php if(strlen($v_sapv_reevalued['endSapvFall']) > '3'): echo date('d.m.Y', strtotime($v_sapv_reevalued['endSapvFall'])); else: echo $v_sapv_reevalued['endSapvFall']; endif;  ?>
+							</td>
+							<td><?php echo date('d.m.Y', strtotime($v_sapv_reevalued['create_date'])); ?></td>
+						</tr>
+					<?php endforeach; ?>
+				<?php else:  ?>
+						<tr>
+							<td colspan="7" style="text-align: center;">
+								<?php echo $this->translate('sapv_bulk_export_no_patients_found');  ?>
+							</td>
+						</tr>
+				<?php endif;  ?>
+				</tbody>
+			</table>
+
+		</div>
+	</div>
+	<input type="hidden" name="f" value="0" id="filter_switch"/>
+	<input type="submit" value="Export XML" id="submit_button" />
+	<a href="<?php echo APP_BASE;  ?>misc/sapvbulkexporthistory" class="button" style="width:180px; float:right;"><?php echo $this->translate('sapv_xml_history_button')  ?></a>
+</form>

@@ -1,0 +1,227 @@
+<script type="text/javascript">
+
+$(document).ready(function() { /*------ Start $(document).ready --------------------*/
+	// DATATABLE
+	var table = $('#dashboard_list_table').DataTable({
+		// ADD language
+		 "language": {
+                "url": "<?php echo RES_FILE_PATH.'/javascript/data_tables/de_language.json?'.date('Ymd')?>"
+         },
+         "dom":"<widget-header>tlp",
+ 
+		//la sDom - este sa zic - declarat tablelu(t) - cu header - search, paginare(p)
+		//"sDom": 
+		//	'<"fg-toolbar ui-toolbar ui-widget-header ui-helper-clearfix ui-corner-tl ui-corner-tr"lfr>'+
+		//	't'+
+		//	'<"fg-toolbar ui-toolbar ui-widget-header ui-helper-clearfix ui-corner-bl ui-corner-br"<"#bottom_export">ip>',
+		"lengthMenu": [[10,50,100, 150], [10,50,100, 150]],
+		"pageLength": 10,
+		
+			
+		"processing": true,
+
+		"info": false,
+		"filter": false,
+		"paginate": true,
+		"bSortClasses": false,
+		
+		"serverSide": true,
+		"autoWidth": true,
+		"stateSave": false,
+		"scrollX": true,
+		"scrollCollapse": true,
+ 		"columns": [
+ 		          //{ data: "nr", className: ""}, 
+//  		          { data: "action", className: ""},
+ 		         // { data: "label", className: ""},
+		          { data: "column_title", className: ""}
+// 		          { data: "due_date", className: ""}, 		        
+		         // { data: "event_id", className: ""},
+		         // { data: "tabname", className: ""},
+		         // { data: "done_date", className: ""},
+			],
+			
+		"columnDefs": [ 
+				      // { "targets": 0, "searchable": false, "orderable": false},
+				       { "targets": 0, "searchable": false, "orderable": false},
+// 				       { "targets": 1, "searchable": false, "orderable": false},
+// 				       { "targets": 2, "searchable": false, "orderable": false}
+				],
+	       			
+
+ 		"ajax": {
+			url:'overview/getdashboardlist', // aici se iau detaliile prin ajax la incarcarea paginii
+			type: 'POST',
+			data : {
+				label_filter: $("#label_filter_selected").val(),
+				sort_order: $("#sort_order_selected").val()
+			}
+		},
+		
+		"drawCallback": function( settings ) {
+			this.api().rows().every( function () {
+		        var tr = $(this);
+
+		        var row = table.row( tr );
+
+		        var child_class =  'smalltable';
+	            if (tr.hasClass('even')) {
+	            	child_class += ' even ';
+	            }
+	            if (tr.hasClass('odd')) {
+	            	child_class += ' odd ';
+	            }
+		        
+		        row.child( format(row.data()), child_class).show();
+			    
+			} );
+		},
+		
+		"initComplete": function( settings, json ) {
+
+		  },
+ 	
+		  
+	});
+
+
+/* 	$('#dashboard_list_table tbody').on('click', 'tr:not(.smalltable)', function () {
+        //var tr = $(this).closest('tr');			    	
+        var tr = $(this);
+
+        var row = table.row( tr );
+ 
+        if ( row.child.isShown() ) {
+            // This row is already open - close it
+            row.child.hide();
+            tr.removeClass('shown');
+        }
+        else {
+            // Open this row
+        	var child_class =  'smalltable';
+            row.child( format(row.data()) ).show();
+            if (tr.hasClass('even')) {
+            	child_class += ' even ';
+            }
+            if (tr.hasClass('odd')) {
+            	child_class += ' odd ';
+            }
+            $(row.child()).addClass(child_class);
+            
+            tr.addClass('shown');
+        }
+    } );
+ */
+
+
+	function format ( d ) {
+	    // `d` is the original data object for the row
+		
+		if (d.child_rows != null) {
+			
+		}
+	    
+		 var html =  '<table cellpadding="5" cellspacing="0" border="0" class="transparent" width="100%">';
+	        $.each( d.child_rows, function( key, value ) {
+	        	html += '<tr class="smalltable">'+
+	        	'<td>' + value.action+'</td>'+
+	        	'<td>' + value.column_title+'</td>'+
+	        	'<td>' + value.due_date+'</td>'+
+	        	'</tr>';
+	        });
+		html +=  '</table>';
+		
+	    return html;
+	}
+
+
+
+	$("select[name='table_length']").live('change', function() {
+		
+		if($(this).val())
+		{
+			$.ajax({
+				url : 'ajax/saveuserpageresults',
+				type : 'POST',
+				data : {
+					page: "dashboardhistory",
+					results: $(this).val()
+				} 
+			});
+			
+			 $('#setlimit').val( $(this).val());
+		}
+		
+	});
+	
+});/*-- END  $(document).ready ----------- --*/
+
+</script>
+
+<style>
+#dashboard_list_table_wrapper table thead
+{
+display: none;
+}
+#dashboard_list_table_wrapper tbody tr td:nth-child(1) {
+width: 20% !important;
+}
+#dashboard_list_table_wrapper tbody tr td:nth-child(2) {
+width: 70% !important;
+vertical-align: top !important;
+}
+#dashboard_list_table_wrapper tbody tr td:nth-child(3) {
+width: 10% !important;
+}
+#dashboard_list_table_wrapper tbody td
+{
+border-left: none !important;
+border-right: none !important;
+border-top: none !important;
+border-bottom: 1px solid powderblue !important;
+padding: 5px 10px;
+}
+.dataTables_scrollBody
+{
+	border: none !important;
+}
+
+table.dataTable tbody tr {
+    background-color: #efefef;
+}
+
+table.dataTable tbody tr td {
+    font-weight: 800;
+}
+
+table.dataTable tbody tr.smalltable td{
+    background-color: #fff;;
+    font-weight: 400;
+}
+</style>
+<table id="dashboard_list_table" style="width:100% !important;">
+		<thead>
+ 		<tr>
+ 			<th><?php echo $this->translate('event_title');  ?></th> 			
+ 		</tr>
+ 	</thead>
+ 	</table>
+ 	<br />
+ 	<table>
+ 	<tr>
+		<td>
+			<button  style="float: left; margin-left: 15px;" id="open_history"><?php echo $this->translate('open_history');  ?></button>
+
+		</td>
+		<td colspan="2" class="filters_dash">
+			<input type="hidden" id="label_filter_selected" value="<?php echo $this->label_filter_selected;  ?>" />
+			<input type="hidden" id="sort_order_selected" value="<?php echo $this->sort_order_selected;  ?>" />
+			<span style="float:left; margin-left: 10px;"><button id="print_todos"><?php echo $this->translate('print_todos');  ?></button></span>
+			<span style="float:left; margin-left: 90px;"><?php echo $this->translate('filter_labels');  ?> :&nbsp;&nbsp;<?php echo $this->label_filter; ?></span>
+			<span style="float:left; margin-left: 10px;"><?php echo $this->translate('sort_due_date'); ?> :&nbsp;&nbsp;<?php echo $this->date_sort;  ?></span>
+		</td>
+	</tr>
+</table>
+<script>
+
+</script>

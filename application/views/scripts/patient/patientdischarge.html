@@ -1,0 +1,646 @@
+<?php
+$this->headScript ()->appendFile (RES_FILE_PATH . '/javascript/dateUtil.js');
+$this->headScript()->appendFile(RES_FILE_PATH . '/javascript/dragdiv/dragdivpatient.js?'.date('Ymd'));
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/views/patientnew/hospizregisterv3.js?'.date('Ymd'));
+?>
+
+<script type="text/javascript">
+	var detailscookies = '<?php echo $this->detailscookies; ?>';
+	
+	var jscount = 0;
+	var diagnosisblur = Array();
+	var icddiagnosisblur = Array();
+	var discharged_dead_method = '<?php echo $this->dead_methods_js?>';
+	var jscount = "";
+	var jcount = <? echo $this->jscount + 1 ?>;
+
+		$(function() {
+			$('#discharge_date').datepicker({
+				dateFormat: 'dd.mm.yy',
+				showOn: "both",
+				buttonImage: $('#calImg').attr('src'),
+				buttonImageOnly: true,
+				changeMonth: true,
+				changeYear: true,
+				nextText: '',
+				prevText: '',
+				minDate: '<?php echo $this->last_adm; ?>',
+				maxDate: '<?php echo $this->maxDate; ?>'
+			});
+			$('#death_date').datepicker({
+				dateFormat: 'dd.mm.yy',
+				showOn: "both",
+				buttonImage: $('#calImg').attr('src'),
+				buttonImageOnly: true,
+				changeMonth: true,
+				changeYear: true,
+				nextText: '',
+				prevText: '',
+				minDate: '<?php echo $this->last_dis; ?>',
+				maxDate: '<?php echo $this->maxDate; ?>'
+			});
+
+
+			$(".livesearchinp").bind('keydown', function(e) {
+				livesearchkeup(e, $(this))
+			});
+
+			$(".livesearchicdinp").each(function() {
+				icddiagnosisblur[$(this).attr('id')] = true;
+				$(this).bind('keydown', function(e) {
+					icdlivesearchkeup(e, $(this))
+				});
+			});
+		});
+		
+		function closeautosearch(val)
+		{
+			document.getElementById('diagnodropdown' + val).innerHTML = "";
+		}
+
+		$(document).ready(function() {
+			var isdischarged = '<?php echo $this->isDischarged; ?>';
+			var dischargemetod = '<?php echo $this->dischargemetod; ?>';
+			var standby = '<?php echo $this->pat_standby; ?>';
+			
+			if (standby == '1') {
+				$(".standby_div").show();
+			} else {
+				$(".standby_div").hide();
+			}
+
+			// onChange  -  
+			$("#discharge_method").change(function(){
+				
+				if(jQuery.inArray( $(this).val(), jQuery.parseJSON(discharged_dead_method)) > -1 ){
+					$('.deathdiv').hide();
+				} else{
+					$('.deathdiv').show();
+				}
+				
+			});
+			
+			
+			
+			$('#exceedDate').dialog({
+				autoOpen: false,
+				buttons: {
+					"<?php echo $this->translate('yesconfirm'); ?>": function() {
+						$('#changeVollversorgungEndDate').val('1');
+						$(this).dialog("close"); //when closing load onClose Action
+					},
+					"<?php echo $this->translate('noconfirm'); ?>": function() {
+						$('#changeVollversorgungEndDate').val('');
+						$(this).dialog("close");//when closing load onClose Action
+					}
+				},
+				close: function() {
+					if ($('select#discharge_method').val() == dischargemetod && isdischarged != 1) {
+						$("#confirmDischarge").dialog('open');
+					} else {
+						$('#frmuser').submit();
+					}
+				},
+				modal: false
+			});
+
+			$("#confirmDischarge").dialog({
+				autoOpen: false,
+				resizable: false,
+				height: 120,
+				width: 350,
+				modal: true,
+				open: function() {
+				},
+				buttons: {
+					"Ja": function() {
+						$('#redirecttoanlage').val('1');
+						$('#frmuser').submit();
+					},
+					"Nein": function() {
+						$('#redirecttoanlage').val('0');
+						$('#frmuser').submit();
+						$("#confirmDischarge").dialog('close');
+					}
+				}
+			});
+		});
+</script>
+
+<style>
+
+.contactform_dragvbox {
+	margin: 5px 2px 20px;
+	background: #fff;
+	position: relative;
+	border: 1px solid #d8d8d8;
+	-moz-border-radius: 5px;
+	-webkit-border-radius: 5px;
+	border-radius: 5px;
+	height: auto;
+	width: 99%;
+}
+
+.contactform_dragvbox h2 {
+	display: block;
+	width: 98.7%;
+	margin: 0;
+	font-size: 12px;
+	padding: 5px;
+	background: #d8d8d8;
+	border-bottom: 1px solid #d8d8d8;
+	cursor: pointer;
+	color: #000;
+}
+
+.contactform_dragvbox_content {
+	background: #fff;
+	min-height: 50px;
+	margin: 5px;
+	font-size: 0.9em;
+	line-height: 1.5em;
+	width: 97%;
+}
+
+div.contactform_dragvbox_content table.datatable {
+	width: 750px;
+	line-height: 150%;
+	margin-top: 20px;
+}
+</style>
+
+<script type="text/javascript" src="<? echo RES_FILE_PATH; ?>/javascript/livesearch/diagnosis.js"></script>
+<script type="text/javascript" src="<? echo RES_FILE_PATH; ?>/javascript/livesearch/diagnosisicd.js"></script>
+	<? echo $this->patientinfo ?>
+	<? echo $this->tabmenus ?>
+	<form action="<? echo $this->act ?>" method="post" name="frmuser" id="frmuser" autocomplete="off" >
+		<div style="display: none;">
+			<img id="calImg" src="<? echo RES_FILE_PATH; ?>/images/calendar.png" alt="Popup" class="trigger">
+		</div>
+		<div class="tab_container">
+		<?php if($this->old_discharge_array && !empty($this->old_discharge_array)):?>
+		
+		<div class="contactform_dragvbox" >
+		<h2> +  <?php echo $this->translate('discharge_history'); ?></h2>
+		<div class="contactform_dragvbox_content" style="display: none;">
+			<table class="datatable" >
+				<tr>
+					<th>#</th>
+					<th><?php echo $this->translate('discharge_date');?></th>
+					<th><?php echo $this->translate('discharge_method');?></th>
+					<th><?php echo $this->translate('discharge_location');?></th>
+					<th><?php echo $this->translate('comment');?></th>
+					<th><?php echo $this->translate('create_by');?></th>
+					<th><?php echo $this->translate('create_date');?></th>
+					
+				</tr>
+				
+				<?php $nr = 1;   foreach($this->old_discharge_array as $dk=>$disdata):?>
+					<tr>
+						<td><?php echo $nr;?></td>
+						<td><?php echo date("d.m.Y H:i",strtotime($disdata['discharge_date']))?></td>
+						<td><?php echo $disdata['discharge_method_name'];?></td>
+						<td><?php echo $disdata['discharge_location_name'];?></td>
+						<td><?php echo $disdata['discharge_comment'];?></td>
+						<td><?php echo $disdata['create_user_name'];?></td>
+						<td><?php echo date("d.m.Y H:i",strtotime($disdata['create_date']))?></td>
+					</tr>
+					
+				<?php $nr++; endforeach;?>
+				</table>
+			</div>
+			</div>
+		<?php endif;?>
+		
+		
+			<br />
+			<div class="standby_div"><? echo  $this->translate ('this_patient_is_standby')?></div>
+			<fieldset>
+				<legend><? echo $this->translate ('dischargepatient') ?></legend>
+				
+				 <!--  Maria:: Migration CISPC to ISPC 22.07.2020 :: Start-->
+ 				<?php if ($this->is_clinic_discharge ) : ?>
+
+				<?php // possibility to create a module here too; ?>
+
+				<label for="clinic_cases" id="lbl_clinic_cases"><? echo $this->translate ('clinic_discharge_select_case') ?></label>
+				<? echo $this->formSelect ('clinic_cases', $this->clinic_case, null, $this->clinic_cases) ?>
+				<div class="error"><?php echo $this->error_discharge_clinic_cases ?></div>&nbsp;
+				<br />
+				<?php endif; ?>
+				 <!--  Maria:: Migration CISPC to ISPC 22.07.2020 :: End-->
+				
+				<label for="discharge_method" id="lbl_discharge_method"><? echo $this->translate ('dischargemethod') ?></label>
+				<? echo $this->formSelect ('discharge_method', $this->discharge_method, null, $this->discharge_methods) ?>
+				<div class="error"><?php echo $this->error_discharge_method ?></div>&nbsp;
+				<input type="hidden" value="0" name="redirecttoanlage" id="redirecttoanlage" />
+				<input type="hidden" value="<? echo $this->last_adm; ?>" name="last_adm" id="last_adm" />
+				<input type="hidden" value="<? echo $this->last_adm_datetime; ?>" name="last_adm_datetime" id="last_adm_datetime" />
+				<br />
+				
+				
+				<label for="discharge_date" id="lbl_discharge_date"><? echo $this->translate ('dischargedate') ?></label>
+				<input type="text" name="discharge_date" id="discharge_date" style="width:177px;" value="<? echo $this->discharge_date ?>" />
+				<? echo $this->formSelect ('rec_timeh', $this->rec_timeh, null, $this->hours) ?>
+				<? echo $this->formSelect ('rec_timem', $this->rec_timem, null, $this->minutes) ?>
+				<div class="error" style="width:300px; margin-left:150px"> <?php echo $this->error_discharge_date ?></div>&nbsp;
+				<br />
+				
+				<?php if ( ! isset($this->client_modules[165]) || $this->client_modules[165] != 1 ) : ?>
+                    
+                    <?php // if you have the module activated then this 2 options are hidden; ?>
+                
+    				<label for="discharge_location" id="lbl_discharge_location"><? echo $this->translate ('dischargelocation') ?></label>
+    				<? echo $this->formSelect ('discharge_location', $this->discharge_location, null, $this->discharge_locations) ?>
+    				<div class="error"><?php echo $this->error_discharge_location ?></div>&nbsp;
+    				<br />
+    				
+    				
+    				<label for="death_wish" id="lbl_death_wish"><? echo $this->translate ('death_wish') ?></label>
+    				<select name="death_wish" id="death_wish">
+    					<option value="0"> </option>
+    					<option value="1" <?php if($this->death_wish == "1"):?>  selected="selected" <?php endif;?> >ja</option>
+    					<option value="2" <?php if($this->death_wish == "2"):?>  selected="selected" <?php endif;?> >nein</option>
+    					<option value="3" <?php if($this->death_wish == "3"):?>  selected="selected" <?php endif;?> >unbekannt</option>
+    				</select>				
+    				<div class="error"><?php echo $this->error_death_wish ?></div>&nbsp;
+    				<br />
+    				
+                <?php endif; ?>
+				
+				<label for="description" id="lbl_description"><? echo $this->translate ('dischargecomment') ?></label>
+				<textarea name="discharge_comment" id="discharge_comment" cols="35" rows="7"><? echo $this->discharge_comment; ?></textarea>
+				<div class="error"><?php echo $this->error_discharge_comment ?></div>&nbsp;
+				<br />
+				
+				
+				
+			<!--  Nationales Hospiz- und Palliativregister-->
+			<?php  if($this->show_dgp_block == "1"): ?>
+			<?php  /* ISPC-1775,ISPC-1678 */ ?>
+			<!-- 
+				<div class="contactform_dragvbox"   id="dgp_block">
+				<h2> +  <?php echo $this->translate('dgp_admission_block_adm') ?></h2>
+				<div class="contactform_dragvbox_content" >
+ 
+						<table>				
+							<tr>
+								<td valign="top" style="width:40%;"><label>Opioide der WHO Stufe III</label></td>
+								<td style="width:3%;"><input type="radio"  name="who" value="1" <?php if($this->who == 1) {echo 'checked="checked"';}?> /></td>
+								<td style="width:18%;">ja</td>
+								<td style="width:3%;"><input type="radio"  name="who" value="2" <?php if($this->who == 2) {echo 'checked="checked"';}?> /></td>
+								<td style="width:38%;" colspan="3">nein</td>
+							</tr>
+							
+							<tr>
+								<td> <label>Steroide</label> </td>
+								<td><input type="radio"  name="steroide" value="1" <?php if($this->steroide == 1) {echo 'checked="checked"';}?> /></td>
+								<td>ja</td>
+								<td><input type="radio"  name="steroide" value="2" <?php if($this->steroide == 2) {echo 'checked="checked"';}?> /></td>
+								<td colspan="3">nein</td>
+							</tr>
+							
+							<tr>
+								<td> <label>Chemotherapie </label> </td>
+								<td><input type="radio"  name="chemotherapie" value="1" <?php if($this->chemotherapie == 1) {echo 'checked="checked"';}?> /></td>
+								<td>nein</td>
+								<td><input type="radio"  name="chemotherapie" value="2" <?php if($this->chemotherapie == 2) {echo 'checked="checked"';}?> /></td>
+								<td>fortgesetzt</td>
+								<td><input type="radio"  name="chemotherapie" value="3" <?php if($this->chemotherapie == 3) {echo 'checked="checked"';}?> /></td>
+								<td>initiiert</td>
+							</tr>
+							
+							<tr>
+								<td> <label>Strahlentherapie </label> </td>
+								<td><input type="radio"  name="strahlentherapie" value="1" <?php if($this->strahlentherapie == 1) {echo 'checked="checked"';}?> /></td>
+								<td>nein</td>
+								<td><input type="radio"  name="strahlentherapie" value="2" <?php if($this->strahlentherapie == 2) {echo 'checked="checked"';}?> /></td>
+								<td>fortgesetzt</td>
+								<td><input type="radio"  name="strahlentherapie" value="3" <?php if($this->strahlentherapie == 3) {echo 'checked="checked"';}?> /></td>
+								<td>initiiert</td>
+							</tr>
+							<tr>
+								<td style="vertical-align: top!important"><label>besonderer Aufwand mit: </label></td>
+								<td colspan="6"><textarea name="aufwand_mit" cols="" rows="4"   class="inp_textarea"><?php echo $this->aufwand_mit;?></textarea></td>
+							</tr>
+							
+							<tr>
+								<td style="vertical-align: top!important"><label>Welches Problem konnte besonders <br/>gut gelöst werden?</label></td>
+								<td colspan="6"><textarea name="problem_besonders" cols="" rows="4"   class="inp_textarea"><?php echo $this->problem_besonders;?></textarea></td>
+							</tr>
+							<tr>
+								<td  style="vertical-align: top!important"><label>Welches Problem konnte nicht<br/> ausreichend gelöst werden?</label></td>
+								<td colspan="6"><textarea name="problem_ausreichend" cols="" rows="4"   class="inp_textarea"><?php echo $this->problem_ausreichend?></textarea></td>
+							</tr>
+							<tr>
+								<td  style="vertical-align: top!important"> <label>Therapieende</label>  </td>
+								<td colspan="6"><select name="therapieende">
+								<option value="">--</option>
+								<option value="1" <?php if($this->therapieende == 1){echo 'selected="selected"';}  ?> >Verstorben</option>
+								<option value="2"  <?php if($this->therapieende == 2){echo 'selected="selected"';}  ?> >Verlegung</option>
+								<option value="3"  <?php if($this->therapieende == 3){echo 'selected="selected"';}  ?> >Entlassung</option>
+								<option value="4"  <?php if($this->therapieende == 4){echo 'selected="selected"';}  ?> >Sonstiges</option>
+								</select></td>
+							</tr>
+							
+							<tr>
+								<td><label>Zufriedenheit mit der Behandlung</label></td>
+								<td colspan="6"><select name="zufriedenheit_mit">
+								<option value="">--</option>
+								<option value="1"  <?php if($this->zufriedenheit_mit == 1){echo 'selected="selected"';}  ?> >sehr schlecht</option>
+								<option value="2"  <?php if($this->zufriedenheit_mit == 2){echo 'selected="selected"';}  ?> >schlecht</option>
+								<option value="3"  <?php if($this->zufriedenheit_mit == 3){echo 'selected="selected"';}  ?> >mittel</option>
+								<option value="4"  <?php if($this->zufriedenheit_mit == 4){echo 'selected="selected"';}  ?> >gut</option>
+								<option value="5"  <?php if($this->zufriedenheit_mit == 5){echo 'selected="selected"';}  ?> >sehr gut</option>
+								</select></td>
+							</tr>
+						</table>
+					</div>
+				</div> -->
+			<?php endif; ?>
+			<!-- End  Nationales Hospiz- und Palliativregister-->
+		
+		
+		
+		<!--  Nationales Hospiz- und Palliativregister-->
+		<?php  //if($this->show_dgp_block == "1"): ?>
+		<?php if($this->allowedFormBoxes['59']) { ?>
+		<?php  /* ISPC-1775,ISPC-1678, ISPC-1994, ISPC-1757 */ ?>
+		<!-- #################################################################################################################### -->	
+		<!-- #################################################################################################################### -->	
+		<!--  DISCHARGE BLOCK-->
+		<!-- #################################################################################################################### -->	
+		<!-- #################################################################################################################### -->
+		<?php $dgp = $this->dgp;?>
+		<style>
+
+.special_dgp_block {
+    border: 1px solid #ffdd00;
+    position: relative; opacity: 1; left: 0px; top: 0px;
+    display: block; 
+    width: 100%;
+    float: left;
+}
+.special_dgp_block h2{
+   background: #ffdd00 none repeat scroll 0 0;
+    border-bottom: 1px solid #ffdd00;
+    color: #000000;
+}
+
+.dgb_block{
+    display: block; 
+    width: 98%;
+    float: left;
+    height: 100%;
+    margin: 5px;
+}
+.dgp_block_line{
+    display: block; 
+    width: 100%;
+    float: left;
+}
+.dgp_block_line label{
+    display: block; 
+    width: 30%;
+    float: left;
+}
+
+.mandatory{
+	color: red;
+}
+.labels {
+	float: left; 
+	width: 70%;
+}
+
+.labels label {
+	width: 33%;
+}
+.labels label input{
+	 margin: 0 5px 0 0;
+}
+.symptomatic_table{
+width: 100%;
+}
+.symptomatic_table td label{
+float: left;
+width: 25%;
+}
+td.radio_data label{
+float: left;
+width: 25%;
+}
+td.checkbox_data label{
+	float: left;
+	width: 33%;
+	font-size: 100%;
+}
+.inp_textarea{
+	width: 100%;
+	height: 45px;
+}
+.inp_textarea70{
+	width: 69%;
+	height: 45px;
+}
+</style>
+		<div class="dragboxpatient special_dgp_block">
+			<h2 class=""><?php echo $this->translate('dgp_admission_block_adm') ?></h2>
+			<div class=" dgb_block">
+			<input type="hidden" name="dgp[kern][discharge][dgp_kern_id]" value="<?php echo $dgp['kern']['discharge']['dgp_kern_id'];?>">
+				<table>
+				
+ 					<tr>
+						<td><label>ECOG: </label></td>
+						<td><select name="dgp[kern][discharge][ecog]">
+							<option value="">&nbsp;</option>
+							<option value="1" <?php if($dgp['kern']['discharge']['ecog'] == "1"):?> selected="selected" <?php endif;?>  >Normale Aktivität</option>
+							<option value="2" <?php if($dgp['kern']['discharge']['ecog'] == "2"):?> selected="selected" <?php endif;?>>Gehfähig, leichte Arbeit möglich</option>
+							<option value="3" <?php if($dgp['kern']['discharge']['ecog'] == "3"):?> selected="selected" <?php endif;?>>nicht arbeitsfähig, kann &gt; 50%  der Wachzeit aufstehen</option>
+							<option value="4" <?php if($dgp['kern']['discharge']['ecog'] == "4"):?> selected="selected" <?php endif;?>>begrenzte Selbstversorgung, &gt; 50% Wachzeit bettlägrig</option>
+							<option value="5" <?php if($dgp['kern']['discharge']['ecog'] == "5"):?> selected="selected" <?php endif;?>>Pflegebedürftig, permanent bettlägerig</option>
+						</select></td>
+					</tr>				
+								
+					<tr>
+						<td> <label>Chemotherapie <sup class="mandatory"> *</sup></label> </td>
+						<td colspan="6" class="radio_data"><?php echo $this->formRadio('dgp[kern][discharge][chemotherapie]', $dgp['kern']['discharge']['chemotherapie'], array('class'=>'living_will_radio'), $dgp['form']['texts']['state'], ''); ?></td>
+					</tr>
+					<tr>
+						<td> <label>Strahlentherapie <sup class="mandatory"> *</sup></label> </td>
+						<td colspan="6" class="radio_data"><?php echo $this->formRadio('dgp[kern][discharge][strahlentherapie]', $dgp['kern']['discharge']['strahlentherapie'], array('class'=>'living_will_radio'), $dgp['form']['texts']['state'], ''); ?></td>
+					</tr>
+<!-- ISPC-2496 Ancuta 03.12.2019			 -->
+<!-- 
+					<tr>
+						<td style="vertical-align: top!important"><label>besonderer Aufwand mit:</label></td>
+						<td colspan="6"><textarea name="dgp[kern][discharge][aufwand_mit]" cols="" rows="4"   class="inp_textarea"><?php echo  $dgp['kern']['discharge']['aufwand_mit'];?></textarea></td>
+					</tr>
+-->
+					
+<!-- ISPC-2496 Ancuta 03.12.2019			 -->
+<!-- 
+					<tr>
+						<td style="vertical-align: top!important"><label>Welches Problem konnte besonders <br/>gut gelöst werden?</label></td>
+						<td colspan="6"><textarea name="dgp[kern][discharge][problem_besonders]" cols="" rows="4"   class="inp_textarea"><?php echo  $dgp['kern']['discharge']['problem_besonders'];?></textarea></td>
+					</tr>
+ -->
+					
+					<tr>
+						<td  style="vertical-align: top!important"><label>Welches Problem konnte nicht<br/> ausreichend gelöst werden?</label></td>
+						<td colspan="6"><textarea name="dgp[kern][discharge][problem_ausreichend]" cols="" rows="4"   class="inp_textarea"><?php echo  $dgp['kern']['discharge']['problem_ausreichend'];?></textarea></td>
+					</tr>
+
+					<tr>
+						<td colspan="7">&nbsp;</td>
+					</tr>
+					<tr>
+						<td  style="vertical-align: top!important"><label>Behandlungs- und Begleitungsbedarf <br/>bei Beginn des Versorgungsabschnittes<br/> der Hospiz- und Palliativversorgung</label>
+						<br/>
+						<a href="javascript:void(0);" id="bedarf" class="insert_texts" data-id="bedarf"  data-form_name="patientnew/hospizregisterv3" ><img src="<?php echo RES_FILE_PATH;  ?>/images/edit_add.png"  width="20" height="20" alt="" /></a>
+						</td>
+						<td colspan="6"><textarea name="dgp[kern][discharge][bedarf]" cols="" rows="4"   class="inp_textarea bedarf"><?php echo  $dgp['kern']['discharge']['bedarf'];?></textarea>
+						</td>
+					</tr>
+					
+					<tr>
+						<td colspan="7">&nbsp;</td>
+					</tr>
+					<tr>
+						<td  style="vertical-align: top!important"><label>Im Lauf des Versorgungsabschnittes durchgeführte Maßnahmen</label>
+						<br/>
+						<a href="javascript:void(0);" id="massnahmen" class="insert_texts" data-id="massnahmen" data-form_name="patientnew/hospizregisterv3" ><img src="<?php echo RES_FILE_PATH;  ?>/images/edit_add.png"  width="20" height="20" alt="" /></a>
+						</td>
+						<td colspan="6"><textarea name="dgp[kern][discharge][massnahmen]" cols="" rows="4"   class="inp_textarea massnahmen"><?php echo  $dgp['kern']['discharge']['massnahmen'];?></textarea>
+						</td>
+					</tr>
+					<tr>
+						<td colspan="7">&nbsp;</td>
+					</tr>
+
+					<tr>
+						<td  style="vertical-align: top!important"> <label>Therapieende <sup class="mandatory"> *</sup></label>  </td>
+						<td colspan="6"><?php echo $this->formSelect('dgp[kern][discharge][therapieende]', $dgp['kern']['discharge']['therapieende'], null, $dgp['form']['texts']['therapieende']) ?></td>
+					</tr>					
+					
+					<tr>
+						<td><label>Zufriedenheit mit der Behandlung <sup class="mandatory"> *</sup></label></td>
+						<td colspan="6"><?php echo $this->formSelect('dgp[kern][discharge][zufriedenheit_mit]', $dgp['kern']['discharge']['zufriedenheit_mit'], null, $dgp['form']['texts']['zufriedenheit_mit']) ?></td>
+					</tr>
+					<tr>
+						<td colspan="7">&nbsp;</td>
+					</tr>
+					<tr>
+						<td  style="vertical-align: top!important"> <label>Beschreibung der Versorgungssituation bei Entlassung: <sup class="mandatory"> *</sup></label></td>
+						<td colspan="6" class="checkbox_data">
+							<?php echo $this->formMultiCheckbox('dgp[kern][discharge][begleitung][]', $dgp['kern']['discharge']['begleitung_arr'], array ('onclick' => ''), $dgp['form']['texts']['partners'], ''); ?>
+						</td>
+					</tr>
+
+					<tr>
+						<td colspan="7">&nbsp;</td>
+					</tr>
+					<tr>
+						<td  style="vertical-align: top!important"> <label>Medikamente:
+						<br/>
+						<a href="javascript:void(0);" class="medication_info"><img src="<?php echo RES_FILE_PATH;  ?>/images/info_med.png"  width="20" height="20" alt="" /></a>
+						</label></td>
+						<td colspan="6" class="checkbox_data">
+							<?php foreach($dgp['form']['texts']['medication_references_a_final'] as $code=>$label):?>
+							<label>
+								<?php echo $this->formCheckbox('dgp[kern][discharge]['.$code.']', $dgp['kern']['discharge'][$code], array('label' => $label), array ('1')); ?>
+								<?php echo $label;?>
+							</label>
+							<?php endforeach; ?>
+						</td>
+					</tr>
+					<tr>
+						<td colspan="7">&nbsp;</td>
+					</tr>
+					<tr>
+						<td  style="vertical-align: top!important"></td>
+						<td colspan="6" class="checkbox_data">
+							<?php foreach($dgp['form']['texts']['medication_references_b_final'] as $code=>$label):?>
+							<label>
+								<?php echo $this->formCheckbox('dgp[kern][discharge]['.$code.']', $dgp['kern']['discharge'][$code], array('label' => $label), array ('1')); ?>
+								<?php echo $label;?>
+							</label>
+							<?php endforeach; ?>
+						</td>
+					</tr>
+					
+					
+					
+					
+				</table>
+
+ 
+			</div>
+			
+			<div id="option-modal">
+			<div class="content"></div>
+			</div>
+			
+			<div id="medication-modal">
+			<div class="medication_content"></div>
+			</div>
+		</div>
+		<?php } ?>
+		<?php //endif;?>
+		
+		
+				
+			
+				
+				<input type="hidden" value="" name="changeVollversorgungEndDate" id="changeVollversorgungEndDate" />
+				<input type="hidden" value="<?php echo $this->anlageCloseDate; ?>" name="anlageCloseDate" id="anlageCloseDate" />
+				<input type="submit" name="btnsubmit" id="btnsubmit" value="<? echo $this->translate ('submit') ?>" class="button">
+				
+			</fieldset>
+		</div>
+	</form>
+	
+<!-- ----------------- The death button -------------------- -->
+<? if ($this->deathsection == 1) : ?>
+	<div class="deathdiv">
+		<form action="<? echo $this->act ?>" method="post" name="deathform" id="deathform" autocomplete="off" >
+			<fieldset  class="deathf">
+				<legend class="deathl">Verstorben</legend>
+				<br />
+				<label for="death_date" id="lbl_discharge_date"><? echo $this->translate ('deathedate') ?></label>
+				<input type="text" name="death_date" id="death_date" style="width:177px;" value="<? echo $this->death_date ?>"  />
+				<input type="hidden" value="<? echo $this->last_dis; ?>" name="last_dis" id="last_dis" />
+
+				<? echo $this->formSelect ('death_rec_timeh', $this->death_rec_timeh, null, $this->hours) ?>
+				<? echo $this->formSelect ('death_rec_timem', $this->death_rec_timem, null, $this->minutes) ?>
+				<div class="error" style="width:300px; margin-left:150px"> <?php echo $this->error_death_date ?></div>&nbsp;
+				<br />
+				<input type="hidden" name="deathoption" value="1" />
+				<input type="submit" name="btnsubmitdeath" id="btnsubmitdeath" value="<? echo $this->translate ('submit') ?>" class="button btnsubmit_usersessions" />
+
+
+			</fieldset>
+
+		</form>
+	</div>
+<? endif; ?>
+
+<!-- ----------------- The death button -------------------- -->
+
+<div id="popupContact">
+	<a id="popupContactClose">x</a>
+	<p id="contactArea">
+		<iframe id='add_family_doc' frameborder='0' src='' scrolling="no" style="margin:0 auto;"></iframe>
+	</p>
+</div>
+<div id="backgroundPopup"></div>
+
+
+<div id="confirmDischarge" >
+	<div id="contactArea" >
+		Möchten Sie direkt die Anlage 4a ausfüllen?
+	</div>
+</div>
+<div id="exceedDate">
+	<p><?php echo $this->translate('dischargedateanlage'); ?></p>
+</div>

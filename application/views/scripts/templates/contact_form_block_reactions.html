@@ -1,0 +1,1142 @@
+<?php
+//ISPC-2657, elena, 11.01.2021 (ELSA: Reaktionen)
+$reactions_allergy = $this->allergy;
+$reactions_intolerance = $this->intolerance;
+$reactions_sae = $this->sae_reactions;
+
+$row_tpl = '<tr class="row_new">
+    <input type="hidden" class="reaction_id" name="reactions[reaction][###][id]" >
+    <input type="hidden" class="reaction_icdcode" name="reactions[reaction][###][icdcode]" >
+    <input type="hidden" class="reaction_typ" name="reactions[reaction][###][typ]" >
+    <input type="hidden" class="reaction_reaction_against" name="reactions[reaction][###][reaction_against]" >
+    <input type="hidden" class="reaction_reaction_text" name="reactions[reaction][###][reaction_text]" >
+    <input type="hidden" class="reaction_reaction_first_diagnosis_date" name="reactions[reaction][###][first_diagnosis_date]" >
+    <input type="hidden" class="reaction_first_diagnosis_date_knowledge" name=reactions[reaction][###][first_diagnosis_date_knowledge]" >
+    <td class="icdcode_show"></td>
+    <td class="reaction_against_show"></td>
+    <td class="reaction_text_show"></td>
+    <td class="first_diagnosis_date_show">
+    </td>
+    <td><img src="' . RES_FILE_PATH . '/images/edit.png" width="16px" data-id="new" class="edit_reaction" /></td>
+    <td><img src="' . RES_FILE_PATH . '/images/cross.png" width="16px" data-id="new" class="delete_reaction"  /></td>
+</tr>';
+
+$sae_row_tpl = '<tr class="sae_row_new">
+    <input type="hidden" class="sae_id" name="reactions[sae][###][id]">
+    <input type="hidden" class="sae_study" name="reactions[sae][###][study]">
+    <input type="hidden" class="sae_reaction_text" name="reactions[sae][###][reaction_text]" >
+    <input type="hidden" class="sae_cause" name="reactions[sae][###][cause]" >
+    <input type="hidden" class="sae_place" name="reactions[sae][###][place]">
+    <input type="hidden" class="sae_consequence" name="reactions[sae][###][consequence]">
+
+    <input type="hidden" class="sae_first_sae_date" name="reactions[sae][###][first_sae_date]" >
+    <input type="hidden" class="sae_first_sae_date_knowledge" name="reactions[sae][###][first_sae_date_knowledge]">
+    <td class="sae_date_show">
+
+    </td>
+    <td class="sae_study_show"></td>
+    <td class="sae_reaction_text_show"></td>
+    <td class="sae_cause_show"></td>
+    <td class="sae_place_show"></td>
+    <td class="sae_consequence_show" ></td>
+
+    <td><img src="'.  RES_FILE_PATH . '/images/edit.png" width="16px" data-id="new" class="edit_saereaction" /></td>
+    <td><img src="' . RES_FILE_PATH . '/images/cross.png" width="16px" data-id="new" class="delete_saereaction"  /></td>
+</tr>';
+
+?>
+<?php if($this->pdf==false):?>
+<script>
+    var row_tpl = `<?php echo $row_tpl; ?>`;
+    var row_sae_tpl = `<?php echo $sae_row_tpl; ?>`;
+    var detailscookies = '<?php echo $this->detailscookies; ?>';
+    var current_entry = 0;
+    var new_row_index = 0;
+    var current_mode = 'add';
+    var current_new_row = 'new_row_' + new_row_index;
+    var current_group;
+    var current_row_id;
+    var myurl = location.href;
+    $(document).ready(function() {
+
+        $('#reactions').tabs();
+
+        //Allergies/Unverträglichkeiten
+
+        $('#add_new_allergy').on('click', function(e){
+            e.preventDefault();
+            console.log('add new allergy');
+            current_entry = 0;
+            new_row_index++;
+            current_new_row = 'new_row_' + new_row_index;
+            current_group = 'allergy';
+            current_mode = 'add';
+            $( "#allergy_reaction_dialog" ).dialog({title: '<?php echo $this->translate('allergy'); ?>' });
+            $( "#allergy_reaction_dialog" ).dialog('open');
+
+        });
+        $('#add_new_intolerance').on('click', function(e){
+            e.preventDefault();
+            current_entry = 0;
+            new_row_index++;
+            current_mode = 'add';
+            current_new_row = 'new_row_' + new_row_index;
+            current_group = 'intolerance';
+
+            $( "#intolerance_reaction_dialog" ).dialog('open');
+
+        });
+        $('.edit_reaction').live('click', function(e){
+            console.log('edit clicked');
+            e.preventDefault();
+            current_entry = $(this).attr('data-id');
+            current_mode = 'edit';
+            current_row_id = $(this).parent().parent().attr('id');
+            console.log('current row id', current_row_id);
+            var current_row_typ_elm = $(this).parent().parent().find('.reaction_typ')[0];
+            var current_typ = $(current_row_typ_elm).val();
+            var title = translate(current_typ);
+
+            $( "#allergy_reaction_dialog" ).dialog({title: title });
+            $( "#allergy_reaction_dialog" ).dialog('open');
+
+        });
+
+        //dialogs
+        $( "#allergy_reaction_dialog" ).dialog({
+            autoOpen: false,
+            title:"<?php echo $this->translate('allergy') ?>",
+            resizable: false,
+            //height: 200,
+            width: 680,
+            modal: true,
+            open: function (){
+                $.ajax({
+                    type: 'POST',
+                    url: '<?php echo APP_BASE; ?>ajax/reaction?id=<?php echo $_REQUEST['id']; ?>&cnt=0&typ=allergy&blockname=<?php echo $this->blockconfig['blockname']; ?>',
+
+                    beforeSend:function(){
+                        //loading image
+                        //$('#medipump_ajax_load_edt').show();
+                    },
+                    success:function(data){
+
+                        $('#allergy_reaction_content').html(data).promise().done(function(){
+
+                            if(current_mode == 'edit'){
+                                console.log('edit row');
+                                var icdcode_input =  $('#' + current_row_id).find('.reaction_icdcode')[0];
+                                $('#icdcode_0').val($(icdcode_input).val());
+                                var reactions_against_input_in_row =  $('#' + current_row_id).find('.reaction_reaction_against')[0];
+                                var reactions_against_in_form = $('#reaction_content_form textarea[name="reactions[reaction_against]"]')[0];
+                                $(reactions_against_in_form).val($(reactions_against_input_in_row).val());
+
+                                var reactions_text_input_in_row =  $('#' + current_row_id).find('.reaction_reaction_text')[0];
+                                var reactions_text_in_form = $('#reaction_content_form textarea[name="reactions[reaction_text]"]')[0];
+                                $(reactions_text_in_form).val($(reactions_text_input_in_row).val());
+
+                                var reactions_date_input_in_row =  $('#' + current_row_id).find('.reaction_reaction_first_diagnosis_date')[0];
+                                var reactions_date_input_in_form = $('#reaction_content_form input[name="reactions[first_diagnosis_date]"]')[0];
+                                var splitted_date = $(reactions_date_input_in_row).val().split('-');
+                                console.log('splitted date', splitted_date);
+                                $(reactions_date_input_in_form).val(splitted_date[2] + '.' + splitted_date[1] + '.' + splitted_date[0]);
+                                //$(reactions_date_input_in_form).val($(reactions_date_input_in_row).val());
+
+                                var reactions_date_knowledge_input_in_row =  $('#' + current_row_id).find('.reaction_first_diagnosis_date_knowledge')[0];
+                                console.log('knowledge value', $(reactions_date_knowledge_input_in_row).val());
+                                var reactions_date_knowledge_input_in_form = $('#reaction_content_form .knowledge_select')[0];
+                                console.log('knoeledge form', reactions_date_knowledge_input_in_form);
+                                $(reactions_date_knowledge_input_in_form).val($(reactions_date_knowledge_input_in_row).val()).change();
+
+
+                            }
+
+
+                            $('.livesearchicdcode').bind('change', function() {
+                                var input_row = parseInt($(this).attr('id').substr(('icdnumber').length));
+                                var this_id = $(this).attr('id');
+                                //reset_medications(input_row);
+                            }).liveSearch({
+                                url: 'ajax/diagnosis?mode=icdnumber&q=' + $(this).val(),
+                                id: 'livesearch_admission_diagnosis',
+                                aditionalWidth: '300',
+                                noResultsDelay: '900',
+                                typeDelay: '900',
+                                returnRowId: function (input) {return parseInt($(input).attr('id').substr(('icdnumber').length));}
+                            });
+                        });
+                    }
+                })
+
+            },
+            buttons: {
+                "Übernehmen": function(){
+                    //console.log('i have to check');
+
+                    var err = check_reaction_input('#reaction_content_form');
+                    if(!err){
+                        ajax_takeover_reaction('#reaction_content_form');
+                        $("#allergy_reaction_dialog" ).dialog('close');
+                    }else{
+                        jAlert(err);
+                    }
+
+
+
+                },
+                "<?php echo $this->translate('cancel'); ?>": function(){
+                    $("#allergy_reaction_dialog" ).dialog('close');
+                }
+            },create:function () {
+                $(this).closest(".ui-dialog")
+                    .find(".ui-button:first") // the first button
+                    .addClass("submitform");
+            },
+            beforeClose: function(){
+                $('#icdcode_0').click();
+            },
+            close:function () {
+
+                $('#icdcode_0').click();
+                $('#allergy_reaction_content').html('');
+                $('.submitform').attr('disabled',false),
+                    $(".ui-button:first").attr("disabled", false)
+                        .removeClass("ui-state-disabled").next("button").attr("disabled", false)
+                        .removeClass("ui-state-disabled");
+            }
+        });
+        $( "#intolerance_reaction_dialog" ).dialog({
+            autoOpen: false,
+            title:"<?php echo $this->translate('intolerance') ?>",
+            resizable: false,
+            //height: 200,
+            width: 680,
+            modal: true,
+            open: function (){
+                $.ajax({
+                    type: 'POST',
+                    url: '<?php echo APP_BASE; ?>ajax/reaction?id=<?php echo $_REQUEST['id']; ?>&cnt='+ current_entry + '&typ=intolerance&blockname=<?php echo $this->blockconfig['blockname']; ?>',
+
+                    beforeSend:function(){
+                        //loading image
+                        //$('#medipump_ajax_load_edt').show();
+                    },
+                    success:function(data){
+
+                        $('#intolerance_reaction_content').html(data).promise().done(function(){
+
+
+                            $('.livesearchicdcode').bind('change', function() {
+                                var input_row = parseInt($(this).attr('id').substr(('icdnumber').length));
+                                var this_id = $(this).attr('id');
+                                //reset_medications(input_row);
+                            }).liveSearch({
+                                url: 'ajax/diagnosis?mode=icdnumber&q=' + $(this).val(),
+                                id: 'livesearch_admission_diagnosis',
+                                aditionalWidth: '300',
+                                noResultsDelay: '900',
+                                typeDelay: '900',
+                                returnRowId: function (input) {return parseInt($(input).attr('id').substr(('icdnumber').length));}
+                            });
+                        });
+                    }
+                })
+
+            },
+            buttons: {
+                "Übernehmen": function(){
+
+                    var err = check_reaction_input('#reaction_content_form');
+                    if(!err){
+                        ajax_takeover_reaction('#reaction_content_form');
+                        $("#intolerance_reaction_dialog" ).dialog('close');
+                    }else{
+                        jAlert(err);
+                    }
+
+
+                   // ajax_takeover_reaction('#reaction_content_form');
+                   // $("#intolerance_reaction_dialog" ).dialog('close');
+
+
+                },
+                "<?php echo $this->translate('cancel'); ?>": function(){
+                    $("#intolerance_reaction_dialog" ).dialog('close');
+                }
+            },create:function () {
+                $(this).closest(".ui-dialog")
+                    .find(".ui-button:first") // the first button
+                    .addClass("submitform");
+            },
+            beforeClose: function(){
+                $('#icdcode_0').click();
+            },
+            close:function () {
+                $('#intolerance_reaction_content').html('');
+                $('.submitform').attr('disabled',false),
+                    $(".ui-button:first").attr("disabled", false)
+                        .removeClass("ui-state-disabled").next("button").attr("disabled", false)
+                        .removeClass("ui-state-disabled");
+            }
+        });
+
+        function ajax_takeover_reaction(formid){
+            //var row = $(row_tpl);
+            console.log(formid);
+            console.log('current_entry', current_entry);
+            var id_input = $('#reaction_content_form input[name="reactions[id]"]')[0];
+            var reaction_id = $(id_input).val();
+            console.log(reaction_id);
+            var icdcode_input = $('#reaction_content_form input[name="reactions[icdcode]"]')[0];
+            var icdcode = $(icdcode_input).val();
+            var reaction_against_input  =  $('#reaction_content_form textarea[name="reactions[reaction_against]"]')[0];
+            var reaction_against =  $(reaction_against_input).val();
+            var reaction_text_input  =  $('#reaction_content_form textarea[name="reactions[reaction_text]"]')[0];
+            var reaction_text =  $(reaction_text_input).val();
+            var reaction_diagnosis_date_input = $('#reaction_content_form input[name="reactions[first_diagnosis_date]"]')[0];
+            var reaction_first_diagnosis_date = $(reaction_diagnosis_date_input).val();
+            var knowlegde_select = $('#reaction_content_form select[name="reactions[first_diagnosis_date_knowledge]"]')[0];
+            var reaction_first_diagnosis_date_knowledge = $(knowlegde_select).val();
+
+
+            var current_row;
+
+            if(current_mode === 'edit'){
+                console.log('entry not new');
+                //current_row = $('#reaction_row_' + current_entry);
+                current_row = $('#' + current_row_id);
+
+
+
+            }else{
+                var row_tpl_with_index = row_tpl.replaceAll('###', current_new_row)
+               current_row = $(row_tpl_with_index);
+               $(current_row).attr('id', current_new_row);
+
+            }
+            var icdcode_typ_input = $('#reaction_content_form input[name="reactions[typ]"]')[0];
+            var icdcode_typ = $(icdcode_typ_input).val();
+            current_group = icdcode_typ;
+            $(current_row).find('.icdcode_show').html(icdcode);
+            $(current_row).find('.reaction_icdcode').val(icdcode);
+            $(current_row).find('.reaction_typ').val(current_group);
+
+            $(current_row).find('.reaction_reaction_against').val(reaction_against);
+            $(current_row).find('.reaction_against_show').html(reaction_against);
+
+            $(current_row).find('.reaction_reaction_text').val(reaction_text);
+            $(current_row).find('.reaction_text_show').html(reaction_text);
+
+            $(current_row).find('.reaction_first_diagnosis_date_knowledge').val(reaction_first_diagnosis_date_knowledge);
+            $(current_row).find('.first_diagnosis_date_show').html(reaction_first_diagnosis_date);
+            $(current_row).find('.reaction_reaction_first_diagnosis_date').val(reaction_first_diagnosis_date);
+            if(reaction_first_diagnosis_date_knowledge == '' || reaction_first_diagnosis_date_knowledge == 'full'){
+                var splitted_date = reaction_first_diagnosis_date.split('.');
+                $(current_row).find('.reaction_reaction_first_diagnosis_date').val(splitted_date[2] + '-' + splitted_date[1]+ '-' + splitted_date[0]);
+            }else if(reaction_first_diagnosis_date_knowledge == 'year and month only'){
+                var splitted_date = reaction_first_diagnosis_date.split('.');
+                $(current_row).find('.reaction_reaction_first_diagnosis_date').val(splitted_date[1] + '-' + splitted_date[0] + '-' + '01' );
+            }else if(reaction_first_diagnosis_date_knowledge == 'year only'){
+                $(current_row).find('.reaction_reaction_first_diagnosis_date').val(reaction_first_diagnosis_date + '-01-01');
+            }
+
+
+
+
+            if(current_mode === 'add'){
+                //add row
+                console.log('add row');
+                console.log('#table_' + current_group);
+                $(current_row).appendTo('#table_' + current_group);
+                //$('#table_' + current_group).append(current_row);
+            }
+
+
+
+        }
+
+        function ajax_savereaction(formid) {
+            var formData = ($(formid).serializeArray());
+            //formData = serializeToJson(formData);
+            //console.log(formData);
+            //console.log(formData['interventions']);
+            console.log('save form');
+            $.ajax({
+                type: 'POST',
+                url: 'ajax/savereaction?id=<?php echo $_GET['id']; ?>',
+                data:  $(formid).serialize(),
+                //dataType: 'json',
+                //encode: true,
+
+                success: function (jdata) {
+
+                    console.log(jdata);
+
+                    var data = jQuery.parseJSON(jdata);
+                    if(data.success == true){
+                        //reload after changes
+                        //location.href = "<?php echo APP_BASE ?>patientformnew/reactions?id=<?php echo $_GET['id']; ?>";
+                        //location.href = myurl;
+
+                    }else{
+                        var errorsMarkup = '';
+                        var error_div = '#reaction_errors';
+
+                        $.each(data.errors, function(key, value){
+                            errorsMarkup += '<span>' + value + '</span>';
+                            console.log(errorsMarkup);
+                            $(error_div).html(errorsMarkup);
+                        })
+
+                        console.log(data.errors);
+                    }
+
+                },
+                error : function(error){
+                    console.log(error);
+                }
+            });
+        }
+
+        $('.delete_reaction').on('click', function(){
+            var reaction_id = $(this).attr('data-id');
+            var button = $(this);
+            console.log(reaction_id);
+            jConfirm('<? echo $this->translate('confirmdeleterecord'); ?>', '<? echo $this->translate('confirmdeletetitle'); ?>', function(r) {
+                if(r)
+                {
+                    console.log('delete_reaction');
+                    delete_reaction(button);
+                }
+            });
+        })
+
+        function check_reaction_input(formid){
+            //console.log('check input');
+            var icdcode_input = $('#reaction_content_form input[name="reactions[icdcode]"]')[0];
+            var icdcode = $(icdcode_input).val();
+            var reaction_against_input  =  $('#reaction_content_form textarea[name="reactions[reaction_against]"]')[0];
+            var reaction_against =  $(reaction_against_input).val();
+            var reaction_text_input  =  $('#reaction_content_form textarea[name="reactions[reaction_text]"]')[0];
+            var reaction_text =  $(reaction_text_input).val();
+            var reaction_diagnosis_date_input = $('#reaction_content_form input[name="reactions[first_diagnosis_date]"]')[0];
+            var reaction_first_diagnosis_date = $(reaction_diagnosis_date_input).val();
+            var knowlegde_select = $('#reaction_content_form select[name="reactions[first_diagnosis_date_knowledge]"]')[0];
+            var reaction_first_diagnosis_date_knowledge = $(knowlegde_select).val();
+            var aErrors = [];
+            if((icdcode.trim()) == ''){
+                aErrors['code'] = 'ICD Code muss ausgefüllt werden';
+            }
+            if((reaction_first_diagnosis_date).trim() == ''){
+                aErrors['date'] = 'Datum muss ausgefüllt werden';
+            }else{
+                var arr_reaction_first_diagnosis_date = reaction_first_diagnosis_date.split('.');
+                for(var i=0;i< arr_reaction_first_diagnosis_date.length;i++){
+                    if(!parseInt(arr_reaction_first_diagnosis_date[i])){
+                        aErrors['date'] = 'Bitte korrigieren Sie das Datum';
+                    }
+                }
+               if(reaction_first_diagnosis_date_knowledge == '' || reaction_first_diagnosis_date_knowledge == 'full'){
+
+                   if(arr_reaction_first_diagnosis_date.length !== 3){
+                       aErrors['date'] = 'Bitte korrigieren Sie das Datum';
+                   }
+
+               }else if(reaction_first_diagnosis_date_knowledge == 'year and month only'){
+                   if(arr_reaction_first_diagnosis_date.length !== 2){
+                       aErrors['date'] = 'Bitte korrigieren Sie das Datum';
+                   }
+               }else if(reaction_first_diagnosis_date_knowledge == 'year only'){
+                   if(arr_reaction_first_diagnosis_date.length !== 1){
+                       aErrors['date'] = 'Bitte korrigieren Sie das Datum';
+                   }
+               }
+            }
+            var error = '';
+            for(var key in aErrors) {
+                if(aErrors.hasOwnProperty(key))
+                    error += aErrors[key] + '<br>';
+            }
+
+            if(error.length === 0){
+                error = false;
+            }
+
+            return error;
+
+        }
+
+        function check_saereaction_input(){
+            var sae_datum_input = $('#saereaction_content_form input[name="reactions[first_sae_date]"]')[0];
+            var sae_datum = $(sae_datum_input).val();
+            var sae_datum_knowledge_input = $('#saereaction_content_form .knowledge_select')[0];
+            var sae_datum_knowledge = $(sae_datum_knowledge_input).val();
+            var aErrors = [];
+            if((sae_datum).trim() == ''){
+                aErrors['date'] = 'Datum muss ausgefüllt werden';
+            }else{
+                var arr_reaction_first_diagnosis_date = sae_datum.split('.');
+                for(var i=0;i< arr_reaction_first_diagnosis_date.length;i++){
+                    if(!parseInt(arr_reaction_first_diagnosis_date[i])){
+                        aErrors['date'] = 'Bitte korrigieren Sie das Datum';
+                    }
+                }
+                if(sae_datum_knowledge == '' || sae_datum_knowledge == 'full'){
+
+                    if(arr_reaction_first_diagnosis_date.length !== 3){
+                        aErrors['date'] = 'Bitte korrigieren Sie das Datum';
+                    }
+
+                }else if(sae_datum_knowledge == 'year and month only'){
+                    if(arr_reaction_first_diagnosis_date.length !== 2){
+                        aErrors['date'] = 'Bitte korrigieren Sie das Datum';
+                    }
+                }else if(sae_datum_knowledge == 'year only'){
+                    if(arr_reaction_first_diagnosis_date.length !== 1){
+                        aErrors['date'] = 'Bitte korrigieren Sie das Datum';
+                    }
+                }
+            }
+            var error = '';
+            for(var key in aErrors) {
+                if(aErrors.hasOwnProperty(key))
+                    error += aErrors[key] + '<br>';
+            }
+
+            if(error.length === 0){
+                error = false;
+            }
+
+            return error;
+
+
+
+
+        }
+
+        function delete_reaction(button){
+            var reaction_id = button.attr('data-id');
+            if(reaction_id == 'new'){
+                var tr = button.parent().parent();
+                $(tr).remove();
+            }else{
+                var deletefield = '<input type="hidden" name="reactions[reactions_remove][]" value="'+ reaction_id + '">';
+                $(deletefield).appendTo('#reactions');
+                var tr = button.parent().parent();
+                $(tr).remove();
+
+            }
+        }
+
+        //SAE
+        $('#add_new_sae').on('click', function(e){
+            e.preventDefault();
+            current_entry = 0;
+            current_mode = 'add';
+            new_row_index++;
+            current_new_row = 'new_row_' + new_row_index;
+            $( "#sae_reaction_dialog" ).dialog('open');
+
+        });
+        //dialog
+        $( "#sae_reaction_dialog" ).dialog({
+            autoOpen: false,
+            title:"SAE",
+            resizable: false,
+            //height: 200,
+            width: 680,
+            modal: true,
+            open: function (){
+                $.ajax({
+                    type: 'POST',
+                    url: '<?php echo APP_BASE; ?>ajax/saereaction?id=<?php echo $_REQUEST['id']; ?>&cnt=0&blockname=saerections',
+
+                    beforeSend:function(){
+                        //loading image
+                        //$('#medipump_ajax_load_edt').show();
+                    },
+                    success:function(data){
+
+                        $('#sae_reaction_content').html(data).promise().done(function(){
+                            if(current_mode == 'edit' ){
+                                console.log('new row');
+
+                                var sae_study_input_in_row =  $('#' + current_row_id).find('.sae_study')[0];
+                                var sae_study_in_form = $('#saereaction_content_form textarea[name="reactions[study]"]')[0];
+                                $(sae_study_in_form).val($(sae_study_input_in_row).val());
+
+                                var sae_reaction_text_in_row =  $('#' + current_row_id).find('.sae_reaction_text')[0];
+                                var sae_reactions_text_in_form = $('#saereaction_content_form textarea[name="reactions[reaction_text]"]')[0];
+                                $(sae_reactions_text_in_form).val($(sae_reaction_text_in_row).val());
+
+                                var sae_place_in_row =  $('#' + current_row_id).find('.sae_place')[0];
+                                var sae_place_in_form = $('#saereaction_content_form textarea[name="reactions[place]"]')[0];
+                                $(sae_place_in_form).val($(sae_place_in_row ).val());
+
+                                var sae_cause_in_row =  $('#' + current_row_id).find('.sae_cause')[0];
+                                var sae_cause_in_form = $('#saereaction_content_form textarea[name="reactions[cause]"]')[0];
+                                $(sae_cause_in_form).val($(sae_cause_in_row).val());
+
+                                var sae_consequence_in_row =  $('#' + current_row_id).find('.sae_consequence')[0];
+                                var sae_consequence_in_form = $('#saereaction_content_form textarea[name="reactions[consequence]"]')[0];
+                                $(sae_consequence_in_form).val($(sae_consequence_in_row).val());
+
+                                var sae_first_sae_date_in_row =  $('#' + current_row_id).find('.sae_first_sae_date')[0];
+                                var sae_first_sae_date_in_form = $('#saereaction_content_form input[name="reactions[first_sae_date]"]')[0];
+                                var splitted_date = $(sae_first_sae_date_in_row).val().split('-');
+                                //console.log('splitted date', splitted_date);
+                                $(sae_first_sae_date_in_form).val(splitted_date[2] + '.' + splitted_date[1] + '.' + splitted_date[0]);
+
+                                var sae_first_sae_date_knowledge_in_row =  $('#' + current_row_id).find('.sae_first_sae_date_knowledge')[0];
+                                //console.log('knowledge value in row', $(sae_first_sae_date_knowledge_in_row).val());
+                                var sae_first_sae_date_knowledge_in_form = $('#saereaction_content_form .knowledge_select')[0];
+                                $(sae_first_sae_date_knowledge_in_form).val('full');
+                                $(sae_first_sae_date_knowledge_in_form).val($(sae_first_sae_date_knowledge_in_row).val()).change();
+
+
+                            }
+
+
+                        });
+
+
+
+                    }
+                })
+
+            },
+            buttons: {
+                "Übernehmen": function(){
+
+                    //console.log( $('#nonmedical_intervention_content_form'));
+                    //$('#nonmedical_intervention_content_form').submit();
+                    var err = check_saereaction_input();
+                    if(!err){
+                        ajax_takeover_saereaction('#saereaction_content_form');
+                        $("#sae_reaction_dialog" ).dialog('close');
+                    }else{
+                        jAlert(err);
+                    }
+
+
+
+                },
+                "<?php echo $this->translate('cancel'); ?>": function(){
+                    $("#sae_reaction_dialog" ).dialog('close');
+                }
+            },create:function () {
+                $(this).closest(".ui-dialog")
+                    .find(".ui-button:first") // the first button
+                    .addClass("submitform");
+            },
+            close:function () {
+                $('#sae_reaction_content').html('');
+                $('.submitform').attr('disabled',false),
+                    $(".ui-button:first").attr("disabled", false)
+                        .removeClass("ui-state-disabled").next("button").attr("disabled", false)
+                        .removeClass("ui-state-disabled");
+            }
+        });
+
+        function  ajax_takeover_saereaction(formid){
+            var sae_datum_input = $('#saereaction_content_form input[name="reactions[first_sae_date]"]')[0];
+            var sae_datum = $(sae_datum_input).val();
+            var sae_datum_knowledge_input = $('#saereaction_content_form .knowledge_select')[0];
+            var sae_datum_knowledge = $(sae_datum_knowledge_input).val();
+
+            var study_input = $('#saereaction_content_form textarea[name="reactions[study]"]')[0];
+            var study = $(study_input).val();
+
+            var reaction_text_input =  $('#saereaction_content_form textarea[name="reactions[reaction_text]"]')[0];
+            var reaction_text = $(reaction_text_input).val();
+
+            var reaction_cause_input =  $('#saereaction_content_form textarea[name="reactions[cause]"]')[0];
+            var reaction_cause = $(reaction_cause_input).val();
+            var reaction_place_input =  $('#saereaction_content_form textarea[name="reactions[place]"]')[0];
+            var reaction_place = $(reaction_place_input).val();
+            var reaction_consequence_input =  $('#saereaction_content_form textarea[name="reactions[consequence]"]')[0];
+            var reaction_consequence = $(reaction_consequence_input).val();
+
+            if(current_mode === 'edit'){
+                console.log('entry not new');
+                //current_row = $('#reaction_row_' + current_entry);
+                current_row = $('#' + current_row_id);
+
+
+
+            }else{
+                var row_sae_tpl_with_index = row_sae_tpl.replaceAll('###', current_new_row);
+                current_row = $(row_sae_tpl_with_index);
+
+                $(current_row).attr('id', current_new_row);
+
+            }
+            $(current_row).find('.sae_first_sae_date').val(sae_datum);
+            $(current_row).find('.sae_date_show').html(sae_datum);
+            $(current_row).find('.sae_first_sae_date_knowledge').val(sae_datum_knowledge);
+            $(current_row).find('.sae_study').val(study);
+            $(current_row).find('.sae_study_show').html(study);
+            $(current_row).find('.sae_consequence_show').html(reaction_consequence);
+            $(current_row).find('.sae_consequence').val(reaction_consequence);
+            $(current_row).find('.sae_place_show').html(reaction_place);
+            $(current_row).find('.sae_place').val(reaction_place);
+            $(current_row).find('.sae_cause_show').html(reaction_cause);
+            $(current_row).find('.sae_cause').val(reaction_cause);
+            $(current_row).find('.sae_reaction_text_show').html(reaction_text);
+            $(current_row).find('.sae_reaction_text').val(reaction_text);
+
+            if(sae_datum_knowledge == '' || sae_datum_knowledge == 'full'){
+                var splitted_date = sae_datum.split('.');
+                $(current_row).find('.sae_first_sae_date').val(splitted_date[2] + '-' + splitted_date[1] + '-' + splitted_date[0]);
+            }else if(sae_datum_knowledge == 'year and month only'){
+                var splitted_date = sae_datum.split('.');
+                $(current_row).find('.sae_first_sae_date').val(splitted_date[1] + '-' + splitted_date[0] + '-01');
+            }else if(sae_datum_knowledge == 'year only'){
+                $(current_row).find('.sae_first_sae_date').val( sae_datum + '-01-01');
+            }
+
+
+
+            if(current_mode == 'add'){
+                $(current_row).appendTo('#table_sae');
+            }
+
+
+
+
+        }
+
+        function ajax_savesaereaction(formid) {
+            var formData = ($(formid).serializeArray());
+            //formData = serializeToJson(formData);
+            console.log(formData);
+            //console.log(formData['interventions']);
+            console.log('save form');
+            $.ajax({
+                type: 'POST',
+                url: 'ajax/savesaereaction?id=<?php echo $_GET['id']; ?>',
+                data:  $(formid).serialize(),
+                //dataType: 'json',
+                //encode: true,
+
+                success: function (jdata) {
+
+                    console.log(jdata);
+
+                    var data = jQuery.parseJSON(jdata);
+                    if(data.success == true){
+                        //reload after changes
+                        location.href = myurl; //"<?php echo APP_BASE ?>patientformnew/reactions?id=<?php echo $_GET['id']; ?>";
+
+                    }else{
+                        var errorsMarkup = '';
+                        var error_div = '#reaction_errors';
+
+                        $.each(data.errors, function(key, value){
+                            errorsMarkup += '<span>' + value + '</span>';
+                            console.log(errorsMarkup);
+                            $(error_div).html(errorsMarkup);
+                        })
+
+                        console.log(data.errors);
+                    }
+
+                },
+                error : function(error){
+                    console.log(error);
+                }
+            });
+        }
+
+        $('.delete_saereaction').on('click', function(){
+            var reaction_id = $(this).attr('data-id');
+            var button = $(this);
+            console.log(reaction_id);
+            jConfirm('<? echo $this->translate('confirmdeleterecord'); ?>', '<? echo $this->translate('confirmdeletetitle'); ?>', function(r) {
+                if(r)
+                {
+                    delete_saereaction(button);
+                }
+            });
+        })
+
+        $('.edit_saereaction').live('click', function(e){
+            e.preventDefault();
+            current_entry = $(this).attr('data-id');
+            current_mode = 'edit';
+            current_row_id = $(this).parent().parent().attr('id');
+            $( "#sae_reaction_dialog" ).dialog('open');
+
+        });
+
+        function delete_saereaction(button){
+            var reaction_id = button.attr('data-id');
+            if(reaction_id == 'new'){
+                var tr = button.parent().parent();
+                $(tr).remove();
+            }else{
+                var deletefield = '<input type="hidden" name="reactions[saereactions_remove][]" value="'+ reaction_id + '">';
+                $(deletefield).appendTo('#reactions');
+                var tr = button.parent().parent();
+                $(tr).remove();
+
+            }
+
+        }
+
+    })
+</script>
+<style>
+    /* ISPC-2720, elena, 30.11.2020 */
+    #tabs-1 .datatable, #tabs-2 .datatable, #tabs-3 .datatable{
+        width: 100% !important;
+    }
+
+    #reaction_content_form table, #saereaction_content_form table{
+        width:100%;
+    }
+    #reaction_content_form table tr td input[type=text], #saereaction_content_form table tr td input[type=text]{
+        width: 100%;
+        background-color: #fff;
+        line-height: 1.8em;
+        vertical-align:top;
+
+    }
+    #reaction_content_form table tr td input[type=checkbox]{
+
+        background-color: #fff;
+        line-height: 1.8em;
+        vertical-align:top;
+
+    }
+    #reaction_content_form table tr td select, #saereaction_content_form table tr td select{
+
+        background-color: #fff;
+        line-height: 1.8em;
+        vertical-align:top;
+
+    }
+    #reaction_content_form table tr td textarea, #saereaction_content_form table tr td textarea{
+
+        background-color: #fff;
+        line-height: 1.8em;
+        vertical-align:top;
+        width:100%;
+
+    }
+    #reaction_content_form table tr td, #saereaction_content_form table tr td{
+        vertical-align:top;
+    }
+    #reaction_content_form table td:first-child, #saereaction_content_form table td:first-child {
+        padding-top: 7px ;
+    }
+
+    #ui-datepicker-div{
+        z-index: 1200 !important;
+    }
+    #reaction_errors{
+        color: red;
+    }
+
+    #livesearchicdcode {
+
+        max-height: 300px;
+        overflow-x: hidden;
+        overflow-y: scroll;
+        width: 680px !important;
+        background-color: #fff;
+        border: 2px solid #000;
+        display:block;
+        /* z-index:2147483647; /* !! MAX */
+    }
+
+
+</style>
+
+<div id="reactions">
+    <ul>
+        <li><a href="#tabs-1">Allergien</a></li>
+        <li><a href="#tabs-2">Unverträglichkeiten</a></li>
+        <li><a href="#tabs-3">SAE</a></li>
+
+    </ul>
+    <div id="tabs-1">
+        <table class="datatable" id="table_allergy">
+
+
+            <tr>
+                <th>ICD</th>
+                <th>Allergiestoff</th>
+                <th>Reaktion</th>
+                <th>Erstdiagnose</th>
+
+            </tr>
+            <?php foreach($reactions_allergy as $onereaction): ?>
+            <tr id="reaction_row_<?php echo $onereaction['id']; ?>">
+                <?php //print_r($onereaction); ?>
+                <input type="hidden" class="reaction_id" name="reactions[reaction][<?php echo $onereaction['id']; ?>][id]" value="<?php echo $onereaction['id']; ?>">
+                <input type="hidden" class="reaction_typ" name="reactions[reaction][<?php echo $onereaction['id']; ?>][typ]" value="<?php echo $onereaction['typ']; ?>">
+                <input type="hidden" class="reaction_icdcode" name="reactions[reaction][<?php echo $onereaction['id']; ?>][icdcode]" value="<?php echo $onereaction['icdcode']; ?>">
+                <input type="hidden" class="reaction_reaction_against" name="reactions[reaction][<?php echo $onereaction['id']; ?>][reaction_against]" value="<?php echo $onereaction['reaction_against']; ?>">
+                <input type="hidden" class="reaction_reaction_text" name="reactions[reaction][<?php echo $onereaction['id']; ?>][reaction_text]" value="<?php echo $onereaction['reaction_text']; ?>">
+                <input type="hidden" class="reaction_reaction_first_diagnosis_date" name="reactions[reaction][<?php echo $onereaction['id']; ?>][first_diagnosis_date]" value="<?php echo  $onereaction['first_diagnosis_date']; ?>">
+                <input type="hidden" class="reaction_first_diagnosis_date_knowledge" name="reactions[reaction][<?php echo $onereaction['id']; ?>][first_diagnosis_date_knowledge]" value="<?php echo $onereaction['first_diagnosis_date_knowledge']; ?>">
+                <td class="icdcode_show"><?php echo $onereaction['icdcode']; ?></td>
+                <td class="reaction_against_show"><?php echo $onereaction['reaction_against']; ?></td>
+                <td class="reaction_text_show"><?php echo $onereaction['reaction_text']; ?></td>
+                <td class="first_diagnosis_date_show">
+                    <?php
+                if(trim($onereaction['first_diagnosis_date']) != '' && $onereaction['first_diagnosis_date'] != '0000-00-00'){
+                if( trim($onereaction['first_diagnosis_date_knowledge']) == '' || trim($onereaction['first_diagnosis_date_knowledge']) == 'full' ){
+                    echo date_format( date_create_from_format('Y-m-d', $onereaction['first_diagnosis_date']), 'd.m.Y');
+                }elseif(trim($onereaction['first_diagnosis_date_knowledge']) == 'year and month only'){
+                 echo date_format( date_create_from_format('Y-m-d', $onereaction['first_diagnosis_date']), 'm.Y');
+                }else{
+                echo date_format( date_create_from_format('Y-m-d', $onereaction['first_diagnosis_date']), 'Y');
+                }
+                }
+
+                ?>
+                </td>
+                <td><img src="<?php echo RES_FILE_PATH; ?>/images/edit.png" width="16px" data-id="<?php echo $onereaction['id']; ?>" class="edit_reaction" /></td>
+                <td><img src="<?php echo RES_FILE_PATH; ?>/images/cross.png" width="16px" data-id="<?php echo $onereaction['id']; ?>" class="delete_reaction"  /></td>
+            </tr>
+
+            <?php endforeach; ?>
+        </table>
+
+
+
+        <div><input type="image" src="<?php echo RES_FILE_PATH; ?>/images/edit_add.png" width="16px" id="add_new_allergy" /></div>
+    </div>
+    <div id="tabs-2">
+        <table class="datatable" id="table_intolerance">
+
+
+            <tr>
+                <th>ICD</th>
+                <th>Unverträglichkeit gegen</th>
+                <th>Reaktion</th>
+                <th>Erstdiagnose</th>
+
+            </tr>
+            <?php foreach($reactions_intolerance as $onereaction): ?>
+            <tr id="reaction_row_<?php echo $onereaction['id']; ?>">
+                <input type="hidden" class="reaction_id" name="reactions[reaction][<?php echo $onereaction['id']; ?>][id]" value="<?php echo $onereaction['id']; ?>">
+                <input type="hidden" class="reaction_typ" name="reactions[reaction][<?php echo $onereaction['id']; ?>][typ]" value="<?php echo $onereaction['typ']; ?>">
+                <input type="hidden" class="reaction_icdcode" name="reactions[reaction][<?php echo $onereaction['id']; ?>][icdcode]" value="<?php echo $onereaction['icdcode']; ?>">
+                <input type="hidden" class="reaction_reaction_against" name="reactions[reaction][<?php echo $onereaction['id']; ?>][reaction_against]" value="<?php echo $onereaction['reaction_against']; ?>">
+                <input type="hidden" class="reaction_reaction_text" name="reactions[reaction][<?php echo $onereaction['id']; ?>][reaction_text]" value="<?php echo $onereaction['reaction_text']; ?>">
+                <input type="hidden" class="reaction_reaction_first_diagnosis_date" name="reactions[reaction][<?php echo $onereaction['id']; ?>][first_diagnosis_date]" value="<?php echo $onereaction['first_diagnosis_date']; ?>">
+                <input type="hidden" class="reaction_first_diagnosis_date_knowledge" name="reactions[reaction][<?php echo $onereaction['id']; ?>][first_diagnosis_date_knowledge]" value="<?php echo $onereaction['first_diagnosis_date_knowledge']; ?>">
+                <td class="icdcode_show"><?php echo $onereaction['icdcode']; ?></td>
+                <td class="reaction_against_show"><?php echo $onereaction['reaction_against']; ?></td>
+                <td class="reaction_text_show"><?php echo $onereaction['reaction_text']; ?></td>
+                <td class="first_diagnosis_date_show">
+                    <?php
+                if(trim($onereaction['first_diagnosis_date']) != '' && $onereaction['first_diagnosis_date'] != '0000-00-00'){
+                if( trim($onereaction['first_diagnosis_date_knowledge']) == '' || trim($onereaction['first_diagnosis_date_knowledge']) == 'full' ){
+                    echo date_format( date_create_from_format('Y-m-d', $onereaction['first_diagnosis_date']), 'd.m.Y');
+                }elseif(trim($onereaction['first_diagnosis_date_knowledge']) == 'year and month only'){
+                 echo date_format( date_create_from_format('Y-m-d', $onereaction['first_diagnosis_date']), 'm.Y');
+                }else{
+                echo date_format( date_create_from_format('Y-m-d', $onereaction['first_diagnosis_date']), 'Y');
+                }
+                }
+
+                ?>
+                </td>
+                <td><img src="<?php echo RES_FILE_PATH; ?>/images/edit.png" width="16px" data-id="<?php echo $onereaction['id']; ?>" class="edit_reaction" /></td>
+                <td><img src="<?php echo RES_FILE_PATH; ?>/images/cross.png" width="16px" data-id="<?php echo $onereaction['id']; ?>" class="delete_reaction"  /></td>
+            </tr>
+
+            <?php endforeach; ?>
+        </table>
+
+        <div><input type="image" src="<?php echo RES_FILE_PATH; ?>/images/edit_add.png" width="16px" id="add_new_intolerance" /></div>
+    </div>
+    <div id="tabs-3">
+        Hier bitte unerwünschte Ereignisse eintragen, die unmittelbar lebensbedrohend waren, und im Rahmen einer klinischen Studie mit Arzneimitteln/Medizinprodukten mit diesem Kind auftraten. Hierunter fallen Ereignisse, die einen unvorgerhgesehenen Krankenhausaufenthalt oder dessen Verlängerung erforderlich machten, eine kongenitale Anomalie oder einen Geburtsfehler nach sich zogen oder bleibende/schwerwiegende Behinderung oder Invalidität zur Folge hatten
+
+        <table class="datatable" id="table_sae">
+
+
+            <tr>
+                <th>Datum der SAE</th>
+                <th>Studie</th>
+                <th>Reaktion</th>
+                <th>ggf. Ursache</th>
+                <th>Ort der SAE</th>
+                <th>Folge</th>
+
+            </tr>
+            <?php foreach($reactions_sae as $sae): ?>
+            <tr id="sae_row_<?php echo $sae['id']; ?>">
+                <input type="hidden" class="sae_id" name="reactions[sae][<?php echo $sae['id']; ?>][id]" value="<?php echo $sae['id']; ?>">
+                <input type="hidden" class="sae_study" name="reactions[sae][<?php echo $sae['id']; ?>][study]" value="<?php echo $sae['study']; ?>">
+                <input type="hidden" class="sae_reaction_text" name="reactions[sae][<?php echo $sae['id']; ?>][reaction_text]" value="<?php echo $sae['reaction_text']; ?>">
+                <input type="hidden" class="sae_cause" name="reactions[sae][<?php echo $sae['id']; ?>][cause]" value="<?php echo $sae['cause']; ?>">
+                <input type="hidden" class="sae_place" name="reactions[sae][<?php echo $sae['id']; ?>][place]" value="<?php echo $sae['place']; ?>">
+                <input type="hidden" class="sae_consequence" name="reactions[sae][<?php echo $sae['id']; ?>][consequence]" value="<?php echo $sae['consequence']; ?>">
+
+                <input type="hidden" class="sae_first_sae_date" name="reactions[sae][<?php echo $sae['id']; ?>][first_sae_date]" value="<?php echo $sae['first_sae_date']; ?>">
+                <input type="hidden" class="sae_first_sae_date_knowledge" name="reactions[sae][<?php echo $sae['id']; ?>][first_sae_date_knowledge]" value="<?php echo $sae['first_sae_date_knowledge']; ?>">
+                <td class="sae_date_show">
+                    <?php
+                if(trim($sae['first_sae_date']) != '' && $sae['first_sae_date'] != '0000-00-00'){
+                if( trim($sae['first_sae_date_knowledge']) == '' || trim($sae['first_sae_date_knowledge']) == 'full' ){
+                    echo date_format( date_create_from_format('Y-m-d', $sae['first_sae_date']), 'd.m.Y');
+                }elseif(trim($sae['first_sae_date_knowledge']) == 'year and month only'){
+                 echo date_format( date_create_from_format('Y-m-d', $sae['first_sae_date']), 'm.Y');
+                }else{
+                echo date_format( date_create_from_format('Y-m-d', $sae['first_sae_date']), 'Y');
+                }
+                }
+
+                ?>
+                </td>
+                <td class="sae_study_show"><?php echo $sae['study']; ?></td>
+                <td class="sae_reaction_text_show"><?php echo $sae['reaction_text']; ?></td>
+                <td class="sae_cause_show"><?php echo $sae['cause']; ?></td>
+                <td class="sae_place_show"><?php echo $sae['place']; ?></td>
+                <td class="sae_consequence_show" ><?php echo $sae['consequence']; ?></td>
+
+                <td><img src="<?php echo RES_FILE_PATH; ?>/images/edit.png" width="16px" data-id="<?php echo $sae['id']; ?>" class="edit_saereaction" /></td>
+                <td><img src="<?php echo RES_FILE_PATH; ?>/images/cross.png" width="16px" data-id="<?php echo $sae['id']; ?>" class="delete_saereaction"  /></td>
+            </tr>
+
+            <?php endforeach; ?>
+        </table>
+
+        <div><input type="image" src="<?php echo RES_FILE_PATH; ?>/images/edit_add.png" width="16px" id="add_new_sae" /></div>
+    </div>
+
+    <div id="allergy_reaction_dialog" class="dialog_input">
+        <div id="allergy_reaction_content"></div>
+
+    </div>
+    <div id="intolerance_reaction_dialog" class="dialog_input">
+        <div id="intolerance_reaction_content"></div>
+
+    </div>
+
+    <div id="sae_reaction_dialog" class="dialog_input">
+        <div id="sae_reaction_content"></div>
+    </div>
+</div><!--TODO-3909,Elena,01.03.2021-->
+
+    <?php else: ?>
+    <h4>Allergien</h4>
+    <table border="1" width="100%" cellpadding="5" cellspacing="0" >
+
+
+        <tr>
+            <td><b>ICD</b></td>
+            <td><b>Allergiestoff</b></td>
+            <td><b>Reaktion</b></td>
+            <td><b>Erstdiagnose</b></td>
+
+        </tr>
+        <?php foreach($reactions_allergy as $onereaction): ?>
+        <tr>
+            <td><?php echo $onereaction['icdcode']; ?></td>
+            <td><?php echo $onereaction['reaction_against']; ?></td>
+            <td><?php echo $onereaction['reaction_text']; ?></td>
+            <td>
+                <?php
+                if(trim($onereaction['first_diagnosis_date']) != '' && $onereaction['first_diagnosis_date'] != '0000-00-00'){
+                if( trim($onereaction['first_diagnosis_date_knowledge']) == '' || trim($onereaction['first_diagnosis_date_knowledge']) == 'full' ){
+                    echo date_format( date_create_from_format('Y-m-d', $onereaction['first_diagnosis_date']), 'd.m.Y');
+                }elseif(trim($onereaction['first_diagnosis_date_knowledge']) == 'year and month only'){
+                 echo date_format( date_create_from_format('Y-m-d', $onereaction['first_diagnosis_date']), 'm.Y');
+                }else{
+                echo date_format( date_create_from_format('Y-m-d', $onereaction['first_diagnosis_date']), 'Y');
+                }
+                }
+
+                ?>
+            </td>
+
+        </tr>
+
+        <?php endforeach; ?>
+    </table>
+    <p></p>
+
+    <h4>Unverträglichkeiten</h4>
+    <table border="1" width="100%" cellpadding="5" cellspacing="0">
+
+
+        <tr>
+            <td><b>ICD</b></td>
+            <td><b>Unverträglichkeit gegen</b></td>
+            <td><b>Reaktion</b></td>
+            <td><b>Erstdiagnose</b></td>
+
+        </tr>
+        <?php foreach($reactions_intolerance as $onereaction): ?>
+        <tr>
+            <td><?php echo $onereaction['icdcode']; ?></td>
+            <td><?php echo $onereaction['reaction_against']; ?></td>
+            <td><?php echo $onereaction['reaction_text']; ?></td>
+            <td>
+                <?php
+                if(trim($onereaction['first_diagnosis_date']) != '' && $onereaction['first_diagnosis_date'] != '0000-00-00'){
+                if( trim($onereaction['first_diagnosis_date_knowledge']) == '' || trim($onereaction['first_diagnosis_date_knowledge']) == 'full' ){
+                    echo date_format( date_create_from_format('Y-m-d', $onereaction['first_diagnosis_date']), 'd.m.Y');
+                }elseif(trim($onereaction['first_diagnosis_date_knowledge']) == 'year and month only'){
+                 echo date_format( date_create_from_format('Y-m-d', $onereaction['first_diagnosis_date']), 'm.Y');
+                }else{
+                echo date_format( date_create_from_format('Y-m-d', $onereaction['first_diagnosis_date']), 'Y');
+                }
+                }
+
+                ?>
+            </td>
+
+        </tr>
+
+        <?php endforeach; ?>
+    </table>
+    <p></p>
+
+    <h4>SAE</h4>
+    <table border="1" width="100%" cellpadding="5" cellspacing="0">
+
+
+        <tr>
+            <td><b>Datum der SAE</b></td>
+            <td><b>Studie</b></td>
+            <td><b>Reaktion</b></td>
+            <td><b>ggf. Ursache</b></td>
+            <td><b>Ort der SAE</b></td>
+            <td><b>Folge</b></td>
+
+        </tr>
+        <?php foreach($reactions_sae as $sae): ?>
+        <tr>
+            <td>
+                <?php
+                if(trim($sae['first_sae_date']) != '' && $sae['first_sae_date'] != '0000-00-00'){
+                if( trim($sae['first_sae_date_knowledge']) == '' || trim($sae['first_sae_date_knowledge']) == 'full' ){
+                    echo date_format( date_create_from_format('Y-m-d', $sae['first_sae_date']), 'd.m.Y');
+                }elseif(trim($sae['first_sae_date_knowledge']) == 'year and month only'){
+                 echo date_format( date_create_from_format('Y-m-d', $sae['first_sae_date']), 'm.Y');
+                }else{
+                echo date_format( date_create_from_format('Y-m-d', $sae['first_sae_date']), 'Y');
+                }
+                }
+
+                ?>
+            </td>
+            <td><?php echo $sae['study']; ?></td>
+            <td><?php echo $sae['reaction_text']; ?></td>
+            <td><?php echo $sae['cause']; ?></td>
+            <td><?php echo $sae['place']; ?></td>
+            <td><?php echo $sae['consequence']; ?></td>
+
+        </tr>
+
+        <?php endforeach; ?>
+    </table>
+    <?php endif; ?>

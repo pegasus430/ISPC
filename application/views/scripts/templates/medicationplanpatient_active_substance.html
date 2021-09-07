@@ -1,0 +1,604 @@
+<!-- Maria:: Migration ISPC to CISPC 08.08.2020 -->
+<? 
+	$allowed_medication_types = $this->medication_blocks;
+	$medication_array = $this->medications_array;
+	$allow_print = $this->allow_print;
+	$timed_scheduled_medications = $this->timed_scheduled_medications;
+//Changes for ISPC-1848 F
+?>
+<!--
+<table border="0" width="100%"  cellpadding="2" class="datatable">
+	<tr>
+		<td>Name: <?php echo $this->patname; ?></td>
+		<td align="right"><?php echo date("d.m.Y H:i",time()); ?></td>
+	</tr>
+	<tr>
+		<td>Geb.-Datum: <?php echo $this->patbirth; ?></td>
+		<td align="right"></td>
+	</tr>
+</table>
+-->
+<?php foreach($allowed_medication_types as $k=>$medication_type):?>
+	<?php if( in_array($medication_type,$timed_scheduled_medications)  && in_array($medication_type,$allow_print['medication_types'])):?>
+		
+		<?php 
+			if( count($medication_array[$medication_type]) == 0 ) {
+				// ISPC-1848 F I) dont print on medi plans blocks which have no content
+				continue;
+			} 
+		?>
+		
+		<!-- pagebreak before isbedarf -->
+		<?php if('isbedarfs' == $medication_type && count($medication_array[$medication_type]) > 0 ) : ?>
+			<br/>&nbsp;<br/><br/>&nbsp;<br/>
+<!-- 			<br pagebreak="true" /> -->
+		<?php elseif( count($medication_array[$medication_type]) > 0 ) : ?>
+			<br/>&nbsp;<br/>
+		<?php endif; ?>
+		
+				<table width="100%"  cellpadding="2"  class="datatable">
+					<thead>
+						<tr nobr="true">
+						<th style="background-color:#D3D3D3; border:1px solid #000" colspan="<?php echo count($this->dosage_intervals[$medication_type])+3;?>" ><h3><?php echo $this->translate($medication_type." medication title")?></h3></th>
+						</tr>
+						<tr nobr="true">
+				 			<th style="border: 1px solid #000;" rowspan="2" width="30%"><b><?php echo $this->translate('medication_drug');?></b> (<?php echo $this->translate('medication_name');?>)</th><!--  1 -->
+				 			<!--  DOSAGE TABLE HEADER PARENT-->
+				 			<th style="border: 1px solid #000;" width="40%" colspan="<?php echo count($this->dosage_intervals[$medication_type]);?>"><b><?php echo $this->translate('medication_dosage'); ?></b></th> <!--  5 -->
+								<!-- ISPC-2329 pct.y) Lore 26.08.2019 -->
+				 			<th style="border: 1px solid #000;" rowspan="2" width="30%"><b><?php echo $this->translate('medication_comments').' / '.$this->translate('medication_indication'); ?></b></th><!--  0 -->
+				 		</tr nobr="true">
+						<!--  DOSAGE TABLE HEADER KIDS-->
+				 		<tr nobr="true">
+				 			<?php foreach($this->dosage_intervals[$medication_type] as $k => $di):?>
+					 			<th style="border: 1px solid #000;" align="center" ><b><?php echo $di;?></b></th>
+				 			<?php endforeach;?>
+				 		</tr>
+			 		</thead>
+			 		<tbody>
+				 		<?php foreach($medication_array[$medication_type] as $k =>$med):?>
+						<tr nobr="true">
+							<!--  MEDICATION NAME -->
+							<td style="border: 1px solid #000;" width="30%"><b><?php if(!empty($med['drug'])) echo html_entity_decode($med['drug']);?></b> (<?php echo html_entity_decode($med['medication']);?>) 
+								<?php if ($medication_type == "isintubated"): ?>
+									<?php if(strlen($med['packaging']) > 0):?>
+										<br/>
+										<b><?php echo $this->translate('medication_packaging'); ?></b>: <?php echo $med['packaging_name'];?>
+									<?php endif;?>
+								<?php endif;?>
+							</td>
+							
+							<!--  MEDICATION DOSAGE INPUTS-->
+							<?php $d_width = round((40 /count($this->dosage_intervals[$medication_type])),2);?>
+							<?php $d_width = str_replace(',','.',$d_width);?>
+							<?php foreach($this->dosage_intervals[$medication_type] as $k => $dosage_time):?>
+								<td style="border: 1px solid #000;" align="center" width="<?php echo $d_width;?>%">
+									
+									<?php echo html_entity_decode($med['dosage'][$dosage_time]);?><?php if($this->show_new_fileds == "1" &&  strlen($med['dosage'][$dosage_time]) ): ?><?php echo $med['unit'];?><?php endif;?>
+									 
+									<!--TODO-3624 Ancuta 23.11.2020 -->
+									<?php if($this->show_new_fileds == "1" &&  strlen($med['dosage_concentration'][$dosage_time])>0  && strlen($med['dosage_concentration'][$dosage_time])>0 ): ?>
+										<br/>
+										<?php echo $med['dosage_concentration'][$dosage_time];?>
+									<?php endif; ?>
+									
+								</td>
+			 				<?php endforeach;?>
+							
+							<!--  MEDICATION INDICATION  / MEDICATION Comment-->
+							<td style="border: 1px solid #000;" width="30%">
+								<?php if(strlen($med['indication']) > 0):?>
+								<!-- ISPC-2329 pct.y) Lore 26.08.2019 -->
+								<!-- <b><?php echo $this->translate('medication_indication'); ?></b>: --><?php echo html_entity_decode($med['indication']);?>
+								<?php endif;?>
+								
+								<?php if ($medication_type == "isintubated"): ?>
+								
+									<?php if(strlen($med['kcal']) > 0):?>
+										<br/>
+										<b><?php echo $this->translate('medication_kcal'); ?></b>: <?php echo $med['kcal'];?>
+									<?php endif;?>
+									
+									<?php if(strlen($med['volume']) > 0):?>
+										<br/>
+										<b><?php echo $this->translate('medication_volume'); ?></b>: <?php echo $med['volume'];?>
+										<br/>
+									<?php endif;?>
+								<?php endif;?>
+					
+								<?php if(strlen($med['comments']) > 0 ):?>
+									<br/>
+									<?php echo nl2br(html_entity_decode($med['comments'])); ?>
+								<?php endif;?>
+							</td>
+						</tr> 
+					<?php endforeach;?>
+				</tbody>			
+		 	</table>
+		 
+																													<!-- ISPC-2833 Lore 02.03.2021 -->
+	<?php elseif(!in_array($medication_type,$timed_scheduled_medications)  && ($medication_type != "isschmerzpumpe"  && $medication_type != "ispumpe"  && $medication_type != "treatment_care" && $medication_type != "scheduled") && in_array($medication_type,$allow_print['medication_types']) ):?>
+		
+		<?php 
+			if( count($medication_array[$medication_type]) == 0 ) {
+				// ISPC-1848 F I) dont print on medi plans blocks which have no content
+				continue;
+			} 
+		?>
+		
+		<!-- pagebreak before isbedarf -->
+		<?php if('isbedarfs' == $medication_type && count($medication_array[$medication_type]) > 0 ) : ?>
+			 <br/>&nbsp;<br/><br/>&nbsp;<br/> 
+			
+		<?php elseif( count($medication_array[$medication_type]) > 0 ) : ?>
+			<br/>&nbsp;<br/>
+		<?php endif; ?>	
+					<table width="100%" cellpadding="2" cellspacing="0" class="datatable">
+						<thead>
+							<tr nobr="true">
+								<th style="background-color:#D3D3D3; border:1px solid #000" colspan="3"><h3><?php echo $this->translate($medication_type." medication title")?></h3></th>
+							</tr>
+					 		<tr nobr="true">
+					 			<th style="border: 1px solid #000;" width="30%"><b><?php echo $this->translate('medication_drug');?></b> (<?php echo $this->translate('medication_name');?>)</th><!--  1 -->
+					 			<th style="border: 1px solid #000;" width="40%"><b><?php echo $this->translate('medication_dosage'); ?><?=($medication_type == "isbedarfs" || $medication_type == "iscrisis") ? ' / '. $this->translate('Interval for dosage') : '';?></b></th> <!--  5 --><!-- TODO-4208 Ancuta 15.06.2021 -->
+					 			<th style="border: 1px solid #000;" width="30%"><b><?php echo $this->translate('medication_comments'); ?> / <?php echo $this->translate('medication_indication'); ?></b></th><!--  0 -->
+					 			
+					 		</tr>
+					 	</thead>
+					 	<tbody>
+				
+						<!--  LIST MEDICATION -->
+				 		<?php foreach($medication_array[$medication_type] as $k =>$med):?>
+							<tr nobr="true">
+								<!--  MEDICATION NAME -->
+								<td style="border: 1px solid #000;" width="30%">
+									<b><?php if(!empty($med['drug'])) echo html_entity_decode($med['drug']);?></b> (<?php echo html_entity_decode($med['medication']);?>)
+									<?php if ($medication_type == "isintubated"): ?>
+										<?php if(strlen($med['packaging']) > 0):?>
+											<br/>
+											<b><?php echo $this->translate('medication_packaging'); ?></b>: <?php echo $med['packaging_name'];?>
+										<?php endif;?>
+									<?php endif;?>								
+								
+								</td>
+								
+								<!--  MEDICATION DOSAGE INPUTS-->	<!-- ISPC-2524 pct.4) Lore 13.01.2020 -->
+								<td style="border: 1px solid #000;" width="40%" ><?php echo html_entity_decode($med['dosage']);?><?php if($this->show_new_fileds == "1"): ?> <?php echo $med['unit'];?><?php endif; ?>
+                                <?=( ($medication_type == "isbedarfs" || $medication_type == "iscrisis") && ! empty($med['dosage_interval'])) ? ' / '. $med['dosage_interval'] : '';?><!-- TODO-4208 Ancuta 15.06.2021 -->
+                                </td>
+			 
+								<!--  MEDICATION INDICATION  / MEDICATION Comment-->
+								<td style="border: 1px solid #000;" width="30%">
+									<?php if(strlen($med['indication']) > 0):?>
+										<!-- <b><?php echo $this->translate('medication_indication'); ?></b>:  --><?php echo html_entity_decode($med['indication']);?>
+									<?php endif;?>
+									
+									<?php if ($medication_type == "isintubated"): ?>
+									
+										<?php if(strlen($med['kcal']) > 0):?>
+											<br/>
+											<b><?php echo $this->translate('medication_kcal'); ?></b>: <?php echo $med['kcal'];?>
+										<?php endif;?>
+										
+										<?php if(strlen($med['volume']) > 0):?>
+											<br/>
+											<b><?php echo $this->translate('medication_volume'); ?></b>: <?php echo $med['volume'];?>
+											<br/>
+										<?php endif;?>
+									<?php endif;?>
+																		
+									
+									
+									<?php if(strlen($med['comments']) > 0 ):?>
+										<br/>
+										<?php echo nl2br(html_entity_decode($med['comments'])); ?>
+									<?php endif;?>
+								</td>
+							</tr> 			
+				 		<?php endforeach;?>
+				 		</tbody>
+					 </table>
+
+ 
+	<?php elseif($medication_type == "isschmerzpumpe" && in_array($medication_type,$allow_print['medication_types'])):?>
+	
+		<?php 
+			if( count($medication_array[$medication_type]) == 0 ) {
+				// ISPC-1848 F I) dont print on medi plans blocks which have no content
+				continue;
+			} 
+		?>
+		<br/>&nbsp;<br/>
+		
+		<table width="100%" cellpadding="2" cellspacing="0"  class="datatable">
+		<thead>
+		<!-- 	<tr nobr="true">    //ISPC-2329 Lore 13.11.2019
+				<td style="background-color:#D3D3D3; border:1px solid #000" colspan="4"><h3><?php echo $this->translate($medication_type." medication title ")?></h3></td>
+			</tr> -->
+		</thead>
+		<tbody>
+			<!-- <tr nobr="true">
+				<td  colspan="5" height="10">&nbsp;</td>
+			</tr> -->
+		<?php foreach($medication_array[$medication_type] as $pump_id =>$pump_med):?>
+		<?php if(in_array($pump_id,$allow_print['medication_pumpe'])):?>
+		<?php 
+				$cocktail_details=""; 
+			$schmerz[$pumpe_id] = end($medication_array[$medication_type][$pump_id]);
+			$cocktail_details = $schmerz[$pumpe_id]['smpdescription'];
+		?>
+		
+			<tr nobr="true">
+				<td width="100%" style="background-color:#D3D3D3; border:1px solid #000" ><h3><?php echo $this->translate($medication_type." medication title ".$cocktail_details['pumpe_type'])?></h3></td>
+			</tr>
+		
+			<tr nobr="true">
+				<td style="border: 1px solid #000;" width="30%"><b><?php echo $this->translate('medication_drug');?></b> (<?php echo $this->translate('medication_name');?>)</td><!--  1 -->
+	 			<td style="border: 1px solid #000;" width="20%"><b><?php echo $this->translate('medication_dosage_h'); ?></b></td> <!--  2 -->
+	 			<td style="border: 1px solid #000;" width="20%"><b><?php echo $this->translate('medication_dosage24h'); ?></b></td> <!--  2 -->
+	 			<td style="border: 1px solid #000;" width="30%"><b><?php echo $this->translate('medication_indication'); ?></b></td><!--  4 -->
+			</tr>
+	 		
+						<!--  LIST MEDICATION -->
+				 		<?php foreach($pump_med as $k =>$med):?>
+							<tr nobr="true">
+								<!--  MEDICATION NAME -->
+								<td style="border: 1px solid #000;"><b><?php if(!empty($med['drug'])) echo html_entity_decode($med['drug']);?></b> (<?php echo html_entity_decode($med['medication']);?>) </td>
+								
+								<!--  MEDICATION DOSAGE INPUTS-->
+								<!-- ISPC-2684 Lore 09.10.2020 -->
+    							<?php if($this->show_unit_dosage_flussrate_type == "1" ) :?> 
+									<!-- <td style="border: 1px solid #000;" align="center"><?php echo $med['dosage'];?>ml	<br/><?php echo $med['unit_dosage'].$med['unit']?>	</td> -->
+                				   	<!-- TODO-3829 Lore 17.02.2021 -->
+	   							    <td  style="border: 1px solid #000;" width="15%" align="center">
+		   								<?php if($med['dosage'] != "" ) :?> 
+		   									<?php echo $med['dosage'];?>ml	<br/>	
+	   									  	<?php if($med['unit'] != 'ml') :?>
+	        				       		   		<?php echo $med['unit_dosage'].$med['unit']?>
+	        				       		   	<?php endif; ?>
+	        				        	<?php else:?>
+	        				       		   		<?php echo $med['unit_dosage'].$med['unit']?>
+	        				       		<?php endif; ?>
+	   								</td>
+                				<?php else:?>     															
+									<td style="border: 1px solid #000;" align="center"><?php echo  $med['dosage'];?> <?php if(strlen($med['dosage'])>0):?><?php echo $med['unit']?>/h<?php endif;?><?php if(strlen($med['dosage'])>0 && strlen($med['dosage_concentration'])>0):?> (<?php echo $med['dosage_concentration']?>ml/h) <?php endif;?></td>
+                				<?php endif;?>  								
+								 
+								<!--  MEDICATION DOSAGE 24h INPUTS-->
+								<!-- ISPC-2684 Lore 09.10.2020 -->
+								<?php if($this->show_unit_dosage_flussrate_type == "1" ) :?> 
+									<!-- <td style="border: 1px solid #000;" align="center"><?php echo $med['dosage_24h'];?>ml	<br/><?php echo $med['unit_dosage_24h'].$med['unit']?>	</td> -->
+								    <!-- TODO-3829 Lore 17.02.2021 -->
+	   							    <td  style="border: 1px solid #000;" width="15%" align="center">
+		   								<?php if($med['dosage'] != "" ) :?> 
+		   									<?php echo $med['dosage_24h'];?>ml	<br/>	
+	   									  	<?php if($med['unit'] != 'ml') :?>
+	        				       		   		<?php echo $med['unit_dosage_24h'].$med['unit']?>
+	        				       		   	<?php endif; ?>
+	        				        	<?php else:?>
+	        				       		   		<?php echo $med['unit_dosage_24h'].$med['unit']?>
+	        				       		<?php endif; ?>
+	   								</td>                				
+                				<?php else:?>     															
+									<!--  TODO-3585  Ancuta 10.11.2020 - removed round from  $med['dosage_24h'] -->
+									<td style="border: 1px solid #000;" align="center"><?php echo $med['dosage_24h'];?> <?php if(strlen($med['dosage_24h']) > 0):?> <?php echo $med['unit']?> <?php endif;?> <?php if(strlen($med['dosage_24h'])>0 && strlen($med['dosage_24h_concentration'])>0):?> (<?php echo $med['dosage_24h_concentration']?>ml) <?php endif;?></td>
+                				<?php endif;?>								
+								 
+								<!--  MEDICATION INDICATION  / MEDICATION Comment-->
+								<td style="border: 1px solid #000;">
+								<?php if(strlen($med['indication']) > 0):?>
+									<!-- <b><?php echo $this->translate('medication_indication'); ?></b>:  --><?php echo html_entity_decode($med['indication']);?>
+								<?php endif;?>
+								</td>
+							</tr> 			
+				 		<?php endforeach;?>
+				 			<tr nobr="true">
+								<td style="border: 1px solid #000;" colspan="4" bgcolor="#f8f8f8" height="1"></td>
+							</tr>
+							<tr nobr="true">
+								<td style="border: 1px solid #000;"><label><?php echo $this->translate("Kommentar")?>:</label></td>
+								<td style="border: 1px solid #000;" colspan="3" ><?php echo html_entity_decode($cocktail_details['description'])?></td>
+							</tr>		 
+							
+							<tr nobr="true">
+								<td style="border: 1px solid #000;"><label><?php echo $this->translate("medication_type")?>:</label></td>
+								<td style="border: 1px solid #000;" colspan="3" ><?php echo html_entity_decode($cocktail_details['pumpe_medication_type'])?></td>
+							</tr>
+							<tr nobr="true">
+								<!-- ISPC-2684 Lore 09.10.2020 -->
+    							<?php if($this->show_unit_dosage_flussrate_type == "1" ) :?> 
+									<td style="border: 1px solid #000;"><label><?php echo "Flussrate"?>:</label></td>
+									<td style="border: 1px solid #000;" colspan="3" ><?php echo html_entity_decode($cocktail_details['flussrate']).$cocktail_details['flussrate_type']?></td>    							
+                				<?php else:?> 
+									<td style="border: 1px solid #000;"><label><?php echo $this->translate("Flussrate")?>:</label></td>
+									<td style="border: 1px solid #000;" colspan="3" ><?php echo html_entity_decode($cocktail_details['flussrate'])?></td>
+                				<?php endif;?>  
+							</tr>
+							
+							<tr nobr="true">
+								<td style="border: 1px solid #000;"><label><?php echo $this->translate("medication_carrier_solution")?>:</label></td>
+								<td style="border: 1px solid #000;" colspan="3" ><?php echo html_entity_decode($cocktail_details['carrier_solution'])?></td>
+							</tr>
+							
+							<?php if( 1 || $cocktail_details['pumpe_type'] =="pca"):?>
+							<tr nobr="true">
+								<td style="border: 1px solid #000;"><label><?php echo $this->translate("Bolus")?>:</label></td>
+								<td style="border: 1px solid #000;" colspan="3" ><?php echo html_entity_decode($cocktail_details['bolus'])?></td>
+							</tr>		 
+							<tr nobr="true">
+								<td style="border: 1px solid #000;"><label><?php echo $this->translate("Max Bolus")?>:</label></td>
+								<td style="border: 1px solid #000;" colspan="3" ><?php echo html_entity_decode($cocktail_details['max_bolus'])?></td>
+							</tr>		 
+									 
+							<tr nobr="true">
+								<td style="border: 1px solid #000;"><label><?php echo $this->translate("Sperrzeit")?>:</label></td>
+								<td style="border: 1px solid #000;" colspan="3" ><?php echo html_entity_decode($cocktail_details['sperrzeit'])?></td>
+							</tr>	 
+							<?php endif;?>
+							<tr nobr="true">
+								<td  colspan="5" height="10">&nbsp;</td>
+							</tr>
+		<?php endif;?>
+		<?php endforeach;?>
+		</tbody>
+	</table>
+		 
+	<!-- ISPC-2833 Lore 02.03.2021 -->
+		<?php elseif($medication_type == "ispumpe" && in_array($medication_type,$allow_print['medication_types'])):?>
+	
+		<?php 
+			if( count($medication_array[$medication_type]) == 0 ) {
+				continue;
+			} 
+		?>
+					
+	<br/>&nbsp;<br/>
+	
+		<table width="100%" cellpadding="2" cellspacing="0" >
+		<thead>
+		<!-- 	<tr nobr="true">   //ISPC-2329 Lore 13.11.2019
+					<th colspan="5"  style="background-color:#D3D3D3; border:1px solid #000" ><h3><?php echo $this->translate($medication_type." medication title ")?></h3></th>
+			</tr> -->				
+		</thead>
+		<tbody>
+			<!-- <tr nobr="true">
+				<td  colspan="5" height="10">&nbsp;</td>
+			</tr> -->
+		<?php foreach($medication_array[$medication_type] as $pump_id =>$pump_med):?>
+		<?php if(in_array($pump_id,$allow_print['medication_pumpe'])):?>
+		<?php 
+			$cocktail_details=""; 
+			$pumpe[$pumpe_id] = end($medication_array[$medication_type][$pump_id]);
+			$cocktail_details = $pumpe[$pumpe_id]['smpdescription']; //die(print_r($cocktail_details));
+
+		?>
+			<tr nobr="true">
+				<td width="100%" style="background-color:#D3D3D3; border:1px solid #000" ><h3><?php echo $this->translate($medication_type." medication title ")?></h3></td>
+			</tr>
+		
+			<tr nobr="true">
+				<td width="100%" style="border: 1px solid #000;" height="10">&nbsp;</td>
+			</tr>
+			<tr nobr="true">
+				<td  style="border: 1px solid #000;" width="30%"><label><?php echo $this->translate("ispumpe_pat_weight")?>:</label></td>
+				<td style="border: 1px solid #000;"><?php echo html_entity_decode($cocktail_details['pat_weight'])?></td>
+			</tr>
+						
+			<tr nobr="true">
+				<td  style="border: 1px solid #000;" width="30%"><label><?php echo $this->translate("ispumpe_overall_volume")?>:</label></td>
+				<td  style="border: 1px solid #000;" width="70%"><?php echo html_entity_decode($cocktail_details['overall_volume'])?></td>
+			</tr>		 
+			
+			<tr nobr="true">
+				<td  style="border: 1px solid #000;"><label><?php echo $this->translate("ispumpe_run_rate")?>:</label></td>
+				<td  style="border: 1px solid #000;"><?php echo html_entity_decode($cocktail_details['run_rate'])?></td>
+			</tr>
+								 
+			<tr nobr="true">
+				<td  style="border: 1px solid #000;" width="30%"><label><?php echo $this->translate("ispumpe_used_liquid")?>:</label></td>
+				<td style="border: 1px solid #000;"><?php echo html_entity_decode($cocktail_details['used_liquid'])?></td>
+			</tr>
+			<tr nobr="true">
+				<td width="100%" style="border: 1px solid #000;" height="10">&nbsp;</td>
+			</tr>		
+			
+			<tr nobr="true">
+	 			<td style="border: 1px solid #000;" width="30%"><b><?php echo $this->translate('medication_name');?></b></td><!--  1 -->
+	 			<td style="border: 1px solid #000;" width="10%"><b><?php echo $this->translate('medication_ispumpe_dosage'); ?></b></td> <!--  2 -->
+	 			<td style="border: 1px solid #000;" width="10%"><b><?php echo $this->translate('ispumpe_overall_dosage_h'); ?></b></td> <!--  2 -->
+	 			<td style="border: 1px solid #000;" width="10%"><b><?php echo $this->translate('ispumpe_overall_dosage_24h'); ?></b></td> <!--  2 -->
+	 			<td style="border: 1px solid #000;" width="10%"><b><?php echo $this->translate('ispumpe_overall_dosage_pump'); ?></b></td> <!--  2 -->
+	 			<td style="border: 1px solid #000;" width="10%"><b><?php echo $this->translate('ispumpe_overall_drug_volume'); ?></b></td> <!--  2 -->
+	 			<td style="border: 1px solid #000;" width="10%"><b><?php echo $this->translate('ispumpe_unit2ml'); ?></b></td><!--  4 -->
+	 			<td style="border: 1px solid #000;" width="10%"><b><?php echo $this->translate('medication_indication'); ?></b></td><!--  0 -->
+			</tr>
+	 		
+				<!--  LIST MEDICATION -->
+		 		<?php foreach($pump_med as $k =>$med):?>
+				
+					<tr nobr="true">
+						<!--  MEDICATION NAME -->
+						<td  style="border: 1px solid #000;" width="30%"><b><?php echo html_entity_decode($med['medication']);?></b>
+							<?php if(strlen($med['drug'])>0):?>
+								<hr/>
+								<i><?php echo $this->translate('medication_drug'); ?>:</i> <?php echo html_entity_decode($med['drug']);?>
+							<?php endif; ?>
+							
+							<?php if($this->show_new_fileds == "1"): ?>
+								<hr/>
+								<i><?php echo $this->translate('medication_unit'); ?>:</i> <?php echo $med['unit'];?>
+							<?php endif; ?>
+							
+						</td>
+						
+						<!--  MEDICATION DOSAGE INPUTS-->
+						<td style="border: 1px solid #000;" width="10%" align="center"><?php echo $med['old_dosage'].$med['unit'].'/kg/h' ?></td> 
+					    <td style="border: 1px solid #000;" width="10%" align="center"><?php echo $med['overall_dosage_h'];?></td>              											
+						<td style="border: 1px solid #000;" width="10%" align="center"><?php echo $med['overall_dosage_24h'];?></td> 
+						<td style="border: 1px solid #000;" width="10%" align="center"><?php echo $med['overall_dosage_pump'];?></td> 
+						<td style="border: 1px solid #000;" width="10%" align="center"><?php echo $med['drug_volume'];?>	</td> 
+						<td style="border: 1px solid #000;" width="10%" align="center"><?php echo $med['unit2ml'];?>	</td> 
+		
+						<!--  MEDICATION indication-->
+	 					<td  style="border: 1px solid #000;" width="10%" align="center"><?php echo html_entity_decode($med['indication']);?></td>
+	 
+					</tr>
+		 		<?php endforeach;?>
+			 		
+			<tr nobr="true">
+				<td  style="border: 1px solid #000;" colspan="8" bgcolor="#f8f8f8" height="10">&nbsp;</td>
+			</tr>
+			
+			<tr nobr="true">
+				<td  style="border: 1px solid #000;" width="30%"><label><?php echo $this->translate("ispumpe_overall_drug_volume")?>:</label></td>
+				<td  style="border: 1px solid #000;" width="70%"><?php echo html_entity_decode($cocktail_details['overall_drug_volume'])?></td>
+			</tr>		 
+			
+			<tr nobr="true">
+				<td  style="border: 1px solid #000;"><label><?php echo $this->translate("ispumpe_liquid_amount")?>:</label></td>
+				<td  style="border: 1px solid #000;"><?php echo html_entity_decode($cocktail_details['liquid_amount'])?></td>
+			</tr>
+
+			<tr nobr="true">
+				<td style="border: 1px solid #000;"><label><?php echo $this->translate("medication_type")?>:</label></td>
+				<td style="border: 1px solid #000;"><?php echo html_entity_decode($cocktail_details['pumpe_medication_type'])?></td>
+			</tr>
+						
+			<tr nobr="true">
+				<td  style="border: 1px solid #000;"><label><?php echo $this->translate("ispumpe_overall_running_time")?>:</label></td>
+				<td  style="border: 1px solid #000;"><?php echo html_entity_decode($cocktail_details['overall_running_time'])?></td>
+			</tr>
+			
+			<tr nobr="true">
+				<td  style="border: 1px solid #000;"><label><?php echo $this->translate("ispumpe_min_running_time")?>:</label></td>
+				<td  style="border: 1px solid #000;"><?php echo html_entity_decode($cocktail_details['min_running_time'])?></td>
+			</tr>
+			
+			<tr nobr="true">
+				<td style="border: 1px solid #000;"><label><?php echo $this->translate("ispumpe_bolus")?>:</label></td>
+				<td style="border: 1px solid #000;"><?php echo html_entity_decode($cocktail_details['bolus'])?></td>
+			</tr>
+
+			<tr nobr="true">
+				<td style="border: 1px solid #000;"><label><?php echo $this->translate("ispumpe_max_bolus_day")?>:</label></td>
+				<td style="border: 1px solid #000;"><?php echo html_entity_decode($cocktail_details['max_bolus_day'])?></td>
+			</tr>			
+
+			<tr nobr="true">
+				<td  style="border: 1px solid #000;"><label><?php echo $this->translate("ispumpe_max_bolus_after")?>:</label></td>
+				<td style="border: 1px solid #000;"><?php echo html_entity_decode($cocktail_details['max_bolus_after'])?></td>
+			</tr>
+
+			<tr nobr="true">
+				<td style="border: 1px solid #000;"><label><?php echo $this->translate("ispumpe_next_bolus")?>:</label></td>
+				<td style="border: 1px solid #000;"><?php echo html_entity_decode($cocktail_details['next_bolus'])?></td>
+			</tr>
+									
+			<tr nobr="true">
+				<td  colspan="8" height="10">&nbsp;</td>
+			</tr>
+	<?php endif;?>
+	<?php endforeach;?>
+	</tbody>
+	</table>
+	<!-- //. -->
+		 
+	<?php elseif($medication_type == "treatment_care" && in_array($medication_type,$allow_print['medication_types']) ):?>
+	
+		<?php 
+			if( count($medication_array[$medication_type]) == 0 ) {
+				// ISPC-1848 F I) dont print on medi plans blocks which have no content
+				continue;
+			} 
+		?>
+		
+		<br/>&nbsp;<br/>			
+		<table width="100%" cellpadding="2" cellspacing="0" class="datatable">
+			<thead>
+				<tr nobr="true">
+					<th style="background-color:#D3D3D3; border:1px solid #000" colspan="2"><h3><?php echo $this->translate($medication_type." medication title")?></h3></th>
+				</tr>
+		 		<tr nobr="true">
+		 			<th style="border: 1px solid #000;" width="30%"><b><?php echo $this->translate('medication_name');?></b></th><!--  1 -->
+		 			<th style="border: 1px solid #000;" width="70%"><b><?php echo $this->translate('medication_comments'); ?></b></th><!--  0 -->
+		 		</tr>
+		 	</thead>
+		 	<tbody>	
+			<!--  LIST MEDICATION -->
+	 		<?php foreach($medication_array[$medication_type] as $k =>$med):?>
+				<tr nobr="true">
+					<!--  MEDICATION NAME -->
+					<td style="border: 1px solid #000;" width="30%"><?php echo html_entity_decode($med['medication']);?>?</td>
+					
+					<!--  MEDICATION Comment-->
+					<td style="border: 1px solid #000;" width="70%"><?php echo nl2br(html_entity_decode($med['comments'])); ?></td>
+				</tr> 			
+	 		<?php endforeach;?>
+	 		</tbody>
+		 </table>
+		
+	<?php elseif($medication_type == "scheduled" && in_array($medication_type,$allow_print['medication_types']) ):?>
+	
+		<?php 
+			if( count($medication_array[$medication_type]) == 0 ) {
+				// ISPC-1848 F I) dont print on medi plans blocks which have no content
+				continue;
+			} 
+		?>
+		
+		<br/>&nbsp;<br/>
+					<table width="100%" cellpadding="2" cellspacing="0" class="datatable">
+						<thead>
+							<tr nobr="true">
+								<th style="background-color:#D3D3D3; border:1px solid #000" colspan="4"><h3><?php echo $this->translate($medication_type." medication title")?></h3></th>
+							</tr>
+					 		<tr nobr="true">
+					 			<th style="border: 1px solid #000;" width="30%"><b><?php echo $this->translate('medication_drug');?></b> (<?php echo $this->translate('medication_name');?>)</th><!--  1 -->
+					 			<th style="border: 1px solid #000;" width="40%"><b><?php echo $this->translate('medication_dosage'); ?></b></th> <!--  5 -->
+					 			<th style="border: 1px solid #000;" width="20%"><b><?php echo $this->translate('medication_comments'); ?> / <?php echo $this->translate('medication_indication'); ?></b></th><!--  0 -->
+					 			<th style="border: 1px solid #000;" width="10%"><b><?php echo $this->translate('medication_days_interval'); ?></b></th><!--  0 -->
+					 		</tr>
+						</thead>
+						<tbody>
+						<!--  LIST MEDICATION -->
+				 		<?php foreach($medication_array[$medication_type] as $k =>$med):?>
+							<tr nobr="true">
+								<!--  MEDICATION NAME -->
+								<td style="border: 1px solid #000;" width="30%"><b><?php if(!empty($med['drug'])) echo html_entity_decode($med['drug']);?></b> (<?php echo html_entity_decode($med['medication']);?>)</td>
+								
+								<!--  MEDICATION DOSAGE INPUTS-->
+								<td style="border: 1px solid #000;" width="40%"align="center"><?php echo html_entity_decode($med['dosage']);?><?php if($this->show_new_fileds == "1"): ?> <?php echo $med['unit'];?><?php endif; ?></td>
+			 
+								<!--  MEDICATION INDICATION  / MEDICATION Comment-->
+								<td style="border: 1px solid #000;" width="20%">
+									<?php if(strlen($med['indication']) > 0):?>
+										<!-- <b><?php echo $this->translate('medication_indication'); ?></b>:  --><?php echo html_entity_decode($med['indication']);?>
+									<?php endif;?>
+									
+									<?php if(strlen($med['comments']) > 0 ):?>
+										<br/>
+										<?php echo nl2br(html_entity_decode($med['comments'])); ?>
+									<?php endif;?>
+								</td>
+								<!--  MEDICATION DAYS INTERVAL / ADMINISTRATION DAY-->
+								<td style="border: 1px solid #000;" width="10%" align="left"><?php echo $med['days_interval'];?>
+									<?php if($med['administration_date'] != "0000-00-00 00:00:00"): ?>
+										<br/><b><?php echo $this->translate('medication_administration_date'); ?></b>:<?php echo date("d.m.Y",strtotime($med['administration_date']));?>
+									<?php endif;?>
+								</td>
+			 
+							</tr> 			
+				 		<?php endforeach;?>
+				 		</tbody>
+					 </table>
+				<!-- </td>
+			 </tr>
+		 </table>	-->	 
+		 
+	<?php else:?>
+		 
+	<?php endif;?>
+	
+	
+	
+<?php endforeach;?>

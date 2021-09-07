@@ -1,0 +1,180 @@
+<?php
+$this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/pagination_style.css?'.date('Ymd'));
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/data_tables/jquery.dataTables.js?'.date('Ymd'));
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/data_tables/dataTables.jqueryui.js?'.date('Ymd'));
+
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/data_tables/dataTables.jqueryui.css?' . date('Ymd'));
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/page-css/btmbuchhistory.css?' . date('Ymd'));
+
+$btmbuchhistory_lang = $this->translate('btmbuchhistory_lang');
+?>
+
+<script type="text/javascript">
+
+	var btm_special_user = false;
+	<?php if ( $this->btm_special_user ) : ?>
+	btm_special_user =  true;
+	<?php endif; ?>
+		
+	var DEBUGMODE = false;
+	<?php if (defined("DEBUGMODE") && DEBUGMODE) : ?>
+	DEBUGMODE = true;
+	<?php endif; ?>
+	
+</script>
+
+<div style="float:left;">
+	<a class="button" href="medication/btmbuch"><?php echo $this->translate('Back') ?></a>
+</div>
+
+<!-- print pdf button on right -->
+<div style="float:right;" id="print_pdf_btn_div">
+	<input type="button" onclick="print_pdf_with_filters()" value="<?php echo $this->translate('btmverlaufgrid_history_generatepdf'); ?>" name="pdfgen" />
+</div>
+
+<br/>
+
+<form id="filter" action="" method="post">
+<table class="btm_history_table_medications livesearchdropdown">
+
+	<tr>
+		<td  style="vertical-align:middle;">
+			<b><?php echo $btmbuchhistory_lang['filter by user'];  ?></b>
+		</td>
+		<td>
+			<?php echo $this->formSelect("selectuser",$this->selectuser, array("id" => "selectuser", "onchange" => "redrawDatatable()"), $this->selectusersarray); ?>
+		</td>
+		
+		<td  style="vertical-align:middle;">
+			<b><?php echo $btmbuchhistory_lang['filter by year'];  ?></b>
+		</td>
+		<td>
+			<?php echo $this->formSelect("selectyear", "all", array("id" => "selectyear", "onchange" => "redrawDatatable()") , $this->selectyear_array ); ?>
+		</td>
+	</tr>
+
+	<tr>
+		<th colspan="3">
+			<b><?php echo $btmbuchhistory_lang['filter by event table']; ?></b>
+		</th>
+		
+		<th style="text-align:right">
+			<label>
+				<?php echo $this->formCheckbox("toggleall_events", "", array("checked"=>true, "onchange" => "toggleall(this, 'tablefilter')")); ?>	
+				<?php echo $btmbuchhistory_lang['toggle all'];  ?>
+			</label>
+		</th>
+	</tr>
+		
+	<tr>
+		<td  colspan="4">
+			<div style="float:left; padding:5px 10px 5px 5px;">
+			<label>
+				<input value="tresor" name="tablefilter[]" onclick="redrawDatatable();" checked="checked" type="checkbox">
+				<?php echo $btmbuchhistory_lang['event tresor']; ?>
+			</label>
+			</div>
+			<div  style="float:left; padding:5px 10px 5px 5px;">
+			<label>
+				<input value="user" name="tablefilter[]" onclick="redrawDatatable();" checked="checked" type="checkbox">
+				<?php echo $btmbuchhistory_lang['event user']; ?>
+			</label>
+			</div>
+			<div  style="float:left; padding:5px 10px 5px 5px;">
+			<label>
+				<input value="patient" name="tablefilter[]" onclick="redrawDatatable();" checked="checked" type="checkbox">
+				<?php echo $btmbuchhistory_lang['event patient']; ?>
+			</label>
+			</div>
+		</td>
+	</tr>
+	
+	
+	<tr>
+		<th colspan="3">
+			<b><?php echo $btmbuchhistory_lang['filter by medicine'];  ?></b>
+		</th>
+		
+		<th style="text-align:right">
+			<label>
+				<?php echo $this->formCheckbox("toggleall_events", "", array("checked"=>true, "onchange" => "toggleall(this, 'filteron')")); ?>	
+				<?php echo $btmbuchhistory_lang['toggle all'];  ?>
+			</label>
+		</th>
+		
+	</tr>
+	
+	<tr>
+	
+<?php
+	$cnt = 0;
+	$filteron = $this->filteron ;
+	foreach ($this->medicationsarray as $medication):
+		$cnt++;
+?>
+		<td>
+			<label>
+				<input value="<?php echo $medication['id']; ?>" name="filteron[]" onclick="redrawDatatable();" checked="checked" type="checkbox">
+				<?php echo $medication['name']; ?>
+			</label>
+		</td>
+		
+		<?php
+		if ($cnt % 4 ==0) {
+			echo "</tr><tr>";
+		}
+
+?>
+<?php endforeach; ?>
+	
+	<?php
+		//missing td's
+		if (count($this->medicationsarray ) % 4 !=0) 
+		for ($i=0; $i< (4 - count($this->medicationsarray ) % 4); $i++){
+			echo "<td></td>";
+		}
+	?>
+	
+	
+	</tr>
+	
+
+
+</table>
+</form>
+
+
+<div style="display:inline-block;">
+<table id="btm_history_dtable" class="patientMasterStab1Table livesearchdropdown" style="width:100%;">
+	<tr>
+		<td colspan="6"><?php echo $this->translate('loadingpleasewait');?></td>
+	</tr>
+</table>
+</div>>
+
+<!-- CORRECTION DIALOG-->
+<div id="correction_dialog" style="overflow-y: none; display:none">
+	
+	<div class="correction_info">
+	</div>
+
+	<div class="correction_amount">
+		<label for="amount"><?php echo $btmbuchhistory_lang["correction amount"]; ?></label>&nbsp;&nbsp;
+		<input name="amount" id="amount" type="text"/>
+	</div>
+
+	<div class="correction_comment">
+		<label for="comment"><?php echo $btmbuchhistory_lang["correction comment"]; ?></label>&nbsp;&nbsp;
+		<textarea name="comment" id="comment" type="text"></textarea>
+	</div>
+
+</div>
+
+
+
+
+
+
+
+
+

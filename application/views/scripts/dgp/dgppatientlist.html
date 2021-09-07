@@ -1,0 +1,156 @@
+<script type="text/javascript">
+	var xml_gen_disabled = '2';
+	var pl_loading = function(){
+
+		var dlist = '<div class="loadingdiv" align="center"><img src="<? echo RES_FILE_PATH; ?>/images/pageloading.gif"><br />	Loading... please wait</div>';
+		document.getElementById('content').innerHTML = dlist;
+
+	}
+
+	var display_only_completed = "<?php echo $this->display_only_completed; ?>"
+	function loadpage(ord,clm)
+	{
+		if($('#hdnlastpage').val()>=parseInt($('#pageno').val())){
+			if((parseInt($('#pageno').val()))>0){pgno=(parseInt($('#pageno').val()-1));}else{pgno=0;}
+			ajaxCallserver({url:'dgp/dgplist?clm='+clm+'&ord='+ord+'&pgno='+pgno,callLoading:pl_loading});
+		}else{
+			jAlert("<? echo $this->translate('invalidpageno'); ?>");
+		}
+	}
+
+	var callBack = function(params)
+	{
+		document.getElementById('content').innerHTML = params.dgppatientlist;
+	}
+	function DoNav(theUrl)
+	{
+		document.location.href = appbase+theUrl;
+	}
+
+	$(document).ready(function() {
+		
+		var answer = "<?php echo $_REQUEST['c'];?>";
+		
+		if(answer){
+			$("#server_answer").dialog({
+				autoOpen: true,
+				resizable: false,
+				height: 120,
+				width: 350,
+				modal: true,
+				open: function() {
+				},
+				buttons: {
+					"Close": function() {
+						$("#server_answer").dialog('close');
+						redirect();
+					}
+				}
+			});
+		}
+		
+		
+		ajaxCallserver({callLoading:pl_loading,url:'dgp/dgplist?clm=dd&ord=DESC'});
+		update_selected_patients();
+		$('#dgp_pat_all').live('change', function() {
+			var that = $(this);
+			var incr = '1';
+			
+			$('.dgp_patient').each(function(){
+				if(that.is(':checked') && incr <= '30') {
+					$(this).attr('checked', !$(this).attr('checked'));
+				} else {
+					$(this).removeAttr('checked');
+				}
+				incr++;
+				update_selected_patients();
+			});				
+		});
+		
+		$('.dgp_patient').live('change', function(event) {
+			var selected = $('.dgp_patient:checked').length;
+			
+			if(selected > '30')
+			{
+				$(this).removeAttr('checked');
+				//alert user
+				alert('<?php echo $this->translate('maximum_patients_reached'); ?>');
+			}
+			update_selected_patients();
+		});
+
+		$('#dgp_user').live('change', function(event) {
+			update_selected_patients();
+		});
+
+		$('#dgp_pass').live('change', function(event) {
+			update_selected_patients();
+		});
+		
+	});
+	function redirect() {
+		window.location.href = "<?php echo APP_BASE; ?>dgp/dgppatientlist";
+	}
+	function update_selected_patients()
+	{
+		var checked = $('.dgp_patient:checked').length;
+		$('#selected_patients').html(checked);
+
+		var pass_len = $('#dgp_pass').val().length;
+		var user_len = $('#dgp_user').val().length;
+
+		
+		if(display_only_completed == '1'){
+			
+			if(checked > 0 && xml_gen_disabled != '1' && pass_len > 0 && user_len > 0)
+			{
+				$('input[type="submit"]').removeAttr('disabled');
+			}
+			else
+			{
+				$('input[type="submit"]').attr('disabled', true);
+			}			
+			
+		} else{
+
+			if(checked > 0 && checked == '30' && xml_gen_disabled != '1' && pass_len > 0 && user_len > 0)
+			{
+				$('input[type="submit"]').removeAttr('disabled');
+			}
+			else
+			{
+				$('input[type="submit"]').attr('disabled', true);
+			}
+			
+		}
+	}
+</script>
+<style>
+	td.patients_selected {
+		background-color: wheat;
+		font-size: 1.3em;
+		font-weight: bolder;
+		text-align: center;
+	}
+</style>
+
+<form name="export" id="dgp_export" action="dgp/dgpexport" method="post">
+	<div id="content">
+		<? echo $this->patientgrid ?>
+	</div>
+	
+	DGP Username: <input type="text" id="dgp_user" name="dgp_user" value="<?php echo $this->dgp_user?>"  autocomplete="off"  /><br />
+	DGP Password: <input type="password" id="dgp_pass" name="dgp_pass" value="<?php echo $this->dgp_pass?>"  autocomplete="off"  /> <br />
+<br />
+	<input type="submit" name="kern" value="<? echo $this->translate('generate_xml_kern'); ?>" disabled="disabled" />
+	<input type="submit" name="sapv" value="<? echo $this->translate('generate_xml_sapv'); ?>" disabled="disabled" />
+</form>
+
+<div id="server_answer" >
+	<?php if(!empty($_REQUEST['flg']) && ($_REQUEST['c'] == '9999' || $_REQUEST['c'] == '0000' || $_REQUEST['c'] == '1000' || $_REQUEST['c'] == '2000' || $_REQUEST['c'] == '3100')):  ?>
+		<span class="alert_dgp err_<?php echo $_REQUEST['flg']?>"><?php echo $this->translate('xml_upload_status_'.$_REQUEST['c'])  ?></span>
+	<?php endif;  ?>
+</div>
+
+
+

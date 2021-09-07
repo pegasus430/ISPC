@@ -1,0 +1,294 @@
+<!--  Maria:: Migration CISPC to ISPC 22.07.2020/09.08.2020 -->
+ <!-- Maria:: Migration CISPC to ISPC 20.08.2020 -->
+<?php
+//$this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/page-css/kvno_assessment_style.css');
+
+$this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/page-css/contact_form_style.css');
+//$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/autogrow/jquery.elastic.js');
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/autogrow/jquery.elastic.source_new.js');
+$this->headScript()->appendFile(RES_FILE_PATH . '/javascript/dragdiv/dragdivpatient.js');
+//$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/jquery.blockUI.js');
+
+
+
+
+
+$this->headScript()
+->appendFile(RES_FILE_PATH . '/javascript/inputmask-3.x/dist/jquery.inputmask.bundle.js')
+->appendFile(RES_FILE_PATH . '/javascript/pms/jquery.sum.js')
+->appendFile(RES_FILE_PATH . '/javascript/dateUtil.js');
+
+
+
+$contact_form_lang = $this->translate('contact_form_lang');
+
+
+$allowed_blocks = $this->allowed_blocks;
+$opened_blocks = $this->opened_blocks;
+
+?>
+<style>
+    .kvnotitle{
+        display:block;
+        width:100%;
+        margin-bottom:25px;
+
+    }
+    .reass {
+        display:block;
+        float: right;
+    }
+
+    .reass h1 {
+        display:block;
+        float: left;
+    }
+    .reass input {
+        width:107px;
+        display:block;
+        float:left;
+        margin-top: -5px;
+
+    }
+    .reass .ui-datepicker-trigger {
+        margin-top: -9px;
+    }
+    #error_reass{
+        color: red;
+    }
+    /* ISPC-2476 */
+    #error_reass2{
+        color: red;
+    }
+    .comment_field{
+        width: 100%;
+        height: 100px;
+    }
+    .comment_fields{
+        margin: 5px 2px 20px;
+        width: 97%;
+        position: relative;
+    }
+</style>
+<script type="text/javascript">
+
+    $(document).ready(function(){
+        $('form').submit(function() {
+            setTimeout(function () {$('input[type=submit]').attr('disabled', true);}, 150);
+            setTimeout(function () {$('input[type=submit]').attr('disabled', false);}, 8000);
+        });
+        $('#save_new_assessment').live('click', function(){
+            //$('#form_id').val('0');
+            console.log('save clicked');
+            $('#new_assessment').val('1');
+            //$('form').submit();
+            $('#dialog_template').dialog('open');
+        })
+        $('#btnsubmit').live('click', function(){
+            //$('#form_id').val('0');
+            console.log('normal save clicked');
+            $('#new_assessment').val('0');
+            $('#next_assessment_at').val(false);
+            $('#completed_at').val(false);
+            $('#reassessment').submit();
+
+        })
+        //Templates dialog
+        $('#dialog_template').dialog({
+            resizable: false,
+            modal: true,
+            autoOpen: false,
+            width: 400,
+            height: 250,
+            title: "Datum auswählen",
+            open: function() {
+                $('.reassessment_datepicker').datepicker('hide');
+                $('.reassessment_datepicker').blur();
+                var ipos_date_raw = $('#ipos_date').val();
+                if(ipos_date_raw.trim() !== ''){
+                    $('#completed_at_proposal').val(ipos_date_raw );
+                    var pattern = /(\d{2})\.(\d{2})\.(\d{4})/;
+                    var ipos_date_as_date = new Date(ipos_date_raw.replace(pattern,'$3-$2-$1'));
+                    console.log(ipos_date_as_date);
+                    var reassessment_in_14_days = new Date(ipos_date_as_date.getTime() + 12096e5)
+                    var now = new Date();
+                    if(reassessment_in_14_days < now){
+                        $('#error_reass').show();
+                    }else{
+                        $('#error_reass').hide();
+                    }
+                    if(ipos_date_as_date > now){
+                        console.log('future');
+                        $('#error_reass2').show();
+                    }else{
+                        console.log('past');
+                        $('#error_reass2').hide();
+                    }
+                    var reassessment_in_14_days_formatted = $.datepicker.formatDate( "dd.mm.yy", reassessment_in_14_days)
+                    $('#next_assessment_at_proposal').val(reassessment_in_14_days_formatted );
+
+
+                }
+
+
+
+                //ajaxCallserver({url: appbase+'ajax/lettertemplates', data: {id: "<?php echo $_REQUEST['id']; ?>"}, callLoading: template_loader});
+            },
+            buttons: {
+                "Abbrechen": function () {
+                    $(this).dialog("close");
+                },
+                "Übernehmen" : function(){
+                    $('#next_assessment_at').val($('#next_assessment_at_proposal').val());
+                    $('#completed_at').val($('#completed_at_proposal').val());
+                    $(this).dialog("close");
+                    $('#reassessment').submit();
+
+                }
+            }
+        });
+
+        $('#next_assessment_at_proposal').on('change', function(){
+            console.log($(this).val());
+            var proposalDate = $("#next_assessment_at_proposal").datepicker('getDate');
+            var now = new Date();
+            if(proposalDate < now){
+                $('#error_reass').show();
+            }else{
+                $('#error_reass').hide();
+            }
+        })
+        
+        $('#completed_at_proposal').on('change', function(){
+            var proposalDate = $("#completed_at_proposal").datepicker('getDate');
+            console.log(proposalDate);
+
+            var now = new Date();
+            if(proposalDate > now){
+                $('#error_reass2').show();
+            }else{
+                $('#error_reass2').hide();
+            }
+
+           // var reassessment_in_14_days = new Date();
+            //reassessment_in_14_days.setDate(proposalDate.getDate() +14);
+            var reassessment_in_14_days = new Date(proposalDate.getTime() + 12096e5)
+            console.log(reassessment_in_14_days);
+            var now = new Date();
+            if(reassessment_in_14_days < now){
+                $('#error_reass').show();
+            }else{
+                $('#error_reass').hide();
+            }
+            var reassessment_in_14_days_formatted = $.datepicker.formatDate( "dd.mm.yy", reassessment_in_14_days)
+            $('#next_assessment_at_proposal').val(reassessment_in_14_days_formatted );
+
+        })
+
+        if($('#indic_sapv_nein:checked').val() == 2){
+            $('#indic_sapv_div').show("slow");
+        }
+
+        $("input[name=indic_sapv]").change(function() {
+            if($(this).val() == 2){
+                $('#indic_sapv_div').show("slow");
+            } else {
+                $('#indic_sapv_txt').val("");
+                $('#indic_sapv_div').hide("slow");
+            }
+        });
+        $('#fill_date').datepicker({
+            dateFormat: 'dd.mm.yy',
+            showOn: "both",
+            buttonImage: $('#calImg').attr('src'),
+            buttonImageOnly: true,
+            changeMonth: true,
+            changeYear: true,
+            nextText: '',
+            prevText: ''
+        });
+
+
+        $('.reassessment_datepicker').datepicker({
+            dateFormat: 'dd.mm.yy',
+            showOn: "both",
+            buttonImage: $('#calImg').attr('src'),
+            buttonImageOnly: true,
+            changeMonth: true,
+            changeYear: true,
+            nextText: '',
+            prevText: ''
+        });
+
+    });
+
+
+</script>
+<div class="clear"></div>
+
+    <div style="display: none;"> <img id="calImg" src="<?php echo RES_FILE_PATH;  ?>/images/calendar.png" alt="Popup" class="trigger" /> </div>
+    <?php echo $this->patientinfo ?>
+    <?php echo $this->tabmenus ?>
+<form action="" name="reassessment" id="reassessment" method="post">
+    <div id="Einzel" class="tab_container"> <br />
+        <div class="kvnotitle"><div style="display: block;float: left"><h1>Re-Assessment</h1></div>
+            <!--<div class="reass"><h1>Datum:&nbsp;&nbsp;</h1>
+            <input type="text" name="fill_date" id="fill_date" value="<?php echo $this->patientdata['fill_date']; ?>" ></div>--></div>
+        <div class="clear"></div>
+<?php
+    $block = $this->ipos;
+    echo $block['__formHTML'];
+
+    $block = $this->karnofsky;
+    echo $block['__formHTML'];
+?>
+	<!-- ISPC-2476 -->
+    <table class="comment_fields">
+       <tr>
+           <td style="vertical-align: top;padding-right:5px;">Kommentar </td>
+           <td width="70%"><textarea class="comment_field" name="comment[text]"><?php echo $this->patientdata['comment']['text']; ?></textarea></td>
+       </tr>
+        <tr>
+           <td style="vertical-align: top;padding-right:5px;">Befund </td>
+           <td width="70%"><textarea class="comment_field" name="befund[text]"><?php echo $this->patientdata['befund']['text']; ?></textarea></td>
+        </tr>
+        <tr>
+           <td  style="vertical-align: top;padding-right:5px;">Zusammenfassung / Arbeitsauftrag</td>
+           <td width="70%"><textarea class="comment_field" name="summary[text]"><?php echo $this->patientdata['summary']['text']; ?></textarea></td>
+        </tr>
+    </table>
+
+
+    <!--  ############################################################################## -->
+       <div>
+           <input type="hidden" id="completed_at" name="completed_at" value="false" />
+           <input type="hidden" id="next_assessment_at" name="next_assessment_at" value="false" />
+           <input type="hidden" name="form_id" id="form_id" value="<?php echo $this->form_id; ?>" />
+           <input type="hidden" name="new_assessment" id="new_assessment" value="0" />
+           <input name="btnsave" type="button" value="<?php echo $this->translate('save_changes') ?>" id="btnsubmit" />&nbsp;
+           <?php // if( $this->form_id > 0) : ?>
+           <input type="button" id="save_new_assessment" value="<?php echo $this->translate('save_new_assessment') ?>" name="save_new_assessment" />
+           <?php // endif; ?>
+       </div>
+
+</form>
+<div id="dialog_template" style="display:none;">
+    <span id="error_reass" class="error"><?php echo $this->translate('next_reassessment_in_past'); ?></span>
+    <span id="error_reass2" class="error"><?php echo $this->translate('assessment_in_future'); ?></span>
+    <table>
+        <tr>
+            <td>Erstellt am:</td>
+            <td><input type="text" class="reassessment_datepicker" id="completed_at_proposal" value="<?php echo date("d.m.Y"); ?>" /></td>
+        </tr>
+
+        <tr>
+            <td>
+                Nächste Assessment am:
+            </td>
+            <td>
+                <input type="text" class="reassessment_datepicker" id="next_assessment_at_proposal" value="<?php $date = new DateTime();
+$date->modify('+14 day');echo $date->format('d.m.Y'); ?>" />
+            </td>
+        </tr>
+    </table>
+</div>

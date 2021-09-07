@@ -1,0 +1,122 @@
+<?php
+	$csv_labels = $this->csv_labels;
+	$csv_data = $this->csv_data;
+	$patient_data = $this->patient_data;
+	$csv_row = $this->curent_csv_row;
+	$session_data = $this->session_saved_data;
+	$date_str_length = '';
+	$card_date_str = '';
+?>
+
+<table class="datatable" id="csv_vs_ispc_<?php echo $_REQUEST['patient']; ?>">
+	<thead>
+		<tr>
+			<th><?php echo $this->translate('name'); ?></th>
+			<th colspan="2"><?php echo $this->translate('csv_data'); ?></th>
+			<th colspan="2"><?php echo $this->translate('ispc_data'); ?></th>
+		</tr>
+	</thead>
+	<tbody>
+		<?php 
+		foreach($csv_data as $k_element=> $v_element_value): ?>
+			<?php
+				if(strtolower(trim(rtrim($patient_data[$k_element]))) == strtolower(trim(rtrim($v_element_value))))
+				{
+					$no_radio_inputs[$k_element] = true;
+				}
+				else
+				{
+					$no_radio_inputs[$k_element] = false;
+				}
+				
+				if(!array_key_exists($k_element, $session_data)) //no saved session data
+				{
+					//check if curent field has data in ispc
+					if(strlen($patient_data[$k_element]) == '0' && strlen($v_element_value) != '0' && $no_radio_inputs[$k_element] === false)
+					{
+						$autoselect_csv_value[$k_element] = 'checked="checked"';
+					}
+					else
+					{
+						$autoselect_csv_value[$k_element] = '';
+					}
+
+					if(strlen($patient_data[$k_element]) != '0' && strlen($v_element_value) == '0' && $no_radio_inputs[$k_element] === false)
+					{
+						$autoselect_ispc_value[$k_element] = 'checked="checked"';
+					}
+					else
+					{
+						$autoselect_ispc_value[$k_element] = '';
+					}
+				}
+				else //existing saved session data
+				{
+					if(strtolower(trim(rtrim($v_element_value))) == strtolower(trim(rtrim($session_data[$k_element])))
+						&& $no_radio_inputs[$k_element] === false)
+					{
+						$autoselect_csv_value[$k_element] = 'checked="checked"';
+					}
+					else
+					{
+						$autoselect_csv_value[$k_element] = '';
+					}
+					
+					
+					if(strtolower(trim(rtrim($patient_data[$k_element]))) == strtolower(trim(rtrim($session_data[$k_element])))
+						&& $no_radio_inputs[$k_element] === false)
+					{
+						$autoselect_ispc_value[$k_element] = 'checked="checked"';
+					}
+					else
+					{
+						$autoselect_ispc_value[$k_element] = '';
+					}
+				}
+			?>
+			<tr class="ispc_row<?php if($k_element % 2): ?>_alt<?php endif; ?> " >
+				<!--CSV DATA-->
+				<td class="col_label">
+					<?php echo $csv_labels[$k_element]; ?>
+				</td>
+				<td class="col_value">
+					<?php if($k_element == 10): ?>
+						<label for="csv_import_<?php echo $csv_row.'_'.$k_element; ?>"><p style="width: 100%;"><?php echo date('d.m.Y',strtotime($v_element_value)); ?> </p></label>
+					<?php elseif($k_element == 16): ?>
+					<?php
+					$card_date_str = trim(rtrim($v_element_value));
+					$date_str_length = strlen(trim(rtrim($v_element_value)));
+
+				if($date_str_length == '8' || $date_str_length == "10")
+				{
+						//convert ddmmyyyy 2 d.m.Y
+						$splited_str = str_split($v_element_value, '2');
+						$splited_data[0] = $splited_str[0];
+						$splited_data[1] = $splited_str[1];
+						$splited_data[2] = $splited_str[2].$splited_str[3];
+
+						$card_date = implode('.', $splited_data);
+				}
+					?>
+						<label for="csv_import_<?php echo $csv_row.'_'.$k_element; ?>"><p style="width: 100%;"><?php echo $card_date ; ?> </p></label>
+					<?php else: ?>
+						<label for="csv_import_<?php echo $csv_row.'_'.$k_element; ?>"><p style="width: 100%;"><?php echo $v_element_value; ?> </p></label>
+					<?php endif;?>
+				</td>
+
+				<td class="col_checkbox">
+					<input type="radio" name="import_value[<?php echo $csv_row; ?>][<?php echo $k_element; ?>]" value="<?php echo $v_element_value; ?>" id="csv_import_<?php echo $csv_row.'_'.$k_element; ?>" <?php echo $autoselect_csv_value[$k_element]; ?> <?php if($no_radio_inputs[$k_element]): ?>disabled="disabled"<?php endif; ?> class="" />
+				</td>
+
+
+				<!--ISPC DATA-->
+				<td class="col_checkbox">
+					<input type="radio" name="import_value[<?php echo $csv_row; ?>][<?php echo $k_element; ?>]" value="<?php echo $patient_data[$k_element]; ?>" id="ispc_import_<?php echo $csv_row.'_'.$k_element; ?>" <?php echo $autoselect_ispc_value[$k_element]; ?> <?php if($no_radio_inputs[$k_element]): ?>disabled="disabled"<?php endif; ?> />
+				</td>
+				<td class="col_value">
+					<label for="ispc_import_<?php echo $csv_row.'_'.$k_element; ?>"><p style="width: 100%;"><?php echo $patient_data[$k_element]; ?></p></label>
+				</td>
+			</tr>
+		<?php endforeach; ?>
+	</tbody>
+</table>

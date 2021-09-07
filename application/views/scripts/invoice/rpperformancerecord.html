@@ -1,0 +1,77 @@
+<link rel='stylesheet' type='text/css' href='<?php echo RES_FILE_PATH; ?>/css/page-css/rpperformancerecord.css' />
+<?php
+	if($_POST['list'] || $_REQUEST['list'])
+	{
+		$list = '';
+		if(strlen($_POST['month']) > 0)
+		{
+			$list = $_POST['list'];
+		}
+		else if(strlen($_REQUEST['list']) > 0)
+		{
+			$list = $_REQUEST['list'];
+		}
+	}
+
+	$period_days = $this->current_period_days;
+	$shortcuts = $this->shortcuts;
+	$products = $this->products_data;
+?>
+<script type="text/javascript" >
+	$(window).load(function(){
+		<?php if(strlen($list)>'0'): ?>
+			load_table('<?php echo $list;?>');
+		<?php else: ?>
+			load_table('');
+		<?php endif; ?>
+	});
+	
+	$(function() {
+		$('form').submit(function() {
+			setTimeout(function () {$('input[type=submit]').attr('disabled', true);}, 150);
+			setTimeout(function () {$('input[type=submit]').attr('disabled', false);}, 11000);
+		});
+	});
+	function changeMonth(data){
+		load_table(data);
+	}
+	
+	function load_table(selected_date)
+	{
+		var loading_div = '<br/><div class="loadingdiv" align="center"><img src="<?php echo RES_FILE_PATH; ?>/images/ajax-loader.gif"><br /><?php echo $this->translate(loadingpleasewait); ?></div><br/>';
+		$('#container_rpperformance_record').html(loading_div);
+		
+		var url = '';
+		if(selected_date == 'undefined'){
+			url = "<?php echo APP_BASE.'ajax/loadrpperformancedata?id='.$_REQUEST['id']; ?>";
+		} else {
+			url = "<?php echo APP_BASE.'ajax/loadrpperformancedata?id='.$_REQUEST['id'].'&list='; ?>"+selected_date+"";
+		}
+		$.ajax({
+			url: url,
+			type: "POST",
+			dataType: "html",
+			success: function(response){
+				$('#container_rpperformance_record').html(response);
+				if($('#has_saved_data')) {
+					if($('#has_saved_data').val() === '1') {
+						$('#reset').show();
+					} else {
+						$('#reset').hide();
+					}
+				}
+			}
+		});
+	}
+</script>
+
+<form id="save_rpperformancerecord" method="POST" action="">
+	<?php echo $this->patientinfo; ?>
+	<?php echo $this->tabmenus; ?>
+	<br class="clearer"/>
+	<div id="container_rpperformance_record"></div>
+	
+	<input type="submit" name="save_rpperformance" value="<?php echo $this->translate('save'); ?>" id="save_rpperformance" />
+	<input type="submit" name="pdf" value="<?php echo $this->translate('generatepdf'); ?>" id="pdf" />
+	<input type="submit" name="reset" value="<?php echo $this->translate('reset'); ?>" id="reset" />
+</form>

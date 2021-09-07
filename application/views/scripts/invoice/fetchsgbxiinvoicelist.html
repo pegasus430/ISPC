@@ -1,0 +1,346 @@
+<input type="hidden" id="current_page" value="<?php echo $this->current_page?>" />
+<input type="hidden" id="sortby" value="<?php echo $this->orderby?>" />
+<input type="hidden" id="sortdir" value="<?php echo $this->sort?>" />
+<input type="hidden" id="cols" value="<?php echo $this->selectedColumns; ?>" />
+<input type="hidden" id="tabcols" value="<?php echo $this->tabColumns; ?>" />
+
+<input type="hidden" id="status_unpaid" value="<?php echo $this->counted['unpaid']; ?>" />
+<input type="hidden" id="status_paid" value="<?php echo $this->counted['paid']; ?>" />
+<input type="hidden" id="status_draft" value="<?php echo $this->counted['draft']; ?>" />
+<input type="hidden" id="status_deleted" value="<?php echo $this->counted['deleted']; ?>" />
+<input type="hidden" id="status_overdue" value="<?php echo $this->counted['overdue']; ?>" />
+<input type="hidden" id="status_all" value="<?php echo $this->counted['all']; ?>" />
+<?php
+$patient_details = $this->patient_details;
+$invoice_payments = $this->invoice_payments;
+$user_details = $this->user_details;
+$storned_invoices = $this->storned_invoces;
+
+$colspan = "7";
+ if($_REQUEST['f_status'] != "deleted" ){
+	$colspan = "8";
+}
+?>
+
+<form name="sgbvxi_invoices"  id="sgbvxi_invoices" method="post">
+
+<table class="overalllistatable datatable">
+<tr>
+	<th  class="col-0 columns" >
+			#
+ 	</th>
+ 	
+ 	<?php if($_REQUEST['f_status'] != "deleted" ):?>
+		<th  class="col-0 columns" >
+		<!--ISPC-2609 + ISPC-2000 Ancuta 24.09.2020 -->
+		<input type="checkbox" id="check_all" value="1" />
+		<!-- /--  -->
+		</th>
+	<?php  endif;?>
+ 	
+	<th  class="col-1 columns" >
+		<span class="thtitle"><?php echo $this->translate('Dokument')?></span>
+		<span class="colsorting">
+			<a href="javascript: void(0)" class="overallsort colsortasc" rel="id" title="asc"><img  src="<?php echo RES_FILE_PATH;  ?>/images/up-arrow.png" alt="" /></a>
+			<a href="javascript: void(0)"  class="overallsort colsortdesc" rel="id" title="desc"><img  src="<?php echo RES_FILE_PATH;  ?>/images/down-arrow.png" alt="" /></a>
+		</span>
+	</th>
+	<th class="col-2 columns">
+		<span class="thtitle"><?php echo $this->translate('Patient')?></span>
+		<span class="colsorting">
+			<a href="javascript: void(0)" class="overallsort colsortasc" rel="epid" title="asc"><img  src="<?php echo RES_FILE_PATH;  ?>/images/up-arrow.png" alt="" /></a>
+			<a href="javascript: void(0)"  class="overallsort colsortdesc" rel="epid" title="desc"><img  src="<?php echo RES_FILE_PATH;  ?>/images/down-arrow.png" alt="" /></a>
+		</span>
+	</th>
+	<th class="col-3 columns">
+		<span class="thtitle"><?php echo $this->translate('Rechnungsnummer')?></span>
+		<span class="colsorting">
+			<a href="javascript: void(0)" class="overallsort colsortasc" rel="nr" title="asc"><img  src="<?php echo RES_FILE_PATH;  ?>/images/up-arrow.png" alt="" /></a>
+			<a href="javascript: void(0)"  class="overallsort colsortdesc" rel="nr" title="desc"><img  src="<?php echo RES_FILE_PATH;  ?>/images/down-arrow.png" alt="" /></a>
+		</span>
+	</th>
+	<th class="col-4 columns">
+		<span class="thtitle"><?php echo $this->translate('Rechnungsdatum')?></span>
+		<span class="colsorting">
+			<a href="javascript: void(0)" class="overallsort colsortasc" rel="invoice_date" title="asc"><img  src="<?php echo RES_FILE_PATH;  ?>/images/up-arrow.png" alt="" /></a>
+			<a href="javascript: void(0)"  class="overallsort colsortdesc" rel="invoice_date" title="desc"><img  src="<?php echo RES_FILE_PATH;  ?>/images/down-arrow.png" alt="" /></a>
+		</span>
+	</th>
+	<th class="col-5 columns">
+		<span class="thtitle"><?php echo $this->translate('invoiced period')?></span>
+		<span class="colsorting">
+			<a href="javascript: void(0)" class="overallsort colsortasc" rel="date" title="asc"><img  src="<?php echo RES_FILE_PATH;  ?>/images/up-arrow.png" alt="" /></a>
+			<a href="javascript: void(0)"  class="overallsort colsortdesc" rel="date" title="desc"><img  src="<?php echo RES_FILE_PATH;  ?>/images/down-arrow.png" alt="" /></a>
+		</span>
+	</th>
+	<th class="col-6 columns">
+		<span class="thtitle"><?php echo $this->translate('Betrag')?></span>
+		<span class="colsorting">
+			<a href="javascript: void(0)" class="overallsort colsortasc" rel="amnt" title="asc"><img  src="<?php echo RES_FILE_PATH;  ?>/images/up-arrow.png" alt="" /></a>
+			<a href="javascript: void(0)"  class="overallsort colsortdesc" rel="amnt" title="desc"><img  src="<?php echo RES_FILE_PATH;  ?>/images/down-arrow.png" alt="" /></a>
+		</span>
+	</th>
+</tr>
+<?php if(sizeof($this->invoicelist) > 0):?>
+
+	<?php
+	$i=1;
+	foreach($this->invoicelist as $invoice):?>
+		<tr id="row-<?php echo $i; ?>" class="listItemData row">
+			<td class="col-0 columns" >
+				<a href="<?php echo $invoice_link ?>"><?php echo ($i+(($this->current_page-1)*$this->limit)); ?></a>
+			</td>
+		 	<?php  if($_REQUEST['f_status'] != "deleted" &&  $invoice['status'] != '4' ): ?>
+			 	<td class="col-0 columns" >
+					<input type="checkbox" value="<?php echo $invoice['id']?>" id="documentItem<?php echo $invoice['id']?>" name="document[<?php echo $invoice['id']?>]" class="checkBox">
+				</td>
+			<?php elseif($_REQUEST['f_status'] != "deleted"  ):?>
+				<td class="col-0 columns" >
+					&nbsp;
+				</td>
+			<?php endif;?>
+			
+			<td class="col-1 columns">
+				<a href="javascript:void(0);">
+					<div class="documentType" title="Rechnung">
+						<div class="listItemCell">
+							<?php  if($invoice['storno'] == '0'): ?>
+							Rechnung
+							<?php else:  ?>
+							Storno
+							<?php endif;  ?>
+							<br />
+							<span style="color:#999;" id="i_status_<?php echo $invoice['id'] ?>">
+								<?php echo $this->translate('inv_type_'.$invoice['status']); ?>
+							</span>
+							<?php if($invoice['isdelete'] == '0'):  ?>
+							<?php  if($invoice['storno'] == '0'): ?>
+							<a href="invoice/sgbxiinvoice?iid=<?php echo $invoice['id']; ?>&amp;mode=pdfs&amp;pdfquick=1" style="display:inline;" ><img align="top" src="<?php echo RES_FILE_PATH; ?>/images/page_white_magnify.png" alt="Vorschau" title="Vorschau" style="border:0"></a>
+							<?php  elseif($invoice['storno'] == '1'): ?>
+							<a href="invoice/sgbxiinvoice?iid=<?php echo $invoice['record_id']; ?>&amp;storno=<?php echo $invoice['id']; ?>&amp;mode=pdfs&amp;pdfquick=1&amp;stornopdf=1" style="display:inline;" ><img align="top" src="<?php echo RES_FILE_PATH; ?>/images/page_white_magnify.png" alt="Vorschau" title="Vorschau" style="border:0"></a>
+							<?php endif;  ?>
+							<?php endif;  ?>
+						</div>
+					</div>
+				</a>
+
+			</td>
+			<td class="col-2 columns">
+				<a href="javascript:void(0);">
+					<div class="documentCustomer">
+						<div class="listItemCell">
+							<?php echo strtoupper($patient_details[$invoice['ipid']]['EpidIpidMapping']['epid']); ?>
+							-
+							<?php echo $patient_details[$invoice['ipid']]['lastname'] . ", " . $patient_details[$invoice['ipid']]['firstname']; ?>
+						</div>
+					</div>
+				</a>
+			</td>
+			<td class="col-3 columns" >
+				<a href="javascript:void(0);">
+					<div class="documentrnummer">
+						<div class="listItemCell">
+							<?php echo $invoice['prefix']; ?><?php echo $invoice['invoice_number']; ?>
+						</div>
+					</div>
+				</a>
+			</td>
+			<td class="col-4 columns" >
+				<a href="javascript:void(0);">
+					<div class="documentDate">
+						<div class="listItemCell">
+							<?php echo date('d.m.Y',strtotime($invoice['completed_date_sort']))?>
+						</div>
+					</div>
+				</a>
+			</td>
+			<td class="col-5 columns" >
+				<a href="javascript:void(0);">
+					<div class="documentDate">
+						<div class="listItemCell">
+							<?php echo date('d.m.Y',strtotime($invoice['invoice_start']))?>
+							<br />
+							<?php echo date('d.m.Y',strtotime($invoice['invoice_end']))?>
+						</div>
+					</div>
+				</a>
+			</td>
+			
+			<td class="col-6 columns" >
+				<a href="javascript:void(0);">
+					<div class="documentAmount">
+						<?php
+						$style = '';
+						if ($invoice['invoice_total'] != '0.00')
+						{
+							if ($invoice['status'] == '3')
+							{
+								$style = "paid";
+							}
+							else if ($invoice['status'] == '5')
+							{
+								$style = "partial_paid";
+							}
+							else
+							{
+								$style = "not_paid";
+							}
+						}
+						?>
+						<div class="listItemCell" style="padding-right:5px">
+							<div class="invoice <?php echo $style; ?>" style="font-size:14px; font-weight:bold;">
+								<input type="hidden" value="<?php echo $invoice['invoice_total']; ?>" id="totalAmount-<?php echo $invoice['id']; ?>" />
+
+								<span id="totalAmount_span-<?php echo $invoice['id']; ?>" >
+									<?php  if($invoice['storno'] == '0'): ?>
+										<?php echo number_format($invoice['invoice_total'], '2', ',', '.'); ?>
+									<?php  else: ?>
+										<?php echo number_format(($invoice['invoice_total']*-1), '2', ',', '.'); ?>
+									<?php  endif; ?>
+								</span> €
+							</div>
+
+							<div class="invoice <?php echo $style; ?>" style="font-style:italic">
+								<input type="hidden" value="<?php echo $invoice_payments[$invoice['id']]['paid_sum']; ?>" id="totalPaidAmount-<?php echo $invoice['id']; ?>" />
+
+								<span id="totalPaidAmount_span-<?php echo $invoice['id']; ?>">
+									<?php if ($invoice_payments[$invoice['id']]['paid_sum']): ?><?php echo number_format($invoice_payments[$invoice['id']]['paid_sum'], '2', ',', '.'); ?> <?php else: ?>0,00<?php endif; ?>
+								</span> €
+							</div>
+							<?php
+								if(!empty($invoice_payments[$invoice['id']]['paid_sum'])){
+									$rest_to_pay = $invoice['invoice_total'] - $invoice_payments[$invoice['id']]['paid_sum'];
+								} else{
+									$rest_to_pay = $invoice['invoice_total'];
+								}
+
+ 								$rest_to_pay = number_format(($rest_to_pay), '2', '.', '')
+ 							?>
+							<input type="hidden" value="<?php echo $rest_to_pay; ?>" id="restToPay-<?php echo $invoice['id']; ?>" />
+							<div class="invoice" style="display:none;"  id="restToPay_div-<?php echo $invoice['id']; ?>">
+								<?php echo round(($invoice['invoice_total'] - $invoice_payments[$invoice['id']]['paid_sum']), 2); ?>
+							</div>
+						</div>
+					</div>
+				</a>
+			</td>
+		</tr>
+		<tr id="sub_row-<?php echo $i; ?>" class="sub_row" style="display:none;">
+			<td colspan="<?php echo   $colspan; ?>">
+				<div class="listItemControls">
+					<div class="listItemControlsInfos">
+						<div>
+							Dieses Dokument wurde am <?php echo date('d.m.Y', strtotime($invoice['create_date'])); ?> von
+							<span style="text-decoration: underline"> <?php echo $user_details[$invoice['create_user']]['user_title'].' '.$user_details[$invoice['create_user']]['last_name'].', '.$user_details[$invoice['create_user']]['first_name']; ?></span>
+							erstellt.
+						</div>
+					</div>
+					<div class="listItemControlsButtons">
+					<?php if($invoice['isdelete'] == 0 && $invoice['status'] != 4 ):  ?>
+						<?php if($invoice['storno'] == 0):  ?>
+						<ul>
+							<li><div class="ui-icon-printer"><a class="print" target="_blank" href="invoice/sgbxiinvoice?iid=<?php echo $invoice['id']; ?>&amp;mode=pdfs&amp;pdfquick=1">Drucken</a></div></li>
+							<!-- <li><div class="ui-icon-white-edit"><a class="edit" href="invoice/editsgbxiinvoice?invoiceid=<?php echo $invoice['id']; ?>">Bearbeiten</a></div></li>
+							 -->
+                        <!-- ISPC-2747 Lore 27.11.2020 -->
+                            <?php if($invoice['custom_invoice'] == 'custom_invoice'):  ?>
+                                <li><div class="ui-icon-white-edit"><a class="edit" href="invoicenew/editcustominvoicealltypes?invoiceid=<?php echo $invoice['id']; ?>&inv_typ=bw_sgbxi_invoice">Bearbeiten</a></div></li>
+                            <?php else:  ?>
+                                <li><div class="ui-icon-white-edit"><a class="edit" href="invoice/editsgbxiinvoice?invoiceid=<?php echo $invoice['id']; ?>">Bearbeiten</a></div></li>
+                            <?php endif;  ?>
+                            							
+							<li><div class="ui-icon-money"><a class="pay" href="javascript:void(0);" id="pay" alt="<?php echo $invoice['id']; ?>">Zahlungseingang</a></div></li>
+							
+							<?php if($invoice['status'] > '1' && !in_array($invoice['id'], $storned_invoices)): ?>
+							<li><div class="ui-icon-storno"><a class="storno" href="javascript:void(0);" id="storno" alt="<?php echo $invoice['id']; ?>" title="<?php echo strtoupper($patient_details[$invoice['ipid']]['EpidIpidMapping']['epid']); ?>"><?php echo $this->translate('storno_button'); ?></a></div></li>
+							<?php endif; ?>
+							<?php if($invoice['status'] != '3' && $invoice['status'] != '5'  ): ?>
+							<li><div class="ui-icon-white-delete"><a class="delete" href="javascript:void(0);" rel="<?php echo $invoice['id']; ?>">Löschen</a></div></li>
+							<?php endif;?>
+						</ul>
+						<?php elseif($invoice['storno'] == 1):  ?>
+						<ul>
+							<li><div class="ui-icon-printer"><a class="print" target="_blank" href="invoice/sgbxiinvoice?iid=<?php echo $invoice['record_id']; ?>&amp;storno=<?php echo $invoice['id']; ?>&amp;mode=pdfs&amp;pdfquick=1&amp;stornopdf=1">Drucken</a></div></li>
+						</ul>
+						<?php endif; ?>
+					<?php endif; ?>
+					</div>
+				</div>
+			</td>
+		</tr>
+	<?php
+	$i++;
+	endforeach;?>
+		
+<tr>
+	<td colspan="<?php echo   $colspan; ?>">
+		<div class="buttonsBar">
+				<input type="hidden" value="" id="deletemore" name="deletemore">
+			<?php if($_REQUEST['f_status'] != "deleted" && $_REQUEST['f_status'] != "paid" ): ?>
+			<button value="1" class="bigbutton ui-state-default ui-corner-all" id="delmore"   name="delmore"  >ausgewählte löschen</button>
+			<?php endif;?>
+			<?php if($_REQUEST['f_status'] == "draft" ): ?>
+				<button id="draftmore" name="draftmore" class="bigbutton ui-state-default ui-corner-all" value="1"><?php echo $this->translate('make_invoice_available'); ?></button>
+			<?php endif;?>
+			
+			<!--ISPC-2609 + ISPC-2000 Ancuta 24.09.2020 -->
+			<button id="batch_print" name="batch_print_more" class="bigbutton ui-state-default ui-corner-all" value="1"><?php echo $this->translate('batch_print'); ?></button>
+			<!-- //--   -->
+		</div>
+	</td>
+</tr>
+	
+	
+<?php else:?>
+	<tr>
+	<td colspan="<?php echo   $colspan; ?>"><?php echo $this->translate('noinvoicesfound')?></td>
+	</tr>
+<?php endif;?>
+<tr>
+	<td colspan="<?php echo   $colspan; ?>" class="paginationRow">
+		<?php if($this->no_pages > 1):?>
+			<ul id="pg" class="pagination">
+
+				<?php
+					$max_pages = 7;
+					if($this->no_pages < $max_pages){
+						$max_pages = $this->no_pages;
+					}
+
+					echo '<li><a href="javascript: void(0)" class="overallpages" rel="1">&lt;&lt;</a></li>';
+					if($this->current_page > 1) {
+						echo '<li><a href="javascript: void(0)" class="overallpages" rel="'.($this->current_page* 1).'">&laquo; '.$this->translate('prev').'</a></li>';
+					} else {
+						echo '<li><span class="disabled">&laquo; '.$this->translate('prev').'</span></li>';
+					}
+					$pivot = floor($max_pages / 2);
+
+					if($this->current_page <= $pivot) {
+						$leftmost = 1;
+						$rightmost = $max_pages;
+					} elseif($this->current_page > ($this->no_pages - $max_pages)) {
+						$leftmost = max(1,($this->no_pages - $max_pages));
+						$rightmost = $this->no_pages;
+					} else {
+						$leftmost = max(1, ($this->current_page - $pivot));
+						$rightmost = $this->current_page + $pivot;
+					}
+
+					for($thepage = $leftmost;$thepage <= $rightmost; $thepage++) {
+						echo '<li><a '.($thepage == $this->current_page ? 'class="current overallpages"' : 'class="overallpages"').' href="javascript: void(0)"  rel="'.$thepage.'">'.$thepage.'</a></li>';
+
+					}
+
+					if($this->current_page < $this->no_pages) {
+						echo '<li><a href="javascript: void(0)" class="overallpages" rel="'.($this->current_page + 1).'">'.$this->translate('nextptlist').' &raquo;</a></li>';
+					} else {
+						echo '<li><span class="disabled">'.$this->translate('nextptlist').' &raquo;</span></li>';
+					}
+					echo '<li><a href="javascript: void(0)" class="overallpages" rel="'.$this->no_pages.'">&gt;&gt;</a></li>';
+				?>
+		<?php endif;?>
+		</div>
+	</td>
+</tr>
+</table>
+</form>

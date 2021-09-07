@@ -1,0 +1,1479 @@
+<?
+$this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/page-css/sgbvverordnung.css?'.date('Ymd')); 
+$this->headScript ()->appendFile (RES_FILE_PATH . '/javascript/dateUtil.js?'.date('Ymd'));
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/autogrow/jquery.elastic.js?'.date('Ymd'));
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/jquery.blockUI.js?'.date('Ymd'));
+
+
+$sgbv_status = $this->sgbv_status;
+$sgbv_patient_actions = $this->sgbv_patient_actions;
+$sgbv_client_actions = $this->sgbv_client_actions;
+$sgbv_action_details = $this->sgbv_action_details;
+$action = $this->modal_action_details;
+$sgbvform = $this->sgbvform_details;
+$form_history = $this->form_history;
+$user_array = $this->users;
+$master_actions  = $this->master_actions;
+
+
+?>
+<script type="text/javascript">
+
+
+var sgbv_client_actions = '<?php echo json_encode($this->sgbv_client_actions); ?>';
+var sgbv_action_details = '<?php echo json_encode($this->sgbv_action_details);?>';
+$(document).ready(function() {
+
+	checksgbv();
+
+
+
+
+	$('.stamp_alert').hide();
+
+
+	$( ".datepick" ).datepicker({
+		dateFormat: 'dd.mm.yy',
+		showOn: "both",
+		buttonImage: $('#calImg').attr('src'),
+		buttonImageOnly: true,
+		changeMonth: true,
+		changeYear: true,
+		nextText: '',
+		prevText: ''
+	});
+
+	$( ".approve_datepick" ).datepicker({
+		dateFormat: 'dd.mm.yy',
+		showOn: "both",
+		buttonImage: $('#calImg').attr('src'),
+		buttonImageOnly: true,
+		changeMonth: true,
+		changeYear: true,
+		nextText: '',
+		prevText: ''
+	});
+
+
+
+	$( ".action_datepick" ).datepicker({
+		dateFormat: 'dd.mm.yy',
+		buttonImageOnly: true,
+		changeMonth: true,
+		changeYear: true,
+		nextText: '',
+		prevText: ''
+	});
+
+
+
+	$( "#sgbv_valid_from" ).datepicker({
+		dateFormat: 'dd.mm.yy',
+		showOn: "both",
+		buttonImage: $('#calImg').attr('src'),
+		buttonImageOnly: true,
+		changeMonth: true,
+		changeYear: true,
+		nextText: '',
+		prevText: '',
+		onSelect:function( selectedDate ) {			
+			load_sgbv_actions($(this).val(), $('#sgbv_valid_till').val());
+			$("#sgbv_valid_till").datepicker( "option", "minDate", selectedDate );
+			$('.activate').each(function(){
+				var row_id = $(this).val();
+				if($(this).is(":checked")){
+					$("#action_from_"+row_id).datepicker( "option", "minDate", selectedDate );
+					$("#action_till_"+row_id).datepicker( "option", "minDate", selectedDate );
+				}
+			})
+
+		edit_start_date();
+		checksgbv();
+
+		}
+	});
+
+
+	$( "#sgbv_valid_till" ).datepicker({
+		dateFormat: 'dd.mm.yy',
+		showOn: "both",
+		buttonImage: $('#calImg').attr('src'),
+		buttonImageOnly: true,
+		changeMonth: true,
+		changeYear: true,
+		nextText: '',
+		prevText: '',
+		onSelect:function( selectedDate ) {
+			load_sgbv_actions($('#sgbv_valid_from').val(), $(this).val());
+			
+			$("#sgbv_valid_from").datepicker( "option", "maxDate", selectedDate );
+
+			$('.activate').each(function(){
+				var row_id = $(this).val();
+				if($(this).is(":checked")){
+					$("#action_from_"+row_id).datepicker( "option", "maxDate", selectedDate );
+					$("#action_till_"+row_id).datepicker( "option", "maxDate", selectedDate );
+				}
+
+			})
+
+			edit_end_date();
+			checksgbv();
+		}
+	});
+
+	$('.hasDatepicker').mask('99.99.9999'); //add date mask
+
+	/*----------------------------------------------------------------------------------------------------------*/
+	/*---------------------------------------- Stamp Info ------------------------------------------------------*/
+	/*----------------------------------------------------------------------------------------------------------*/
+			$('#stampusers').live('change',function(){
+				$('#user_stamp_block span').replaceWith('');
+		        $('#user_stamp_block textarea').replaceWith('');
+
+				$.get(appbase+ 'ajax/userstampinfo?stamp-info=' + $(this).val(), function(result) {
+
+		            if (result != 0){
+		            	var resultx = jQuery.parseJSON(result);
+
+		                var user_lanr = resultx.lanr;
+		                var user_bsnr = resultx.bsnr;
+
+		                $('#Veror63_NameBetrinInpt').val(user_bsnr);
+		                $('#Veror63_NamearztnInpt').val(user_lanr);
+
+		                $('#user_stamp_block span').replaceWith('');
+		                $('#user_stamp_block textarea').replaceWith('');
+
+		                var row1 = resultx.row1;
+		                var row2 = resultx.row2;
+		                var row3 = resultx.row3;
+		                var row4 = resultx.row4;
+		                var row5 = resultx.row5;
+		                var row6 = resultx.row6;
+		                var row7 = resultx.row7;
+
+		                var user_stamp = '<span>'+ row1 +'<br/>'+row2+'<br/>'+row3+'<br/>'+row4+'<br/>'+row5+'<br/>'+row6+'<br/>'+row7+'</span>';
+		                var user_stamp_hidden = '<textarea name="stamp_block" style="display: none">'+ row1 +'<br/>'+row2+'<br/>'+row3+'<br/>'+row4+'<br/>'+row5+'<br/>'+row6+'<br/>'+row7+'</textarea>';
+
+		                $('#user_stamp_block').append(user_stamp+user_stamp_hidden);
+
+
+		            } else{
+		            	$('.stamp_alert').show('fast').delay(1000).hide('slow');
+		            }
+
+		        });
+				return false;
+			});
+
+	/*----------------------------------------------------------------------------------------------------------*/
+
+
+		$('.add_action').live('click',function(){
+			 $('#add_action_block').dialog('open');
+		 });
+
+
+
+		$('#add_action_block').dialog({
+		    autoOpen: false,
+		    modal: true,
+		    width: 350,
+		   	height: 200,
+		   	title:  "<?php echo $this->translate('custom action add'); ?>",
+		   	open: function(){
+		   		$('#action_name').val('');
+		   	},
+		    buttons:{
+			"<?php echo $this->translate('save'); ?>": function(){
+
+				$('.submitform').attr('disabled',true);
+				 $(".ui-button:first").attr("disabled", true)
+				 .addClass("ui-state-disabled").next("button").attr("disabled", true)
+				 .addClass("ui-state-disabled");
+
+
+
+				var error = 0;
+				var ajax_done = 0;
+
+					$.ajax({
+						type: 'POST',
+						url: 'ajax/savecusomaction?id=<?php echo $_REQUEST['id']; ?>',
+						data: {
+							action_name: $('#action_name').val()
+						},
+
+						success:function(data){
+					     var actionsdata = jQuery.parseJSON(data);
+						 var new_row = '<tr id="act_row_'+actionsdata.action_id+'" ><td><input type="checkbox" class="activate"	name="action['+actionsdata.action_id+'][id]"	value="'+actionsdata.action_id+'" /></td>';
+					     var labelc ='<td><div class="custom_name"  id="custom_action_'+actionsdata.action_id+'"><label>'+actionsdata.action_name+'</label>';
+					     var namec = '<input type="hidden" name="" id="edit_name'+actionsdata.action_id+'"  value="'+actionsdata.action_name+'" /></div>';
+					     var editc = '<a class="edit_action" rel="'+actionsdata.action_id+'"  title="<? echo $this->translate("Edit");?>" href="javascript:void(0)"><img  src="<? echo RES_FILE_PATH;  ?>/images/edit.png"><span> </a>';
+					     var deletec = '<a class="delete_action" rel="'+actionsdata.action_id+'"  title="" href="javascript:void(0)"><img width="20" height="20" src="<? echo RES_FILE_PATH;  ?>/images/action_delete.png"></a><br/>';
+
+						 var select_parent = '<select name="action['+actionsdata.action_id+'][parent]" class="official_parent"  disabled="disabled" rel="'+actionsdata.action_id+'" ><option value="0"><? echo $this->translate('Select official action');?></option><? foreach($sgbv_client_actions as $ck_act => $cv_act):?><option value="<? echo $cv_act['id'];?>"> <? echo $cv_act['action_name']; ?></option>	<? endforeach;?></select></td>';
+
+						 var options_free = '<td class = "free">   <input type="checkbox" id="action_free_of_charge_'+actionsdata.action_id+'"  name="action['+actionsdata.action_id+'][free_of_charge]"  value=""  disabled="disabled" /> </td>';
+						 var options_days = '<td class = "day_nr">   <input type="text" id="action_per_day_'+actionsdata.action_id+'"  name="action['+actionsdata.action_id+'][per_day]"  value="" style="width: 30px !important;"  disabled="disabled" /> </td>';
+						 var options_week = '<td class = "week_nr">  <input type="text" id="action_per_week_'+actionsdata.action_id+'" name="action['+actionsdata.action_id+'][per_week]" value="" style="width: 30px !important;"  disabled="disabled" /> </td>';
+						 var options_from = '<td class = "act_from"> <input type="text" id="action_from_'+actionsdata.action_id+'"  name="action['+actionsdata.action_id+'][valid_from]"    value="" style="width: 65px !important;"  disabled="disabled" /> </td>';
+						 var options_till = '<td class = "act_till"> <input type="text" id="action_till_'+actionsdata.action_id+'"  name="action['+actionsdata.action_id+'][valid_till]"    value="" style="width: 65px !important;"  disabled="disabled" /> </td></tr>';
+
+						 $('#sgbv_list_action').append(new_row+labelc+namec+editc+deletec+select_parent+options_free+options_days+options_week+options_from+options_till);
+						 $('#action_from_'+actionsdata.action_id+', #action_till_'+actionsdata.action_id).datepicker({
+							dateFormat: 'dd.mm.yy',
+							buttonImageOnly: true,
+							changeMonth: true,
+							changeYear: true,
+							nextText: '',
+							prevText: ''
+						} );
+
+						$('#add_action_block').dialog('close');
+
+						},
+						error:function(){
+							ajax_done = 1;
+						}
+					});
+
+			},
+
+			"<?php echo $this->translate('cancel'); ?>": function(){
+				$('#action_name').val('');
+				$('#add_action_block').dialog('close');
+			}
+		    },
+			create:function () {
+		        $(this).closest(".ui-dialog")
+		            .find(".ui-button:first") // the first button
+		            .addClass("submitform");
+		    },
+		   	   close:function () {
+		    	$('.submitform').attr('disabled',false),
+				 $(".ui-button:first").attr("disabled", false)
+				 .removeClass("ui-state-disabled").next("button").attr("disabled", false)
+				 .removeClass("ui-state-disabled");
+		    },
+
+		});
+
+	/*----------------------------------------------------------------------------------------------------------*/
+	/*----------------------------------------------------------------------------------------------------------*/
+
+
+		$('.edit_action').live('click',function(){
+			 $('#edit_action_block').dialog('open');
+			 var action_id = $(this).attr('rel');
+			var action_name = $('#edit_name'+action_id).val();
+
+			$('#edit_action_id').val(action_id);
+			$('#edit_action_name').val(action_name);
+
+		});
+
+		$('#edit_action_block').dialog({
+		    autoOpen: false,
+		    modal: true,
+		    width: 350,
+		   	height: 200,
+		   	title:  "<?php echo $this->translate('custom action edit'); ?>",
+		   	open: function(){
+				 $(".ui-button:first").attr("disabled", false)
+				 .removeClass("ui-state-disabled").next("button").attr("disabled", false)
+				 .removeClass("ui-state-disabled");
+		   	},
+		    buttons:{
+			"<?php echo $this->translate('save'); ?>": function(){
+
+
+				$('.submitform_edit').attr('disabled',true);
+				 $(".ui-button:first").attr("disabled", true)
+				 .addClass("ui-state-disabled").next("button").attr("disabled", true)
+				 .addClass("ui-state-disabled");
+
+				var action_id = $(this).attr('rel');
+				var error = 0;
+				var ajax_done = 0;
+
+					$.ajax({
+						type: 'POST',
+						url: 'ajax/savecusomaction?id=<?php echo $_REQUEST['id']; ?>',
+						data: {
+							action_id: $('#edit_action_id').val(),
+							action_name: $('#edit_action_name').val()
+						},
+
+						success:function(data){
+
+					     var actionsdata = jQuery.parseJSON(data);
+
+						 var labelc ='<div class="custom_name"  id="custom_action_'+actionsdata.action_id+'"><label>'+actionsdata.action_name+'</label>';
+					     var namec = '<input type="hidden" name="" id="edit_name'+actionsdata.action_id+'"  value="'+actionsdata.action_name+'" /></div>';
+
+						$('#custom_action_'+actionsdata.action_id+'').replaceWith(labelc+namec);
+						$('#edit_action_block').dialog('close');
+
+						},
+						error:function(){
+							ajax_done = 1;
+						}
+					});
+			},
+
+			"<?php echo $this->translate('cancel'); ?>": function(){
+				$('#edit_action_name').val('');
+				$('#edit_action_id').val('');
+				$('#edit_action_block').dialog('close');
+			}
+		    },
+			create:function () {
+		        $(this).closest(".ui-dialog")
+		            .find(".ui-button:first") // the first button
+		            .addClass("submitform_edit");
+		    },
+		   	   close:function () {
+		    	$('.submitform_edit').attr('disabled',false),
+				 $(".ui-button:first").attr("disabled", false)
+				 .removeClass("ui-state-disabled").next("button").attr("disabled", false)
+				 .removeClass("ui-state-disabled");
+		    }
+		});
+	/*----------------------------------------------------------------------------------------------------------*/
+	/*----------------------------------------------------------------------------------------------------------*/
+		$('.delete_action').live('click',function(){
+		 	var action_id = $(this).attr('rel');
+			$('#delete_action_id').val(action_id);
+			 $('#delete_action_block').dialog('open');
+		 });
+
+		$('#delete_action_block').dialog({
+		    autoOpen: false,
+		    modal: true,
+		    width: 350,
+		   	height: 200,
+		   	title:  "<?php echo $this->translate('delete action'); ?>",
+		   	open: function(){
+		   	},
+		    buttons:{
+			"<?php echo $this->translate('delete'); ?>": function(){
+
+
+				$('.submitform_delete').attr('disabled',true);
+				 $(".ui-button:first").attr("disabled", true)
+				 .addClass("ui-state-disabled").next("button").attr("disabled", true)
+				 .addClass("ui-state-disabled");
+
+				var error = 0;
+				var ajax_done = 0;
+
+					$.ajax({
+						type: 'POST',
+						url: 'ajax/deletecusomaction?id=<?php echo $_REQUEST['id']; ?>',
+						data: {
+							delete_action_id: $('#delete_action_id').val()
+						},
+
+						success:function(data){
+							var actionsdata = jQuery.parseJSON(data);
+
+							$('#sgbv_list_action tr#act_row_'+actionsdata.delete_action_id).remove();
+
+							$('#delete_action_block').dialog('close');
+
+						},
+						error:function(){
+							ajax_done = 1;
+						}
+					});
+			},
+
+			"<?php echo $this->translate('cancel'); ?>": function(){
+				$('#delete_action_id').val('');
+				$('#delete_action_block').dialog('close');
+			}
+		    },
+			create:function () {
+		        $(this).closest(".ui-dialog")
+		            .find(".ui-button:first") // the first button
+		            .addClass("submitform_delete");
+		    },close:function () {
+		    	$('.submitform_delete').attr('disabled',false),
+				 $(".ui-button:first").attr("disabled", false)
+				 .removeClass("ui-state-disabled").next("button").attr("disabled", false)
+				 .removeClass("ui-state-disabled");
+		    }
+		});
+
+	/*----------------------------------------------------------------------------------------------------------*/
+	/*----------------------------------------------------------------------------------------------------------*/
+
+	$(".official_parent").live('change',function(e) {
+
+		var caction_id = $(this).attr('rel');
+		var parent_action_id = $(this).val();
+
+		if(caction_id){}
+
+		$.ajax({
+			type: 'POST',
+			url: 'ajax/savecustomparent?id=<?php echo $_REQUEST['id']; ?>',
+			data: {
+				action_id: caction_id,
+				action_parent: caction_id,
+			},
+
+			success:function(data){
+				var actionsdata = jQuery.parseJSON(data);
+			},
+			error:function(){
+				ajax_done = 1;
+			}
+		});
+	});
+	
+	$("input[name='sgbvform[form_type]']").click(function(e) {
+			e.preventDefault();
+			return false;
+	});
+	/*----------------------------------------------------------------------------------------------------------*/
+
+	$(".sgbv_status").click(function() {
+		if( $(this).val() ){
+			checksgbv();
+		}
+		if( $(this).val() == "5" ){
+ 			$('#approved_limit').show();
+		} else{
+ 			$('#approved_limit').hide();
+		}
+	});
+
+	$(".sgbv_status").live('change',function(e) {
+		var present_form = "<? echo $_REQUEST['sgbv_form_id']?>";
+
+		if (present_form){
+		jConfirm('<? echo $this->translate('are you sure you want to change status?'); ?>', '', function(r) {
+			if(r)
+			{
+				$(this).attr('checked', true);
+			}
+			else
+			{
+				var old_status = $('#old_status').val();
+
+				$('#sgbv_status_'+old_status+'').attr('checked', true);
+
+				if(old_status == "5" ){
+		 			$('#approved_limit').show();
+				} else{
+		 			$('#approved_limit').hide();
+				}
+
+			}
+		});
+		}
+	});
+
+
+	$(".act_status").click(function() {
+		var row_is = $(this).attr('rel');
+
+		if( $(this).val() == "5" ){
+ 			$('#approved_limit_'+row_is).show();
+		} else{
+ 			$('#approved_limit_'+row_is).hide();
+		}
+	});
+
+	$(".show_status").live('click',function() {
+		$('.action_status_'+$(this).attr('rel')+'').toggle();
+	});
+
+
+	$("#show_history").live('click',function() {
+		$('.history_block').toggle();
+	});
+
+	$("#edit_actions_onform").live('click',function() {
+
+		$('#actions-modal').dialog('open');
+	});
+
+	checkactions(); // for edit from - check if the actions are selected an remove disable
+
+
+	$(".activate").live('click',function() {
+		var row_id = $(this).val();
+		if($(this).is(':checked')){
+			//debloc
+
+			$("#action_from_"+row_id).datepicker( "option", "minDate", $("#sgbv_valid_from").val() );
+			$("#action_from_"+row_id).datepicker( "option", "maxDate", $("#sgbv_valid_till").val() );
+			$("#action_from_"+row_id).val($("#sgbv_valid_from").val());
+
+			$("#action_per_day_"+row_id).val('1');
+
+			$("#action_till_"+row_id).datepicker( "option", "minDate", $("#sgbv_valid_from").val() );
+			$("#action_till_"+row_id).datepicker( "option", "maxDate", $("#sgbv_valid_till").val() );
+			$("#action_till_"+row_id).val($("#sgbv_valid_till").val());
+
+			$("#action_per_week_"+row_id).val('7');
+
+			$('#act_row_'+row_id+' input, #act_row_'+row_id+' select').removeAttr('disabled');
+			$('#act_row_status_'+row_id+' input').removeAttr('disabled');
+
+		} else{
+			// bloc
+			$('#act_row_'+row_id+' input, #act_row_'+row_id+'  select').not('.activate').attr('disabled',true);
+			$('#act_row_status_'+row_id+' input').attr('disabled',true);
+		}
+
+	});
+
+	function checkactions(){
+
+		$('.activate').each(function(){
+			var row_id = $(this).val();
+
+			if($(this).is(':checked')){
+				$("#action_from_"+row_id).datepicker( "option", "minDate", $("#sgbv_valid_from").val() );
+				$("#action_from_"+row_id).datepicker( "option", "maxDate", $("#sgbv_valid_till").val() );
+
+				$("#action_till_"+row_id).datepicker( "option", "minDate", $("#sgbv_valid_from").val() );
+				$("#action_till_"+row_id).datepicker( "option", "maxDate", $("#sgbv_valid_till").val() );
+
+				$('#act_row_'+row_id+' input, #act_row_'+row_id+' select').removeAttr('disabled');
+				$('#act_row_status_'+row_id+' input').removeAttr('disabled');
+
+			} else{
+				$('#act_row_'+row_id+' input, #act_row_'+row_id+'  select').not('.activate').attr('disabled',true);
+				$('#act_row_status_'+row_id+' input').attr('disabled',true);
+			}
+		});
+	}
+	function validationactions(){
+		var input_empty = 0;
+		$('.activate').each(function(){
+
+			var row_id = $(this).val();
+
+			if($(this).is(':checked')){
+
+				$('#act_row_'+row_id+' input').not('#act_row_'+row_id+' input[name="action['+row_id+'][free_of_charge]"], #act_row_'+row_id+' select').not(':disabled').each(function(){
+					if( $(this).val() == "") {
+						input_empty = 1;
+					}
+				});
+
+			}
+		});
+		return input_empty;
+	}
+
+
+	function actionszeroamounts(){
+		var zero_amounts = 0;
+		$('.activate').each(function(){
+			var row_id = $(this).val();
+			if($(this).is(':checked')){
+				$('#act_row_'+row_id+' input').not(':disabled').each(function(){
+					if($(this).val() == "0"){
+						zero_amounts = 1;
+					}
+				});
+			}
+		});
+		return zero_amounts;
+	}
+
+
+	function checkstatus(){
+		var nostatus = 0;
+
+		if (!$("input[name='sgbvform[status]']:checked").val()) {
+				nostatus = 1;
+			}
+		return nostatus;
+
+	}
+
+	function nonactions(){
+		var checkbox_empty = 1;
+		$('.activate').each(function(){
+			var row_id = $(this).val();
+				if($(this).is(':checked')){
+					checkbox_empty = 0;
+			}
+		});
+		return checkbox_empty;
+	}
+		$("#actions-modal").dialog({
+			autoOpen : false,
+			resizable : false,
+			height : 700,
+			width : 750,
+			modal : true,
+			closeOnEscape: false,
+			open: function(event, ui) {
+				$(".ui-dialog-titlebar-close").hide();
+				$("#sgbv_valid_from").datepicker("hide");
+
+			},
+			buttons : {
+				"<? echo $this->translate('passed_to_form')?>" : function() {
+
+					var validate_action = validationactions(); // 1 -> fields are empty
+					var no_actions_selected = nonactions();// 1 -> no action was selected
+					var zero_amounts = actionszeroamounts();// 1 -> actions have zero amount
+
+					if(no_actions_selected == 1) {
+						alert("<? echo $this->translate('please select at least one action') ?>");
+					} else if( validate_action == 1) {
+						alert("<? echo $this->translate('all fields are required') ?> ");
+					} else if(zero_amounts == 1) {
+						alert("<? echo $this->translate('amounts must be greater than 0!') ?> ");
+					} else {
+						$('#save_sgbv_options').submit();
+						$('#actions-modal').dialog('close');
+					}
+			},
+				"<? echo $this->translate('cancel')?>" : function() {
+					var present_form = "<? echo $_REQUEST['sgbv_form_id']?>";
+					var newly_adden_form = $('#form_id').val();
+					if(present_form || newly_adden_form){
+						$('#actions-modal').dialog('close');
+					} else {
+						window.location.href = "<?php echo APP_BASE; ?>patientnew/patientdetails?id=<?php echo $_GET['id'] ?>";
+					}
+				}
+			}
+
+		});
+
+		var sgbv_mod = "<? echo $this->sgbv_mod; ?>";
+		if(sgbv_mod == 1  ){
+			$('#actions-modal').dialog('open');
+		}
+
+		function checksgbv(){
+			if( $('#sgbv_valid_from').val()  &&  $('#sgbv_valid_till').val() ){
+				$('#sgbv_actions_block').show();
+			} else{
+				$('#sgbv_actions_block').hide();
+			}
+
+		}
+
+
+		function edit_start_date(){
+			if( $('#sgbv_valid_from').val() ){
+				$('.activate').each(function(){
+					var row_id = $(this).val();
+					if($(this).is(':checked')){
+						$("#action_from_"+row_id).val( $("#sgbv_valid_from").val() );
+					}
+				});
+			}
+		}
+
+
+
+		function edit_end_date(){
+			if( $('#sgbv_valid_till').val() ){
+				$('.activate').each(function(){
+					var row_id = $(this).val();
+					if($(this).is(':checked')){
+						$("#action_till_"+row_id).val($("#sgbv_valid_till").val());
+					}
+				});
+			}
+		}
+	});
+
+	function load_sgbv_actions(date, end_date)
+	{
+		if(date != 'undefined' && end_date != 'undefined' && date && end_date)
+		{
+		
+			var table = '';
+
+			if($('#actions-modal').is(':visible')) {
+				$('#actions-modal').block({
+					css: {
+						border: 'none',
+						padding: '5px',
+						backgroundColor: '#000',
+						'-webkit-border-radius': '5px',
+						'-moz-border-radius': '5px',
+						opacity: .5,
+						color: '#fff',
+						height: 'auto',
+					},
+					message: '<h1 style="padding:5px;">Verarbeitung</h1><img src="<?php echo RES_FILE_PATH.'/images/ajax-loader-bar.gif'; ?>">'
+				});
+			}
+
+
+
+			$.ajax({
+				type: 'POST',
+				url: 'ajax/loadsgbvactions',
+				data: {
+					id: '<?php echo $_REQUEST['id']; ?>',
+					sgbv_form_id: '<?php echo $_REQUEST['sgbv_form_id']; ?>',
+					date: date,
+					end_date: end_date
+				},
+				success:function(data, response){				
+					$('#actions-modal').unblock();				
+					$('#sgbv_list_action').replaceWith(data);
+					
+
+					//enable datepicker for all newly loaded data
+					$('.action_datepick').datepicker({
+						dateFormat: 'dd.mm.yy',
+						changeMonth: true,
+						changeYear: true,
+						nextText: '',
+						prevText: ''
+					});
+
+					//limit actions datepicker
+					$(".valid_from_dp").datepicker( "option", "minDate", $("#sgbv_valid_from").val() );
+					$(".valid_from_dp").datepicker( "option", "maxDate", $("#sgbv_valid_till").val() );
+
+					$(".valid_till_dp").datepicker( "option", "minDate", $("#sgbv_valid_from").val() );
+					$(".valid_till_dp").datepicker( "option", "maxDate", $("#sgbv_valid_till").val() );
+				},
+				error:function(response){
+					var ajax_done = 1;
+				}
+			});
+		}
+	}
+</script>
+<form id="anlage_four" action="" method="post">
+  <div id="CalImg" style="display: none;"> <img id="calImg" src="<? echo RES_FILE_PATH;  ?>/images/calendar.png" alt="Popup" class="trigger"> </div>
+  <? echo $this->patientinfo ?>
+  <? echo $this->tabmenus ?>
+  <div class="tab_container">
+<div id="analage">
+	<div id="Veror_main" class="pallnetz_topform">
+		<label id="Veror63_Kraner" for="Krankenkasse">Krankenkasse bzw. Kostenträger</label> <br />
+		<input id="Veror63_KraneInpt" name="krankenkasse" value="<? echo $this->insurance_company_name ?>" class="insurnace"  type="text" />                     <div class="blackline"></div>
+        <div id="Veror63_NameVorVer" class="formleftdiv">
+        <label id="Veror63_NameVorVeOuter" for="Name">Name, Vorname des Versicherten</label><br />
+		<textarea name="patient_name" id="Veror63_NameVorVeInpt" cols="45" rows="2" class="textArea"><? echo $this->patientname ?></textarea></div>
+		<div id="Veror63_NameGeb" class="formrightdiv" ><label id="Veror63_NameGeLbl" for="geb">geb. am</label><br />
+        <input type="text" name="geb" id="Veror63_NameGeInpt" value="<? echo $this->birthdate ?>" /></div>
+		<div class="ClrBoth"></div><div class="blackline" id="Veror63_NameBlckLine"></div>
+        <div id="Veror63_NameKassnr" class="formShortDiv">
+		<label id="Veror63_NameKassnLbl" for="Kassen-Nr.">Kassen-Nr.</label><br />
+		<input name="kassen_nr" type="text" id="Veror63_NameKassnInpt" value="<? echo $this->kvnumber ?>" /></div>
+		<div class="VerLine" id="Veror63_NameVerline"></div>
+        <div class="formShortDiv" id="Veror63_NameVerNr">
+        <label for="Versicherten-Nr" id="Veror63_NameVerNTxt">Versicherten-Nr.</label><br />
+        <input id="Veror63_NameVerNInpt" name="versicherten_nr" type="text" value="<? echo $this->insurance_no ?>" /></div>
+        <div class="VerLine" id="Veror63_NameVerlin2"></div>
+        <div id="Veror63_NameStatus" class="formShortDiv">
+        <label id="Veror63_NameStatuLbl" for="Status">Status</label><br />
+        <input name="status" id="Veror63_NameStatInpt" type="text" value="<? echo $this->insurance_status ?>"  /></div><div class="ClrBoth"></div>
+        <div class="blackline" id="Veror63_NameBlacLine"></div>
+        <div class="formShortDiv" id="Veror63_NameBetrinr">
+        <label id="Veror63_NameBetrinLbl" for="Vertragsarzt-Nr.">Betriebsstätten-Nr.</label><br />
+        <input name="betriebsstatten_nr" id="Veror63_NameBetrinInpt" type="text" value="<? echo $this->betriebsstatten_nr ?>" /></div><div id="Veror63_NameVerlin3" class="VerLine"></div>
+        <div id="Veror63_Namearztnr" class="formShortDiv">
+        <label id="Veror63_NamearztnLbl" for="VK gültig bis">Arzt-Nr.</label>
+        <br />
+        <input id="Veror63_NamearztnInpt" name="arzt_nr" type="text" value="<? echo $this->arzt_nr?>"  /></div>
+        <div class="VerLine" id="Veror63_NameaVerline"></div>
+        <div id="Veror63_NameDatum" class="formShortDiv"><label id="Veror63_NameDatuLbl" for="Datum">Datum</label><br /><input name="topdatum" id="Veror63_NameDatuInpt" type="text" value="<? echo date('d.m.Y')?>" /></div>
+	</div>
+
+
+<div class="right_heading">
+	<h2><strong>Verordnung häuslicher Krankenpflege</strong></h2>
+	<div class="ClrBoth"></div><br />
+
+	<div class="verorRightDiv">
+		<div class="red_alert">
+			Der Anspruch  auf häusliche  Krankenpflege  besteht  nicht,  soweit der
+			Versicherte   die  erforderlichen    Maßnahmen  selbst   durchführen    oder eine
+			im  Haushalt  lebende  Person diese  übernehmen  kann.
+		</div>
+	</div>
+
+	<div class="ClrBoth"></div><br />
+
+	<div class="verorRightDiv">
+		<div class="" style="width:100%">
+			<input type="checkbox" name="sgbvform[no_evaluation_possible]" value="1" <? if($sgbvform['no_evaluation_possible']){ echo 'checked="checked" ';}?> />
+			<label style="width:90%;">Die Beurteilung, ob eine im Haushalt lebende Person die<br/> verordnete(n) Maßnahme(n) übernehmen kann, ist nicht möglich.</label>
+		</div>
+	</div>
+
+	<div class="ClrBoth"></div><br />
+
+	<div class="verorRightDiv">
+
+		<div class="veror35">
+			<input type="radio" name="sgbvform[form_type]"  value="first" <? if($sgbvform['form_type']== 'first'){ echo 'checked="checked" ';}?>  />
+			<label>Erst-<br/> verordnung</label>
+		</div>
+
+		<div class="veror35">
+			<input type="radio" name="sgbvform[form_type]"  value="follow" <? if($sgbvform['form_type'] == 'follow'){ echo 'checked="checked" ';}?> />
+			<label>Folge-<br/>verordnung</label>
+		</div>
+
+	</div>
+
+	<div class="ClrBoth"></div><br />
+
+	<div class="verorRightDiv">
+
+		<div class="veror35">
+			<label>vom</label>
+			<input type="text" name="sgbvform[valid_from]" class="datepick"  value="<? if( !empty($sgbvform['valid_from']) && $sgbvform['valid_from'] !='0000-00-00 00:00:00')  {echo date('d.m.Y',strtotime($sgbvform['valid_from'])); } ?>"/>
+		</div>
+
+		<div class="veror35">
+			<label>bis</label>
+			<input type="text" name="sgbvform[valid_till]" class="datepick" value="<? if( !empty($sgbvform['valid_till']) && $sgbvform['valid_till'] !='0000-00-00 00:00:00')  {echo date('d.m.Y',strtotime($sgbvform['valid_till'])); } ?>" />
+		</div>
+
+		<div class="veror30">
+			<input type="checkbox" name="sgbvform[accident]" value="1" <? if($sgbvform['accident'] == 'follow'){ echo 'checked="checked" ';}?>  />
+			<label>Unfall<br/>Unfallfolgen</label>
+		</div>
+
+	</div>
+
+</div>
+
+<div class="ClrBoth"></div><br />
+
+
+
+<div class="sgbv_outer">
+	<div class="verordungen_regulation">
+		<label>Begründung bei Verordnungsdauer über 14 Tagen:</label>
+		<input type="text" name="sgbvform[regulation_time]" value="<? echo $sgbvform['regulation_time']; ?>"    />
+	</div>
+
+	<div class="diagnosen_block">
+		<span>Verordnungsrelevante Diagnose(n)</span>
+		<label>Besonderheiten lt. Verzeichnis:</label>
+		<textarea name="sgbvform[diagnosen]" cols="" rows=""  readonly="readonly"><? echo $this->diagnosen; ?></textarea>
+	</div>
+</div>
+
+<div class="ClrBoth"></div><br />
+
+<div class="treatment_location_block">
+	<span>Häusliche Krankenpflege erfolgt:</span>
+	<input type="checkbox"	name="sgbvform[hospital_treatment]" value="1"  <? if($sgbvform['hospital_treatment'] == '1'){ echo 'checked="checked" ';}?>   /> <label>statt Krankenhausbehandlung</label>
+	<input type="checkbox" name="sgbvform[ambulant_treatment]" value="1"  <? if($sgbvform['ambulant_treatment'] == '1'){ echo 'checked="checked" ';}?>   /> <label>zur Sicherung der ambulanten ärztlichen Behandlung</label>
+</div>
+
+<div class="ClrBoth"></div><br />
+
+<div class="sgbv_outer">
+	<div class="action_blocks">
+		<div>
+			<span class="titlelike"><b>Folgende Maßnahmen sind notwendig</b> (siehe Verzeichnis der verordnungsfähigen Maßnahmen):</span>
+			<span class="subtitlelike"><b>Behandlungspflege:</b></span>
+		</div>
+
+		<table class="table_treatment_care">
+			<tr>
+				<td width="20%" class="K_info">&nbsp;<label>Anleitung zur <br/>Behandlungspflege</label></td>
+				<td width="55%" class="L_info"></td>
+				<td width="5%"> </td>
+				<td width="20%" class="M_info"></td>
+			</tr>
+			<tr>
+				<td></td>
+				<td><sup>folgende Leistungen</sup></td>
+				<td></td>
+				<td><sup>Anzahl/Einsätze</sup></td>
+			</tr>
+		</table>
+
+		<table class="table_actions">
+			<tr>
+				<th colspan="8">&nbsp;</th>
+				<th colspan="2" class="act_nr">Häufigkeit</th>
+				<th colspan="2" class="act_valid"> Dauer</th>
+			</tr>
+			<tr>
+				<th colspan="8">&nbsp;</th>
+				<th class="day_nr">x tgl.</th>
+				<th class="week_nr">x wtl.</th>
+				<th class="act_from">vom</th>
+				<th class="act_till">bis</th>
+			</tr>
+			<tr>
+				<td colspan="12">&nbsp;</td>
+			</tr>
+			<tr>
+				<td width="3%"><input type="checkbox"  readonly="readonly" name="sgbvform[glucose]"   value="1"  <? if($sgbvform['glucose'] == '1'):?> checked="checked"<?endif;?> /></td>
+				<td> Blutzuckermessung</td>
+				<td colspan="6">&nbsp;</td>
+				<td class="day_nr"  width="5%" ><input type="text" name="sgbvform[glucose_day]" value="<? echo $sgbvform['glucose_day']?>"  readonly="readonly" /> </td>
+				<td class="week_nr"  width="5%" ><input type="text" name="sgbvform[glucose_week]" value="<? echo $sgbvform['glucose_week']?>"  readonly="readonly"  /> </td>
+				<td class="act_from" width="10%" ><input type="text" name="sgbvform[glucose_from]" value="<? echo $sgbvform['glucose_from']?>"   class="action_date" readonly="readonly"  /></td>
+				<td class="act_till" width="10%" ><input type="text" name="sgbvform[glucose_till]" value="<? echo $sgbvform['glucose_till']?>"   class="action_date"  readonly="readonly" /></td>
+			</tr>
+
+			<tr>
+				<td colspan="12">&nbsp;</td>
+			</tr>
+
+			<tr>
+				<td width="3%"><input type="checkbox"  readonly="readonly"  name="sgbvform[ulcer_treatment_degree]"   value="1" <? if($sgbvform['ulcer_treatment_degree'] == '1'):?> checked="checked"<?endif;?>  /></td>
+				<td> Dekubitusbehandlung</td>
+				<td colspan="6">&nbsp;</td>
+				<? if($sgbvform['ulcer_treatment_degree2'] == '1' && !$sgbvform['ulcer_treatment_degree34']):?>
+					<td class="day_nr"  width="5%" ><input type="text"  name="sgbvform[ulcer_treatment_degree2_day]" value="<? echo $sgbvform['ulcer_treatment_degree2_day']?>"  readonly="readonly" /> </td>
+					<td class="week_nr"  width="5%" ><input type="text"  name="sgbvform[ulcer_treatment_degree2_week]" value="<? echo $sgbvform['ulcer_treatment_degree2_week']?>"   readonly="readonly" /> </td>
+					<td class="act_from" width="10%" ><input type="text"   name="sgbvform[ulcer_treatment_degree2_ftom]" value="<? echo $sgbvform['ulcer_treatment_degree2_from']?>" class="action_date"  readonly="readonly" /></td>
+					<td class="act_till" width="10%" ><input type="text"  name="sgbvform[ulcer_treatment_degree2_till]" value="<? echo $sgbvform['ulcer_treatment_degree2_till']?>"  class="action_date"  readonly="readonly" /></td>
+				<? elseif($sgbvform['ulcer_treatment_degree34'] == '1' && !$sgbvform['ulcer_treatment_degree2']):?>
+					<td class="day_nr"  width="5%" ><input type="text"  name="sgbvform[ulcer_treatment_degree34_day]" value="<? echo $sgbvform['ulcer_treatment_degree34_day']?>"  readonly="readonly" /> </td>
+					<td class="week_nr"  width="5%" ><input type="text"  name="sgbvform[ulcer_treatment_degree34_week]" value="<? echo $sgbvform['ulcer_treatment_degree34_week']?>"   readonly="readonly" /> </td>
+					<td class="act_from" width="10%" ><input type="text"   name="sgbvform[ulcer_treatment_degree34_from]" value="<? echo $sgbvform['ulcer_treatment_degree34_from']?>" class="action_date"  readonly="readonly" /></td>
+					<td class="act_till" width="10%" ><input type="text"  name="sgbvform[ulcer_treatment_degree34_till]" value="<? echo $sgbvform['ulcer_treatment_degree34_till']?>"  class="action_date"  readonly="readonly" /></td>
+				<? endif;?>
+			</tr>
+			<tr>
+				<td colspan="12">&nbsp;</td>
+			</tr>
+			<tr>
+				<td width="3%"></td>
+				<td>Lokalisation / Grad/ Größe: </td>
+				<td colspan="10"><input type="text" name="sgbvform[size_degree]" value="<? echo $sgbvform['size_degree']; ?>"  style="width: 98.5%;"/></td>
+			</tr>
+			<tr>
+				<td colspan="12">&nbsp;</td>
+			</tr>
+
+			<tr>
+				<td width="3%"><input type="checkbox"  readonly="readonly" name="sgbvform[injection]"   value="1"  <? if( strlen($sgbvform['injection']) > 0):?> checked="checked"<?endif;?> /></td>
+				<td>Injektionen:</td>
+				<td width="3%"><input type="checkbox"  readonly="readonly" name="sgbvform[injection_ready_preparation]"  value="1"  <? if($sgbvform['injection_ready_preparation'] == '1'):?> checked="checked"<?endif;?> /></td>
+				<td> herrichten</td>
+				<td width="3%"><input type="checkbox"  readonly="readonly" name="sgbvform[injection_im_preparation]"  value="1"   <? if($sgbvform['injection_im_preparation'] == '1'):?> checked="checked"<?endif;?> /></td>
+				<td>i.m.</td>
+				<td width="3%"><input type="checkbox"  readonly="readonly" name="sgbvform[injection_sc_preparation]"  value="1"   <? if($sgbvform['injection_sc_preparation'] == '1'):?> checked="checked"<?endif;?> /></td>
+				<td>s.c.</td>
+				<? if($sgbvform['injection_ready_preparation'] == '1'):?>
+					<td class="day_nr"  width="5%" ><input type="text"   name="sgbvform[injection_ready_preparation_day]" value="<? echo $sgbvform['injection_ready_preparation_day']?>"  readonly="readonly" /> </td>
+					<td class="week_nr"  width="5%" ><input type="text"  name="sgbvform[injection_ready_preparation_week]" value="<? echo $sgbvform['injection_ready_preparation_week']?>"   readonly="readonly"  /> </td>
+					<td class="act_from" width="10%" ><input type="text"  name="sgbvform[injection_ready_preparation_from]" value="<? echo $sgbvform['injection_ready_preparation_from']?>"  class="action_date"  readonly="readonly"  /></td>
+					<td class="act_till" width="10%" ><input type="text"  name="sgbvform[injection_ready_preparation_till]" value="<? echo $sgbvform['injection_ready_preparation_till']?>"  class="action_date"  readonly="readonly"  /></td>
+				<? elseif($sgbvform['injection_im_preparation'] == '1'):?>
+					<td class="day_nr"  width="5%" ><input type="text"   name="sgbvform[injection_im_preparation_day]" value="<? echo $sgbvform['injection_im_preparation_day']?>"  readonly="readonly" /> </td>
+					<td class="week_nr"  width="5%" ><input type="text"  name="sgbvform[injection_im_preparation_week]" value="<? echo $sgbvform['injection_im_preparation_week']?>"   readonly="readonly"  /> </td>
+					<td class="act_from" width="10%" ><input type="text"  name="sgbvform[injection_im_preparation_from]" value="<? echo $sgbvform['injection_im_preparation_from']?>"  class="action_date"  readonly="readonly"  /></td>
+					<td class="act_till" width="10%" ><input type="text"  name="sgbvform[injection_im_preparation_till]" value="<? echo $sgbvform['injection_im_preparation_till']?>"  class="action_date"  readonly="readonly"  /></td>
+				<? elseif($sgbvform['injection_sc_preparation'] == '1'):?>
+					<td class="day_nr"  width="5%" ><input type="text"   name="sgbvform[injection_sc_preparation_day]" value="<? echo $sgbvform['injection_sc_preparation_day']?>"  readonly="readonly" /> </td>
+					<td class="week_nr"  width="5%" ><input type="text"  name="sgbvform[injection_sc_preparation_week]" value="<? echo $sgbvform['injection_sc_preparation_week']?>"   readonly="readonly"  /> </td>
+					<td class="act_from" width="10%" ><input type="text"  name="sgbvform[injection_sc_preparation_from]" value="<? echo $sgbvform['injection_sc_preparation_from']?>"  class="action_date"  readonly="readonly"  /></td>
+					<td class="act_till" width="10%" ><input type="text"  name="sgbvform[injection_sc_preparation_till]" value="<? echo $sgbvform['injection_sc_preparation_till']?>"  class="action_date"  readonly="readonly"  /></td>
+				<? else:?>
+					<td class="day_nr"  width="5%" ><input type="text"   name="sgbvform[injection_other_day]" value="<? echo $sgbvform['injection_other_day']?>"  readonly="readonly" /> </td>
+					<td class="week_nr"  width="5%" ><input type="text"  name="sgbvform[injection_other_week]" value="<? echo $sgbvform['injection_other_week']?>"   readonly="readonly"  /> </td>
+					<td class="act_from" width="10%" ><input type="text"  name="sgbvform[injection_other_from]" value="<? echo $sgbvform['injection_other_from']?>"  class="action_date"  readonly="readonly"  /></td>
+					<td class="act_till" width="10%" ><input type="text"  name="sgbvform[injection_other_till]" value="<? echo $sgbvform['injection_other_till']?>"  class="action_date"  readonly="readonly"  /></td>
+
+
+				<? endif;?>
+
+			</tr>
+			<tr>
+				<td colspan="12">&nbsp;</td>
+			</tr>
+			<tr>
+				<td width="3%"><input type="checkbox" readonly="readonly"  name="sgbvform[medication]"  value="1"   <? if( strlen($sgbvform['medication']) > 0):?> checked="checked"<?endif;?>/></td>
+				<td> Medikamentengabe:</td>
+				<td width="3%"><input type="checkbox" readonly="readonly" name="sgbvform[medication_ready_preparation]"   value="1"  <? if($sgbvform['medication_ready_preparation'] == '1'):?> checked="checked"<?endif;?>/></td>
+				<td> herrichten</td>
+				<td width="3%"><input type="checkbox" readonly="readonly" name="sgbvform[medication_administer_preparation]"  value="1"   <? if($sgbvform['medication_administer_preparation'] == '1'):?> checked="checked"<?endif;?> /></td>
+				<td>verabreichen</td>
+				<td colspan="2"></td>
+				  <? if($sgbvform['medication_ready_preparation'] == '1'):?>
+				<td class="day_nr"  width="5%" ><input type="text"  name="sgbvform[medication_ready_preparation_day]" value="<? echo $sgbvform['medication_ready_preparation_day']?>"   readonly="readonly" /> </td>
+				<td class="week_nr"  width="5%" ><input type="text"  name="sgbvform[medication_ready_preparation_week]" value="<? echo $sgbvform['medication_ready_preparation_week']?>"   readonly="readonly"  /> </td>
+				<td class="act_from" width="10%" ><input type="text"  name="sgbvform[medication_ready_preparation_from]" value="<? echo $sgbvform['medication_ready_preparation_from']?>"  class="action_date"  readonly="readonly"  /></td>
+				<td class="act_till" width="10%" ><input type="text"  name="sgbvform[medication_ready_preparation_till]" value="<? echo $sgbvform['medication_ready_preparation_till']?>"  class="action_date"  readonly="readonly"  /></td>
+				  <? elseif($sgbvform['medication_administer_preparation'] == '1'):?>
+				<td class="day_nr"  width="5%" ><input type="text"  name="sgbvform[medication_administer_preparation_day]" value="<? echo $sgbvform['medication_administer_preparation_day']?>"   readonly="readonly" /> </td>
+				<td class="week_nr"  width="5%" ><input type="text"  name="sgbvform[medication_administer_preparation_week]" value="<? echo $sgbvform['medication_administer_preparation_week']?>"   readonly="readonly"  /> </td>
+				<td class="act_from" width="10%" ><input type="text"  name="sgbvform[medication_administer_preparation_from]" value="<? echo $sgbvform['medication_administer_preparation_from']?>"  class="action_date"  readonly="readonly"  /></td>
+				<td class="act_till" width="10%" ><input type="text"  name="sgbvform[medication_administer_preparation_till]" value="<? echo $sgbvform['medication_administer_preparation_till']?>"  class="action_date"  readonly="readonly"  /></td>
+				<?else:?>
+				<td class="day_nr"  width="5%" ><input type="text"  name="sgbvform[medication_other_day]" value="<? echo $sgbvform['medication_other_day']?>"   readonly="readonly" /> </td>
+				<td class="week_nr"  width="5%" ><input type="text"  name="sgbvform[medication_other_week]" value="<? echo $sgbvform['medication_other_week']?>"   readonly="readonly"  /> </td>
+				<td class="act_from" width="10%" ><input type="text"  name="sgbvform[medication_other_from]" value="<? echo $sgbvform['medication_other_from']?>"  class="action_date"  readonly="readonly"  /></td>
+				<td class="act_till" width="10%" ><input type="text"  name="sgbvform[medication_other_till]" value="<? echo $sgbvform['medication_other_till']?>"  class="action_date"  readonly="readonly"  /></td>
+
+				<? endif;?>
+			</tr>
+			<tr>
+				<td colspan="12">&nbsp;</td>
+			</tr>
+			<tr>
+				<td width="3%"></td>
+				<td>Präparate:<br/>(auch bei Injektionen): </td>
+				<td colspan="10"><input type="text"   name="sgbvform[preparations]" value="<? echo $sgbvform['preparations']; ?>"  style="width: 98.5%;" /></td>
+			</tr>
+
+			<tr>
+				<td colspan="12">&nbsp;</td>
+			</tr>
+
+			<tr>
+				<td colspan="12">Verbände:</td>
+			</tr>
+
+			<tr>
+				<td></td>
+				<td></td>
+				<td width="3%"><input type="checkbox"  readonly="readonly" name="sgbvform[supportive_association]"  value="1"   <? if($sgbvform['supportive_association'] == '1'):?> checked="checked"<?endif;?> /></td>
+				<td colspan="4"> Anlegen vonstützenden/stabilisierenden Verbänden</td>
+				<td>&nbsp;</td>
+				<td class="day_nr"  width="5%" ><input type="text"  name="sgbvform[supportive_association_day]" value="<? echo $sgbvform['supportive_association_day']?>"   readonly="readonly" /> </td>
+				<td class="week_nr"  width="5%" ><input type="text"  name="sgbvform[supportive_association_week]" value="<? echo $sgbvform['supportive_association_week']?>"   readonly="readonly"  /> </td>
+				<td class="act_from" width="10%" ><input type="text"  name="sgbvform[supportive_association_from]" value="<? echo $sgbvform['supportive_association_from']?>"  class="action_date"  readonly="readonly"  /></td>
+				<td class="act_till" width="10%" ><input type="text"  name="sgbvform[supportive_association_till]" value="<? echo $sgbvform['supportive_association_till']?>"  class="action_date"  readonly="readonly"  /></td>
+			</tr>
+
+
+			<tr>
+				<td colspan="12">&nbsp;</td>
+			</tr>
+
+
+			<tr>
+				<td></td>
+				<td></td>
+				<td width="3%"><input type="checkbox"  readonly="readonly" name=""     /></td>
+				<td  colspan="4"> Anlegen von Kompressionsverbänden</td>
+				<td>&nbsp;</td>
+				<td class="day_nr"  width="5%" ><input type="text"   name="" value=""  readonly="readonly" /> </td>
+				<td class="week_nr"  width="5%" ><input type="text"  name="" value=""  readonly="readonly"  /> </td>
+				<td class="act_from" width="10%" ><input type="text"  name="" value=""  class="action_date"  readonly="readonly"  /></td>
+				<td class="act_till" width="10%" ><input type="text"   name="" value=""  class="action_date" readonly="readonly" /></td>
+			</tr>
+
+
+			<tr>
+				<td colspan="12">&nbsp;</td>
+			</tr>
+
+			<tr>
+				<td></td>
+				<td></td>
+				<td width="3%"><input type="checkbox" readonly="readonly"  name="sgbvform[wund_bandages_location]"   value="1"  <? if($sgbvform['wund_bandages_location'] == '1'):?> checked="checked"<?endif;?>/></td>
+				<td colspan="4">Anlegen und Wechseln vonWundverbänden</td>
+				<td>&nbsp;</td>
+				<td class="day_nr"  width="5%" ><input type="text"  name="sgbvform[wund_bandages_location_day]" value="<? echo $sgbvform['wund_bandages_location_day']?>"   readonly="readonly" /> </td>
+				<td class="week_nr"  width="5%" ><input type="text" name="sgbvform[wund_bandages_location_week]" value="<? echo $sgbvform['wund_bandages_location_week']?>"  readonly="readonly" /> </td>
+				<td class="act_from" width="10%" ><input type="text"  name="sgbvform[wund_bandages_location_from]" value="<? echo $sgbvform['wund_bandages_location_from']?>"  class="action_date" /></td>
+				<td class="act_till" width="10%" ><input type="text"  name="sgbvform[wund_bandages_location_till]" value="<? echo $sgbvform['wund_bandages_location_till']?>"  class="action_date" /></td>
+			</tr>
+			<tr>
+				<td colspan="12">&nbsp;</td>
+			</tr>
+			<tr>
+				<td colspan="2"></td>
+				<td colspan="2">Lokalisation / Wundbefund:</td>
+				<td colspan="8"><input type="text"  name="sgbvform[wound_findings]" value="<? echo $sgbvform['wound_findings']; ?>"   style="width: 98.5%;"/></td>
+			</tr>
+			<tr>
+				<td colspan="12">&nbsp;</td>
+			</tr>
+			<tr>
+				<td width="3%"><input type="checkbox" readonly="readonly" name="sgbvform[other]"   value="1" <? if($sgbvform['other'] == '1'):?> checked="checked"<?endif;?> /></td>
+				<td colspan="11">Sonstige Maßnahmen der Behandlungspflege (einschl. Häufigkeit und Dauer):</td>
+			</tr>
+			<tr>
+				<td colspan="12">&nbsp;</td>
+			</tr>
+			<tr>
+				<td colspan="12">
+					<textarea name="sgbvform[other_text]" class = "Z7_info" cols="" rows="" readonly="readonly" style="text-align:left;"><? echo $sgbvform['other_text']; ?></textarea>
+				</td>
+			</tr>
+
+		</table>
+	</div>
+</div>
+
+<div class="sgbv_outer small_portion">
+	<div class="action_blocks">
+	<div>
+		<span class="subtitlelike"><b>Grundpflege:</b></span>
+	</div>
+	<table class="table_treatment_care">
+		<tr>
+			<td width="20%" class="K_info"> <label>Anleitung zur<br/>Grundpflege</label></td>
+			<td width="55%" class="L_info"> </td>
+			<td width="5%"> </td>
+			<td width="20%" class="M_info"> </td>
+		</tr>
+		<tr>
+			<td></td>
+			<td><sup>folgende Leistungen</sup></td>
+			<td></td>
+			<td><sup>Anzahl/Einsätze</sup></td>
+		</tr>
+	</table>
+
+	<div class="ClrBoth"></div><br />
+
+	<table class="table_actions_nofunction">
+		<tr>
+			<th colspan="4">&nbsp;</th>
+			<th colspan="3" class="act_nr">Häufigkeit</th>
+			<th colspan="4" class="act_valid"> Dauer</th>
+		</tr>
+		<tr>
+			<th colspan="4">&nbsp;</th>
+			<th class="day_nr">x tgl.</th>
+			<td>&nbsp;</td>
+			<th class="week_nr">x wtl.</th>
+			<td>&nbsp;</td>
+			<th class="act_from">vom</th>
+			<td>&nbsp;</td>
+			<th class="act_till">bis</th>
+		</tr>
+		<tr>
+			<td colspan="11">&nbsp;</td>
+		</tr>
+		<tr>
+			<td width="3%"></td>
+			<td> Ausscheidungen <br/> (Hilfe, Kontrolle und Training)</td>
+			<td colspan="2">&nbsp;</td>
+			<td class="day_nr"  width="10%"  style="border-bottom:1px solid #000;"></td>
+			<td>&nbsp;</td>
+			<td class="week_nr"  width="10%"  style="border-bottom:1px solid #000;"></td>
+			<td>&nbsp;</td>
+			<td class="act_from" width="15%"  style="border-bottom:1px solid #000;"></td>
+			<td>&nbsp;</td>
+			<td class="act_till" width="15%" style="border-bottom:1px solid #000;"></td>
+		</tr>
+
+
+		<tr>
+			<td colspan="1">&nbsp;</td>
+		</tr>
+		<tr>
+			<td width="5%"></td>
+			<td>Ernährung</td>
+			<td colspan="2">&nbsp;</td>
+			<td class="day_nr"  width="10%"  style="border-bottom:1px solid #000;"></td>
+			<td>&nbsp;</td>
+			<td class="week_nr"  width="10%"  style="border-bottom:1px solid #000;"></td>
+			<td>&nbsp;</td>
+			<td class="act_from" width="15%"  style="border-bottom:1px solid #000;"></td>
+			<td>&nbsp;</td>
+			<td class="act_till" width="15%" style="border-bottom:1px solid #000;"></td>
+		</tr>
+
+		<tr>
+			<td colspan="1">&nbsp;</td>
+		</tr>
+
+		<tr>
+			<td width="5%"> </td>
+			<td>Körperpflege</td>
+			<td colspan="2">&nbsp;</td>
+			<td class="day_nr"  width="10%"  style="border-bottom:1px solid #000;"></td>
+			<td>&nbsp;</td>
+			<td class="week_nr"  width="10%"  style="border-bottom:1px solid #000;"></td>
+			<td>&nbsp;</td>
+			<td class="act_from" width="15%"  style="border-bottom:1px solid #000;"></td>
+			<td>&nbsp;</td>
+			<td class="act_till" width="15%" style="border-bottom:1px solid #000;"></td>
+		</tr>
+
+		<tr>
+			<td colspan="1">&nbsp;</td>
+		</tr>
+		<tr>
+			<td width="5%" colspan="2">Hauswirtschaftliche Versorgung:</td>
+			<td colspan="2">&nbsp;</td>
+			<td class="day_nr"  width="10%"  style="border-bottom:1px solid #000;"></td>
+			<td>&nbsp;</td>
+			<td class="week_nr"  width="10%"  style="border-bottom:1px solid #000;"></td>
+			<td>&nbsp;</td>
+			<td class="act_from" width="15%"  style="border-bottom:1px solid #000;"></td>
+			<td>&nbsp;</td>
+			<td class="act_till" width="15%" style="border-bottom:1px solid #000;"></td>
+		</tr>
+	</table>
+	</div>
+</div>
+<div class="sgbv_stamp_outer">
+	<br/>&nbsp;<br/>
+	<br/>&nbsp;<br/>
+
+	<div  class="sgbv_stamp" >
+		<div class="stamp_alert"><? echo $this->translate("no stamp information")?></div>
+	    <div id="user_stamp_block" style="display: block; height: 110px;">
+	    	<span></span>
+	    </div>
+	    Vertragsarztstempel / Unterschrift des Arztes
+	</div>
+
+	<div class="stamb_select_block">
+		<? if ($this->showselect == 1): ?>
+		<?php if($this->multiplestamps_option === true): ?>
+		<div class="userstamps">
+			<label>Arztstempel</label>
+			<select id="stampusers"	name="stampusers">
+				<option value="">
+					<? echo $this->translate('selectuserstamp')?>
+				</option>
+				<? foreach($this->users_mstamps as $user=>$stamp):?>
+				<optgroup label="<? echo $stamp['user_name'];?>" value="<? echo $stamp['user_id'];?>">
+					<? foreach( $stamp['user_stamps'] as  $stamp_id => $stamp_name):?>
+						<option value="<? echo $stamp['user_id'];?>-<? echo $stamp_id;?>"><? echo $stamp_name;?></option>
+					<? endforeach;?>
+				</optgroup>
+				<? endforeach;?>
+			</select>
+		</div>
+		<? else: ?>
+		<div class="userstamps">
+			<label>Arztstempel</label>
+			<? echo $this->formSelect('stampusers', $this->users, null, $this->users); ?>
+		</div>
+		<? endif; ?>
+		<? endif; ?>
+	</div>
+</div>
+</div>
+
+<input type="hidden" name="sgbv_form_id"  id="form_id" value="<? echo $this->sgbv_form_id;?>" />
+
+	<table class="datatable">
+		<tr>
+			<th valign="top" colspan="7" ><? echo $this->translate('status')?></th>
+		</tr>
+		<tr>
+		<? foreach($sgbv_status as $k_status => $v_status):?>
+
+			<td><input type="radio" class="sgbv_status" id="sgbv_status_<? echo $k_status; ?>" name="sgbvform[status]" value="<? echo $k_status; ?>" <? if(( $sgbvform['status'] == $k_status) || ( empty($sgbvform['status']) && $k_status == '10' )):?> checked="checked" <? endif;?> /><label for="sgbv_status_<? echo $k_status; ?>"><? echo $v_status; ?></label></td>
+
+		<? endforeach;?>
+		<input type="hidden" name="sgbvform[old_status]" id="old_status" value="<? echo $sgbvform['status']; ?>">
+
+		</tr>
+
+		<tr id="approved_limit"  <? if( $sgbvform['status'] =='5' ) :?> <? else:?>style="display: none;" <? endif;?> >
+			<td colspan="3"></td>
+			<td align="right"> <? echo $this->translate('official refused date')?> </td>
+			<td><input type="text" name="sgbvform[approved_limit]" class="approve_datepick" value="<? if( !empty($sgbvform['approved_limit']) && $sgbvform['approved_limit'] !='0000-00-00 00:00:00')  {echo date('d.m.Y',strtotime($sgbvform['approved_limit'])); } else{ echo '';}?>" /></td>
+			<td></td>
+			<td></td>
+		</tr>
+
+	</table>
+
+
+<div class="sgbv_buttons">
+<div>
+	<input name="save" id="save_form"   type="submit" value="<? echo $this->translate('save') ?>" />
+	<? if( !$_REQUEST['sgbv_form_id'] && $sgbvform['temporarily'] == '1' ):?>
+		<input name="cancel" id="cancel_form"   type="submit" value="<? echo $this->translate('cancel form filling') ?>" />
+	<? endif;?>
+	<input name="save" id="edit_actions_onform"   type="button" value="<? echo $this->translate('edit_actions_onform') ?>" class="btnsubmit_usersessions"/>
+</div>
+
+<div>
+	<input name="btnsubmit" id="pre_pdf_btnsubmit" type="submit" value="<? echo $this->translate('wizard_generatepdf') ?>" />
+	<input name="pre_print" id="pdf_btnsubmit" type="submit" value="<? echo $this->translate('generate pre print pdf') ?>" />
+</div>
+</div>
+
+
+<? if(!empty($form_history)):?>
+<br style="clear: both;"/>
+<div class="history">
+<a href="javascript:void(0)" id="show_history" class="history_title"> + <? echo $this->translate('History')?></a>
+<div class="history_block" style="display: none;">
+
+<table>
+<tr>
+	<th></th>
+	<th><? echo $this->translate('create / change date')?></th>
+	<th><? echo $this->translate('old status')?></th>
+	<th><? echo $this->translate('new status')?></th>
+	<th><? echo $this->translate('user')?></th>
+</tr>
+<? foreach($form_history as $kh=>$history):?>
+		<? if($history['entity_type'] == 'sgbv'):?>
+	<tr>
+		<? if($history['entity_type'] == 'sgbv'):?>
+			<td>SGBV</td>
+		<? else:?>
+			<? if ($master_actions[$history['entity_id']]['custom'] == 1 && $master_actions[$history['entity_id']]['parent'] != 0 ): ?>
+					<td><? echo $master_actions[$master_actions[$history['entity_id']]['parent']]['action_name']?></td>
+				<? else: ?>
+					<td><? echo $master_actions[$history['entity_id']]['action_name']?></td>
+			<? endif;?>
+		<? endif;?>
+		<td><? echo date('d.m.Y H:i',strtotime($history['create_date'])); ?></td>
+		<td><? echo $sgbv_status[$history['old_status']]; ?></td>
+		<td><? echo $sgbv_status[$history['new_status']]; ?></td>
+		<td><? echo $user_array[$history['create_user']]; ?></td>
+	</tr>
+	<? endif;?>
+<? endforeach;?>
+
+</table>
+<?
+	$sgbv_form_files = $this->sgbv_form_files;
+	$users_data = $this->users_data;
+?>
+<? if(!empty($sgbv_form_files)):?>
+<a href="javascript:void(0)"  class="history_title">  <? echo $this->translate('file_history'); ?></a>
+			<table class="datatable">
+				<tr>
+					<th>#</th>
+					<th><?php echo $this->translate('title'); ?></th>
+					<th><?php echo $this->translate('user'); ?></th>
+					<th style="width:80px;"><?php echo $this->translate('date'); ?></th>
+				</tr>
+				<?php $i = 1;
+				foreach ($sgbv_form_files as $k_contact_file => $v_contact_file): ?>
+					<tr>
+						<td><a href="<?php echo APP_BASE . 'stats/patientfileupload?doc_id='.$v_contact_file['id'].'&id='.$_REQUEST['id'];?>"><?php echo $i; ?></a></td>
+						<td><a href="<?php echo APP_BASE . 'stats/patientfileupload?doc_id='.$v_contact_file['id'].'&id='.$_REQUEST['id'];?>"><?php echo $v_contact_file['title']; ?></a></td>
+						<td><a href="<?php echo APP_BASE . 'stats/patientfileupload?doc_id='.$v_contact_file['id'].'&id='.$_REQUEST['id'];?>"><?php echo $users_data[$v_contact_file['create_user']]['first_name'].', '.$users_data[$v_contact_file['create_user']]['last_name']; ?></a></td>
+						<td><a href="<?php echo APP_BASE . 'stats/patientfileupload?doc_id='.$v_contact_file['id'].'&id='.$_REQUEST['id'];?>"><?php echo date('d.m.Y', strtotime($v_contact_file['create_date'])); ?></a></td>
+					</tr>
+				<?php $i++; endforeach; ?>
+			</table>
+			<? endif;?>
+</div>
+</div>
+<? endif;?>
+</div>
+</form>
+<div id="actions-modal">
+
+<form action="" id="save_sgbv_options"  name="save_sgbv_options" method="post">
+<input type="hidden" name="save_modal" value="1" />
+<div class="sgbv_form_options">
+	<h2>Verordnung häuslicher Krankenpflege</h2>
+	<table>
+		<tr>
+			<td colspan="3">
+			&nbsp;<br/><input type="hidden" name="sgbv_form_id" value="<? echo $this->sgbv_form_id;?>" />
+			</td>
+		</tr>
+		<tr>
+			<th width="20%" ><? echo $this->translate('wizard_period')?></th>
+			<td width="40%" style="vertical-align: middle" ><div><label>vom</label><input type="text" name="sgbv[valid_from]" id="sgbv_valid_from"   value="<? if( !empty($sgbvform['valid_from']) && $sgbvform['valid_from'] !='0000-00-00 00:00:00')  {echo date('d.m.Y',strtotime($sgbvform['valid_from'])); } ?>"/></div></td>
+			<td width="40%" style="vertical-align: middle" ><div> <label>bis</label><input type="text" name="sgbv[valid_till]" id="sgbv_valid_till"   value="<? if( !empty($sgbvform['valid_till']) && $sgbvform['valid_till'] !='0000-00-00 00:00:00')  {echo date('d.m.Y',strtotime($sgbvform['valid_till'])); } ?>" /></div></td>
+
+		</tr>
+	</table>
+</div>
+
+	<div class="sgbv_form_options" id="sgbv_actions_block" style="display: none;">
+
+		<table border="1" class="sgbv_form_options_table" id="sgbv_list_action" cellpadding="10" cellspacing="10">
+
+			<tr>
+				<th rowspan="2"></th>
+				<th rowspan="2" ><? echo $this->translate('wizard_action_name')?></th>
+				<th rowspan="2" align="center">Keine SGBV</th>
+				<th colspan="2" align="center">Häufigkeit</th>
+				<th colspan="2" align="center">Dauer</th>
+			</tr>
+			<tr>
+				<th>x tgl.</th>
+				<th>x wtl.</th>
+				<th>vom</th>
+				<th>bis</th>
+			</tr>
+			<? foreach($sgbv_patient_actions as $k_act => $v_act):?>
+			<tr id="act_row_<? echo $v_act['id'];?>">
+				<td width="5%"><input type="checkbox" class="activate"	name="action[<? echo $v_act['id'];?>][id]"	value="<? echo $v_act['id'];?>"  <? if( !empty($action[$v_act['id']])):?> checked="checked"<? endif;?>   /></td>
+
+				<? if($v_act['custom'] == 1 && $v_act['extra'] == '1'): ?>
+					<td width="30%" >
+						<div class="custom_name" id="custom_action_<? echo $v_act['id'];?>">
+							<label ><? echo $v_act['action_name']?></label>
+							<input type="hidden" name="" id="edit_name<? echo $v_act['id'];?>"  value="<? echo $v_act['action_name']?>" />
+						</div>
+							<?
+							if($sgbv_action_details[$v_act['parent']]['action_name'] !=""){
+								echo " (".$sgbv_action_details[$v_act['parent']]['action_name'].") ";
+							}
+							?>
+					</td>
+
+
+				<? elseif($v_act['custom'] == 1 && $v_act['extra'] != '1'): ?>
+					<td width="30%" >
+						<div class="custom_name" id="custom_action_<? echo $v_act['id'];?>">
+							<label ><? echo $v_act['action_name']?></label>
+							<input type="hidden" name="" id="edit_name<? echo $v_act['id'];?>"  value="<? echo $v_act['action_name']?>" />
+						</div>
+						<a class="edit_action" rel="<? echo $v_act['id'];?>"  title="<? echo $this->translate('Edit');?>" href="javascript:void(0)"><img  src="<? echo RES_FILE_PATH;  ?>/images/edit.png"><span> </a>
+						<a class="delete_action" rel="<? echo $v_act['id'];?>"  title="" href="javascript:void(0)"><img width="20" height="20" src="<? echo RES_FILE_PATH;  ?>/images/action_delete.png"></a>
+						<br/>
+						<select name="action[<? echo $v_act['id'];?>][parent]" class="official_parent"  disabled="disabled" rel="<? echo $v_act['id'];?>" >
+							<option value="0"><? echo $this->translate('wizard_oficial_custom_action');?></option>
+							<? foreach($sgbv_client_actions as $ck_act => $cv_act):?>
+								<option value="<? echo $cv_act['id'];?>"  <?php if(  $v_act['parent'] == $cv_act['id']):?> selected="selected" <? endif;?> > <? echo $cv_act['action_name']; ?></option>
+							<? endforeach;?>
+						</select>
+					</td>
+				<? else: ?>
+					<td width="30%">
+						<label><? echo $v_act['action_name']?></label>
+					</td>
+				<? endif; ?>
+
+				<td width="5%"><input type="checkbox" class="keine_sgbv" name="action[<? echo $v_act['id'];?>][free_of_charge]"	value="1"  <? if($action[$v_act['id']]['free_of_charge'] == '1'    ):?> checked="checked"<? endif;?>   /></td>
+				<td  width="5%" class="day_nr"><input type="text" id="action_per_day_<? echo $v_act['id'];?>"  name="action[<? echo $v_act['id'];?>][per_day]" value="<? echo $action[$v_act['id']]['per_day']; ?>"	style="width: 30px !important;"  disabled="disabled" /></td>
+				<td  width="5%" class="week_nr"><input type="text" id="action_per_week_<? echo $v_act['id'];?>"  name="action[<? echo $v_act['id'];?>][per_week]" value="<? echo $action[$v_act['id']]['per_week']; ?>"	style="width: 30px !important;"   disabled="disabled"  /></td>
+				<td  width="5%" class="act_from"><input type="text" id="action_from_<? echo $v_act['id'];?>"  name="action[<? echo $v_act['id'];?>][valid_from]" value="<? if( !empty($action[$v_act['id']]['valid_from']) && $action[$v_act['id']]['valid_from'] !='0000-00-00 00:00:00')  {echo date('d.m.Y',strtotime($action[$v_act['id']]['valid_from'])); } ?>"	class="action_datepick" style="width: 65px !important;"   disabled="disabled"  /></td>
+				<td  width="5%" class="act_till"><input type="text" id="action_till_<? echo $v_act['id'];?>" name="action[<? echo $v_act['id'];?>][valid_till]" value="<? if( !empty($action[$v_act['id']]['valid_till']) && $action[$v_act['id']]['valid_till'] !='0000-00-00 00:00:00')  {echo date('d.m.Y',strtotime($action[$v_act['id']]['valid_till'])); } ?>" class="action_datepick" style="width: 65px !important;"   disabled="disabled"  /></td>
+			</tr>
+
+			<? endforeach;?>
+
+		</table>
+		<a class="add_action" rel=""  title="" href="javascript:void(0)"><img width="20" height="20" src="<? echo RES_FILE_PATH;  ?>/images/edit_add.png"><span><? echo $this->translate('wizard_add_custom_action')?></span> </a>
+	</div>
+
+</form>
+</div>
+
+<div class="add_action_block" id="add_action_block">
+	<label><? echo $this->translate('social_action_name'); ?></label>
+	<input name="action_name" value="" id="action_name" />
+</div>
+
+<div class="edit_action_block" id="edit_action_block">
+	<label><? echo $this->translate('social_action_name'); ?></label>
+	<input type="text"  name="edit_action_name" value="" id="edit_action_name" />
+	<input type="hidden" name="edit_action_id" value="" id="edit_action_id" />
+</div>
+
+<div class="delete_action_block" id="delete_action_block">
+	<label><? echo $this->translate('areyousure'); ?></label>
+	<input type="hidden" name="delete_action_id" value="" id="delete_action_id" />
+</div>

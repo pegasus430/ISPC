@@ -1,0 +1,729 @@
+<? $this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/page-css/weeklymeeting.css');?>
+<?php  $this->headScript()->appendFile(RES_FILE_PATH.'/javascript/datepicker/jquery.datepick.js'); ?>
+<?php  $this->headScript()->appendFile(RES_FILE_PATH.'/javascript/datepicker/jquery.datepicker-de.js'); ?>
+<? echo $this->patientinfo ?>
+<? echo $this->tabmenus ?>
+
+<!--?php echo FormLock::lockerwidget($this->encid, 'lmuteammeeting', 0);?-->
+
+<script type="text/javascript">
+
+    var global_users_to_group=<?php echo json_encode($this->users_to_group);?>;
+
+    function closeEditorWarning(){
+        return 'Sie verlassen die Seite ohne zu speichern.';
+    }
+
+    window.onbeforeunload = closeEditorWarning;
+
+
+    function countgroups(){
+        var groups={};
+        $('#adduser_usersselected input[type="checkbox"]').each(function(){
+            var myname=$(this).attr('name');
+            var uid=myname.match(/\[(\d*)\]/);
+            groups[global_users_to_group[uid[1]].group]=1;
+        });
+
+        if(Object.keys(groups).length>2){
+            return true;
+        }else{
+            return false;
+        }
+
+    }
+
+    var recent_users=[<?php foreach ($this->recent_users as $user){echo $user.",";}?>];
+
+    $(document).ready(function(){
+
+        $('*').keypress(function(event){
+            if(event.keyCode == 13 && event.target.nodeName!='TEXTAREA')
+            {
+                event.preventDefault();
+                return false;
+            }
+        });
+
+        $('.lmutm_intable').change(function(){
+            $(this).parent().find('input:first').val($(this).val());
+        });
+
+        $("input[name='lmutm_create_new']").change(function(){
+            if ($('#lmutm_create_new_1').attr('checked')=='checked'){
+
+                $('#lmutm_submitbutton').attr('value','Formular abschließen');
+            } else {
+                $('#lmutm_submitbutton').attr('value','Formular speichern');
+            }
+        });
+
+        $(document).on('click', '.plan-item .btnClear', function(){
+            $(this).parent().find('textarea').val('');
+        })
+
+        $('.lmutm_mainproblems').keyup(lmutm_update_mp);
+    <?php if ($this->readonly==0) {
+            echo 'lmutm_update_mp();';
+        }else{
+            echo '$("input").attr("disabled","disabled");';
+        }
+
+            ?>
+
+        //grab IPOS history
+        var leftoff=$('div.teambesprechung').position().left +  $('div.teambesprechung').width() +42;
+        var topoff=$('.lmutm_hauptproblemeblock').position().top;
+
+    });
+    function lmutm_update_mp(){
+        var empty_rows=0;
+        var problems_formtext="";
+        $('.lmutm_mainproblems').each(function(){
+            if(this.value=="") {
+                empty_rows++;
+                if (empty_rows>1) $(this).hide().parent().remove();
+            } else {
+                var a =this.value;
+                a=a.replace(/\$/g, "$d");
+                problems_formtext = problems_formtext + '$n' + a;
+            }
+        });
+        problems_formtext = problems_formtext.replace(/^\$n/g, "");
+        $val=$('#lmutm_mainproblems_hidd').attr('value', problems_formtext);
+        if (empty_rows==0){
+            $('#lmutm_mainproblems').append('<li><input type="text" class="lmutm_mainproblems" value="" /></li>');
+        }
+
+        $('.lmutm_mainproblems').unbind('keyup');
+        $('.lmutm_mainproblems').keyup(lmutm_update_mp);
+    }
+
+    function lmutm_takeOldData(i,element){
+        var e = $(element).parent().parent().children('input[alt="'+i+'"]').val();
+        $(element).parent().parent().children('textarea').val(e);
+    }
+
+
+    function rm_adduser(ele){
+        $(ele).parent().unbind('click');
+        $(ele).parent().find('input[type="checkbox"]').removeAttr('checked');
+        $('#adduser_userpool').append($(ele).parent().hide());
+        $(ele).hide();
+    }
+
+    function add_recent_users(){
+        $('#adduser_userpool li').each(function(){
+            var iid=$(this).find('input').attr('name');
+            for (var i=0; i<recent_users.length;i++){
+                var tmpname="additional_users["+recent_users[i]+"][value]";
+                if(tmpname==iid){
+
+                    $('#adduser_usersselected').append($(this));
+                    $(this).find('input').attr('checked','checked');
+                    $(this).find('input').click(function(){
+                        $(this).parent().unbind('click');
+                        $(this).removeAttr('checked');
+                        $('#adduser_userpool').append($(this).parent().hide());
+                        $(this).hide();
+
+                    });
+                    $(this).find('input.btnRemove').show();
+                    $(this).show();
+
+                }
+            }
+        });
+    }
+
+    $(document).ready(function(){
+
+
+        $('#lmutm_submitbutton').click(function(event) {
+            event.preventDefault();
+            $(this).prop('disabled',true);
+            window.setTimeout(function(){$('#lmutm_submitbutton').prop('disabled',false);}, 10000);
+            var cnt=countgroups();
+            var that=this;
+            if(cnt){
+                $('form[name="lmutm"]').submit();
+            }else{
+                $( "#dialog-confirm" ).dialog({
+                    resizable: false,
+                    height: "auto",
+                    width: 400,
+                    modal: true,
+                    buttons: {
+                        "Trotzdem speichern": function() {
+                            $( this ).dialog( "close" );
+                            $('form[name="lmutm"]').submit();
+                        },
+                        "Korrigieren": function() {
+                            $(that).prop('disabled',false);
+                            $( this ).dialog( "close" );
+                        }
+                    }
+                });
+            }
+
+        });
+
+        $('#lmutm_goalselectbox').dialog({
+            autoOpen:false,
+            modal: true,
+            title: '<?php echo $this->translate('Ziele auswählen'); ?>',
+            closeOnEscape: true,
+            resizable: false,
+            width:300,
+            height:300,
+            open: function(event, ui) {
+
+            },
+            close: function(event, ui){
+
+            }});
+        $('#lmutm_planselectbox').dialog({
+            autoOpen:false,
+            modal: true,
+            title: '<?php echo $this->translate('Behandlungswege auswählen'); ?>',
+            closeOnEscape: true,
+            resizable: false,
+            width:300,
+            height:300,
+            open: function(event, ui) {
+
+            },
+            close: function(event, ui){
+
+            }});
+
+        $('#adduser_livesearch').keyup(function(e){
+            var stext = $(this).val();
+            stext=stext.toLowerCase();
+            var slist=stext.split(" ");
+            $('#adduser_userpool li').hide();
+
+            if (stext.length>0){
+                var count=0;
+                $('#adduser_userpool li').each(function(){
+                    $(this).unbind('click');
+                    var tval= $(this).find('span.name').text();
+                    tval = tval.toLowerCase();
+
+                    var doshow=1;
+                    for (var i=0; i<slist.length; i++){
+                        (tval.match(slist[i]))? doshow=doshow:doshow=0;
+                    }
+                    if(doshow && count<5){
+                        $(this).show();
+                        $(this).find('input.btnRemove').hide();
+                        count++;
+                        $(this).click(function(){
+                            $('#adduser_usersselected').append($(this));
+                            $(this).find('input').attr('checked','checked');
+                            $(this).find('input').click(function(){
+                                $(this).parent().unbind('click');
+                                $(this).removeAttr('checked');
+                                $(this).find('input.btnRemove').hide();
+                                $('#adduser_userpool').append($(this).parent().hide());
+                                $(this).hide();
+                            });
+                            $(this).find('input.btnRemove').show();
+                            $('#adduser_livesearch').val('').keyup();
+                        });
+                    }
+                    else {
+                        $(this).hide();
+                    }
+                });
+                if(e.keyCode==13 && count==1){
+                    $('#adduser_userpool li:visible').click();
+                    $(this).val('');
+                };
+            }
+        });
+    <?php if ($this->readonly==1) {echo '$("input").attr("disabled","disabled");';}?>
+
+
+    });
+
+    var list_goalsandplans=<?php echo $this->list_goalsandplans;?>;
+
+
+    function lmutm_getexamples(item){
+        var name=$(item).parents('div.tcont').find('textarea').attr('name');
+
+        var namel=name.split('_');
+        var prof_category=namel[1];
+        var type_category=namel[2];
+
+        var history_items=[];
+
+        $(item).parents('div.tcont').find('.history_content').each(function(){
+            if($(this).val()!=""){
+                history_items.push($(this).val());
+            }
+        });
+
+        var cattocat={
+            'medic':'Medizinisch',
+            'care':'Pflegerisch',
+            'psy':'Psychologisch',
+            'social':'Sozial',
+            'spiritual':'Spirituell',
+            'physio':'Physiotherapeutisch',
+            'breath':'Atemtherapie'};
+        var prof_category_long=cattocat[prof_category];
+
+
+
+        var selectlist=new Array();
+
+
+        if(type_category=="plan"){
+            $('#lmutm_planselectbox').dialog('open');
+            $('#lmutm_planselectbox ul').empty();
+            var planname=name.replace('plan','goal');
+            var goals=$('textarea[name='+planname+']').val();
+            goals=goals.split('\n');
+
+            for (var goal in goals){
+
+                if(list_goalsandplans[goals[goal]]!=undefined && list_goalsandplans[goals[goal]]['category']==prof_category_long) {
+                    $('#lmutm_planselectbox ul').append('<b>' + goals[goal] + '</b>');
+                }
+                for(var propertyName in list_goalsandplans) {
+                    if(propertyName == goals[goal] && list_goalsandplans[propertyName]['category']==prof_category_long){
+
+                        for (var plan in list_goalsandplans[propertyName]['plan']){
+                            var text=list_goalsandplans[propertyName]['plan'][plan];
+                            selectlist.push(text);
+
+                            var newel=$("<li>" +text+ "</li>");
+
+                            newel.click(function(){
+                                var newtext=$(this).text();
+                                var oldtext=$(item).parents('div.tcont').find('textarea').val();
+                                if(oldtext.length>0 && !(oldtext[oldtext.length-1]=='\n')) oldtext=oldtext+"\n";
+
+                                $(item).parents('div.tcont').find('textarea').val(oldtext+newtext+"\n");
+                                $(this).css('background-color','grey');
+                                $(this).off('click');
+                            });
+                            $('#lmutm_planselectbox ul').append(newel);
+                        }
+                    }}
+            }
+
+
+            if(history_items.length>0) {
+                $('#lmutm_planselectbox ul').append('<b>Einträge aus vorherigen Besprechungen</b>');
+                for (var hind in history_items){
+                    var text=history_items[hind];
+                    var newel=$("<li>" +text+ "</li>");
+
+                    newel.click(function(){
+                        var newtext=$(this).text();
+                        var oldtext=$(item).parents('div.tcont').find('textarea').val();
+                        if(oldtext.length>0 && !(oldtext[oldtext.length-1]=='\n')) oldtext=oldtext+"\n";
+
+                        $(item).parents('div.tcont').find('textarea').val(oldtext+newtext+"\n");
+                        $(this).css('background-color','grey');
+                        $(this).off('click');
+                    });
+                    $('#lmutm_planselectbox ul').append(newel);
+                }
+            }
+
+
+
+        } else{
+            $('#lmutm_goalselectbox').dialog('open');
+            $('#lmutm_goalselectbox ul').empty();
+            for(var propertyName in list_goalsandplans) {
+                <!--if(list_goalsandplans[propertyName]['category']==prof_category_long)-->
+                if(list_goalsandplans[propertyName]['category']==prof_category){
+                    selectlist.push(propertyName);
+                    var newel=$("<li>" +propertyName+ "</li>");
+
+                    newel.click(function(){
+
+                        var newtext=$(this).text();
+                        var mypropertyname=newtext;
+                        var oldtext=$(item).parents('div.tcont').find('textarea').val();
+                        if(oldtext.length>0 && !(oldtext[oldtext.length-1]=='\n')) oldtext=oldtext+"\n";
+
+                        $(item).parents('div.tcont').find('textarea').val(oldtext+newtext+"\n");
+                        $(this).hide('slow');
+
+                        $('#lmutm_planselectbox').dialog('open');
+                        $('#lmutm_planselectbox ul').empty();
+                        for (var plan in list_goalsandplans[mypropertyname]['plan']) {
+                            //if(list_goalsandplans[mypropertyname]['category']==prof_category_long) {
+                            if(list_goalsandplans[mypropertyname]['category']==prof_category) {
+                                var text = list_goalsandplans[mypropertyname]['plan'][plan];
+                                var newel_plan = $("<li>" + text + "</li>");
+                                newel_plan.click(function () {
+                                    var newtext = $(this).text();
+                                    var ta = $(item).parents('div.plan-item').find('textarea[name="lmutm_' + prof_category + '_plan"]');
+                                    var oldtext = $(ta).val();
+                                    if (oldtext.length > 0 && !(oldtext[oldtext.length - 1] == '\n')) oldtext = oldtext + "\n";
+
+                                    $(ta).val(oldtext + newtext + "\n");
+                                    $(this).css('background-color', 'grey');
+                                    $(this).off('click');
+                                });
+                                $('#lmutm_planselectbox ul').append(newel_plan);
+                            }
+                        }
+                    });
+                    $('#lmutm_goalselectbox ul').append(newel);
+                }}
+            if(history_items.length>0) {
+                $('#lmutm_goalselectbox ul').append('<b>Einträge aus vorherigen Besprechungen</b>');
+                for (var hind in history_items){
+                    var text=history_items[hind];
+                    var newel=$("<li>" +text+ "</li>");
+
+                    newel.click(function(){
+                        var newtext=$(this).text();
+                        var oldtext=$(item).parents('div.tcont').find('textarea').val();
+                        if(oldtext.length>0 && !(oldtext[oldtext.length-1]=='\n')) oldtext=oldtext+"\n";
+
+                        $(item).parents('div.tcont').find('textarea').val(oldtext+newtext+"\n");
+                        $(this).css('background-color','grey');
+                        $(this).off('click');
+                    });
+                    $('#lmutm_goalselectbox ul').append(newel);
+                }
+            }
+
+
+        }
+
+
+
+    }
+
+    $(document).ready(function(){
+        $('#lmutm_datepicker').datepicker();
+    });
+    
+    //ISPC-2819 Lore 10.02.2021
+    function takeDataBehandlungs(){
+    	var forms_behand = '<?php echo json_encode($this->forms_behand); ?>';
+    	var forms_behand_texts = jQuery.parseJSON(forms_behand);
+    	//console.log(forms_behand_texts);
+      	$('textarea#lmutm_medic_plan').text(forms_behand_texts.medic_plan);
+    	$('textarea#lmutm_medic_goal').text(forms_behand_texts.medic_goal);
+    	$('textarea#lmutm_care_plan').text(forms_behand_texts.care_plan);
+    	$('textarea#lmutm_care_goal').text(forms_behand_texts.care_goal);
+    	$('textarea#lmutm_social_plan').text(forms_behand_texts.social_plan);
+    	$('textarea#lmutm_social_goal').text(forms_behand_texts.social_goal);
+    	$('textarea#lmutm_psy_plan').text(forms_behand_texts.psy_plan);
+    	$('textarea#lmutm_psy_goal').text(forms_behand_texts.psy_goal);
+    	$('textarea#lmutm_spiritual_plan').text(forms_behand_texts.spiritual_plan);
+    	$('textarea#lmutm_spiritual_goal').text(forms_behand_texts.spiritual_goal);
+    	$('textarea#lmutm_breath_plan').text(forms_behand_texts.breath_plan);
+    	$('textarea#lmutm_breath_goal').text(forms_behand_texts.breath_goal);
+    	$('textarea#lmutm_physio_plan').text(forms_behand_texts.physio_plan);
+    	$('textarea#lmutm_physio_goal').text(forms_behand_texts.physio_goal);   
+    }
+    //.
+    
+</script>
+
+<div class="nd-cont teambesprechung"  style="width:800px;">
+    <form action="" name="lmutm" method="post" onsubmit="    window.onbeforeunload = function(){};">
+        <input type="hidden" name="lmutm_id" value="<?php echo $this->forms[0]['id'];?>"/>
+        <?php
+	$readonly='';
+	if ($this->readonly==1)
+        {
+        $readonly='disabled="disabled"';
+        }
+        ?>
+
+        <h1>Wöchentliche multiprofessionelle Teambesprechung</h1>
+
+        <div class="tdb-cont left">
+            <?php 	$client_users = $this->client_users;?>
+            <?php 	$additional_users = $this->additional_users;?>
+
+
+            <div class="input-container teilnehmer" <?php if ($this->readonly==1) echo 'style="display:none;"';?>>
+            <label for="TEILNEHMER">TEILNEHMER DER BESPRECHUNG</label>
+            <input type="text" class="text" name="TEILNEHMER" id="adduser_livesearch" autocomplete="off" value="">
+            <input type="button" class="btnGroup" name="group" onclick="add_recent_users()">
+
+            <div style="<?php if ($this->readonly==1) echo 'display:none;';?>">
+                <ul class="teilnehmer-list"  id="adduser_userpool">
+                    <?php foreach ($client_users as $kuser => $vuser):?>
+                    <?php if(! in_array($vuser['id'],$additional_users)):?>
+                    <li style="display:none;cursor:pointer;">
+                        <input style="display:none" type="checkbox" name="additional_users[<? echo $vuser['id']; ?>][value]" value="1"  <? if( in_array($vuser['id'],$additional_users)):?> checked="checked" <? endif; ?> />
+                        <span class="name"><?php echo $vuser['last_name'].' '.$vuser['first_name'];?> </span>
+                        <span class="type">(<?php echo $this->users_to_group[$vuser['id']]['group'];?>)</span>
+                        <input type="button" class="btnRemove" <?php if($vuser['id'] !=  $form_create_user):?>onclick="rm_adduser(this);"<?php endif;?>>
+                    </li>
+                    <?php endif;?>
+                    <?php endforeach;?>
+                </ul>
+            </div>
+
+        </div>
+
+
+        <ul class="teilnehmer-list" id="adduser_usersselected">
+            <?php foreach ($client_users as $kuser => $vuser):?>
+            <?php if( in_array($vuser['id'],$additional_users)):?>
+            <li>
+                <input style="display:none;" type="checkbox" name="additional_users[<? echo $vuser['id']; ?>][value]" value="1"  checked="checked" <?php if($vuser['id'] ==  $form_create_user){echo 'disabled="disabled"';}?>/>
+                <?php if($vuser['id'] ==  $form_create_user): ?>
+                <input type="hidden" name="additional_users[<? echo $vuser['id']; ?>][creator]" value="1" />
+                <?php endif;?>
+                <span class="name"><?php echo $vuser['last_name'].' '.$vuser['first_name'];?> </span>
+                <span class="type">(<?php echo $this->users_to_group[$vuser['id']]['group'];?>)</span>
+                <input type="button" class="btnRemove" <?php if($vuser['id'] !=  $form_create_user):?>onclick="rm_adduser(this);"<?php endif;?>>
+            </li>
+            <?php endif;?>
+            <?php endforeach;?>
+        </ul>
+
+
+
+</div>
+
+
+<!-- name -->
+<div class="tdb-cont right">
+    <div class="input-container">
+        <label for="name">NAME DES PATIENTEN</label>
+        <input type="text" class="text" name="name" value="<?php echo htmlspecialchars($this->patient_details['first_name'] . " " . $this->patient_details['last_name']) ;?>" disabled>
+    </div>
+
+    <div class="input-container date">
+        <label for="lmutm_date">Datum</label>
+        <input type="text" class="date lmutm_datepicker hasDatepick" name="lmutm_date" id="lmutm_datepicker" value="<?php echo date('d.m.Y',strtotime($this->forms[0]['date']));?>">
+    </div>
+    <?php if ($this->timedoc==1):?>
+    <div class="input-container minutes" style="margin-top:20px;">
+        <label for="lmutm_mins">Minuten</label>
+        <input type="text" class="text" style="width:36px;"  name="lmutm_mins" value="<?php echo $this->forms[0]['mins'];?>">
+    </div>
+    <?php endif;?>
+    <div style="width:200px;" class="input-container date desc">
+        <?php $week = $this->forms[0]['week'];?>
+        <?php if ($this->string_woche=="Nr."):?>
+        <label for="lmutm_week">Besprechung <?php echo $this->string_woche;?> </label>
+        <input style="width:36px;" type="text" class="text" name="lmutm_week" value="<?php echo $week;?>">
+        <select style="width:160px;" name="lmutm_case">
+            <?php foreach (array_reverse($this->cases) as $case):?>
+            <option value="<?php echo $case['case_id'];?>" <?php if ($this->forms[0]['caseid']===$case['case_id']){echo "selected";}?>>im Fall vom <?php echo date("d.m.Y",$case['case_start']);?></option>
+            <?php endforeach;?>
+        </select>
+        <?php else:?>
+        <label for="description"><?php echo $this->string_woche;?></label>
+        <select name="lmutm_week">
+            <?php foreach (range(1,20) as $weekno):?>
+            <option <?php if($week==$weekno) echo 'selected'; ?> value="<?php echo $weekno;?>"><?php echo $weekno;?></option>
+            <?php endforeach;?>
+        </select>
+        <?php endif;?>
+    </div>
+</div>
+<!-- // name -->
+
+
+
+
+
+<div class="input-container dsc">
+    <label for="date">VERLAUF SEIT LETZTER BESPRECHUNG</label>
+    <textarea name="lmutm_course"  <?php echo $readonly;?>><?php echo $this->forms[0]['course'];?></textarea>
+</div>
+
+<div class="input-container dsc-list lmutm_hauptproblemeblock">
+    <label for="date">HAUPTPROBLEME</label>
+
+    <input id="lmutm_mainproblems_hidd" name="lmutm_mainproblems" type="hidden" value="<?php echo $this->forms[0]['main_problems'];?>" <?php echo $readonly;?> />
+    <ol id="lmutm_mainproblems">
+        <?php
+	$mainproblems = $this->forms[0]['main_problems'];
+        $mainproblems = explode('$n', $mainproblems);
+
+        if ($mainproblems[count($mainproblems)]!="") $mainproblems[] = ""; //add one empty
+
+        foreach ($mainproblems as $mainproblem):
+        $mainproblem = str_replace('$d','$',$mainproblem);
+        ?>
+        <li><input type="text" class="list lmutm_mainproblems" value="<?php echo $mainproblem;?>" <?php echo $readonly;?> /></li>
+        <?php endforeach;?>
+    </ol>
+</div>
+
+<!-- ISPC-2819 Lore 10.02.2021 -->
+<div>    
+	<input type="button"  style="color: #207ac9;" onclick="takeDataBehandlungs()" value="<?php echo $this->translate('add_text_from_Behandlungsplan'); ?>  "  />
+	<br></br>
+	<br></br>
+</div>
+
+<div class="left">
+    <label for="">IST-ZUSTAND DES PAT. / BEHANDLUNGSERGEBNISSE</label>
+</div>
+<div class="right">
+    <label for="">THERAPIEZIELE/-PLAN – MAßNAHMEN</label>
+</div>
+
+<?php
+	$professions=array(	'medic'=>'Medizin',
+'care'=>'Pflege',
+'social'=>'Soziale Arbeit',
+'psy'=>'Psycho&shy;logisch',
+'spiritual'=>'Spirituell/seelsorge',
+'breath'=>'Atem&shy;therapie/Entspannungs&shy;verfahren',
+'physio'=>'Physio&shy;therapie',
+);
+
+if(is_array($this->professions_conf)){
+$professions = $this->professions_conf;
+}
+?>
+<?php foreach ($professions as $key=>$prof):?>
+<div class="plan-item">
+    <label for=""><?php echo $prof;?></label>
+    <div class="left tcont">
+                						<!-- ISPC-2819 Lore 11.02.2021 -->
+        <textarea class="lmutm_intable" id="lmutm_<?php echo $key;?>_plan" name="lmutm_<?php echo $key;?>_plan" <?php echo $readonly;?> ><?php echo $this->forms[0][$key.'_plan'];?></textarea>
+        <input type="hidden" alt="0" value="" />
+        <input type="button" class="btnLookup"  onClick="lmutm_getexamples(this)" value="">
+        <input type="button" class="btnClear">
+        <?php if (count($this->forms)>1):?>
+        <input class="history_content" type="hidden" alt="1" value="<?php echo $this->forms[1][$key.'_plan'];?>" />
+        <input class="history_content" type="hidden" alt="2" value="<?php echo $this->forms[2][$key.'_plan'];?>" />
+        <input class="history_content" type="hidden" alt="3" value="<?php echo $this->forms[3][$key.'_plan'];?>" />
+        <input class="history_content" type="hidden" alt="4" value="<?php echo $this->forms[4][$key.'_plan'];?>" />
+        <div class="lmutm_tbelow" style="display:none;">
+            <input type="button" onClick="lmutm_takeOldData('0',this)" value=""/>
+            <?php for($i=1; $i<=4; $i++):?>
+            <?php if (isset($this->forms[$i][$key.'_plan'])):?>
+            <input type="button" onClick="lmutm_takeOldData('<?php echo $i;?>',this)" value="<?php echo $i;?>"/>
+            <?php endif; ?>
+            <?php endfor;?>
+            <input style="margin-left:12px;" type="button" onClick="lmutm_getexamples(this)" value="Suchen"/>
+        </div>
+        <?php else:?>
+        <div class="lmutm_tbelow"  style="display:none;">
+            <input type="button" onClick="lmutm_takeOldData('0',this)" value=""/>
+            <input style="margin-left:12px;" type="button" onClick="lmutm_getexamples(this)" value="Suchen"/>
+        </div>
+        <?php endif;?>
+    </div>
+    <div class="right tcont">
+                						<!-- ISPC-2819 Lore 11.02.2021 -->
+        <textarea class="lmutm_intable" id="lmutm_<?php echo $key;?>_goal" name="lmutm_<?php echo $key;?>_goal" <?php echo $readonly;?> ><?php echo $this->forms[0][$key.'_goal'];?></textarea>
+        <input type="hidden" alt="0" value="" />
+        <input type="button" class="btnLookup"  onClick="lmutm_getexamples(this)" value="">
+        <input type="button" class="btnClear">
+        <?php if (count($this->forms)>1):?>
+        <input type="hidden" class="history_content"  alt="1" value="<?php echo $this->forms[1][$key.'_goal'];?>" />
+        <input type="hidden" class="history_content"  alt="2" value="<?php echo $this->forms[2][$key.'_goal'];?>" />
+        <input type="hidden" class="history_content"  alt="3" value="<?php echo $this->forms[3][$key.'_goal'];?>" />
+        <input type="hidden" class="history_content"  alt="4" value="<?php echo $this->forms[4][$key.'_goal'];?>" />
+        <div class="lmutm_tbelow"  style="display:none;">
+            <input type="button" onClick="lmutm_takeOldData('0',this)" value=""/>
+            <?php for($i=1; $i<=4; $i++):?>
+            <?php if (isset($this->forms[$i][$key.'_goal'])):?>
+            <input type="button" onClick="lmutm_takeOldData('<?php echo $i;?>',this)" value="<?php echo $i;?>"/>
+            <?php endif; ?>
+            <?php endfor;?>
+            <input style="margin-left:12px;" type="button" onClick="lmutm_getexamples(this)" value="Suchen"/>
+        </div>
+        <?php else:?>
+        <div class="lmutm_tbelow"  style="display:none;">
+            <input type="button" onClick="lmutm_takeOldData('0',this)" value=""/>
+            <input style="margin-left:12px;" type="button" onClick="lmutm_getexamples(this)" value="Suchen"/>
+        </div>
+        <?php endif;?>
+    </div>
+</div>
+<!-- // plan-item -->
+<?php endforeach;?>
+
+<div class="input-container formulareingaben">
+    <label for="">FORMULAREINGABEN SPEICHERN</label>
+    <?php if ($this->readonly==0):?>
+    <div class="left">
+        <!-- radio 2 -->
+        <div class="radioswitch">
+            <input type="radio" class="left" name="lmutm_create_new"  id="rswt1" value="0" checked="checked">
+            <label for="rswt1">Vorbereiten & zwischenspeichern
+                <span>Formular vorbereiten und für weitere Bearbeitungsschritte zwischenspeichern.</span>
+            </label>
+        </div>
+        <!-- // radio 2 -->
+    </div>
+    <div class="right">
+        <!-- radio 2 -->
+        <div class="radioswitch">
+            <input type="radio" <?php if ($this->can_finalsave==false) echo "disabled='disabled'";?>  class="left" id="rswt2" name="lmutm_create_new" value="1">
+            <label for="rswt2">Endgültig abspeichern
+                <span>Diese Teambesprechung ist dann abgeschlossen und hier gemachten Eingaben können nicht mehr verändert werden.<?php if ($this->can_finalsave==false) echo "Benutzerrechte reichen nicht aus um Formular abzuschließen.";?></span>
+            </label>
+        </div>
+        <!--// radio 2 -->
+    </div>
+    <input type="submit" value="Datensatz eintragen" id="lmutm_submitbutton" class="btnDESubmit">
+    <?php else:?>
+    <p>Dieses Formular wurde abgeschlossen und kann daher nicht mehr verändert werden.<br/><a href="patientform/weeklymeeting?id=<?php echo $this->encid;?>">Zum aktuellen Formular</a></p>
+    <?php endif;?>
+
+    <br/><br/>
+    <a href="patientform/weeklymeeting?id=<?php echo $this->encid;?>&pdf=1&fid=<?php echo $this->forms[0]['id'];?>" > <img src="<?php echo RES_FILE_PATH;?>/images/doc_pdf.png" /> PDF-Dokument der letzten gespeicherten Version dieses Formulars herunterladen.</a>
+
+    </form>
+</div>
+<div style="clear:both;"></div>
+
+
+
+<div id="lmutm_goalselectbox">
+    <style>
+        #lmutm_goalselectbox li{
+            border:1px solid #aed0ea;
+            background-color:#deedf7;
+            padding:4px;
+            margin-bottom:4px;
+            border-radius:3px;
+        }
+        #lmutm_goalselectbox li:hover{
+            border:1px solid #c0cba8;
+            background-color:#ccefaa;
+
+        }
+    </style>
+    <ul><li></li></ul>
+</div>
+<div id="lmutm_planselectbox">
+    <style>
+        #lmutm_planselectbox li{
+            border:1px solid #aed0ea;
+            background-color:#deedf7;
+            padding:4px;
+            margin-bottom:4px;
+            border-radius:3px;
+        }
+        #lmutm_planselectbox li:hover{
+            border:1px solid #c0cba8;
+            background-color:#ccefaa;
+
+        }
+    </style>
+    <ul><li></li></ul>
+</div>
+
+
+<div id="dialog-confirm" title="Warnung" style="display:none;">
+    <p><span class="ui-icon ui-icon-alert" style="float:left; margin:12px 12px 20px 0;"></span>Jede Besprechung muss mit Teilnehmern aus mindestens drei Berufsgruppen geführt werden. Das ist hier nicht der Fall. Trotzdem abspeichern?</p>
+</div>

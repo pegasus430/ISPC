@@ -1,0 +1,156 @@
+<script>
+	$(document).ready(function() {
+		$('#assign_all').click(function(){
+			if($(this).is(':checked')){
+				$('.assign').attr('checked', true);
+			} else {
+				$('.assign').removeAttr('checked');
+			}
+		});
+		
+		$('#open_all').click(function(){
+			if($(this).is(':checked')){
+				$('.open').attr('checked', true);
+			} else {
+				$('.open').removeAttr('checked');
+			}
+		});
+		
+		
+		
+		
+		var fix_helper = function(e, ui) {
+			ui.children().each(function() {
+				$(this).width($(this).width());
+	});
+			return ui;
+		};
+
+		$('table.datatable tbody').sortable({
+			placeholder: "ui-state-highlight",
+			helper: fix_helper,
+			items: "tr:not(.disabled)",
+			update: function(event,ui){
+				var item = ui.item;
+				var container = item.parent();
+				var reorder = [];
+				container.children('tr').each(function(i){
+					// save the item id order in array
+					reorder[i] = $(this).attr('id');
+				});
+
+				$.ajax({
+					method:'post',
+					url:'<?php echo APP_BASE . 'socialcode/assignblocks?mode=save'; ?>',
+					data:{
+						'ftid':"<?php echo $_REQUEST['ftid']; ?>",
+						'order':reorder
+					},
+					success: function(response){
+						window.location.replace('<?php echo APP_BASE.'socialcode/assignblocks?ftid='.$_REQUEST['ftid']; ?>');
+					}
+				});
+
+			}
+		}).disableSelection();
+	});
+</script>
+<style type="text/css">
+	.ui-state-highlight { height: 1.5em; line-height: 1.5em;}
+</style>
+<?php
+	$form_type_details = $this->curent_form_type_details;
+	$assigned_form_blocks = $this->form_types_blocks;
+	$opened_blocks = $this->opened_blocks;
+?>
+<table width="100%">
+	<tr>
+		<td colspan="6" valign="top">&nbsp;</td>
+
+	</tr>
+	<tr>
+		<td valign="top">&nbsp;</td>
+		<td valign="top"><b><?php echo $this->translate('form_type_name'); ?> :</b></td>
+		<td valign="top"><?php echo $form_type_details[0]['name']; ?></td>
+		<td valign="top"><b><?php echo $this->translate('clientname'); ?> :</b></td>
+		<td valign="top"><?php echo $this->client_name; ?>&nbsp;</td>
+		<td valign="top">&nbsp;</td>
+	</tr>
+	<tr>
+		<td colspan="6" valign="top">&nbsp;</td>
+
+	</tr>
+</table>
+<form action="" method="post" name="frmcourse" id="frmcourse" >
+	<div class="grid">
+		<table class="datatable" border="0">
+			<thead>
+				<tr>
+					<th style="width: 50px;">#</th>
+					<th><?php echo $this->translate('block_name'); ?></th>
+					<th><input type="checkbox" id="assign_all" value="" />&nbsp;<?php echo $this->translate("assign"); ?></th>
+
+				</tr>
+			</thead>
+			<tbody>
+				<?php if ($this->blocks): ?>
+					<?php $i = '1';
+					foreach ($this->blocks as $k_block => $v_block): ?>
+
+						<tr id="<?php echo $v_block; ?>">
+							<td>
+
+								<?php echo $i; ?>
+								<input type="hidden" name="order[]" value="<?php echo $v_block; ?>" />
+
+							</td>
+							<td>
+							<?php
+								if(!in_array($v_block, $this->custom_abbrev))
+								{
+									echo $this->translate('block_'.$v_block);
+								}
+								else
+								{
+									$cbkey = array_search($v_block, array_column($this->custom_blocks, 'block_abbrev'));
+									echo $this->custom_blocks[$cbkey]['block_name'];
+								}
+				 			?>
+				 			</td>
+							<td>
+								<?php if ($v_block == 'time'): ?>
+									<input name="assign[<?php echo $v_block; ?>]" type="checkbox" value="1" checked="checked" disabled="disabled"/>
+								<?php else: ?>
+									<input name="assign[<?php echo $v_block; ?>]" type="checkbox" class="assign" value="1" <?php if ($assigned_form_blocks[$v_block]['form_block'] == $v_block): ?>checked="checked"<?php endif; ?>/>
+		<?php endif; ?>
+				</td>
+				<td>
+					<?php if( $v_block == 'time' ): ?>
+					<input name="open[<?php echo $v_block; ?>]" type="checkbox" value="1"  class="open" checked="checked" disabled="disabled" />
+					<input name="open[<?php echo $v_block; ?>]" type="hidden" value="1"  />
+
+				<?php else: ?>
+					<input name="open[<?php echo $v_block; ?>]" type="checkbox" value="1"  class="open"  <?php if($opened_blocks[$v_block] == "1"  ): ?>checked="checked"<?php endif; ?> />
+				<?php endif; ?>
+								<span class="ui-icon ui-icon-arrowthick-2-n-s" style="display:inline-block; float: right;"></span>
+							</td>
+						</tr>
+			<?php $i++; endforeach;  ?>
+<?php else: ?>
+
+					<tr>
+						<td colspan="3">
+					<?php echo $this->translate('no_blocks_found'); ?>
+						</td>
+					</tr>
+<?php endif ?>
+				<tr class="disabled">
+					<td colspan="8" valign="top" align="left">
+						<a class="button"  href="<?php echo APP_BASE . 'socialcode/formtypes'; ?>" style="padding: 0;"><?php echo $this->translate('backtolist') ?></a>
+						<input name="submit" id="submit" type="submit" class="button" value="<?php echo $this->translate('submit') ?>" />
+					</td>
+				</tr>
+			</tbody>
+		</table>
+	</div>
+</form>

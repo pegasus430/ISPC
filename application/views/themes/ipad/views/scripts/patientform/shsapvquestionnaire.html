@@ -1,0 +1,1691 @@
+<?
+$this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/page-css/sapv_questionnaire_style.css');
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/autogrow/jquery.elastic.js');
+?>
+<?php
+	
+
+	$this->headScript ()->appendFile (RES_FILE_PATH . '/javascript/dateUtil.js');
+	$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/autogrow/jquery.elastic.js');
+	$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/jquery.blockUI.js'); 
+?>
+
+
+<script type="text/javascript" src="<?php echo RES_FILE_PATH; ?>/javascript/livesearch/familydoc_edit_modal.js"></script>
+<script type="text/javascript" src="<?php echo RES_FILE_PATH; ?>/javascript/livesearch/pflegedienste_edit_modal.js"></script>
+
+<script type="text/javascript">
+var isdischarged = '<?php echo $this->isdischarged ?>';
+
+var carediv = function(params)
+{
+	document.getElementById('listcarelevel').innerHTML=params.carelist;
+}
+
+
+var chks;
+var formid;
+
+
+/*-------------------------------------------------29.10.2015---------------------------------------------------------*/
+$('#stampusers').live('change', function() {
+	$('#user_stamp_block span').replaceWith('');
+	$('#user_stamp_block textarea').replaceWith('');
+
+	$.get(appbase + 'ajax/userstampinfo?stamp-info=' + $(this).val(), function(result) {
+
+		if (result != 0) {
+			var resultx = jQuery.parseJSON(result);
+
+			var user_lanr = resultx.lanr;
+			var user_bsnr = resultx.bsnr;
+
+			$('#Veror63_NameBetrinInpt').val(user_bsnr);
+			$('#Veror63_NamearztnInpt').val(user_lanr);
+
+			$('#user_stamp_block span').replaceWith('');
+			$('#user_stamp_block textarea').replaceWith('');
+
+			var row1 = resultx.row1;
+			var row2 = resultx.row2;
+			var row3 = resultx.row3;
+			var row4 = resultx.row4;
+			var row5 = resultx.row5;
+			var row6 = resultx.row6;
+			var row7 = resultx.row7;
+
+			var user_stamp = '<span>' + row1 + '<br/>' + row2 + '<br/>' + row3 + '<br/>' + row4 + '<br/>' + row5 + '<br/>' + row6 + '<br/>' + row7 + '</span>';
+			var user_stamp_hidden = '<textarea name="stamp_block" style="display: none">' + row1 + '<br/>' + row2 + '<br/>' + row3 + '<br/>' + row4 + '<br/>' + row5 + '<br/>' + row6 + '<br/>' + row7 + '</textarea>';
+
+			$('#user_stamp_block').append(user_stamp + user_stamp_hidden);
+
+
+		} else {
+			$('.stamp_alert').show('fast').delay(1000).hide('slow');
+		}
+
+	});
+	return false;
+});
+
+
+
+function updatePatientInformation(modname,fldname,formid,chk,patid,drp){
+	if(chk.checked == true){
+		chks = 1;
+	} else {
+		chks = 0;
+	}
+	if(drp=='drop')
+	{
+		chks = chk.value;
+	}
+	ajaxcall(modname,fldname,chks,patid,formid);
+}
+
+function ajaxcall(modname,fldname,chks,patid,formid){
+
+	if(isdischarged==1){
+		jConfirm('<?php echo $this->translate('dischargealert'); ?>', '', function(r) {
+			if(r){
+				ajaxCallserver({url:appbase+'patient/updatepatientinfo?modname='+modname+'&fldname='+fldname+'&chkval='+encodeURIComponent(chks)+'&patid='+patid+'&formid='+formid});
+			}
+		});
+
+		return false;
+	} else {
+		ajaxCallserver({url:appbase+'patient/updatepatientinfo?modname='+modname+'&fldname='+fldname+'&chkval='+encodeURIComponent(chks)+'&patid='+patid+'&formid='+formid});
+	}
+}
+
+/*----------------------------------MEDICATION START--------------------------------------*/
+var jscount = '0';
+var jsmedcount = '0';
+var medcount = '<?php echo $this->mcntr + 1 ?>';
+var jcount = '<?php echo $this->jscount + 1 ?>';
+var dcntr = '<?php echo $this->dcntr ?>';
+var medblur = Array();
+var jsusers = <?php echo $this->jsusers; ?>;
+var detailscookies = '<?php echo $this->detailscookies; ?>';
+
+function selectMedications(mid, row)
+{
+	$('#medication'+row).val($('#medi_me_'+mid).val());
+	$('#comment'+row).val($('#medi_comment_'+mid).val());
+	$('#hidd_medication'+row).val($('#medi_id_'+mid).val());
+}
+function reset_medications(input_row)
+{
+	if($('#hidd_medication'+input_row).val()){
+		$('#hidd_medication'+input_row).val('');
+		$('#drid'+input_row).val('');
+	}
+}
+
+function createnewmedic()
+{
+	var usrstr = "";
+	for(var i in jsusers)
+	{
+		usrstr +='<option value="'+i+'">'+jsusers[i]+'</option>';
+	}
+
+	var userdrop = '<select name="add[verordnetvon]['+medcount+']">'+usrstr+'</select>';
+	var trInnerHtml = $('<tr id="medadd'+medcount+'"><td align="left" valign="top"><input name="add[medication]['+medcount+']" value="" id="medication'+medcount+'" type="text" class="livesearchmedinp med"><input name="add[hidd_medication]['+medcount+']" value="" id="hidd_medication'+medcount+'" type="hidden"></td><td align="left" valign="top"><input  name="add[dosage]['+medcount+']" id="dosage" class="shdosage_add" value=""  /></td><td width="10" align="left" valign="top"><a href="javascript:void(0)" onclick="removeElem(\'#medadd'+medcount+'\')"><img src="images/action_delete.png" border="0" /></a></td></tr>');
+
+	$('#medaddtable').append(trInnerHtml);
+
+	$('#medication'+medcount).bind('keyup keydown change paste',function(){
+		//livesearch medications ls
+		$(this).live('change', function() {
+			var input_row = parseInt($(this).attr('id').substr(('medication').length));
+			reset_medications(input_row);
+		}).liveSearch({
+			url: 'ajax/medications?q=',
+			id: 'livesearch_admission_medications',
+			aditionalWidth: '300',
+			noResultsDelay: '900',
+			typeDelay: '900',
+			returnRowId: function (input) {return parseInt($(input).attr('id').substr(('medication').length));}
+		});
+	});
+	medcount++;
+}
+
+function createnewmedicrowbedarf()
+{
+
+	var usrstr = "";
+	for(var i in jsusers)
+	{
+		usrstr +='<option value="'+i+'">'+jsusers[i]+'</option>';
+	}
+
+
+
+	var userdrop = '<select name="addbedarf[verordnetvon]['+medcount+']">'+usrstr+'</select>';
+
+	var trInnerHtml = $('<tr id="medadd'+medcount+'"><td align="left" valign="top"><input name="addbedarf[medication]['+medcount+']" value="" id="medication'+medcount+'" type="text" class="livesearchmedinp med"><input name="addbedarf[hidd_medication]['+medcount+']" value="" id="hidd_medication'+medcount+'" type="hidden"><div id="medidropdown'+medcount+'" style="position:absolute;display:none;" class="listPatMedEd livesearchdropdown"></div></td><td align="left" valign="top"><input  name="addbedarf[dosage]['+medcount+']" id="dosage" class="shdosage_add" value=""  /></td><td width="10" align="left" valign="top"><a href="javascript:void(0)" onclick="delmedicationRow('+medcount+');removeElem(\'#medadd'+medcount+'\')"><img src="images/action_delete.png" border="0" /></a></td></tr>');
+
+	$('#medbedarfaddtable').append(trInnerHtml);
+
+
+	$('#medication'+medcount).bind('keyup keydown change paste',function(){
+		//livesearch medications ls
+		$(this).live('change', function() {
+			var input_row = parseInt($(this).attr('id').substr(('medication').length));
+			reset_medications(input_row);
+		}).liveSearch({
+			url: 'ajax/medications?q=',
+			id: 'livesearch_admission_medications',
+			aditionalWidth: '300',
+			noResultsDelay: '900',
+			typeDelay: '900',
+			returnRowId: function (input) {return parseInt($(input).attr('id').substr(('medication').length));}
+		});
+	});
+	medcount++;
+}
+
+	function createnewmedicrowiv()
+	{
+
+		var usrstr = "";
+		for(var i in jsusers)
+		{
+			usrstr +='<option value="'+i+'">'+jsusers[i]+'</option>';
+		}
+
+
+
+		var userdrop = '<select name="verordnetvon['+medcount+']">'+usrstr+'</select>';
+		var trInnerHtml = $('<tr id="medaddiv'+medcount+'"><td align="left" valign="top"><input name="addiv[medication]['+medcount+']" value="" id="medication'+medcount+'" type="text" class="livesearchmedinp med"><input name="addiv[hidd_medication]['+medcount+']" value="" id="hidd_medication'+medcount+'" type="hidden"><div id="medidropdown'+medcount+'" style="position:absolute;display:none;" class="listPatMedEd livesearchdropdown"></div></td><td align="left" valign="top"><input  name="addiv[dosage]['+medcount+']" id="dosage" class="shdosage_add" value=""  /></td><td width="10" align="left" valign="top"><a href="javascript:void(0)" onclick="delmedicationRow('+medcount+');removeElem(\'#medadd'+medcount+'\')"><img src="images/action_delete.png" border="0" /></a></td></tr>');
+
+		$('#medivaddtable').append(trInnerHtml);
+
+		$('#medication' + medcount).bind('keyup keydown change paste', function() {
+			//livesearch medications ls
+			$(this).live('change', function() {
+				var input_row = parseInt($(this).attr('id').substr(('medication').length));
+				reset_medications(input_row);
+			}).liveSearch({
+				url: 'ajax/medications?q=',
+				id: 'livesearch_admission_medications',
+				aditionalWidth: '300',
+				noResultsDelay: '900',
+				typeDelay: '900',
+				returnRowId: function(input) {
+					return parseInt($(input).attr('id').substr(('medication').length));
+				}
+			});
+		});
+		medcount++;
+	}
+
+function removeElem(ids) {
+	$(ids).remove();
+}
+
+function removeMedicationKvno(mid,pid)
+{
+	if(mid>0)
+	{
+		ajaxCallserver({
+			url:'patient/patientmedication?mid='+mid+'&id='+pid+'&act=del&noredir=1'
+		});
+	}
+	$("#line_"+mid).remove();
+}
+
+function delmedicationRow(did,patidencrypted)
+{
+	if(did && $('#hidd_medication'+did).val())
+	{
+		ajaxCallserver({
+			url:'patient/patientmedication?id='+patidencrypted+'&delid='+did+'&mid='+did+'&act=del&noredir=1' //mid for trigger when deleteing the row
+		});
+	}
+}
+
+
+function renewMedicationKvno(mid,pid)
+{
+	if(mid>0){
+		ajaxCallserver({
+			url:'patient/patientmedication?mid='+mid+'&id='+pid+'&act=rnw&noredir=1'
+		});
+	}
+	$("#line_r_"+mid).remove();
+}
+
+  $(function() {
+	$('form').submit(function() {
+	      setTimeout(function () {$('input[type=submit]').attr('disabled', true);}, 150);
+	      setTimeout(function () {$('input[type=submit]').attr('disabled', false);}, 11000);
+	});
+	$('input.livesearchmedinp, input.med_date, input.dosage, input.med, input.comment, select.user_selector').live('change keyup', function() {
+		if ($(this).hasClass('livesearchmedinp')) {
+			var input_row = parseInt($(this).attr('id').substr(('medication').length)); //med name
+		} else if ($(this).hasClass('med_date')) {
+			var input_row = parseInt($(this).attr('rel').substr(('med_date').length)); //change date
+		} else if ($(this).hasClass('dosage')) {
+			var input_row = parseInt($(this).attr('id').substr(('dosage').length)); //dosage
+		} else if ($(this).hasClass('med') || $(this).hasClass('comment')) {
+			var input_row = parseInt($(this).attr('id').substr(('comment').length)); //comment
+		} else if ($(this).hasClass('user_selector')) {
+			var input_row = parseInt($(this).attr('id').substr(('verordnetvon-').length)); //doctor
+		}
+
+		$('#edited' + input_row).val('1');
+	});
+		/*======================= MEDICATIONS DATE PICKER ======================================*/
+	  $('.med_date').datepicker({
+		dateFormat: 'dd.mm.yy',
+		buttonImageOnly: true,
+		changeMonth: true,
+		changeYear: true,
+		nextText: '',
+		prevText: '',
+		onSelect: function(){
+			var input_row = parseInt($(this).attr('rel').substr(('med_date').length));
+			$('#edited' + input_row).val('1');
+
+		}
+});
+
+	$(".med_date").mask("99.99.9999");
+
+	// make the textarea grow
+        $('textarea').elastic();
+
+	$('#btnsubmit').live('click', function(event){
+		if (event.preventDefault) {
+			event.preventDefault();
+		} else {
+			event.returnValue = false;
+		}
+
+		checkDiagnosisTypeSelected();
+	});
+
+	   /*======================= LIVESEARCH MEDICATIONS  ======================================*/
+	$('.livesearchmedinp').live('change', function() {
+		var input_row = parseInt($(this).attr('id').substr(('medication').length));
+		reset_medications(input_row);
+	}).liveSearch({
+		url: 'ajax/medications?q=',
+		id: 'livesearch_admission_medications',
+		aditionalWidth: '300',
+		noResultsDelay: '900',
+		typeDelay: '900',
+		returnRowId: function (input) {return parseInt($(input).attr('id').substr(('medication').length));}
+	});
+
+		/*======================= RENEW MEDICATION  ======================================*/
+	$(".renew_ajx, .renew_ajx_bedarfs").live('click', function(e){
+		e.preventDefault();
+		//get row id
+		var tridrn = $(this).closest('tr').attr('id');
+		//get medication edit count rows
+		var cntren = Number($('#jsmedadd').val()) +1;
+
+		//split row id and get numeric medis id
+		var id = tridrn.split('_');
+		var that = $(this);
+		$("#"+tridrn).each(function() {
+			var dateren = $(this).find(".datern_"+id[2]).text();
+			var medsren = $(this).find(".medsrn_"+id[2]).text();
+			var pid = "<?php echo $_GET['id']; ?>";
+			var dsgren = $(this).find(".dsgrn_"+id[2]).text();
+			var commren = $(this).find(".commrn_"+id[2]).text();
+			var usrnameren = $(this).find(".usrnamern_"+id[2]).text();
+			var usr_addren = $(this).find(".usr_id_add_"+id[2]).text();
+			var hidd_medisren = $(this).find(".hidd_medicationrn_"+id[2]).text();
+			var usrren = $(this).find(".usrid_"+id[2]).text();
+			var users = <?php echo  json_encode($this->users); ?>;
+			var options = '';
+			var i = 1;
+
+			$.each(users, function(key, value){
+				if(key == usrren){
+					options += "<option selected=\"selected\" value=\""+key+"\">"+value+"</option>"
+				} else {
+					options += "<option value=\""+key+"\">"+value+"</option>"
+				}
+			});
+
+			if($(that).hasClass('renew_ajx')) {
+				var date_now = "<?php echo date('d.m.Y')?>";
+				var trrenewNou = '<tr id="line_'+id[2]+'" alt="'+cntren+'">';
+				 // trrenewNou += '<td align="left" valign="top"><input name="medication_change['+cntren+']" value="'+date_now+'" id="renew_change_date_'+cntren+'" type="text" class="med_date date_line_'+id[2]+' "><input name="replace_with['+cntren+']" value="change" type="hidden"></td>';
+				  trrenewNou += '<td align="left" valign="top"><input name="medication['+cntren+']" value="'+medsren+'" id="medication'+cntren+'" type="text" class="livesearchmedinp med meds_line_'+id[2]+'"><input name="hidd_medication['+cntren+']" value="'+hidd_medisren+'" id="hidd_medication'+cntren+'" type="hidden"><input type="hidden" id="drid" name="drid['+cntren+']" value="'+id[2]+'"><div id="medidropdown'+cntren+'" style="position:absolute;display:none;" class="listPatMedEd livesearchdropdown"></div></td>';
+				  trrenewNou += '<td align="left" valign="top"><input name="dosage['+cntren+']" id="dosage" class="shdosage dsg_line_'+id[2]+'" value="'+dsgren+'"></td>';
+				 // trrenewNou += '<td align="left" id="line_'+id[2]+'_row" valign="top"><!--<textarea name="comments['+cntren+']" cols="25 " rows="6" id="comment"></textarea>-->//<input name="comments['+cntren+']" class="med comm_line_'+id[2]+'" value="'+commren+'"></td>';
+				 // trrenewNou += '<td width="120" id="line_'+id[2]+'_row" align="left" valign="top" class="usrname_line_'+id[2]+'">'+usrnameren+'</td>';
+				 // trrenewNou += '<td align="left" id="line_'+id[2]+'_row" valign="top"><select name="verordnetvon['+cntren+']" id="verordnetvon-'+cntren+'">'+options+'</select></td>';
+				  trrenewNou += '<td align="left" valign="top"><a href="javascript:void(0)" class="remove_tr" ><img src="<?php echo RES_FILE_PATH; ?>/images/action_delete.png" border="0" /></a></td>';
+				  trrenewNou += '</tr>';
+
+				$("#listpatientmedicationedit_medicationtable").append(trrenewNou);
+
+					$('#renew_change_date_'+cntren).datepicker({
+						dateFormat: 'dd.mm.yy',
+						buttonImageOnly: true,
+						changeMonth: true,
+						changeYear: true,
+						nextText: '',
+						prevText: '',
+						onSelect: function(){
+							var input_row = parseInt($(this).attr('rel').substr(('med_date').length));
+							$('#edited' + input_row).val('1');
+
+						}
+					});
+
+			} else if($(that).hasClass('renew_ajx_bedarfs')) {
+
+					var date_now = "<?php echo date('d.m.Y')?>";
+
+					var trrenewNou = '<tr id="line_'+id[2]+'" alt="'+cntren+'">';
+					//trrenewNou += '<td align="left" valign="top"><input name="medication_change['+cntren+']" value="'+date_now+'" id="renew_bedarf_change_date_'+cntren+'" type="text" class="med_date date_line_'+id[2]+' " rel="med_date'+cntren+'" /><input name="replace_with['+cntren+']" value="change" type="hidden"></td>';
+					trrenewNou += '<td align="left" valign="top"><input name="medication['+cntren+']" value="'+medsren+'" id="medication'+cntren+'" type="text" class="livesearchmedinp med meds_line_'+id[2]+'"><input name="hidd_medication['+cntren+']" value="'+hidd_medisren+'" id="hidd_medication'+cntren+'" type="hidden"><input type="hidden" id="drid" name="drid['+cntren+']" value="'+id[2]+'"><input type="hidden" id="edited'+cntren+'" name="edited['+cntren+']" value="0" /><div id="medidropdown'+cntren+'" style="position:absolute;display:none;" class="listPatMedEd livesearchdropdown"></div></td>';
+					trrenewNou += '<td align="left" valign="top"><input name="dosage['+cntren+']" id="dosage'+cntren+'" class="shdosage dsg_line_'+id[2]+'" value="'+dsgren+'"></td>';
+					//trrenewNou += '<td align="left" id="line_'+id[2]+'_row" valign="top"><input name="comments['+cntren+']" class="med comm_line_'+id[2]+'" value="'+commren+'" id="comment'+cntren+'"></td>';
+					//trrenewNou += '<td width="120" id="line_'+id[2]+'_row" align="left" valign="top" class="usrname_line_'+id[2]+'">'+usrnameren+'</td>';
+					//trrenewNou += '<td align="left" id="line_'+id[2]+'_row" valign="top"><select name="verordnetvon['+cntren+']" id="verordnetvon-'+cntren+'" class="user_selector">'+options+'</select></td>';
+					trrenewNou += '</tr>';
+
+				$("#listpatientmedicationedit_bedarfsmedicationtable").append(trrenewNou);
+
+					$('#renew_bedarf_change_date_'+cntren).datepicker({
+						dateFormat: 'dd.mm.yy',
+						buttonImageOnly: true,
+						changeMonth: true,
+						changeYear: true,
+						nextText: '',
+						prevText: '',
+						onSelect: function(){
+							var input_row = parseInt($(this).attr('rel').substr(('med_date').length));
+							$('#edited' + input_row).val('1');
+
+						}
+					});
+			}
+
+			$('#jsmedadd').val(cntren);
+			renewMedicationKvno(id[2], pid);
+			var medsren = '';
+
+
+		});
+	});
+
+		/*======================= REMOVE MEDICATION ROW ======================================*/
+	$(".remove_tr").live('click', function(){
+
+		var trid = $(this).closest('tr').attr('id');
+		var cnt = $("#"+trid).attr('alt');
+		var id = trid.split('_');
+		var pid = "<?php echo $_GET['id']; ?>";
+
+		$("#"+trid).each(function() {
+
+				var date = "<?php echo date('d.m.Y'); ?>";
+			var meds = $(this).find(".meds_"+trid).val();
+			var dsg = $(this).find(".dsg_"+trid).val();
+			var comm = $(this).find(".comm_"+trid).val();
+			var hidd_medis = $(this).find("#hidd_medication"+cnt).val();
+			var usr_add = $(this).find(".usrname_"+trid).text();
+			var usr = $(this).find("#verordnetvon-"+cnt+" option:selected").text();
+			var usr_id = $(this).find("#verordnetvon-"+cnt+" option:selected").val();
+
+				var trnou = '<tr class="row" id="line_r_'+id[1]+'">';
+					//trnou +='<td height="20" align="left" class="datern_'+id[1]+'" valign="top">'+date+'</td>';
+					trnou +='<td height="20" align="left" valign="top" class="hidd_medicationrn_'+cnt+'" style="display: none;">'+hidd_medis+'</td>';
+					trnou +='<td align="left" valign="top" class="medsrn_'+id[1]+'"><font color="#777777">'+meds+'</font> </td>';
+					trnou +='<td align="left" valign="top" class="dsgrn_'+id[1]+'">'+dsg+'</td>';
+					trnou +='<td align="left" valign="top"><a href="javascript:void(0)" class="renew_ajx"><img src="<?php echo RES_FILE_PATH; ?>/images/action_renew.png" border="0"></a></td>';
+					//trnou +='<td height="20" align="left" valign="top" class="usrnamern_'+id[1]+'">'+usr_add+'</td><td height="20" align="left" valign="top">'+usr+'</td>';
+					//trnou +='<td valign="top" height="20" align="left" class="usrid_'+id[1]+'" style="display:none;">'+usr_id+'</td>';
+					trnou +='</tr>';
+
+			$("#listpatientmedication_contenttabel").append(trnou);
+			removeMedicationKvno(id[1],pid);
+		});
+
+	});
+    });
+  /*----------------------------------MEDICATION END--------------------------------------*/
+
+  /*----------------------------------DIAGNOSEN START--------------------------------------*/
+
+	var jarr = <?php echo $this->jdarr ?>;
+	var jscount = "";
+	var jcount = <?php echo $this->jscount + 1 ?>;
+	var dcntr = <?php echo $this->dcntr ?>;
+	var diagnosisblur = Array();
+	var icddiagnosisblur = Array();
+	var diagnosisblur_ed = Array();
+
+	  $(function() {
+		//livesearch diagnosis icd ls
+		$('.livesearchicdinp').live('change', function() {
+			var input_row = parseInt($(this).attr('id').substr(('icdnumber').length));
+			reset_diagnosis(input_row);
+		}).liveSearch({
+			url: 'ajax/diagnosis?mode=icdnumber&q=',
+			id: 'livesearch_admission_diagnosis',
+			aditionalWidth: '300',
+			noResultsDelay: '900',
+			typeDelay: '900',
+			returnRowId: function (input) {return parseInt($(input).attr('id').substr(('icdnumber').length));}
+		});
+
+		//livesearch diagnosis description ls
+		$('.livesearchinp').live('change', function() {
+			var input_row = parseInt($(this).attr('id').substr(('diagnosis').length));
+			reset_diagnosis(input_row);
+		}).liveSearch({
+			url: 'ajax/diagnosis?q=',
+			id: 'livesearch_admission_diagnosis',
+			aditionalWidth: '50',
+			noResultsDelay: '900',
+			typeDelay: '900',
+			returnRowId: function (input) {return parseInt($(input).attr('id').substr(('diagnosis').length));}
+		});
+
+	});
+
+	function reset_diagnosis(input_row){
+//		if($('#hidd_tab'+input_row).val() != 'text'){
+			$('#hidd_icdnumber'+input_row).val('');
+			$('#hidd_diagnosis'+input_row).val('');
+			$('#hidd_tab'+input_row).val('text');
+//		}
+	}
+
+	function selectDiagnosis(did, row)
+	{
+		$('#icdnumber'+row).val($('#diag_icd_'+did).val());
+		$('#diagnosis'+row).val($('#diag_de_'+did).val());
+		$('#hidd_icdnumber'+row).val($('#diag_id_'+did).val());
+		$('#hidd_diagnosis'+row).val($('#diag_id_'+did).val());
+		$('#hidd_tab'+row).val('dig');
+	}
+
+	function checkDiagnosisTypeSelected()
+	{
+		var err = "";
+		var finalc = 0;
+
+		for(var j=1;j<=dcntr;j++)
+		{
+			var ct = 0;
+
+			if(document.getElementById("diagnosis"+j) && $("#diagnosis"+j).val().length>0)
+			{
+				var ltrs = document.getElementsByName('dtype['+j+']');
+
+				for(var i=0;i<ltrs.length;i++)
+				{
+					if(ltrs[i].checked==true)
+					{
+						ct++;
+					}
+				}
+
+				if(ct==0)
+				{
+					finalc++;
+				}
+			}
+		}
+
+		if(finalc>0)
+		{
+			jAlert('<?php echo $this->translate('selectdiagnosisfor'); ?>');
+		}
+		else
+		{
+			checkdischargednew('sapvq');
+		}
+	}
+
+	function removeElem(ids)
+	{
+		$(ids).remove();
+	}
+
+	function removeElements(id1,id2)
+	{
+		$(id1).remove();
+		$(id2).remove();
+	}
+	function delmedicationRow(did,patidencrypted)
+	{
+		if(did && patidencrypted)
+		{
+
+			ajaxCallserver({
+				url:'patient/patientmedication?id='+patidencrypted+'&delid='+did+'&mid='+did+'&act=del' //mid for trigger when deleteing the row
+			});
+		}
+	}
+	function removeElementsfromTab(id1,id2,rid)
+	{
+		if(rid>0)
+		{
+		   ajaxCallserver({url:'diagnosis/removerecord?rid='+rid});
+		}
+		$(id1).remove();
+		$(id2).remove();
+	}
+
+	function newdiagnosisrow()
+	{
+
+		var radiostr = "";
+
+		for(var i=0;i<jarr.length;i++)
+		{
+			radiostr += '<td><input type="radio" name="dtype['+jcount+']" id="dtype'+jcount+'" value="'+jarr[i].id+'"></td>';
+		}
+
+
+		var trInnerHtml = $('<tr id="stab'+jcount+'"><td valign="top" id="listadmissiondiagnosistd_i'+jcount+'"><input name="icdnumber['+jcount+']" id="icdnumber'+jcount+'" value="" size="10"  class="livesearchicdinp diagicd" type="text" /><div id="icddiagnodropdown'+jcount+'" style="position: absolute; display:none;" class="medicationDiagnDrp icdlivesearchdropdown"></div></td><td valign="top" id="listadmissiondiagnosistd_d'+jcount+'"><input name="diagnosis['+jcount+']" id="diagnosis'+jcount+'" value="" size="33" class="livesearchinp diagdesc" type="text" /><input name="hidd_icdnumber['+jcount+']" value="" id="hidd_icdnumber'+jcount+'" type="hidden"><input name="hidd_diagnosis['+jcount+']" value="" id="hidd_diagnosis'+jcount+'" type="hidden"><input type="hidden" id="hidd_tab'+jcount+'" name="hidd_tab['+jcount+']" value="" /><div id="diagnodropdown'+jcount+'" style="position: absolute; display:none;" class="medicationDiagnDrp livesearchdropdown"></div></td>'+radiostr+' <td  valign="middle" align="center"><a href="javascript:void(0)" onclick="removeElements(\'#stab'+jcount+'\',\'#meta_'+jcount+'\')"><img src="_ipad/images/action_delete.png" border="0" /></a></td></tr>');
+		
+		
+		$('#samtab').append(trInnerHtml);
+
+
+		$('#icdnumber'+jcount).bind('keyup keydown change paste',function(){
+			$(this).live('change', function() {
+				var input_row = parseInt($(this).attr('id').substr(('icdnumber').length));
+				reset_diagnosis(input_row);
+			}).liveSearch({
+				url: 'ajax/diagnosis?mode=icdnumber&q=',
+				id: 'livesearch_admission_diagnosis',
+				aditionalWidth: '300',
+				noResultsDelay: '900',
+				typeDelay: '900',
+				returnRowId: function (input) {return parseInt($(input).attr('id').substr(('icdnumber').length));}
+			});
+		});
+
+
+		$('#diagnosis'+jcount).bind('keyup keydown change paste',function(e){
+			$(this).live('change', function() {
+				var input_row = parseInt($(this).attr('id').substr(('diagnosis').length));
+				reset_diagnosis(input_row);
+			}).liveSearch({
+				url: 'ajax/diagnosis?q=',
+				id: 'livesearch_admission_diagnosis',
+				aditionalWidth: '50',
+				noResultsDelay: '900',
+				typeDelay: '900',
+				returnRowId: function (input) {return parseInt($(input).attr('id').substr(('diagnosis').length));}
+			});
+		});
+
+		jcount++;
+		dcntr = jcount;
+	}
+  /*----------------------------------DIAGNOSEN END--------------------------------------*/
+
+
+
+
+
+  /*-------------------------------------------------------------------------------------*/
+  /*-------------------------------------- OTHER ----------------------------------------*/
+  /*-------------------------------------------------------------------------------------*/
+
+$(document).ready(function(){
+
+	$( ".datepick" ).datepicker({
+		dateFormat: 'dd.mm.yy',
+		showOn: "both",
+		buttonImage: $('#calImg').attr('src'),
+		buttonImageOnly: true,
+		nextText: '',
+		prevText: ''
+	});
+
+	/*------------Family doctor-------------------*/
+
+	$('#familydoc_option').live('click', function(){
+		if($(this).val() == '0' ){
+			var url = '<?php echo APP_BASE; ?>patient/familydocedit?id=<?php echo $this->pid ?>&mod=modal';
+			var dialog = $("#housarztDialog");
+			if ($("#housarztDialog").length == 0) {
+				dialog = $('<div id="housarztDialog" style="display:hidden"></div>').appendTo('body');
+			}
+			// load remote content
+			dialog.load(
+			url,
+			{},
+			function(responseText, textStatus, XMLHttpRequest) {
+				dialog.dialog({
+					width: 600,
+					height: 560,
+					modal:true,
+					resizable: false,
+					title: "Hausarzt bearbeiten",
+					open: function(){
+						if($("#familydoc_option").is(":checked")){
+							$("#familydoc_option").removeAttr('checked');
+						}
+
+						//familydoc ls
+						$('#familydoc_id').live('change', function() {
+							$('#hidd_docid').val('');
+						}).liveSearch({
+							url: 'ajax/sfamilydoctor?q=',
+							id: 'livesearch_stamdatten_familydoc',
+							noResultsDelay: '900',
+							typeDelay: '900'
+						});
+						$('#submit_btn').attr('alt', 'housarztDialog');
+					},
+					close: function(){
+						$('#housarztDialog').remove();
+					}
+				});
+			}
+		);
+
+
+		} else {
+
+
+		}
+	});
+
+	/*------------ Pflegedienst -------------------*/
+
+	$('#pflegedienst_option').live('click', function(){
+		if($(this).val() == '0' ){
+					var url = 'patient/pflegedienste?id=<?php echo $this->pid ?>&mod=modal&pflid='+$('#pflidhidden').val();
+					var dialog = $("#pflegeDialog");
+					if ($("#pflegeDialog").length == 0) {
+						dialog = $('<div id="pflegeDialog" style="display:hidden"></div>').appendTo('body');
+					}
+					// load remote content
+					dialog.load(
+					url,
+					{},
+					function(responseText, textStatus, XMLHttpRequest) {
+						dialog.dialog({
+							width: 600,
+							height: 605,
+							modal:true,
+							resizable: false,
+
+							title: "Pflegedienst",
+							open: function(){
+								if($("#pflegedienst_option").is(":checked")){
+									$("#pflegedienst_option").removeAttr('checked');
+								}
+								//pflegedienste ls
+								$('#pflegedienste').live('change', function() {
+									$('#hidd_pflegeid').val('');
+								}).liveSearch({
+									url: 'ajax/pflegedienste?q=',
+									id: 'livesearch_stammdaten_pflege',
+									aditionalWidth: '120',
+									noResultsDelay: '900',
+									typeDelay: '900'
+								});
+								$('#submit_btn_pfl').attr('alt','pflegeDialog');
+							},
+							close: function(){
+								$('#pflegeDialog').remove();
+							}
+						});
+					});
+
+		} else {
+
+
+		}
+	});
+
+
+	/*------------ Hos[izdienst] -------------------*/
+
+	$('#hospizdienst_option').live('click', function(){
+		if($(this).val() == '0' ){
+					var url = 'patient/hospiceassociation?id=<?php echo $this->pid ?>&mod=modal';
+					var dialog = $("#hospizdienstDialog");
+					if ($("#hospizdienstDialog").length == 0) {
+						dialog = $('<div id="hospizdienstDialog" style="display:hidden"></div>').appendTo('body');
+					}
+
+					// load remote content
+					dialog.load(
+					url,
+					{},
+					function(responseText, textStatus, XMLHttpRequest) {
+						dialog.dialog({
+							width: 600,
+							height: 565,
+							modal:true,
+							resizable: false,
+
+							title: "ambulanter Hospizdienst",
+							open: function(){
+								if($("#hospizdienst_option").is(":checked")){
+									$("#hospizdienst_option").removeAttr('checked');
+								}
+
+								//pflegedienste ls
+								$('#h_association').live('change', function() {
+									$('#hidd_h_association_id').val('');
+								}).liveSearch({
+									url: 'ajax/hospiceassociations?q=',
+									id: 'livesearch_stammdaten_hassoc',
+									aditionalWidth: '120',
+									noResultsDelay: '900',
+									typeDelay: '900'
+								});
+								$('#submit_btn_hassoc').attr('alt','hospizdienstDialog');
+							},
+							close: function(){
+								$('#hospizdienstDialog').remove();
+							}
+						});
+					});
+
+		} else {
+
+
+		}
+	});
+
+
+	/*---------------------  Contact person      ----------------------------------------*/
+
+	$("#contactperson_dialog").dialog({
+        autoOpen: false,
+		width: 600,
+		height: 545,
+		modal:true,
+		resizable: false,
+		title: "Private Pflegeperson",
+		open: function(){
+			$('#submit_contact').attr('alt','contactperson_dialog');
+		}
+	});
+
+	$('#contactperson_option').click(function(){
+		if($(this).val() == '0' ){
+			if($(this).is(":checked")){
+				$(this).removeAttr('checked');
+			}
+
+			$( "#contactperson_dialog" ).dialog('open');
+
+		}
+	});
+
+	/*-------------------------------*/
+	if($('#operativ_ja:checked').val() == 1){
+	    $('.operativ_date').show();
+	}
+	$("input[name=operativ]").bind('click',function() {
+	    if($(this).val() == 1){
+			$('.operativ_date').show();
+	    } else {
+			$('#operativ_date').val("");
+			$('.operativ_date').hide();
+	    }
+	});
+
+	if($('#chemo_ja:checked').val() == 1){
+	    $('.chemo_date').show();
+	}
+	$("input[name=chemo]").bind('click',function() {
+	    if($(this).val() == 1){
+			$('.chemo_date').show();
+	    } else {
+			$('#chemo_date').val("");
+			$('.chemo_date').hide();
+	    }
+	});
+
+	if($('#radiatio_ja:checked').val() == 1){
+	    $('.radiatio_date').show();
+	}
+	$("input[name=radiatio]").bind('click',function() {
+	    if($(this).val() == 1){
+			$('.radiatio_date').show();
+	    } else {
+			$('#radiatio_date').val("");
+			$('.radiatio_date').hide();
+	    }
+	});
+	/*-------------------------------*/
+
+
+	if($('#wound_treatment:checked').val() == 1){
+	    $('.wound_treatment_description').show();
+	}
+
+	if($("#wound_treatment").is(":checked")){
+		$(".wound_treatment_description").show("slow");
+	} else {
+		$('#wound_treatment_description').val("");
+		$('.wound_treatment_description').hide();
+	}
+
+
+	$('#wound_treatment').live('click', function(){
+		if($("#wound_treatment").is(":checked")){
+			$(".wound_treatment_description").show("slow");
+		} else {
+			$('#wound_treatment_description').val("");
+			$('.wound_treatment_description').hide();
+		}
+	});
+
+
+	/*-------------------------------------------------------------------------------------------------*/
+	/*-------------------------------------------------------------------------------------------------*/
+
+
+$('#submit_btn').live('click', function(event){
+
+	//fix for ie8 ->event.preventDefault() is not working in ie8 so we use event.returnValue=false;
+	if (event.preventDefault) {
+		event.preventDefault();
+	} else {
+		event.returnValue = false;
+	}
+	var curentDialogId = $(this).attr('alt');
+	$().ajaxStart(function() {
+		$('#ui-dialog-title-'+curentDialogId).html('<img src="<?php echo RES_FILE_PATH; ?>/images/ajax-title-loader.gif" width="14" />&nbsp;&nbsp;Loading...');
+	}).ajaxStop(function() {
+
+			$('#ui-dialog-title-'+curentDialogId).text("Hausarzt");
+
+	});
+
+	var dataString = $("#frmuser").serialize();
+
+	$.ajax({
+		type: "POST",
+		url: '<?php echo APP_BASE; ?>patient/familydocedit?id=<?php echo $this->pid ?>&noredir=1',
+		data: dataString,
+		success: function() {
+			$('#familydoc_option').val('1').attr('checked', true).attr('onclick', 'this.checked=!this.checked;').attr('onkeydown', 'this.checked=!this.checked;');
+			$('#'+curentDialogId).dialog('close');
+		},
+		error: function(xhr, ajaxOptions, thrownError) {
+		}
+	});
+});
+
+$('#submit_btn_pfl').live('click', function(event){
+	//fix for ie8 ->event.preventDefault() is not working in ie8 so we use event.returnValue=false;
+	if (event.preventDefault) {
+		event.preventDefault();
+	} else {
+		event.returnValue = false;
+	}
+	var curentDialogId = $(this).attr('alt');
+
+	$().ajaxStart(function() {
+		$('#ui-dialog-title-'+curentDialogId).html('<img src="<?php echo RES_FILE_PATH; ?>/images/ajax-title-loader.gif" width="14" />&nbsp;&nbsp;Loading...');
+	}).ajaxStop(function() {
+		if(curentDialogId == "ppDialog"){
+			$('#ui-dialog-title-'+curentDialogId).text("Palliativpflege");
+		} else if(curentDialogId == "pflegeDialog") {
+			$('#ui-dialog-title-'+curentDialogId).text("ambulante Pflege");
+		}
+	});
+
+	var dataString = $("#frmuserpfl").serialize();
+	$.ajax({
+		type: "POST",
+		url: '<?php echo APP_BASE; ?>patient/pflegedienste?id=<?php echo $this->pid ?>&noredir=1',
+		data: dataString,
+		success: function(vars) {
+
+			var obj = $.parseJSON(vars); //parse returned json pflid
+
+			$('#pflegedienst_option').val('1').attr('checked', true).attr('onclick', 'this.checked=!this.checked;').attr('onkeydown', 'this.checked=!this.checked;');
+			//					update hidden id with returned pflid
+			if(curentDialogId == "pflegeDialog"){
+				$('#pflidhidden').val(obj.pflidInserted);
+			} else {
+				$('#pflidhiddenppd').val(obj.pflidInserted);
+			}
+
+			$('#'+curentDialogId).dialog('close');
+		},
+		error: function(xhr, ajaxOptions, thrownError) {
+		}
+	});
+});
+
+$('#submit_btn_hassoc').live('click', function(event){
+	//fix for ie8 ->event.preventDefault() is not working in ie8 so we use event.returnValue=false;
+	if (event.preventDefault) {
+		event.preventDefault();
+	} else {
+		event.returnValue = false;
+	}
+	var curentDialogId = $(this).attr('alt');
+
+	$().ajaxStart(function() {
+		$('#ui-dialog-title-'+curentDialogId).html('<img src="<?php echo RES_FILE_PATH; ?>/images/ajax-title-loader.gif" width="14" />&nbsp;&nbsp;Loading...');
+	}).ajaxStop(function() {
+			$('#ui-dialog-title-'+curentDialogId).text("ambulanter Hospizdienst");
+	});
+
+	var dataString = $("#frmuserha").serialize();
+	$.ajax({
+		type: "POST",
+		url: '<?php echo APP_BASE; ?>patient/hospiceassociation?id=<?php echo $this->pid ?>&noredir=1',
+		data: dataString,
+		success: function(vars) {
+			$('#hospizdienst_option').val('1').attr('checked', true).attr('onclick', 'this.checked=!this.checked;').attr('onkeydown', 'this.checked=!this.checked;');
+
+			var obj = $.parseJSON(vars); //parse returned json pflid
+
+
+			$('#'+curentDialogId).dialog('close');
+		},
+		error: function(xhr, ajaxOptions, thrownError) {
+		}
+	});
+});
+
+
+$('#submit_contact').live('click', function(event){
+
+	//fix for ie8 ->event.preventDefault() is not working in ie8 so we use event.returnValue=false;
+	if (event.preventDefault) {
+		event.preventDefault();
+	} else {
+		event.returnValue = true;
+	}
+	var curentDialogId = $(this).attr('alt');
+	$().ajaxStart(function() {
+		$('#ui-dialog-title-'+curentDialogId).html('<img src="<?php echo RES_FILE_PATH; ?>/images/ajax-title-loader.gif" width="14" />&nbsp;&nbsp;Loading...');
+	}).ajaxStop(function() {
+
+			$('#ui-dialog-title-'+curentDialogId).text("Private Pflegeperson");
+
+	});
+
+	var dataString = $("#frmcontact").serialize();
+
+	$.ajax({
+		type: "POST",
+		url: '<?php echo APP_BASE; ?>patient/savecontactperson?id=<?php echo $this->pid ?>',
+		data: dataString,
+		success: function() {
+
+			$('#contactperson_option').val('1').attr('checked', true).attr('onclick', 'this.checked=!this.checked;').attr('onkeydown', 'this.checked=!this.checked;');
+
+			if($('#cnt_phone').val() == ''){
+				alert("<?php echo $this->translate('phone_error')?>");
+				event.preventDefault();
+			} else{
+				$('#'+curentDialogId).dialog('close');
+			}
+		},
+		error: function(xhr, ajaxOptions, thrownError) {
+		}
+	});
+});
+$('#sh_doc_id').live('change', function() {
+	var doctor_selected = $(this).val();
+	var doctor_user = $(this).find("option:selected").text();
+	if(doctor_selected !== '0')
+		{
+		$('#sh_doctor_details').val(doctor_user);
+		$('#sh_user').html(doctor_user);
+		$('#sh_user_name').val(doctor_user);
+		
+		}
+	//console.log(doctor_user);
+});
+
+	/*-------------------------------------------------------------------------------------------------*/
+	/*-------------------------------------------------------------------------------------------------*/
+}); // end of $(document).ready()
+
+
+
+function selectFamilyDoctor(doc_id)
+{
+	if($('#fdoc_fn_'+doc_id).val().length > 0 && $('#fdoc_ln_'+doc_id).val().length > 0){
+		var input_text = $('#fdoc_ln_'+doc_id).val() +', '+ $('#fdoc_fn_'+doc_id).val()
+	} else if($('#fdoc_ln_'+doc_id).length > 0) {
+		var input_text = $('#fdoc_ln_'+doc_id).val();
+	} else if($('#fdoc_dn_'+doc_id).length > 0) {
+		var input_text = $('#fdoc_fn_'+doc_id).val();
+	}
+
+	$('#familydoc_id').val(input_text);
+	$('#hidd_docid').val($('#fdoc_id_'+doc_id).val());
+
+	$('#phone_practice').val($('#fdoc_ph_'+doc_id).val());
+	$('#phone_private').val($('#fdoc_pr_'+doc_id).val());
+	$('#street1').val($('#fdoc_st_'+doc_id).val());
+	$('#zip').val($('#fdoc_zip_'+doc_id).val());
+	$('#city').val($('#fdoc_ci_'+doc_id).val());
+	$('#fax').val($('#fdoc_fax_'+doc_id).val());
+}
+function selectPflegedienst(pflid)
+{
+	$('#hidd_pflegeid').val($('#pflege_id_'+pflid).val());
+	$('#pflegedienste').val($('#pflege_nu_'+pflid).val());
+	$('#first_name').val($('#pflege_fn_'+pflid).val());
+	$('#last_name').val($('#pflege_ln_'+pflid).val());
+
+	$('#street1').val($('#pflege_st_'+pflid).val());
+	$('#zip').val($('#pflege_zip_'+pflid).val());
+	$('#city').val($('#pflege_ci_'+pflid).val());
+	$('#phone_practice').val($('#pflege_ph_'+pflid).val());
+	$('#phone_emergency').val($('#pflege_phem_'+pflid).val());
+	$('#fax').val($('#fax'+pflid).val());
+}
+
+function selectHospiceAssociation(hassoc_id)
+{
+	$('#h_association_details').show();
+	$('#hidd_h_association_id').val($('#hassoc_id_'+hassoc_id).val());
+	$('#h_association').val($('#hassoc_ha_'+hassoc_id).val());
+	$('#first_name').val($('#hassoc_fn_'+hassoc_id).val());
+	$('#last_name').val($('#hassoc_ln_'+hassoc_id).val());
+
+	$('#street1').val($('#hassoc_st_'+hassoc_id).val());
+	$('#zip').val($('#hassoc_zip_'+hassoc_id).val());
+	$('#city').val($('#hassoc_ci_'+hassoc_id).val());
+	$('#phone').val($('#hassoc_ph_'+hassoc_id).val());
+	$('#phone_emergency').val($('#hassoc_phem_'+hassoc_id).val());
+	$('#fax').val($('#fax'+hassoc_id).val());
+
+}
+
+</script>
+
+
+	<div style="display: none;"><img id="calImg" src="<?php echo RES_FILE_PATH;  ?>/images/calendar.png" class="trigger"></div>
+	<?php echo $this->patientinfo ?>
+	<?php echo $this->tabmenus ?>
+	<div class="tab_container">
+	<form action="" name="sapvq" method="post">
+		<br />
+		<div class="sapv_questionnaire">
+			<div class="sapvq_title">
+				<h2>Fragebogen nach SAPV-Richtlinie</h2>
+			</div>
+
+			<div class="sapvq_sapvdetails sapvq">
+				<table class="sapvq_table">
+					<tr>
+						<td colspan="2">&nbsp;</td>
+					</tr>
+					<tr>
+						<td class="checkbox_empty"><input type="checkbox" name="no_sapv_data" value="1"  <?php if($this->no_sapv_data == '1'){?> checked="checked"  <?}?>/></td>
+						<td><b>Erstverordnung</b></td>
+					</tr>
+					<tr>
+						<td colspan="2">&nbsp;</td>
+					</tr>
+					<tr>
+						<td class="checkbox_empty"><input type="checkbox" name="sapv_data_exists" id="sapv_data_exists" value="1" <?php if($this->sapv_data_exists == '1'){?> checked="checked"  <?}?> /></td>
+						<td><b>Folgeverordnung:</b> SAPV seit: <input type="text" class="datepick" name="sapv_date" id="sapv_date"
+						value="<?php if($this->sapv_date !='0000-00-00 00:00:00' && !empty($this->sapv_date)){ echo  date('d.m.Y',strtotime($this->sapv_date)); } else  { echo "";} ?>" /> </td>
+					</tr>
+					<tr>
+						<td colspan="2">&nbsp;</td>
+					</tr>
+				</table>
+			</div>
+
+			<div class="sapvq_healthinsurance sapvq">
+				<table class="sapvq_table">
+					<tr>
+						<td class="krakencase_label"><b>Krankenkasse:</b></td>
+						<td><?php echo $this->patient_health_insurance; ?></td>
+					</tr>
+					<tr>
+						<td>&nbsp;</td>
+					</tr>
+				</table>
+			</div>
+
+			<div class="sapvq_patientdetails sapvq">
+				<table class="sapvq_table">
+					<tr>
+						<td class="sapvq_fname_col"><b>Name:</b> <?php echo $this->patient_lname; ?></td>
+						<td class="sapvq_lname_col"><b>Vorname:</b> <?php echo $this->patient_fname; ?></td>
+						<td class="sapvq_birth_col"><b>Geb.-Datum:</b> <?php echo $this->patient_birthd; ?></td>
+					</tr>
+					<tr>
+						<td colspan="3">&nbsp;</td>
+					</tr>
+					<tr>
+						<td colspan="3"><b>Adresse:</b> <?php echo nl2br($this->patient_address) ?></td>
+					</tr>
+					<tr>
+						<td colspan="3">&nbsp;</td>
+					</tr>
+				</table>
+			</div>
+
+			<div class="sapvq_stm_pflegestufe sapvq">
+				<table class="sapvq_table">
+					<tr>
+						<td colspan="6"><b>Pflegeversicherung:</b></td>
+					</tr>
+					<tr>
+						<td colspan="6">&nbsp;</td>
+					</tr>
+					<tr>
+						<td><input type="radio"  name="stage" value="keine" <?php if($this->stage == 'keine'){ ?> checked="checked" <?php } ?>  onclick="updatePatientInformation('MaintainanceStage','stage','grow7',this,'<?php echo $this->enc_patid; ?>','drop')" /> keine</td>
+						<td><input type="checkbox"  name="beantragt" value="1" <?php if($this->beantragt == '1'){ ?> checked="checked" <?php } ?>  />beantragt</td>
+						<td><input type="radio"  name="stage" value="1"  <?php if($this->stage == '1'){ ?> checked="checked" <?php } ?> onclick="updatePatientInformation('MaintainanceStage','stage','grow7',this,'<?php echo $this->enc_patid; ?>','drop')" />St.1</td>
+						<td><input type="radio"  name="stage" value="2"  <?php if($this->stage == '2'){ ?> checked="checked" <?php } ?> onclick="updatePatientInformation('MaintainanceStage','stage','grow7',this,'<?php echo $this->enc_patid; ?>','drop')" />St.2</td>
+						<td><input type="radio"  name="stage" value="3"  <?php if($this->stage == '3'){ ?> checked="checked" <?php } ?> onclick="updatePatientInformation('MaintainanceStage','stage','grow7',this,'<?php echo $this->enc_patid; ?>','drop')" />St.3</td>
+						<td><input type="checkbox"  name="horherstufung" value="1"  <?php if($this->horherstufung == '1'){ ?> checked="checked" <?php } ?>   onclick="updatePatientInformation('MaintainanceStage','horherstufung','grow7',this,'<?php echo $this->enc_patid; ?>')" />Höherstufung</td>
+					</tr>
+				</table>
+
+	<div id="patientDet_Infor_denPat" class="dtbox" style="display: none">
+		<h4 class="LineHeading"><?php echo $this->translate('carelevellist') ?></h4>
+		<div id="listcarelevel" class="grid">
+<?php echo $this->carelevellist ?>
+		</div>
+		<div class="ClrBoth"></div>
+	</div>
+			</div>
+
+			<div class="sapvq_stm_modal_bloc sapvq">
+				<table class="sapvq_table">
+					<tr>
+						<td colspan="6"><b>Ambulante Versorgung durch:</b></td>
+					</tr>
+					<tr>
+						<td><input type="checkbox" id="familydoc_option" name="familydoctor" value="<?php if($this->familydoctor == '1'): echo '1'; else: echo '0'; endif;  ?>" <?php if($this->familydoctor == '1'){ ?> checked="checked" onclick="return false;" onkeydown="return false;" <?php } ?>/> Hausarzt</td>
+						<td><input type="checkbox"  name="palliativarzt" value="1" checked="checked" />Palliativarzt</td>
+						<td><input type="checkbox" id="pflegedienst_option"  name="pflegedienst" value="<?php if($this->pflegedienst == '1'): echo '1'; else: echo '0'; endif;  ?>" <?php if($this->pflegedienst == '1'){ ?> checked="checked" onclick="return false;" onkeydown="return false;" <?php } ?> />Pflegedienst</td>
+						<td><input type="checkbox" id="contactperson_option" name="contactperson" value="<?php if($this->contactperson == '1'): echo '1'; else: echo '0'; endif;  ?>" <?php if($this->contactperson == '1'){ ?> checked="checked" onclick="return false;" onkeydown="return false;" <?php } ?>/> Private Pflegeperson</td>
+						<td><input type="checkbox" id="hospizdienst_option" name="hospizdienst" value="<?php if($this->hospizdienst == '1'): echo '1'; else: echo '0'; endif;  ?>" <?php if($this->hospizdienst == '1'){?>  checked="checked" onclick="return false;" onkeydown="return false;" <?php }?> /> Ambulanter Hospizdienst</td>
+					</tr>
+					<tr>
+						<td colspan="6">&nbsp;</td>
+					</tr>
+				</table>
+			</div>
+
+			<div class="sapvq_diagnostics_action sapvq">
+		 		<table class="sapvq_table">
+					<tr>
+						<td><b>Diagnosen</b></td>
+					</tr>
+					<tr>
+						<td>&nbsp;</td>
+					</tr>
+		 			<tr><td id="diagnosis_table"><?php echo $this->diagno; ?></td></tr>
+		 			<tr><td><div class="add_new_medi"><a href="javascript:newdiagnosisrow()"><img src="<?php echo RES_FILE_PATH; ?>/images/action_add.png" width="30" height="30" /><div class="add_new_medi_link"><?php echo $this->translate('diagnose_add') ?></div></a></div><div class="clearer"></div></td></tr>
+		 			<tr><td><input type="text" name="diagno_text" value="<?php echo $this->diagno_text; ?>" style="width:100%;" /></td></tr>
+
+		 		</table>
+
+
+
+			</div>
+
+			<div class="sapvq_surgery_block sapvq">
+				<table class="sapvq_table">
+					<tr class="current_therapies">
+						<td width="25%"> <b>Bisherige Therapien:</b></td>
+						<td width="10%">operativ</td>
+						<td width="15%"><input type="radio" id="operativ_ja" name="operativ" value="1" <?php if($this->operativ == '1'){?>  checked="checked" <?php }?> /><label>ja</label></td>
+						<td width="15%"><input type="radio" id="operativ_nein" name="operativ" value="0" <?php if($this->operativ == '0'){?>  checked="checked" <?php }?>  /><label>nein</label></td>
+						<td width="35%"><div class="operativ_date" style="display: none;"><label>wann:</label> &nbsp;<input type="text" name="operativ_date" value="<?php  echo $this->operativ_date; ?>" id="operativ_date"/></div></td>
+					</tr>
+					<tr style="line-height: 340%">
+						<td> <b></b></td>
+						<td>chemo</td>
+						<td><input type="radio" name="chemo" id="chemo_ja" value="1"  <?php if($this->chemo == '1') {?>  checked="checked" <?php }?>  /><label>ja</label></td>
+						<td><input type="radio" name="chemo" id="chemo_nein" value="0"  <?php if($this->chemo == '0') {?>  checked="checked" <?php }?> /><label>nein</label></td>
+						<td><div class="chemo_date"  style="display: none;"><label>wann:</label> &nbsp;<input type="text" name="chemo_date"  value="<?php echo $this->chemo_date  ?>" id="chemo_date"/></div></td>
+					</tr>
+					<tr style="line-height: 340%">
+						<td> <b></b></td>
+						<td>Radiatio</td>
+						<td><input type="radio" name="radiatio" id="radiatio_ja" value="1"  <?php if($this->radiatio == '1')  {?>  checked="checked" <?php }?> /><label>ja</label></td>
+						<td><input type="radio" name="radiatio" id="radiatio_nein" value="0" <?php if($this->radiatio == '0')  {?>  checked="checked" <?php }?>  /><label>nein</label></td>
+						<td><div class="radiatio_date"  style="display: none;"><label>wann:</label> &nbsp;<input type="text" name="radiatio_date" value="<?php echo $this->radiatio_date; ?>"  id="radiatio_date"/></div></td>
+					</tr>
+				</table>
+			</div>
+
+
+			<div class="sapvq_hospitalization sapvq">
+				<table class="sapvq_table">
+					<tr>
+						<td width="25%"><b>Letzte KH-Behandlung:</b></td>
+						<td width="6%">wann:</td>
+						<td width="65%"><input type="text" name="hospital_period"  value="<?php echo $this->hospital_period; ?>" style="width:140px;"/></td>
+					</tr>
+					<tr>
+						<td></td>
+						<td>wo:</td>
+						<td width="65%"><input type="text" name="hospital_location"  value="<?php echo $this->hospital_location; ?>" style="width:140px;"/></td>
+					</tr>
+				</table>
+			</div>
+
+			<div class="sapvq_sympt_block sapvq">
+				<table class="sapvq_table">
+					<tr><td><b>Ausgeprägte Symptomkontrolle, welche?</b></td></tr>
+					<tr><td><textarea rows="" cols="" name="symptom_control" style="height: 100px;width:99%;"><?php echo $this->symptom_control; ?></textarea></td></tr>
+				</table>
+			</div>
+
+			<div class="sapvq_medication sapvq">
+			<table class="sapvq_table">
+				<tr>
+					<td style="width:200px;"><b>Aktuelle Medikation und Dosierung</b></td>
+					<td><input type="checkbox"  name="med_oral" value="1"   <?php if($this->med_oral == '1'){?>  checked="checked"<?php } ?> /><label>oral</label></td>
+					<td><input type="checkbox"  name="med_iv" value="1"    <?php if($this->med_iv == '1'){?>  checked="checked"<?php } ?> /><label>i.v.</label></td>
+					<td><input type="checkbox"  name="med_im" value="1"   <?php if($this->med_im == '1'){?>  checked="checked"<?php } ?>  /><label>i.m.</label></td>
+					<td><input type="checkbox"  name="med_sc" value="1"    <?php if($this->med_sc == '1'){?>  checked="checked"<?php } ?> /><label>s.c.</label></td>
+					<td><input type="checkbox"  name="med_infusion" value="1"   <?php if($this->med_infusion == '1'){?>  checked="checked"<?php } ?>  /><label>Infusion</label></td>
+					<td><input type="checkbox"  name="med_pca_pumpe" value="1"   <?php if($this->med_pca_pumpe == '1'){?>  checked="checked"<?php } ?>  /><label>PCA-Pumpe</label></td>
+					<td><input type="checkbox"  name="med_inhalation" value="1"   <?php if($this->med_inhalation == '1'){?>  checked="checked"<?php } ?>  /><label>Inhalation</label></td>
+				</tr>
+				<tr>
+					<td colspan="8"><input type="checkbox"  name="med_fest" value="1"     <?php if($this->med_fest == '1'){?>  checked="checked"<?php } ?> /><label>fest:</label></td>
+				</tr>
+				<tr>
+					<td colspan="8">
+						<table>
+							<tr>
+								<td><?php echo $this->medications; ?></td>
+							</tr>
+						</table>
+					</td>
+				</tr>
+				<tr>
+					<td colspan="8">
+						<table>
+							<tr>
+								<td><b>Medikamente hinzufügen :</b></td>
+							</tr>
+							<tr>
+								<td><?php echo $this->medicgrid; ?></td>
+							</tr>
+							<tr>
+								<td>
+									<div class="add_new_medi">
+										<a href="javascript:createnewmedic()">
+											<img src="<?php echo RES_FILE_PATH; ?>/images/edit_add.png" width="20" height="20" />
+											<div class="add_new_medi_link"><?php echo $this->translate('addnewmedication'); ?></div>
+										</a>
+									</div>
+								</td>
+							</tr>
+						</table>
+
+					</td>
+				</tr>
+
+				<tr>
+					<td colspan="8" height="30px">&nbsp;</td>
+				</tr>
+				<tr>
+					<td colspan="8"><input type="checkbox"  name="med_bedarf" value="1"   <?php if($this->med_fest == '1'){?>  checked="checked"<?php } ?> /><label>bei Bedarf:</label></td>
+				</tr>
+				<tr>
+					<td colspan="8">
+						<table>
+							<tr>
+								<td><?php echo $this->bedarfsmedications; ?></td>
+							</tr>
+						</table>
+					</td>
+				</tr>
+				<tr>
+					<td colspan="8">
+						<table>
+							<tr>
+								<td><b>Bedarf Medikamente hinzufügen :</b></td>
+							</tr>
+							<tr>
+								<td><?php echo $this->bedarfmedicgrid; ?></td>
+							</tr>
+							<tr>
+								<td>
+									<div class="add_new_medi">
+										<a href="javascript:createnewmedicrowbedarf();">
+											<img src="<?php echo RES_FILE_PATH; ?>/images/edit_add.png" width="20" height="20" />
+											<div class="add_new_medi_link"><?php echo $this->translate('addnewmedication'); ?></div>
+										</a>
+									</div>
+								</td>
+							</tr>
+						</table>
+					</td>
+				</tr>
+				<tr>
+					<td colspan="8" height="30px">&nbsp;</td>
+				</tr>
+
+				<tr>
+					<td colspan="8">
+						<table>
+							<tr>
+								<td><b>i.v.  Medikamente :</b></td>
+							</tr>
+							<tr>
+								<td><?php echo $this->ivmedications; ?></td>
+								<!--<td><?php echo $this->ivmedications_add; ?></td>-->
+
+							</tr>
+						</table>
+					</td>
+				</tr>
+				<tr>
+					<td colspan="8">
+						<table>
+							<tr>
+								<td><b>i.v.  Medikamente hinzufügen :</b></td>
+							</tr>
+							<tr>
+								<td><?php echo $this->ivmedicgrid; ?></td>
+							</tr>
+							<tr>
+								<td>
+									<div class="add_new_medi">
+										<a href="javascript:createnewmedicrowiv();">
+											<img src="<?php echo RES_FILE_PATH; ?>/images/edit_add.png" width="20" height="20" />
+											<div class="add_new_medi_link"><?php echo $this->translate('addnewmedication'); ?></div>
+										</a>
+									</div>
+								</td>
+							</tr>
+						</table>
+					</td>
+				</tr>
+
+
+
+				<tr>
+					<td colspan="8">
+						<table>
+							<tr>
+								<td><b><?php echo $this->translate('discontinuedmedlist'); ?></b></td>
+							</tr>
+							<tr>
+								<td>
+									<input type="hidden" value="<?php echo $this->mcntr; ?>" id="jsmedadd" />
+									<?php echo $this->delmedications ?>
+								</td>
+							</tr>
+						</table>
+					</td>
+				</tr>
+
+			</table>
+			</div>
+
+			<div class="sapvq_treatments_r_block sapvq">
+			<table class="sapvq_table">
+				<tr>
+					<td colspan="5"><b>Andere erforderliche Behandlungen:</b></td>
+				</tr>
+				<tr>
+					<td style="width: 133px;"><input type="checkbox"  name="kg" value="1"  <?php if($this->kg == '1'){ ?> checked="checked" <?php }?>  /><label>KG</label></td>
+					<td style="width: 145px;"><input type="checkbox"  name="lymphdrainage" value="1" <?php if($this->lymphdrainage == '1'){ ?> checked="checked" <?php }?> /><label>Lymphdrainage</label></td>
+					<td style="width: 175px;"><input type="checkbox"  name="chemotherapie" value="1" <?php if($this->chemotherapie == '1'){ ?> checked="checked" <?php }?> /><label>Chemotherapie</label></td>
+					<td style="width: 153px;"><input type="checkbox"  name="radiatio_needed" value="1" <?php if($this->radiatio_needed == '1'){ ?> checked="checked" <?php }?> /><label>Radiatio</label></td>
+					<td><input type="checkbox"  name="atemtherapie" value="1" <?php if($this->atemtherapie == '1'){ ?> checked="checked" <?php }?> /><label>Atemtherapie</label></td>
+				</tr>
+				<tr>
+					<td colspan="5">&nbsp;</td>
+				</tr>
+			</table>
+			</div>
+
+
+			<div class="sapvq_stm_other_s_block sapvq">
+			<table class="sapvq_table">
+				<tr>
+					<td colspan="6"><b>Erforderliche besondere palliativpflegerische Maßnahmen:</b></td>
+				</tr>
+				<tr>
+					<td><input type="checkbox"  name="port" value="1" onclick="updatePatientInformation('MoreInfo','port','grow20',this,'<?php echo $this->enc_patid; ?>')" /><label>Port</label></td>
+					<td><input type="checkbox"  name="zvk" value="1"  onclick="updatePatientInformation('MoreInfo','zvk','grow20',this,'<?php echo $this->enc_patid; ?>')" /><label>ZKV</label></td>
+					<td style="width:187px;"><input type="checkbox"  name="peg" value="1"  onclick="updatePatientInformation('MoreInfo','peg','grow20',this,'<?php echo $this->enc_patid; ?>')"   /><label>PEG-Magensonde</label></td>
+					<td><input type="checkbox"  name="sauerstoffgabe" value="1" <?php if($this->sauerstoffgabe == 1){ ?> checked="checked" <?php }?>/><label>Sauerstoffgabe</label></td>
+					<td><input type="checkbox"  name="dk" value="1" onclick="updatePatientInformation('MoreInfo','dk','grow21',this,'<?php echo $this->enc_patid; ?>')"  /><label>DK/Zystofix</label></td>
+					<td><input type="checkbox"  name="urostoma" value="1" <?php if($this->urostoma == 1){ ?> checked="checked" <?php }?> /><label>Urostoma</label></td>
+				</tr>
+				<tr>
+					<td colspan="6">&nbsp;</td>
+				</tr>
+				<tr>
+					<td><input type="checkbox"  name="anuspraeter" value="1" <?php if($this->anuspraeter == 1){ ?> checked="checked" <?php }?>/><label>Anus praeter</label></td>
+					<td><input type="checkbox"  name="tracheostoma" value="1" <?php if($this->tracheostoma == 1){ ?> checked="checked" <?php }?>/><label>Tracheostoma</label></td>
+					<td><input type="checkbox"  name="lagerung" value="1" <?php if($this->lagerung == 1){ ?> checked="checked" <?php }?>/><label>Lagerung</label></td>
+					<td><input type="checkbox"  name="ablaufsonde" value="1" <?php if($this->ablaufsonde == 1){ ?> checked="checked" <?php }?>/><label>Ablaufsonde</label></td>
+					<td> </td>
+					<td> </td>
+				</tr>
+				<tr>
+					<td colspan="6">&nbsp;</td>
+				</tr>
+				<tr>
+					<td colspan="6"><input type="checkbox"  name="wound_treatment" id="wound_treatment" value="1" <?php if($this->wound_treatment == 1){ ?> checked="checked" <?php }?>  /><label>Wundbehandlung mit Beschreibung</label></td>
+				</tr>
+
+				<tr>
+					<td colspan="6"><div class="wound_treatment_description" style="display: none;"><textarea name="wound_treatment_description" id="wound_treatment_description" ><?php echo $this->wound_treatment_description; ?></textarea></div></td>
+				</tr>
+				<tr>
+					<td colspan="6">&nbsp;</td>
+				</tr>
+			</table>
+			</div>
+
+			<div class="sapvq_psych sapvq">
+				<table class="sapvq_table">
+					<tr>
+						<td><b>Psychosoziale Betreuung:</b></td>
+					</tr>
+					<tr>
+						<td>Familie/soziales Umfeld:</td>
+					</tr>
+					<tr>
+						<td><textarea name="family_social_environment" rows="" cols="" style="height: 100px; overflow: hidden; width: 99%;"><?php echo $this->family_social_environment?></textarea></td>
+					</tr>
+				</table>
+			</div>
+
+			<div class="sapvq_stm_living_will sapvq">
+				<table class="sapvq_table">
+					<tr>
+						<td style="width: 125px;">Patientenverfügung:</td>
+						<td style="width: 125px;"><input type="radio"  name="living_will" value="1"  onclick="updatePatientInformation('Master','living_will','grow6',this,'<?php echo $this->enc_patid; ?>', 'living_willmorediv')" <?php if($this->living_will == '1'):?> checked="checked"  <?php endif;?> /><label>ja</label></td>
+						<td><input type="radio"  name="living_will" value="0"  onclick="updatePatientInformation('Master','living_will','grow6',this,'<?php echo $this->enc_patid; ?>', 'drop')" <?php if($this->living_will == '0'):?> checked="checked"  <?php endif;?>  /><label>nein</label></td>
+					</tr>
+					<tr>
+						<td colspan="3">&nbsp;</td>
+					</tr>
+				</table>
+			</div>
+			<div class="sapvq_date sapvq">
+			<!-- <div>
+			<table class="kvnofull">
+				<tr>
+					<td><p id="tdleft">Arzt:</p></td>
+					<td id="tdright" ><?php echo $this->formSelect('sh_doc_id', $this->sh_doc_id, null, $this->doctors); ?></td>
+				</tr>
+			</table>
+			</div> -->
+				<table class="sapvq_table" border="1">
+					<tr>
+						<td>Datum</td>
+						<td> Name/Unterschrift<br/>des SAPV-Teams:</td>
+						<td> Name/Unterschrift<br/> des SAPV-Palliativarztes:</td>
+					</tr>
+
+					<tr>
+						<td>
+							<?php echo date('d.m.Y')?>
+						</td>
+						<td>
+							<?php echo $this->lbg_sapv_provider;?><br/>
+							<?php echo $this->lbg_street;?><br/>
+							<?php echo $this->lbg_postcode;?> <?php echo $this->lbg_city;?><br/>
+							<?php echo $this->lbg_institutskennzeichen;?>
+						</td>
+						 <td id="widthuser"><input type="hidden" id="sh_user_name" name="sh_doctor_user" value="<?php echo $this->sh_doctor_user; ?>"/>
+						 
+						<?php if ($this->showselect == 1): ?>
+				<?php if($this->multiplestamps_option === true): ?>
+						<select id="stampusers" name="stampusers">
+						<option value=""><?php echo $this->translate('selectuserstamp')?></option>
+						<?php foreach($this->users_mstamps as $user=>$stamp):?>
+						 <optgroup label="<?php echo $stamp['user_name'];?>" value="<?php echo $stamp['user_id'];?>">
+						 	<?php foreach( $stamp['user_stamps'] as $stamp_id => $stamp_name):?>
+						 	<?
+						 	             $stampt = $stamp['user_id']."-".$stamp_id;
+                                         $stamp_user = $this->stamp_users ;
+                                              if( $stampt ==  $stamp_user )
+                                                {
+                                                   $is_selected ="selected";
+
+                                                }else{
+                                                   $is_selected ="";
+                                                }
+                                             echo "<option value='".$stampt."'   ".$is_selected.">".$stamp_name."</option>";
+                                           
+								       ?>
+						 	
+						 		<!-- <option value="<?php echo $stamp['user_id'];?>-<?php echo $stamp_id;?>" ><?php echo $stamp_name;?></option>	 -->
+						 	<?php endforeach;?>
+						 </optgroup>
+						<?php endforeach;?>
+						</select>
+				
+				<?php else: ?>
+				<div class="userstamps">
+				<?php echo $this->formSelect('stampusers', $this->users, null, $this->users); ?>
+				</div>
+			<?php endif; ?>
+			<?php endif; ?>
+						 <div id="user_stamp_block" style="display: none; height: 110px; font-sixe:7px;">
+  	                     <span></span>
+  	                     <?php if (strlen($this->stamp_users) >0 )
+                             echo $this->user_stamp_hidden;
+                           ?>
+                       </div>
+						 
+						</td>
+						<!-- <td><input type="hidden" id="sh_user_name" name="sh_doctor_user" value="<?php echo $this->sh_doctor_user; ?>"/>
+							<span id="sh_user"><?php echo $this->sh_doctor_user; ?></span></td> -->
+					</tr>
+				</table>
+
+			</div>
+		</div>
+
+
+		<input name="btnsubmit" id="btnsubmit" type="submit" value="<?php echo $this->translate('submit') ?>" />
+		<input name="pdf_export" id="pdf_export" type="submit" value="<?php echo $this->translate('generatepdf') ?>"  class="btnsubmit_usersessions"/>
+	</form>
+	</div>
+
+
+<div class="contactperson_block" id="contactperson_dialog">
+	<form action="<?php echo $this->act ?>" name="frmcontact" id="frmcontact" method="post" class="contactperson_modal">
+		<div>
+			<label><?php echo $this->translate('firstname') ?></label>
+			<input type="text" name="cnt_first_name" id="cnt_first_name" value="<?php echo $this->cnt_first_name ?>" />
+		</div>
+		<div>
+			<label><?php echo $this->translate('lastname') ?></label>
+			<input type="text" name="cnt_last_name" id="cnt_last_name" value="<?php echo $this->cnt_last_name ?>" />
+		</div>
+		<div>
+			<label><?php echo $this->translate('street') ?></label>
+			<input type="text" name="cnt_street1" id="cnt_street1" value="<?php echo $this->cnt_street1 ?>" />
+		</div>
+
+		<div>
+			<label><?php echo $this->translate('city') ?></label>
+			<input type="text" name="cnt_city" id="cnt_city" value="<?php echo $this->cnt_city ?>" />
+		</div>
+
+		<div>
+			<label><?php echo $this->translate('zip') ?></label>
+			<input type="text" name="cnt_zip" id="cnt_zip" value="<?php echo $this->cnt_zip ?>" />
+		</div>
+
+		<div>
+			<label><?php echo $this->translate('phone1') ?><span class="rederr">*</span></label>
+			<input type="text" name="cnt_phone" id="cnt_phone" value="<?php echo $this->cnt_phone ?>" />
+			<span class="error1"><?php echo $this->error_cnt_phone ?></span>
+		</div>
+		<div>
+			<label><?php echo $this->translate('phone2') ?></label>
+			<input type="text" name="cnt_mobile" id="cnt_mobile" value="<?php echo $this->cnt_mobile ?>" />
+		</div>
+		<div>
+			<label><?php echo $this->translate('hatversorgungsvollmacht') ?></label>
+			<?php echo $this->formCheckbox('cnt_hatversorgungsvollmacht', $_POST['cnt_hatversorgungsvollmacht'], null, array ('1')); ?>
+		</div>
+		<div>
+			<label>Gesetzlicher Betreuer</label>
+			<?php echo $this->formCheckbox('cnt_legalguardian', $_POST['cnt_legalguardian'], null, array ('1')); ?>
+		</div>
+		<div>
+			<label><?php echo $this->translate('patientrelationship') ?></label>
+			<?php echo $this->formSelect('cnt_familydegree_id', $_POST['cnt_familydegree_id'], null, $this->familydegree) ?>
+		</div>
+		<div>
+			<label><?php echo $this->translate('comment') ?></label>
+			<textarea name="cnt_comment" id="cnt_comment" cols="25" rows="5"></textarea>
+		</div>
+		<div>
+			<input type="button" name="submit_contact" id="submit_contact" value="<?php echo $this->translate('submit') ?>" class="button" />
+		</div>
+	</form>
+
+
+</div>
+<script type="text/javascript" >
+
+	//radiobuttons
+	getSelected('<?php echo $this->depresiv; ?>', 'depresiv');
+
+
+	//stammdaten checkboxes
+	getSelected('<?php echo $this->dk; ?>', 'dk');
+	getSelected('<?php echo $this->peg; ?>', 'peg');
+	getSelected('<?php echo $this->port; ?>', 'port');
+	getSelected('<?php echo $this->zvk; ?>', 'zvk');
+
+	getSelected('<?php echo $this->palliativ; ?>', 'palliativ');
+
+	function getSelected(dbvalue,fieldname){
+		var fieldarray = document.getElementsByName(fieldname);
+		for(i=0; i<fieldarray.length;i++){
+			if(fieldarray[i].value==dbvalue){
+				fieldarray[i].checked = true;
+			}
+		}
+	}
+</script>
+
+

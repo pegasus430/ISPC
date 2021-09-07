@@ -1,0 +1,798 @@
+<?php
+$this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/page-css/dgpanlage7form_style.css');
+?>
+<script type="text/javascript">
+
+	$(document).ready(function(){
+		$.extend({ //extending jquery 1.3.2 to parse JSON (parse Json was added in 1.4.1)
+			parseJSON: function( data ) {
+				if ( typeof data !== "string" || !data ) {
+					return null;
+				}
+
+				data = jQuery.trim( data );
+
+				if ( /^[\],:{}\s]*$/.test(data.replace(/\\(?:["\\\/bfnrt]|u[0-9a-fA-F]{4})/g, "@")
+				.replace(/"[^"\\\n\r]*"|true|false|null|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?/g, "]")
+				.replace(/(?:^|:|,)(?:\s*\[)+/g, "")) ) {
+
+					return window.JSON && window.JSON.parse ?
+						window.JSON.parse( data ) :
+						(new Function("return " + data))();
+
+				} else {
+					jQuery.error( "Invalid JSON: " + data );
+				}
+			}
+		});
+
+		$('#entlasung_date, #end_date_sapv, #datum_der_erfassung1, #datum_der_erfassung2').datepicker({
+			dateFormat: 'dd.mm.yy',
+			showOn: "both",
+			buttonImage: $('#calImg').attr('src'),
+			buttonImageOnly: true,
+			changeMonth: true,
+			changeYear: true,
+			nextText: '',
+			prevText: ''
+		});
+
+		//		Housarzt & palliativ artz submit button ajax post
+		$('#submit_btn').live('click', function(event){
+			//fix for ie8 ->event.preventDefault() is not working in ie8 so we use event.returnValue=false;
+			if (event.preventDefault) {
+				event.preventDefault();
+			} else {
+				event.returnValue = false;
+			}
+			var curentDialogId = $(this).attr('alt');
+			if(curentDialogId == "housarztDialogQPA"){
+				var qpaqry = "&q=1";
+			} else {
+				var qpaqry = " ";
+			}
+			$().ajaxStart(function() {
+				$('#ui-dialog-title-'+curentDialogId).html('<img src="<?php echo RES_FILE_PATH; ?>/images/ajax-title-loader.gif" width="14" />&nbsp;&nbsp;Loading...');
+			}).ajaxStop(function() {
+				if(curentDialogId == "housarztDialogQPA"){
+					$('#ui-dialog-title-'+curentDialogId).text("Palliativarzt (QPA)");
+				} else {
+					$('#ui-dialog-title-'+curentDialogId).text("Hausarzt");
+				}
+			});
+
+			var dataString = $("#frmuser").serialize();
+
+			$.ajax({
+				type: "POST",
+				url: '<?php echo APP_BASE; ?>patient/familydocedit?id=<?php echo $this->pid ?>&noredir=1'+qpaqry,
+				data: dataString,
+				success: function() {
+					$('#'+curentDialogId).dialog('close');
+				},
+				error: function(xhr, ajaxOptions, thrownError) {
+				}
+			});
+		});
+
+		//		ambulance plfedge & ppd submit button ajax post
+		$('#submit_btn_pfl').live('click', function(event){
+			//fix for ie8 ->event.preventDefault() is not working in ie8 so we use event.returnValue=false;
+			if (event.preventDefault) {
+				event.preventDefault();
+			} else {
+				event.returnValue = false;
+			}
+			var curentDialogId = $(this).attr('alt');
+
+			$().ajaxStart(function() {
+				$('#ui-dialog-title-'+curentDialogId).html('<img src="<?php echo RES_FILE_PATH; ?>/images/ajax-title-loader.gif" width="14" />&nbsp;&nbsp;Loading...');
+			}).ajaxStop(function() {
+				if(curentDialogId == "ppDialog"){
+					$('#ui-dialog-title-'+curentDialogId).text("Palliativpflege");
+				} else if(curentDialogId == "pflegeDialog") {
+					$('#ui-dialog-title-'+curentDialogId).text("ambulante Pflege");
+				}
+			});
+
+			var dataString = $("#frmuserpfl").serialize();
+			$.ajax({
+				type: "POST",
+				url: '<?php echo APP_BASE; ?>patient/pflegedienste?id=<?php echo $this->pid ?>&noredir=1',
+				data: dataString,
+				success: function(vars) {
+
+					var obj = $.parseJSON(vars); //parse returned json pflid
+
+					//					update hidden id with returned pflid
+					if(curentDialogId == "pflegeDialog"){
+						$('#pflidhidden').val(obj.pflidInserted);
+					} else {
+						$('#pflidhiddenppd').val(obj.pflidInserted);
+					}
+
+					$('#'+curentDialogId).dialog('close');
+				},
+				error: function(xhr, ajaxOptions, thrownError) {
+				}
+			});
+		})
+
+
+		//Hausarzt List to be saved in stammdaten
+		$("#hausarzt").click(function(){
+			if($(this).is(':checked')){
+				var url = '<?php echo APP_BASE; ?>patient/familydocedit?id=<?php echo $this->pid ?>&mod=modal';
+				var dialog = $("#housarztDialog");
+				if ($("#housarztDialog").length == 0) {
+					dialog = $('<div id="housarztDialog" style="display:hidden"></div>').appendTo('body');
+				}
+
+				// load remote content
+				dialog.load(
+				url,
+				{},
+				function(responseText, textStatus, XMLHttpRequest) {
+					dialog.dialog({
+						width: 600,
+						height: 360,
+						modal:true,
+						resizable: false,
+
+						title: "Hausarzt bearbeiten",
+						open: function(){
+							$('#submit_btn').attr('alt', 'housarztDialog');
+						},
+						close: function(){
+							$('#housarztDialog').remove();
+						}
+					});
+				}
+			);
+			}
+		});
+
+		//Hausarzt QPA List to be saved in stammdaten
+		$("#palliativ").click(function(){
+			if($(this).is(':checked')){
+
+				var url = '<?php echo APP_BASE; ?>patient/familydocedit?id=<?php echo $this->pid ?>&mod=modal&q=qpa';
+				var dialog = $("#housarztDialogQPA");
+				if ($("#housarztDialogQPA").length == 0) {
+					dialog = $('<div id="housarztDialogQPA" style="display:hidden"></div>').appendTo('body');
+				}
+
+				// load remote content
+				dialog.load(
+				url,
+				{},
+				function(responseText, textStatus, XMLHttpRequest) {
+					dialog.dialog({
+						width: 600,
+						height: 360,
+						modal:true,
+						resizable: false,
+
+						title: "Palliativarzt",
+						open: function(){
+							$('#submit_btn').attr('alt', 'housarztDialogQPA');
+						},
+						close: function(){
+							$('#housarztDialogQPA').remove();
+						}
+					});
+				}
+			);
+			}
+		});
+
+
+		//Pflegedienste List
+		$("#pflege").click(function(){
+			if($(this).is(':checked')){
+				var url = 'patient/pflegedienste?id=<?php echo $this->pid ?>&mod=modal&pflid='+$('#pflidhidden').val();
+				var dialog = $("#pflegeDialog");
+				if ($("#pflegeDialog").length == 0) {
+					dialog = $('<div id="pflegeDialog" style="display:hidden"></div>').appendTo('body');
+				}
+
+				// load remote content
+				dialog.load(
+				url,
+				{},
+				function(responseText, textStatus, XMLHttpRequest) {
+					dialog.dialog({
+						width: 600,
+						height: 485,
+						modal:true,
+						resizable: false,
+
+						title: "ambulante Pflege",
+						open: function(){
+							$('#submit_btn_pfl').attr('alt','pflegeDialog');
+						},
+						close: function(){
+							$('#pflegeDialog').remove();
+						}
+					});
+				}
+			);
+			}
+		});
+
+		//Palliativ Pflegedienste List (show only ones with PPD option)
+		$("#palliativpf").click(function(){
+			if($(this).is(':checked')){
+				var url = 'patient/pflegedienste?id=<?php echo $this->pid ?>&mod=modal&pflid='+$('#pflidhiddenppd').val();
+				var dialog = $("#ppDialog");
+				if ($("#ppDialog").length == 0) {
+					dialog = $('<div id="ppDialog" style="display:hidden"></div>').appendTo('body');
+				}
+
+				// load remote content
+				dialog.load(
+				url,
+				{},
+				function(responseText, textStatus, XMLHttpRequest) {
+					dialog.dialog({
+						width: 600,
+						height: 485,
+						modal:true,
+						resizable: false,
+
+						title: "Palliativpflege",
+						open: function(){
+							$('#submit_btn_pfl').attr('alt','ppDialog');
+						},
+						close: function(){
+							$('#ppDialog').remove();
+						}
+					});
+				}
+			);
+			}
+		});
+
+	});
+
+</script>
+<link href="<?php echo RES_FILE_PATH; ?>/css/custom_modal.css" media="all" rel="stylesheet" type="text/css" />
+<script type="text/javascript" src="<?php echo RES_FILE_PATH; ?>/javascript/livesearch/directpatientsearch.js"></script>
+<script type="text/javascript" src="<?php echo RES_FILE_PATH; ?>/javascript/livesearch/pflegedienste_edit_modal.js"></script>
+<script type="text/javascript" src="<?php echo RES_FILE_PATH; ?>/javascript/livesearch/familydoc_edit_modal.js"></script>
+
+
+<script type="text/javascript">
+	var fdocblur = true;
+
+	function sendData(e){
+
+	}
+	$(function() {
+		//Family Doctor live search
+
+		$("#familydoc_id").live("keydown",function(e){livefdocsearchkeupm(e,$(this))});
+
+		$("#familydoc_id").blur(function(){
+			fdocblur = true;
+			setTimeout(function(){closefdocs($(this))},5);
+		});
+
+		$("#doctdropdown").bind('mousedown',function(){
+
+			var t = setTimeout(function(){
+				$("#doctdropdown").show();$("#familydoc_id").focus();
+			},10);
+		});
+
+		//ambulante Pflegedienste livesearch section
+		$("#pflegedienste").live("keydown",function(e){livefdocsearchkeupmpfl(e,$(this))});
+
+		$("#pflegedienste").blur(function(){
+			fdocblur = true;
+			setTimeout(function(){closefdocs($(this))},5);
+		});
+
+		$("#doctdropdown").bind('mousedown',function(){
+
+			var t = setTimeout(function(){
+				$("#doctdropdown").show();$("#pflegedienste").focus();
+			},10);
+		});
+
+	});
+
+	function closefdocs(){
+		$('#doctdropdown').hide();
+	}
+
+</script>
+ 
+ <form action="" method="post" name="kernform" id="dgpkernform">
+    <div id="stammblatt_CalendarImg" style="display: none;">
+	<img id="calImg" src="<?php echo RES_FILE_PATH;  ?>/images/calendar.png" alt="Popup" class="trigger">
+</div>
+<?php echo $this->patientinfo ?>
+<?php echo $this->tabmenus ?>
+<div id="stammblatt_tabContainer" class="tab_container">
+<span><b>Anlage 7</b> - Vertrag über die Erbringung Spezialisierter ambulanter Palliativverorgung in Nordrhein gemäß § 132 d SGB V i. V. m . § 37 b SGB V</span>
+
+<table    width="100%" class="anlage_master_table">
+
+
+<tr>
+<td>
+<table width="100%" class="anlage_second_table" cellpadding="2">
+<tr>
+<td colspan="2" class="anlage_table_header">
+<b>I. Kerndatensatz für Palliativpatienten:</b><br/>
+Erfassung zu Beginn und Ende der Palliativversorgung
+</td></tr>
+<tr><td class="gray_tdheader" colspan="2">Demographische Angaben</td></tr>
+<tr>
+<td width="40%">Geburtsdatum:<?php echo $this->birth;?></td>
+<td>Geschlecht:<?php echo $this->gender;?></td>
+</tr>
+<tr>
+<td>Aufnahmedatum: <?php echo $this->admisiondate;?> </td>
+<td>
+<!--	Wohnsituation:<input type="text" name="wohnsituation" value="<?php echo  $this->wohnsituation; ?>" class="input_select2" />-->
+</td>
+</tr>
+<tr>
+<td valign="top">Wohnsituation: </td>
+<td>
+ 	<table width="100%">
+		<tr>
+			<td>
+				<label for="alone">
+					<input type="radio" name="wohnsituation" id="alone" value="1" <?php if($this->alone == 1) {echo 'checked="checked"';}?> />alleine
+				</label>
+			</td>
+			<td>
+				<label for="house_of_relatives">
+					<input type="radio" name="wohnsituation" id="house_of_relatives" value="2" <?php if($this->house_of_relatives == 1) {echo 'checked="checked"';}?> > im Haus der Angehörigen
+				</label>
+			</td>
+			<td>
+<!--				<label for="apartment">
+					<input type="radio" name="wohnsituation" id="apartment" value="3" <?php if($this->apartment == 1) {echo 'checked="checked"';}?> >Wohnung
+				</label>-->
+				<label for="home">
+					<input type="radio" name="wohnsituation" id="home" value="4" <?php if($this->home == 1) {echo 'checked="checked"';}?> >Heim
+				</label>
+			</td>
+		</tr>
+		<tr>
+			<td>
+
+				<label for="sonstiges">
+					<input type="radio" name="wohnsituation" id="sonstiges" value="6" <?php if($this->sonstiges == 1) {echo 'checked="checked"';}?> >Sonstiges
+				</label>
+			</td>
+			<td>
+<!--				<label for="hospiz">
+					<input type="radio" name="wohnsituation" id="hospiz" value="5" <?php if($this->hospiz == 1) {echo 'checked="checked"';}?> >Hospiz
+				</label>-->
+
+			</td>
+			<td>
+
+			</td>
+		</tr>
+	</table>
+</td>
+</tr>
+<tr><td class="gray_tdheader" colspan="2">Angaben zur Erkrankung</td></tr>
+<tr>
+<td> Hauptdiagnose/Grundkrankheit: </td>
+<td><?php echo $this->icddiagnosis;?></td>
+</tr>
+
+<tr>
+<td> <label>Funktionsstatus (ECOG): </label></td>
+<td><select name="ecog">
+<option value="">&nbsp;</option>
+<option value="1"  <?php if($this->ecog == 1) {echo 'selected="selected"';}?>>Normale Aktivität</option>
+<option value="2"  <?php if($this->ecog == 2) {echo 'selected="selected"';}?>>Gehfähig, leichte Arbeit möglich</option>
+<option value="3"  <?php if($this->ecog == 3) {echo 'selected="selected"';}?>>nicht arbeitsfähig, kann &gt; 50&#37;  der Wachzeit aufstehen</option>
+<option value="4"  <?php if($this->ecog == 4) {echo 'selected="selected"';}?>>begrenzte Selbstversorgung, &gt; 50&#37; Wachzeit bettlägrig</option>
+<option value="5"  <?php if($this->ecog == 5) {echo 'selected="selected"';}?>>Pflegebedürftig, permanent bettlägerig</option>
+</select></td>
+</tr>
+
+
+<tr><td class="gray_tdheader" colspan="2">Angaben zur Versorgung (Strukturqualität)</td></tr>
+<tr>
+<td valign="top"> Behandlung, Begleitung: </td>
+<td>
+ 	<table width="100%">
+		<tr>
+			<td ><label for="sapvteam_as"><input id="sapvteam_as" type="checkbox" name="begleitung[sapvteam_as]" value="1"   <?php if($this->sapvteam_as == 1) {echo 'checked="checked"';}?>  />SAPV-Team</label></td>
+			<td ><label for="hausarzt"><input id="hausarzt" type="checkbox" name="begleitung[hausarzt]" value="2"  <?php if($this->hausarzt == 1) {echo 'checked="checked"';}?>  />Hausarzt</label></td>
+			<td ><label for="pflege"><input id="pflege" type="checkbox" name="begleitung[pflege]" value="3"   <?php if($this->pflege == 1) {echo 'checked="checked"';}?> />ambulante Pflege</label><input type="hidden" value="<?php echo $this->pfledge_id ?>" name="pflidhidden" id="pflidhidden" /></td>
+		</tr>
+		<tr>
+			<td ><label for="palliativ"><input id="palliativ" type="checkbox" name="begleitung[palliativ]" value="4"   <?php if($this->palliativ == 1) {echo 'checked="checked"';}?> /> Palliativarzt (QPA)</label></td>
+			<td ><label for="palliativpf"><input id="palliativpf" type="checkbox" name="begleitung[palliativpf]" value="5"  <?php if($this->palliativpf == 1) {echo 'checked="checked"';}?> />Palliativpflege (AHPP, APD)</label><input type="hidden" value="<?php echo $this->ppd_id; ?>" name="pflidhiddenppd" id="pflidhiddenppd" /></td>
+			<td><label for="palliativber"><input id="palliativber" type="checkbox" name="begleitung[palliativber]" value="6"  <?php if($this->palliativber == 1) {echo 'checked="checked"';}?>  />Palliativberatung (AHPB)</label></td>
+		</tr>
+		<tr>
+			<td><label for="dienst"><input id="dienst" type="checkbox" name="begleitung[dienst]" value="7" <?php if($this->dienst == 1) {echo 'checked="checked"';}?> />Ehrenamtlicher Dienst</label></td>
+			<td><label for="palliativstation"><input id="palliativstation" type="checkbox" name="begleitung[palliativstation]" value="8" <?php if($this->palliativstation == 1) {echo 'checked="checked"';}?> />Palliativstation</label></td>
+			<td><label for="hospiz_stationaer"><input id="hospiz_stationaer" type="checkbox" name="begleitung[hospiz_stationaer]" value="9" <?php if($this->hospiz_stationaer == 1) {echo 'checked="checked"';}?> />Hospiz Stationaer</label></td>
+		</tr>
+		<tr>
+			<td><label for="kh_andere_station"><input id="kh_andere_station" type="checkbox" name="begleitung[kh_andere_station]" value="10" <?php if($this->kh_andere_station == 1) {echo 'checked="checked"';}?> />KH Andere Station</label></td>
+			<td><label for="heim"><input id="heim" type="checkbox" name="begleitung[heim]" value="11" <?php if($this->heim == 1) {echo 'checked="checked"';}?> />Heim</label></td>
+			<td><label for="palliative_care_team"><input id="palliative_care_team" type="checkbox" name="begleitung[palliative_care_team]" value="12" <?php if($this->palliative_care_team == 1) {echo 'checked="checked"';}?> />Palliative Care Team</label></td>
+		</tr>
+		<tr>
+			<td colspan="3"><label for="sonstige_behandlung"><input id="sonstige_behandlung" type="checkbox" name="begleitung[sonstige_behandlung]" value="13" <?php if($this->sonstige_behandlung == 1) {echo 'checked="checked"';}?> />Sonstige Behandlung</label></td>
+		</tr>
+	</table>
+</td>
+</tr>
+<tr>
+<td> Absprache / Vorlage: </td>
+<td><?php echo $this->vorlage;?>  </td>
+</tr>
+<tr>
+<td> Datum der Erfassung:  </td>
+<td>
+<!--<input type="text" name="datum_der_erfassung" value="<?php echo date('d.m.Y')?>"/> -->
+<input type="text" name="datum_der_erfassung1" id="datum_der_erfassung1"  style="width:80px;" value="<?php echo $this->datum_der_erfassung1 ?>" >
+
+</td>
+</tr>
+</table>
+
+</td>
+</tr>
+<tr>
+<td>
+<table  width="100%"  class="anlage_second_table" >
+<tr><td class="gray_tdheader" colspan="2">Angaben zum Behandlungsbedarf</td></tr>
+<tr>
+<td width="40%">Schmerzen</td>
+<td width="40%">
+<table border="0" width="100%">
+<tr>
+<td width="25%"><input type="radio"  name="schmerzen" value="1" <?php if($this->schmerzen == 1) {echo 'checked="checked"';}?> />kein</td>
+<td width="25%"><input type="radio"  name="schmerzen" value="2" <?php if($this->schmerzen == 2) {echo 'checked="checked"';}?>  />leicht</td>
+<td width="25%"><input type="radio"  name="schmerzen" value="3" <?php if($this->schmerzen == 3) {echo 'checked="checked"';}?> />mittel</td>
+<td width="25%"><input type="radio"  name="schmerzen" value="4" <?php if($this->schmerzen == 4) {echo 'checked="checked"';}?> />stark</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td width="40%">Übelkeit</td>
+<td width="40%">
+<table border="0" width="100%">
+<tr>
+<td width="25%"><input type="radio"  name="ubelkeit" value="1" <?php if($this->ubelkeit == 1) {echo 'checked="checked"';}?> />kein</td>
+<td width="25%"><input type="radio"  name="ubelkeit" value="2" <?php if($this->ubelkeit == 2) {echo 'checked="checked"';}?>  />leicht</td>
+<td width="25%"><input type="radio"  name="ubelkeit" value="3" <?php if($this->ubelkeit == 3) {echo 'checked="checked"';}?> />mittel</td>
+<td width="25%"><input type="radio"  name="ubelkeit" value="4" <?php if($this->ubelkeit == 4) {echo 'checked="checked"';}?> />stark</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td width="40%">Erbrechen</td>
+<td width="40%">
+<table border="0" width="100%">
+<tr>
+<td width="25%"><input type="radio"  name="erbrechen" value="1" <?php if($this->erbrechen == 1) {echo 'checked="checked"';}?> />kein</td>
+<td width="25%"><input type="radio"  name="erbrechen" value="2" <?php if($this->erbrechen == 2) {echo 'checked="checked"';}?>  />leicht</td>
+<td width="25%"><input type="radio"  name="erbrechen" value="3" <?php if($this->erbrechen == 3) {echo 'checked="checked"';}?> />mittel</td>
+<td width="25%"><input type="radio"  name="erbrechen" value="4" <?php if($this->erbrechen == 4) {echo 'checked="checked"';}?> />stark</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td width="40%">Luftnot</td>
+<td width="40%">
+<table border="0" width="100%">
+<tr>
+<td width="25%"><input type="radio"  name="luftnot" value="1" <?php if($this->luftnot == 1) {echo 'checked="checked"';}?> />kein</td>
+<td width="25%"><input type="radio"  name="luftnot" value="2" <?php if($this->luftnot == 2) {echo 'checked="checked"';}?>  />leicht</td>
+<td width="25%"><input type="radio"  name="luftnot" value="3" <?php if($this->luftnot == 3) {echo 'checked="checked"';}?> />mittel</td>
+<td width="25%"><input type="radio"  name="luftnot" value="4" <?php if($this->luftnot == 4) {echo 'checked="checked"';}?> />stark</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td width="40%">Verstopfung</td>
+<td width="40%">
+<table border="0" width="100%">
+<tr>
+<td width="25%"><input type="radio"  name="verstopfung" value="1" <?php if($this->verstopfung == 1) {echo 'checked="checked"';}?> />kein</td>
+<td width="25%"><input type="radio"  name="verstopfung" value="2" <?php if($this->verstopfung == 2) {echo 'checked="checked"';}?>  />leicht</td>
+<td width="25%"><input type="radio"  name="verstopfung" value="3" <?php if($this->verstopfung == 3) {echo 'checked="checked"';}?> />mittel</td>
+<td width="25%"><input type="radio"  name="verstopfung" value="4" <?php if($this->verstopfung == 4) {echo 'checked="checked"';}?> />stark</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td width="40%">Schwäche</td>
+<td width="40%">
+<table border="0" width="100%">
+<tr>
+<td width="25%"><input type="radio"  name="swache" value="1" <?php if($this->swache == 1) {echo 'checked="checked"';}?> />kein</td>
+<td width="25%"><input type="radio"  name="swache" value="2" <?php if($this->swache == 2) {echo 'checked="checked"';}?>  />leicht</td>
+<td width="25%"><input type="radio"  name="swache" value="3" <?php if($this->swache == 3) {echo 'checked="checked"';}?> />mittel</td>
+<td width="25%"><input type="radio"  name="swache" value="4" <?php if($this->swache == 4) {echo 'checked="checked"';}?> />stark</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td width="40%">Appetitmangel</td>
+<td width="40%">
+<table border="0" width="100%">
+<tr>
+<td width="25%"><input type="radio"  name="appetitmangel" value="1" <?php if($this->appetitmangel == 1) {echo 'checked="checked"';}?> />kein</td>
+<td width="25%"><input type="radio"  name="appetitmangel" value="2" <?php if($this->appetitmangel == 2) {echo 'checked="checked"';}?>  />leicht</td>
+<td width="25%"><input type="radio"  name="appetitmangel" value="3" <?php if($this->appetitmangel == 3) {echo 'checked="checked"';}?> />mittel</td>
+<td width="25%"><input type="radio"  name="appetitmangel" value="4" <?php if($this->appetitmangel == 4) {echo 'checked="checked"';}?> />stark</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td width="40%">Müdigkeit</td>
+<td width="40%">
+<table border="0" width="100%">
+<tr>
+<td width="25%"><input type="radio"  name="mudigkeit" value="1" <?php if($this->mudigkeit == 1) {echo 'checked="checked"';}?> />kein</td>
+<td width="25%"><input type="radio"  name="mudigkeit" value="2" <?php if($this->mudigkeit == 2) {echo 'checked="checked"';}?>  />leicht</td>
+<td width="25%"><input type="radio"  name="mudigkeit" value="3" <?php if($this->mudigkeit == 3) {echo 'checked="checked"';}?> />mittel</td>
+<td width="25%"><input type="radio"  name="mudigkeit" value="4" <?php if($this->mudigkeit == 4) {echo 'checked="checked"';}?> />stark</td>
+</tr>
+</table>
+</td>
+</tr>
+
+<tr>
+<td width="40%">Pflegeprobleme wegen Wunden / Dekubitus</td>
+<td width="40%">
+<table border="0" width="100%">
+<tr>
+<td width="25%"><input type="radio"  name="dekubitus" value="1" <?php if($this->dekubitus == 1) {echo 'checked="checked"';}?> />kein</td>
+<td width="25%"><input type="radio"  name="dekubitus" value="2" <?php if($this->dekubitus == 2) {echo 'checked="checked"';}?>  />leicht</td>
+<td width="25%"><input type="radio"  name="dekubitus" value="3" <?php if($this->dekubitus == 3) {echo 'checked="checked"';}?> />mittel</td>
+<td width="25%"><input type="radio"  name="dekubitus" value="4" <?php if($this->dekubitus == 4) {echo 'checked="checked"';}?> />stark</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td width="40%">Hilfebedarf bei Aktivitäten des tägl. Lebens</td>
+<td width="40%">
+<table border="0" width="100%">
+<tr>
+<td width="25%"><input type="radio"  name="hilfebedarf" value="1" <?php if($this->hilfebedarf == 1) {echo 'checked="checked"';}?> />kein</td>
+<td width="25%"><input type="radio"  name="hilfebedarf" value="2" <?php if($this->hilfebedarf == 2) {echo 'checked="checked"';}?>  />leicht</td>
+<td width="25%"><input type="radio"  name="hilfebedarf" value="3" <?php if($this->hilfebedarf == 3) {echo 'checked="checked"';}?> />mittel</td>
+<td width="25%"><input type="radio"  name="hilfebedarf" value="4" <?php if($this->hilfebedarf == 4) {echo 'checked="checked"';}?> />stark</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td width="40%">Depressivität</td>
+<td width="40%">
+<table border="0" width="100%">
+<tr>
+<td width="25%"><input type="radio"  name="depresiv" value="1" <?php if($this->depresiv == 1) {echo 'checked="checked"';}?> />kein</td>
+<td width="25%"><input type="radio"  name="depresiv" value="2" <?php if($this->depresiv == 2) {echo 'checked="checked"';}?>  />leicht</td>
+<td width="25%"><input type="radio"  name="depresiv" value="3" <?php if($this->depresiv == 3) {echo 'checked="checked"';}?> />mittel</td>
+<td width="25%"><input type="radio"  name="depresiv" value="4" <?php if($this->depresiv == 4) {echo 'checked="checked"';}?> />stark</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td width="40%">Angst</td>
+<td width="40%">
+<table border="0" width="100%">
+<tr>
+<td width="25%"><input type="radio"  name="angst" value="1" <?php if($this->angst == 1) {echo 'checked="checked"';}?> />kein</td>
+<td width="25%"><input type="radio"  name="angst" value="2" <?php if($this->angst == 2) {echo 'checked="checked"';}?>  />leicht</td>
+<td width="25%"><input type="radio"  name="angst" value="3" <?php if($this->angst == 3) {echo 'checked="checked"';}?> />mittel</td>
+<td width="25%"><input type="radio"  name="angst" value="4" <?php if($this->angst == 4) {echo 'checked="checked"';}?> />stark</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td width="40%">Anspannung</td>
+<td width="40%">
+<table border="0" width="100%">
+<tr>
+<td width="25%"><input type="radio"  name="anspannung" value="1" <?php if($this->anspannung == 1) {echo 'checked="checked"';}?> />kein</td>
+<td width="25%"><input type="radio"  name="anspannung" value="2" <?php if($this->anspannung == 2) {echo 'checked="checked"';}?>  />leicht</td>
+<td width="25%"><input type="radio"  name="anspannung" value="3" <?php if($this->anspannung == 3) {echo 'checked="checked"';}?> />mittel</td>
+<td width="25%"><input type="radio"  name="anspannung" value="4" <?php if($this->anspannung == 4) {echo 'checked="checked"';}?> />stark</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td width="40%">Desorientiertheit, Verwirrtheit</td>
+<td width="40%">
+<table border="0" width="100%">
+<tr>
+<td width="25%"><input type="radio"  name="desorientier" value="1" <?php if($this->desorientier == 1) {echo 'checked="checked"';}?> />kein</td>
+<td width="25%"><input type="radio"  name="desorientier" value="2" <?php if($this->desorientier == 2) {echo 'checked="checked"';}?>  />leicht</td>
+<td width="25%"><input type="radio"  name="desorientier" value="3" <?php if($this->desorientier == 3) {echo 'checked="checked"';}?> />mittel</td>
+<td width="25%"><input type="radio"  name="desorientier" value="4" <?php if($this->desorientier == 4) {echo 'checked="checked"';}?> />stark</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td width="40%">Probleme mit Organisation der Versorgung</td>
+<td width="40%">
+<table border="0" width="100%">
+<tr>
+<td width="25%"><input type="radio"  name="versorgung" value="1" <?php if($this->versorgung == 1) {echo 'checked="checked"';}?> />kein</td>
+<td width="25%"><input type="radio"  name="versorgung" value="2" <?php if($this->versorgung == 2) {echo 'checked="checked"';}?>  />leicht</td>
+<td width="25%"><input type="radio"  name="versorgung" value="3" <?php if($this->versorgung == 3) {echo 'checked="checked"';}?> />mittel</td>
+<td width="25%"><input type="radio"  name="versorgung" value="4" <?php if($this->versorgung == 4) {echo 'checked="checked"';}?> />stark</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td width="40%">Überforderung der Familie, des Umfeldes</td>
+<td width="40%">
+<table border="0" width="100%">
+<tr>
+<td width="25%"><input type="radio"  name="umfelds" value="1" <?php if($this->umfelds == 1) {echo 'checked="checked"';}?> />kein</td>
+<td width="25%"><input type="radio"  name="umfelds" value="2" <?php if($this->umfelds == 2) {echo 'checked="checked"';}?>  />leicht</td>
+<td width="25%"><input type="radio"  name="umfelds" value="3" <?php if($this->umfelds == 3) {echo 'checked="checked"';}?> />mittel</td>
+<td width="25%"><input type="radio"  name="umfelds" value="4" <?php if($this->umfelds == 4) {echo 'checked="checked"';}?> />stark</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td width="40%">Sonstige:</td>
+<td width="40%">
+<table border="0" width="100%">
+<tr>
+<td width="25%"><input type="radio"  name="sonstige_probleme" value="1" <?php if($this->sonstige_probleme == 1) {echo 'checked="checked"';}?> />kein</td>
+<td width="25%"><input type="radio"  name="sonstige_probleme" value="2" <?php if($this->sonstige_probleme == 2) {echo 'checked="checked"';}?>  />leicht</td>
+<td width="25%"><input type="radio"  name="sonstige_probleme" value="3" <?php if($this->sonstige_probleme == 3) {echo 'checked="checked"';}?> />mittel</td>
+<td width="25%"><input type="radio"  name="sonstige_probleme" value="4" <?php if($this->sonstige_probleme == 4) {echo 'checked="checked"';}?> />stark</td>
+</tr>
+</table>
+</td>
+</tr>
+
+
+<tr><td class="gray_tdheader" colspan="2">Angaben zum Behandlungsbedarf</td></tr>
+<tr>
+<td valign="top">Was ist der Grund des Kontaktes,<br/> was das Behandlungsziel?</td>
+<td><textarea name="kontaktes" cols="" rows="4"   class="input_textarea"><?php echo $this->kontaktes?></textarea></td>
+</tr>
+<tr>
+<td valign="top">Opioide der WHO Stufe III</td>
+<td>
+<input type="radio"  name="who" value="1" <?php if($this->who == 1) {echo 'checked="checked"';}?> />ja
+<input type="radio"  name="who" value="2" <?php if($this->who == 2) {echo 'checked="checked"';}?> />nein
+</td>
+</tr>
+<tr>
+<td> <label>Steroide</label> </td>
+<td><select name="steroide">
+<option value="">--</option>
+<option value="1" <?php if($this->steroide == "1"){echo 'selected="selected"';}  ?>>ja</option>
+<option value="2"  <?php if($this->steroide == "2"){echo 'selected="selected"';}  ?>>nein</option>
+</select></td>
+</tr>
+<tr>
+<td> <label>Chemotherapie </label> </td>
+<td><select name="chemotherapie">
+<option value="">--</option>
+<option value="1" <?php if($this->chemotherapie == 1){echo 'selected="selected"';}  ?> >nein</option>
+<option value="2" <?php if($this->chemotherapie == 2){echo 'selected="selected"';}  ?>  >fortgesetzt</option>
+<option value="3" <?php if($this->chemotherapie == 3){echo 'selected="selected"';}  ?>  >initiiert</option>
+</select></td>
+</tr>
+<tr>
+<td> <label>Strahlentherapie</label>  </td>
+<td><select name="strahlentherapie">
+<option value="">--</option>
+<option value="1" <?php if($this->strahlentherapie == 1){echo 'selected="selected"';}  ?>  >nein</option>
+<option value="2"  <?php if($this->strahlentherapie == 2){echo 'selected="selected"';}  ?>   >fortgesetzt</option>
+<option value="3"  <?php if($this->strahlentherapie == 3){echo 'selected="selected"';}  ?>  >initiiert</option>
+</select></td>
+</tr>
+<tr>
+<td valign="top">besonderer Aufwand mit:</td>
+<td><textarea name="aufwand_mit" cols="" rows="4"   class="input_textarea"><?php echo $this->aufwand_mit?></textarea></td>
+</tr>
+<tr><td class="gray_tdheader" colspan="2">Angaben zum weiteren Verlauf, Abschluss (Ergebnisqualität)</td></tr>
+<tr>
+<td valign="top">Welches Problem konnte besonders <br/>gut gelöst werden?</td>
+<td><textarea name="problem_besonders" cols="" rows="4"   class="input_textarea"><?php echo $this->problem_besonders;?></textarea></td>
+</tr>
+<tr>
+<td valign="top">Welches Problem konnte nicht<br/> ausreichend gelöst werden?</td>
+<td><textarea name="problem_ausreichend" cols="" rows="4"   class="input_textarea"><?php echo $this->problem_ausreichend?></textarea></td>
+</tr>
+
+<tr>
+<td>Datum (Entl. / Änderung der Betreuung / Tod)</td>
+<td>
+<input type="text" name="entlasung_date" id="entlasung_date"  style="width:80px;" value="<?php echo $this->entlasung_date ?>" >
+</td>
+</tr>
+<tr>
+<td> <label>Therapieende</label>  </td>
+<td><select name="therapieende">
+<option value="">--</option>
+<option value="1" <?php if($this->therapieende == 1){echo 'selected="selected"';}  ?> >Verstorben</option>
+<option value="2"  <?php if($this->therapieende == 2){echo 'selected="selected"';}  ?> >Verlegung</option>
+<option value="3"  <?php if($this->therapieende == 3){echo 'selected="selected"';}  ?> >Entlassung</option>
+<option value="4"  <?php if($this->therapieende == 4){echo 'selected="selected"';}  ?> >Sonstiges</option>
+</select></td>
+</tr>
+ <tr>
+<td><label>Sterbeort</label></td>
+<td>
+<!--<input type="text" name="sterbeort" value="<?php echo $this->sterbeort; ?>" class="input_select"/>-->
+<?php echo $this->formSelect ('sterbeort_dgp', $this->sterbeort_dgp, null, $this->discharge_locations) ?>
+
+</td>
+</tr>
+<tr>
+<td> <label>Zufriedenheit mit der Behandlung für die gesamte Behandlung </label></td>
+<td><select name="zufriedenheit_mit">
+<option value="">--</option>
+<option value="1"  <?php if($this->zufriedenheit_mit == 1){echo 'selected="selected"';}  ?> >sehr schlecht</option>
+<option value="2"  <?php if($this->zufriedenheit_mit == 2){echo 'selected="selected"';}  ?> >schlecht</option>
+<option value="3"  <?php if($this->zufriedenheit_mit == 3){echo 'selected="selected"';}  ?> >mittel</option>
+<option value="4"  <?php if($this->zufriedenheit_mit == 4){echo 'selected="selected"';}  ?> >gut</option>
+<option value="5"  <?php if($this->zufriedenheit_mit == 5){echo 'selected="selected"';}  ?> >sehr gut</option>
+</select></td>
+</tr>
+
+</table>
+
+
+</td>
+</tr>
+<tr>
+<td>
+<input type="hidden" name="dgp_kern_id" value="<?php echo $this->dgp_kern_id;?>">
+</td>
+</tr>
+
+ <tr>
+ <td colspan="2">
+<input name="btnsave" type="submit"  id="btnsubmit"  value="<?php echo $this->translate('save')?>" />
+<input name="btnsubmit" type="submit" value="<?php echo $this->translate('generatepdf')?>" class="btnsubmit_usersessions"/>
+
+
+
+ </td>
+ </tr>
+
+</table>
+
+
+
+
+
+</div>
+    </form>
+
+

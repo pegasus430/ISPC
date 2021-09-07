@@ -1,0 +1,129 @@
+<div id="listvalidlocation_validdetail" class="grid">
+<table id="listvalidlocation_content_table" class="PatientDetail_datatable" width="85%" align="left" border="0" cellpadding="0" cellspacing="0">
+        <tbody>
+          <tr>
+            <th valign="top" align="left" height="20"><strong><? echo $this->translate('location');?></strong></th>
+            <th valign="top" align="left"><strong><? echo $this->translate('validfrom');?></strong></th>
+            <th valign="top" align="left"><strong><? echo $this->translate('validtill');?></strong></th>
+
+          </tr>
+   <gridrow>
+      <phpscript>
+      $phone_id_ISPC_2045 = null;
+         $count++;
+	 $chk = "";
+	$validfrom = date('d.m.Y', strtotime($valid_from));
+	if ($valid_till == '0000-00-00 00:00:00')
+	{
+		$validtill = "-";
+	}
+	else
+	{
+		$validtill = date('d.m.Y', strtotime($valid_till));
+	}
+
+	$loc = Doctrine_Query::create()
+	    ->select('*')
+	    ->from('Locations')
+	    ->where('id=' . $location_id);
+	$locarr = $loc->execute();
+	$location = $locarr[0]['location'];
+
+
+
+	$drop = Doctrine_Query::create()
+	    ->select("*,AES_DECRYPT(location,'" . Zend_Registry::get('salt') . "') as location, phone1 as phone")
+	    ->from('Locations')
+	    ->where("id='" . $location_id . "'")
+	    ->orderBy('location ASC');
+
+	$loc = $drop->execute();
+
+	if ($loc)
+	{
+		$loca = $loc->toArray();
+
+		$phone_id_ISPC_2045 = $loca[0]['id'];
+		$location = $loca[0]['location'];
+		$phone = $loca[0]['phone'];
+		$location_type = $loca[0]['location_type'];
+		$contact_number_dec = $view->kontactnumber_dec;
+		$kontactnumbertype = $view->kontactnumbertype;
+	}
+
+	if ($location_id == "0" && $discharge_location == "1")
+	{
+		$location = 'Entlassen';
+	}
+	$indice = substr($location_id, -1);
+	$neededid = substr($location_id, 0, 4);
+	if ($neededid == '8888')
+	{
+		$location = $view->location_cnt[$indice];
+		if(!empty($view->location_cnt_phone[$indice])){
+			$phone = $view->location_cnt_phone[$indice];
+		} else{
+			$phone = $view->location_cnt_mobile[$indice];
+		}
+	}
+
+	//added location station contactnumber
+	$last_location_station = $view->last_location;
+
+	if (!empty($last_location_station[$location_id][0]['phone1']))
+	{
+		$phone = $last_location_station[$location_id][0]['phone1'];
+	}
+	else if (!empty($last_location_station[$location_id][0]['phone2']))
+	{
+		$phone = $last_location_station[$location_id][0]['phone2'];
+	}
+
+	$chk = '';
+
+	if($location_type == '5')
+	{
+		if($view->patient_phone == '')
+		{
+			$phone = $view->patient_mobile;
+		}
+		else
+		{
+			$phone = $view->patient_phone;
+		}
+	}
+
+/*
+	if (($contact_number_dec == $phone && !empty($phone) && $view->kontactnumbertype == '1') || ($location_type == '5' && !empty($view->patient_phone) && $contact_number_dec == $view->patient_phone && $view->kontactnumbertype == '1'))
+	{
+		$chk = 'checked="checked"';
+	}
+*/
+
+
+	if ($count == $view->locationcount)
+	{
+		if ($view->last_location_is_contact) {
+			$chk = 'checked="checked"';
+		}
+		$view->contact_checkbox .= 'ist die Kontakt-Telefonnummer <input ' . $chk . ' type="checkbox" id="kontactnumber" onclick="updatePatientInformation(\'Location\',\'is_contact\',\''. $phone_id_ISPC_2045 . '\',this, \'' . $_GET['id'] . '\',\'kontactnumberLocation\')" name="real_contact_number" value="' .$phone_id_ISPC_2045 . '"  />';
+		
+		// ISPC-2024 - removed locations as contact number, so view->last_location_is_contact ignored
+		// ISPC-2064 - add location for contacct number 
+		//$view->contact_checkbox = "";
+	}
+      </phpscript>
+          <tr>
+            <td valign="top" align="left" height="20">
+		[[location]]
+	    </td>
+            <td valign="top" align="left">[[validfrom]]</td>
+            <td valign="top" align="left">[[validtill]]</td>
+
+          </tr>
+
+       </gridrow>
+        </tbody>
+      </table>
+</div>
+

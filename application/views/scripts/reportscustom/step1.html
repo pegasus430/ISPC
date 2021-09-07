@@ -1,0 +1,468 @@
+<?php
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/reportscustom.css?' . date('Ymd'));
+?>
+
+<?php
+
+function search_criteria($group_id,$search_criterias,$sapv_statuses,$sapv_types,$discharge_methods,$saved_data = false,$new_group = false,$search_criterias_types){
+	$Tr = new Zend_View_Helper_Translate();
+
+	if(strlen($saved_data['name']) == 0 ){
+		$saved_data['name'] = "Gruppe #";
+	}
+	$html = "";
+	$html .='<div class="group_details gr_'.$group_id.'"> <label>'.$Tr->translate('Name der Gruppe:').'<sup class="mandatory">*</sup></label><input type="text" name="report[groups]['.$group_id.'][name]" value="'.$saved_data['name'].'" />';
+
+	
+	$html .='<div class="delete_group" style="float:right" onclick="delete_group(\'' . $group_id . '\', this); return false;" data-groupid="'.$group_id.'" ></div>';
+	
+	
+	$html .='<input type="hidden" name="report[groups]['.$group_id.'][group_id]" value="'.$group_id.'" />';
+	if($new_group){
+		$html .='<input type="hidden" name="report[groups]['.$group_id.'][new]" value="1" />';
+	}
+
+	$html .='</div>';
+
+	$html .='<table class="search_criterias_table scg_'.$group_id.'">';
+	$html .='<thead>';
+	$html .='<tr>';
+	$html .='<th width="5%" align="center">#</th>';
+	$html .='<th width="40%">'.$Tr->translate('list_search_criteria').'</th>';
+	$html .='<th width="45%">'.$Tr->translate('list_search_options').'</th>';
+	$html .='<th width="10%" align="center">'.$Tr->translate('negate_search_criteria').'</th>';
+	$html .='</tr>';
+	$html .='</thead>';			
+	$html .='<tbody>';
+
+	foreach($search_criterias as $k=>$sdata)
+	{
+		if(in_array($sdata['id'],$saved_data['search_ids2group'])){
+			$search_chk = "checked='checked'"; 
+		} else {
+			$search_chk = ""; 
+		}
+
+		if(in_array($sdata['id'],$saved_data['negation_search_ids2group'])){
+			$neg_search_chk = "checked='checked'"; 
+		} else {
+			$neg_search_chk = ""; 
+		}
+
+		$html .='<tr>';
+		$html .='<td align="center"><input type="checkbox" class="input_search_criteria type_'.$sdata['type'].'"  data-type="'.$sdata['type'].'"   id="search_'.$group_id.'_'.$sdata['id'].'" name="report[groups]['.$group_id.'][search2group]['.$sdata['id'].'][value]" value="'.$sdata['id'].'" '.$search_chk.'  ></td>';
+ 
+
+		$sup = '';
+		if($sdata['type'] != "patient"){
+			$sup = ' <sup class="note">*</sup>';
+		}
+		$html .='<td><label for="search_'.$group_id.'_'.$sdata['id'].'">'.$Tr->translate($sdata['search']).'</label>'.$sup.'</td>';
+
+		
+		$html .='<td>';
+		if( !empty($sdata["search_options"]) && $sdata["search_options"] != "none")
+		{
+			switch ($sdata["search_options"])
+			{
+		 		case 'sapv_status_select':
+			 		$html .='<select name="report[groups]['.$group_id.'][search2group]['.$sdata['id'].'][options]" class="search_options">';
+					$html .='<option value=""></option>';
+					foreach($sapv_statuses as $status_id => $status_name){
+						
+						if($status_id == $saved_data['search2group'][$sdata['id']]['options']){
+							$status_selected = "selected='selected'";
+						} else{
+							$status_selected = "";
+						}
+					
+						$html .='<option value="'.$status_id.'" '.$status_selected.'>'.$status_name.'</option>';
+				 	}
+			 		$html .='</select>';
+					break;
+					 		
+		 		case 'sapv_type_select':
+					$html .='<select name="report[groups]['.$group_id.'][search2group]['.$sdata['id'].'][options]"  class="search_options">';
+					$html .='<option value=""></option>';
+					foreach($sapv_types as $type_id => $type_name){
+						
+						if($type_id == $saved_data['search2group'][$sdata['id']]['options']){
+							$type_selected = "selected='selected'";
+						} else{
+							$type_selected = "";
+						}
+
+						$html .='<option value="'.$type_id.'"  '.$type_selected.'    >'.$type_name.'</option>';
+					}
+					$html .='</select>';
+					break;
+
+		 		case 'dm_select': 
+					$html .='<select name="report[groups]['.$group_id.'][search2group]['.$sdata['id'].'][options]"  class="search_options">';
+					$html .='<option value=""></option>';
+					foreach($discharge_methods as $dis_type_id => $dis_type_name){
+
+						if( $dis_type_id == $saved_data['search2group'][$sdata['id']]['options']){
+							$dis_type_selected = "selected='selected'";
+						} else{
+							$dis_type_selected = "";
+						}
+
+						$html .='<option value="'.$dis_type_id.'" '.$dis_type_selected.'>'.$dis_type_name.'</option>';
+					}
+					$html .='</select>';
+					break;
+
+				case 'hi_live':
+					$html .='<input type="text" class="search_options '.$sdata['search_options'].'" id="company_name'.$sdata['id'].$group_id.'"   name="report[groups]['.$group_id.'][search2group]['.$sdata['id'].'][options]"  value="'.$saved_data['search2group'][$sdata['id']]['options'].'"  />';
+					break;
+
+				case 'icd_live':
+					$html .='<input type="text" class="search_options '.$sdata['search_options'].'" id="icd'.$sdata['id'].$group_id.'"   name="report[groups]['.$group_id.'][search2group]['.$sdata['id'].'][options]"  value="'.$saved_data['search2group'][$sdata['id']]['options'].'"  />';
+					break;
+
+				default:
+					$html .='<input type="text" class="search_options '.$sdata['search_options'].'"   name="report[groups]['.$group_id.'][search2group]['.$sdata['id'].'][options]"  value="'.$saved_data['search2group'][$sdata['id']]['options'].'"  />';
+					break;
+			}
+		}
+		$html .='</td>';
+
+		$html .='<td align="center"><input type="checkbox" value="1" name="report[groups]['.$group_id.'][search2group]['.$sdata['id'].'][negation]"  '.$neg_search_chk.'  ></td>';
+		$html .='</tr>';
+	}
+	$html .='</tbody>';
+	$html .='</table>';
+return $html;
+}
+
+
+$report = $this->saved_data;
+?>
+<script type="text/javascript">
+
+$(document).ready(function() { /*------ Start $(document).ready --------------------*/
+	// on open
+	$('#period_type_1').prop('checked', true);
+	$('#from').prop('disabled', true);
+	$('#to').prop('disabled', true);
+	
+	var curent_year = "<?php echo date('Y');?>";
+	$('#year'+curent_year).prop('checked', true);
+	
+	$('.year_filter').removeClass("required");
+	$('.group_details').removeClass("required");
+	$('.search_criterias_table').removeClass("required");
+	$('.start_date').removeClass("required");
+	
+	
+	
+	$('.input_search_criteria').live('change', function(e){
+		if($(this).is(":checked")) {
+		
+			var stype = 	$(this).data('type');
+			$('.input_search_criteria').each(function(){
+				if($(this).data('type') !=  stype ){
+					$(this).prop('checked', false);
+				}
+			});
+		}
+	});
+// 	$('#firststep').dialog( "option", "buttons", [ {text: "gigel"} ]);
+	
+    $( "#from" ).datepicker({
+        changeMonth: true,
+        changeYear: true,
+        onClose: function( selectedDate ) {
+          	$( "#to" ).datepicker( "option", "minDate", selectedDate );
+  			$('#period_type_2').prop('checked', true);
+  			$(".month_filter input").prop("disabled", true);
+  			$(".quart_filter input").prop("disabled", true);
+  			$(".year_filter input").prop("disabled", true);
+        }
+      });
+      $( "#to" ).datepicker({
+        changeMonth: true,
+        changeYear: true,
+        onClose: function( selectedDate ) {
+			$( "#from" ).datepicker( "option", "maxDate", selectedDate );
+  			$('#period_type_2').prop('checked', true);
+  			$(".month_filter input").prop("disabled", true);
+  			$(".quart_filter input").prop("disabled", true);
+  			$(".year_filter input").prop("disabled", true);
+        }
+      });
+
+    // special search for -  health insurance
+    
+  	$('.hi_live').each(function(){
+	    $(this).live('change', function() {
+	    	var input_row = parseInt($(this).attr('id').substr(('company_name').length));
+		}).liveSearch({
+			url: 'ajax/crhealthinsurance?q=',
+			id: 'livesearch_stammdaten_healthinsurance',
+			aditionalWidth: '120',
+			noResultsDelay: '900',
+			typeDelay: '900',
+			returnRowId: function (input) {return parseInt($(input).attr('id').substr(('company_name').length));}
+		});
+  	});
+    
+	//livesearch diagnosis icd ls
+	$('.icd_live').each(function(){
+		$(this).live('change', function() {
+			var input_row = parseInt($(this).attr('id').substr(('icd').length));
+		}).liveSearch({
+			url: 'ajax/diagnosis?mode=icdnumber&q=',
+			id: 'livesearch_admission_diagnosis',
+			aditionalWidth: '300',
+			noResultsDelay: '900',
+			typeDelay: '900',
+			returnRowId: function (input) {return parseInt($(input).attr('id').substr(('icd').length));}
+		});
+	})
+	
+	
+	// Actions inside first step
+	
+	// months/quarter/year  
+	$('.period_type_1').live('click', function(e){
+		$('#period_type_1').prop('checked', true);
+		$('#from').prop('disabled', true);
+		$('#to').prop('disabled', true);
+	});
+
+	$('#period_type_1').live('click', function(e){
+		$('#from').prop('disabled', true);
+		$('#to').prop('disabled', true);
+		
+		$('.start_date').removeClass('required');
+		
+		$(".month_filter input").prop("disabled", false);
+		$(".quart_filter input").prop("disabled", false);
+		$(".year_filter input").prop("disabled", false);
+	});
+	
+	// custom interval 
+	$('#period_type_2').live('click', function(e){
+		$('#from').prop('disabled', false);
+		$('#to').prop('disabled', false);
+		
+		$('.year_filter').removeClass('required');
+		
+		$(".month_filter input").prop("disabled", true);
+		$(".quart_filter input").prop("disabled", true);
+		$(".year_filter input").prop("disabled", true);
+	});
+	
+	// no date filter
+	$('#period_type_3').live('click', function(e){
+		$('#from').prop('disabled', true);
+		$('#to').prop('disabled', true);
+		$('.year_filter').removeClass('required');
+		$(".month_filter input").prop("disabled", true);
+		$(".quart_filter input").prop("disabled", true);
+		$(".year_filter input").prop("disabled", true);
+	});
+	
+	// ADD NEW GROUP 
+	$('#add_new_group').live('click', function(){
+		$('#new_group').val(1);
+		
+		$('.year_filter').removeClass("required");
+		$('.group_details').removeClass("required");
+		$('.search_criterias_table').removeClass("required");
+		$('.start_date').removeClass("required");
+		
+		$.ajax({
+			type: 'POST',
+			url: 'reportscustom/step1',
+			data: $("#step1").serialize(),
+			success:function(data){
+				var visitdata = jQuery.parseJSON(data);
+				
+				if(visitdata.error == 0){
+					if(visitdata.report_id){
+		 				$('#firststep').load('<?php  echo APP_BASE."reportscustom/step1?report_id='+visitdata.report_id+'&new_group=1"; ?>', function() {
+	 					$('#firststep').dialog('open');
+	 				});
+					}
+				} 
+				else 
+				{
+					$.each( visitdata.error_text, function( key, value ) {
+							$('.'+ key).addClass("required");	
+						});
+						alert("<?php echo $this->translate('please_check_mandatory_fields'); ?>")
+				}
+			},
+			error:function(){
+				ajax_done = 1;
+				// failed request; give feedback to user
+			}
+		});
+	});
+	
+	
+	
+	if ( $("div.group_details").length <= 1) {
+		$("div.delete_group").hide();
+		
+	} 
+	
+});/*-- END  $(document).ready ----------- --*/
+
+function selectHealthInsurance(hid,row)
+{
+	$('#company_name'+row).val($('#hinsu_nm_'+hid).val());
+}
+
+function selectDiagnosis(did, row)
+{
+	$('#icd'+row).val($('#diag_icd_'+did).val());
+}
+
+
+function delete_group( group_id, _this)
+{	
+	$("div.gr_" +  group_id).remove();
+	$("table.scg_" +  group_id).remove();
+		
+	var count_groups = $("div.group_details").length;
+	
+	if (count_groups <= 1) {
+		$("div.delete_group").hide();
+		
+	} else {
+		$("div.delete_group").show();
+	}
+}
+
+</script>
+
+
+<form name="step1"  id="step1" action="" method="post">
+
+<input type="hidden" name="report_id" value="<?php echo $_REQUEST['report_id'];?>"/>
+<input type="hidden" name="issaved" value="<?php echo $report['details']['issaved'];?>"/>
+	<?php if($report['details']['issaved'] != '1'): //  show date filter at create?>
+	<div class="fblock date_period">
+		<div class="date_filter_options mqy_filter" id="mqy">
+			<fieldset>
+				<legend><input type="radio" name="report[period][type]" id="period_type_1" value="1" <?php if($report['period']['type'] == '1'):?>  checked="checked" <?php endif;?> /> <label for="period_type_1"><?php echo $this->translate("date_filter_block")?></label></legend>
+				<div class="date_filter_options month_filter">
+					<h5>Monat</h5>
+					<table width="100%" cellspacing="2" cellpadding="1">
+						<tr>
+							<td><input type="checkbox" name="report[period][month][]" id="month-1" value="1" class="period_type_1" <?php if(in_array('1',$report['period']['months'])) :?>   checked="checked" <? endif;?>/><label for="month-1">1</label></td>
+							<td><input type="checkbox" name="report[period][month][]" id="month-2" value="2" class="period_type_1" <?php if(in_array('2',$report['period']['months'])) :?>   checked="checked" <? endif;?>/><label for="month-2">2</label></td>
+							<td><input type="checkbox" name="report[period][month][]" id="month-3" value="3" class="period_type_1" <?php if(in_array('3',$report['period']['months'])) :?>   checked="checked" <? endif;?>/><label for="month-3">3</label></td>
+							<td><input type="checkbox" name="report[period][month][]" id="month-4" value="4" class="period_type_1" <?php if(in_array('4',$report['period']['months'])) :?>   checked="checked" <? endif;?>/><label for="month-4">4</label></td>
+						</tr>
+						<tr>
+							<td><input type="checkbox" name="report[period][month][]" id="month-5" value="5" class="period_type_1" <?php if(in_array('5',$report['period']['months'])) :?>   checked="checked" <? endif;?>/><label for="month-5">5</label></td>
+							<td><input type="checkbox" name="report[period][month][]" id="month-6" value="6" class="period_type_1" <?php if(in_array('6',$report['period']['months'])) :?>   checked="checked" <? endif;?>/><label for="month-6">6</label></td>
+							<td><input type="checkbox" name="report[period][month][]" id="month-7" value="7" class="period_type_1" <?php if(in_array('7',$report['period']['months'])) :?>   checked="checked" <? endif;?>/><label for="month-7">7</label></td>
+							<td><input type="checkbox" name="report[period][month][]" id="month-8" value="8" class="period_type_1" <?php if(in_array('8',$report['period']['months'])) :?>   checked="checked" <? endif;?>/><label for="month-8">8</label></td>
+						</tr>
+						<tr>
+							<td><input type="checkbox" name="report[period][month][]" id="month-9" value="9" class="period_type_1" <?php if(in_array('9',$report['period']['months'])) :?>   checked="checked" <? endif;?>/><label for="month-9">9</label></td>
+							<td><input type="checkbox" name="report[period][month][]" id="month-10" value="10" class="period_type_1" <?php if(in_array('10',$report['period']['months'])) :?>   checked="checked" <? endif;?>/><label for="month-10">10</label></td>
+							<td><input type="checkbox" name="report[period][month][]" id="month-11" value="11" class="period_type_1" <?php if(in_array('11',$report['period']['months'])) :?>   checked="checked" <? endif;?>/><label for="month-11">11</label></td>
+							<td><input type="checkbox" name="report[period][month][]" id="month-12" value="12" class="period_type_1" <?php if(in_array('12',$report['period']['months'])) :?>   checked="checked" <? endif;?>/><label for="month-12">12</label></td>
+						</tr>
+					</table>
+				</div>
+		 
+				<div class="date_filter_options quart_filter">
+					<h5>Quartal</h5>
+					<table width="100%" cellspacing="2" cellpadding="5">
+						<tr>
+							<td><input type="checkbox" name="report[period][quarter][]" id="quarter-1" value="1" class="period_type_1" <?php if(in_array('1',$report['period']['quarters'])) :?>   checked="checked" <? endif;?>/><label for="quarter-1">1</label></td>
+							<td><input type="checkbox" name="report[period][quarter][]" id="quarter-2" value="2" class="period_type_1" <?php if(in_array('2',$report['period']['quarters'])) :?>   checked="checked" <? endif;?>/><label for="quarter-2">2</label></td>
+						</tr>
+						<tr>
+							<td><input type="checkbox" name="report[period][quarter][]" id="quarter-3" value="3" class="period_type_1" <?php if(in_array('3',$report['period']['quarters'])) :?>   checked="checked" <? endif;?>/><label for="quarter-3">3</label></td>
+							<td><input type="checkbox" name="report[period][quarter][]" id="quarter-4" value="4" class="period_type_1" <?php if(in_array('4',$report['period']['quarters'])) :?>   checked="checked" <? endif;?>/><label for="quarter-4">4</label></td>
+		
+						</tr>
+						<tr>
+							<td colspan="2">&nbsp;</td>
+						</tr>
+						
+					</table>
+				</div>
+		 
+				<div class="date_filter_options year_filter">
+					<h5>Jahr<sup class="mandatory">*</sup></h5>
+					<table width="100%" cellspacing="2" cellpadding="5">
+						<tr>
+							<?php
+								$nr = 0; 
+								for($y=2008; $y <= date('Y'); $y++): ?>
+							
+								<?php if(is_int($nr/3)) echo '</tr><tr>';?>
+								<td><input type="checkbox" name="report[period][year][]" class="ycheckss period_type_1" id="year<?php echo $y; ?>" value="<?php echo $y?>" <?php echo $ckd; ?>  <?php if(in_array($y,$report['period']['years'])) :?>   checked="checked" <? endif;?>  /><label for="year<?php echo $y; ?>"><?php echo $y?></label></td>
+						<?php $nr++; endfor;?>
+						</tr>
+					</table>
+				</div>
+			</fieldset>
+		</div>
+		
+		<div class="date_filter_options specific_date_filter" id="spf">
+			<fieldset>
+			<legend><input type="radio" name="report[period][type]" value="2" id="period_type_2"  <?php if($report['period']['type'] == '2'):?>  checked="checked" <?php endif;?> /> <label for="period_type_2"><?php echo $this->translate("Date interval")?></label></legend>
+			<label for="from">Von <sup class="mandatory">*</sup></label>
+			<input type="text" id="from" class="start_date" name="report[period][start_date]" value="<?php if(!empty($report['period']['start_date'])){ echo $report['period']['start_date']; } ?>">
+			<label for="to">bis </label>
+			<input type="text" id="to"  class="end_date" name="report[period][end_date]" value="<?php if(!empty($report['period']['end_date'])){ echo $report['period']['end_date']; } ?>">
+			</fieldset>
+		</div>
+	
+		<div class="date_filter_options no_date_filter" id="nodf">
+			<fieldset>
+			<input type="radio" name="report[period][type]" value="3" id="period_type_3"  <?php if($report['period']['type'] == '3'):?>  checked="checked" <?php endif;?> /> <label for="period_type_3"><?php echo $this->translate("No Date interval")?></label>
+			</fieldset>
+		</div>
+	
+	</div>
+	<?php endif;?>
+	
+	
+	<div class="fblock  search_criteria">
+	<h2  class="ui-state-default ui-widget-header" ><?php echo $this->translate("search_criteria_block")?></h2>
+	<fieldset>
+	<legend><?php echo $this->translate('search_criteria')?></legend>
+	<input type="hidden" id="group_count" value="<?php echo count($report['groups']);?>"/>
+	<? if(!empty($report['groups'])):?>
+		<?php foreach($report['groups'] as $group_id => $saved_gr_data):?>
+			<?php echo search_criteria($group_id, $this->search_criterias, $this->sapv_statuses, $this->sapv_types, $this->discharge_methods, $saved_gr_data,false,$this->search_criterias_types); ?>
+		<?php endforeach; ?>
+	<?php else:?>
+		<?php echo search_criteria(count($report['groups']), $this->search_criterias, $this->sapv_statuses, $this->sapv_types, $this->discharge_methods,false,false,$this->search_criterias_types); ?>
+	<?php endif; ?>
+	
+	<?php if($_REQUEST['new_group'] == "1"):?>
+		<?php echo search_criteria(count($report['groups'])+1000, $this->search_criterias, $this->sapv_statuses, $this->sapv_types, $this->discharge_methods,false,true,$this->search_criterias_types); ?>
+	<?php endif;?>
+	<div class="note"> <?php echo $this->translate('*) this search criterias can not be combined ');?> </div>
+	</fieldset>
+	</div>
+	<div class="add_new_group">
+		<a href="javascript:void(0)" id="add_new_group"><img width="20" height="20" src="<?php echo RES_FILE_PATH; ?>/images/edit_add.png"> <span><?php echo $this->translate('Add new group')?></span></a>
+	</div>
+	<div class="fblock  search_criteria">
+		<fieldset>
+		<legend><?php echo $this->translate('search groups setting')?></legend>
+		<div class="choose_operator">
+			<label><?php echo $this->translate('choose the operator between groups');?></label>
+			<select name="report[details][group_operator]" >
+				<option value="org" <?php if($report['details']['group_operator'] == "org"):?> selected="selected" <?php endif;?> ><?php echo $this->translate("OR_operator")?></option>
+				<option value="andg" <?php if($report['details']['group_operator'] == "andg"):?> selected="selected" <?php endif;?> ><?php echo $this->translate("AND_operator")?></option>
+			</select>
+			
+		</div>
+		</fieldset>
+	</div>
+</form>

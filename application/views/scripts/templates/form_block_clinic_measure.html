@@ -1,0 +1,181 @@
+<!--  Maria:: Migration CISPC to ISPC 22.07.2020 -->
+<?php
+$f_values=$this->f_values;
+$blockname = $this->config['belongsto'];
+$items_config=$this->items_config;
+?>
+<?php if($this->pdf):?>
+		<?php
+	foreach ($f_values['measures'] as $val){
+
+		if ($val['caption']=="Bitte Auswählen"){
+			continue;
+		}
+
+		foreach ($items_config as $conf){
+			if($conf['name']==$val['caption']){
+				break;
+			}
+		}
+		echo "<tr><td>";
+		echo "<b>".$val['caption']."</b>";
+
+		if(is_array($val['subitem'])){
+			echo " (" . implode(", ", $val['subitem']) .")";
+		}
+		if(is_array($val['subtext'])){
+			foreach ($conf['subtextfield'] as $fk=>$field) {
+			echo "<br>" . $field . ": " . $val['subtext'][$fk];
+			}
+		}
+		echo "<br>";
+		if($val['freetext']){
+			echo htmlspecialchars($val['freetext']);
+			echo "<br>";
+		}
+		echo "</td></tr>";
+	}
+	?>
+<?php endif;?>
+
+<?php if(!$this->pdf):?>
+
+<style>
+	.massnahmen2_subitems{
+		margin-left:30px;
+	}
+
+	.massnahmen2_subitems textarea{
+		height:60px;
+		width:400px;
+	}
+</style>
+<script>
+	$(document).ready(function(){
+		var items_config = <?php echo json_encode($this->items_config);?>;
+
+		function renumerate_entries(){
+			var boxes=$('.massnahmen2_entry');
+			var count=0;
+			$(boxes).each(function(){
+				$(this).find('input').each(function(){
+					var oldname=$(this).attr('name');
+					if (oldname!=undefined){
+						var newname = oldname.replace(/\[\d\]/, "[" + count + "]");
+						$(this).attr('name', newname);
+					}
+				});
+				$(this).find('textarea').each(function(){
+					var oldname=$(this).attr('name');
+					if (oldname!=undefined){
+						var newname = oldname.replace(/\[\d\]/, "[" + count + "]");
+						$(this).attr('name', newname);
+					}
+				});
+				$(this).find('select').each(function(){
+					var oldname=$(this).attr('name');
+					if (oldname!=undefined){
+						var newname = oldname.replace(/\[\d\]/, "[" + count + "]");
+						$(this).attr('name', newname);
+					}
+				});
+				count++;
+			});
+		}
+
+		function get_config(iname){
+			return items_config[iname];
+		}
+
+		function check_subitems(iconfig, element){
+			var custos=$(element).parents('.massnahmen2_entry').find('.custom_items');
+			custos.empty();
+			if (iconfig.subitems!=undefined) {
+				for (var i = 0; i < iconfig.subitems.length; i++) {
+					var i_select=$('<select name="FormBlockClinicMeasure[measures][0][subitem]['+i+']"></select>');
+					for (var j = 0; j < iconfig.subitems[i].entries.length; j++) {
+						$(i_select).append('<option>'+iconfig.subitems[i].entries[j]+'</option>');
+					}
+					$(custos).append('<span>'+iconfig.subitems[i].name+': </span>');
+					$(custos).append(i_select);
+					$(custos).append('<br>');
+				}
+			}
+			if (iconfig.subtextfield!=undefined) {
+				for (var i = 0; i < iconfig.subtextfield.length; i++) {
+					$(custos).append('<span>'+iconfig.subtextfield[i]+': </span>');
+					$(custos).append('<input type="text" name="FormBlockClinicMeasure[measures][0][subtext]['+i+']" value="">');
+				}
+			}
+			renumerate_entries();
+		}
+
+		function add_entry(){
+			var newel=$('.massnahmen2_entry').first().clone();
+			$(newel).find('.custom_items').empty();
+			$(newel).find('.massnahmen_master option').first().attr('selected',true);
+			$(newel).find('textarea').val('');
+			$('.massnahmen2_entry').last().after(newel);
+			renumerate_entries();
+		}
+
+		$(document).on('change','.massnahmen2_entry .massnahmen_master', function(){
+			var iname=$(this).val();
+			var iconf=get_config(iname);
+			check_subitems(iconf, this);
+		});
+
+		$(document).on('click','#massnahmen2_addbutton', add_entry);
+
+		$(document).on('click', '.massnahmen2_delbutton', function(){
+			if($('.massnahmen2_entry').length>1) {
+				$(this).parents('.massnahmen2_entry').remove();
+			}else{
+				$(this).parents('.massnahmen2_entry').find('.custom_items').empty();
+				$(this).parents('.massnahmen2_entry').find('textarea').val('');
+				$(this).parents('.massnahmen2_entry').find('.massnahmen_master option').first().attr('selected',true);
+			}
+			renumerate_entries();
+		});
+	});
+
+</script>
+
+<?php foreach ($f_values['measures'] as $f_key=>$f_value):?>
+<div class="massnahmen2_entry">
+	<select class="massnahmen_master" name="FormBlockClinicMeasure[measures][<?php echo $f_key;?>][caption]">
+		<?php foreach ($items_config as $lv):?>
+		<option <?php if ($lv['name'] == $f_value['caption']){echo "selected";}?>><?php echo $lv['name'];?></option>
+		<?php endforeach;?>
+	</select> <img class="massnahmen2_delbutton" src="<?echo RES_FILE_PATH;?>/images/action_delete.png">
+	<div class="massnahmen2_subitems">
+		<div class="custom_items">
+			<?php foreach ($items_config as $conf){
+				if($conf['name']==$f_value['caption']){
+					break;
+				}
+			}
+			?>
+			<?php foreach ($f_value['subitem'] as $subk=>$subv):?>
+			<select name="FormBlockClinicMeasure[measures][<?php echo $f_key;?>][subitem][<?php echo $subk;?>]">
+				<?php foreach ($conf['subitems'][$subk]['entries'] as $entry):?>
+				<option <?php if ($entry == $subv){echo "selected";}?>><?php echo $entry;?></option>
+				<?php endforeach;?>
+			</select><br>
+			<?php endforeach;?>
+			<?php foreach ($f_value['subtext'] as $subk=>$subv):?>
+			<span><?php echo $conf['subtextfield'][$subk];?>:</span>
+			<input type="text" name="FormBlockClinicMeasure[measures][<?php echo $f_key;?>][subtext][<?php echo $subk;?>]" value="<?php echo $subv;?>">
+			<br>
+			<?php endforeach;?>
+		</div>
+		<textarea name="FormBlockClinicMeasure[measures][<?php echo $f_key;?>][freetext]"><?php echo $f_value['freetext'];?></textarea>
+	</div>
+</div>
+<?php endforeach;?>
+
+<div>
+	<input id="massnahmen2_addbutton" type="button" value="Neue Maßnahme hinzufügen">
+</div>
+
+<?php endif;?>

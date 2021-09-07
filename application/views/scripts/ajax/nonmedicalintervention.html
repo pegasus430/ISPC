@@ -1,0 +1,148 @@
+<?php
+ //Maria:: Migration CISPC to ISPC 20.08.2020
+$cnt = $this->cnt;
+$intervention = $this->intervention;
+
+$intervention_date_first = '';
+$intervention_time_first = '';
+$intervention_date_last = '';
+$intervention_time_last = '';
+if(!empty($intervention->first) && $intervention->first != '0000-00-00 00:00:00'){
+$first_datetime = new DateTime($intervention->first);
+
+$intervention_date_first = date_format($first_datetime, 'd.m.Y');
+$intervention_time_first = date_format($first_datetime, 'H:i');
+
+
+}
+
+if($intervention->id > 0 ){
+$last = $intervention->get_field_last();
+
+if(strlen(trim($last)) > 0 && $last != '0000-00-00 00:00:00'){
+$last_datetime = new DateTime($last);
+
+
+$intervention_date_last = date_format($last_datetime, 'd.m.Y');
+$intervention_time_last = date_format($last_datetime, 'H:i');
+}
+
+
+
+}
+
+?>
+<script>
+    $(document).ready(function(){
+
+        $('.datepicker').datepicker({
+            dateFormat: 'dd.mm.yy',
+            changeMonth: true,
+            changeYear: true,
+            nextText: '',
+            prevText: ''
+        });
+        $('.timepicker').timepicker({
+            hourText: 'Stunde',
+            minuteText: 'Minute'
+        });
+        $('#frequency_freetext').hide();
+        $('#dosis_absolute_unit_other').hide();
+        //$('#count_day_ui').hide();
+
+        $('#frequency_select').on('change', function(e){
+            var val = $(this).val();
+            console.log(val);
+            if(val == 'mehrfach täglich'){
+                $('#count_day_ui').show();
+            }else{
+                $('#count_day_ui').hide();
+            }
+            /*
+            if(val.toLowerCase() == 'anderes'){
+                $('#frequency_freetext').show();
+            }else{
+                $('#frequency_freetext').hide();
+            }*/
+        })
+
+    })
+</script>
+<div id="nonmedical_errors"></div>
+<form id="nonmedical_intervention_content_form" method="post">
+    <input type="hidden" name="interventions[id]" value="<?php echo $intervention->id; ?>">
+    <input type="hidden" name="interventions[typ]" value="nonmedical">
+    <input type="hidden" name="interventions[medication][praeparat]" value="">
+    <input type="hidden" name="interventions[medication][wirkstoff]" value="">
+    <input type="hidden" name="interventions[medication_type]" value="">
+    <input type="hidden" name="interventions[dosage_form]" value="">
+    <input type="hidden"  name="interventions[count_day]" value="">
+    <input type="hidden" name="interventions[dosis_absolute]" value="">&nbsp;
+    <input  name="interventions[dosis_absolute_unit_other]" type="hidden" value="">
+    <table>
+        <tr>
+            <td>OPS-Code</td>
+            <td>
+                <input type="text" name="interventions[opscode]" value="<?php echo $intervention->opscode; ?>" id="opscode_0" class="ops_code livesearchopscode" />
+                <input name="add[hidd_opscode][<?php echo $cnt; ?>]" value="[[hidd_opscode]]" id="hidd_opscode[<?php echo $cnt; ?>]" type="hidden">
+                <div id="opsdropdown[<?php echo $cnt; ?>]" style="position:absolute;display:none;" class="listPatMedEd livesearchdropdown"></div>
+
+            </td>
+        </tr>
+        <tr>
+            <td>Verfahrensgruppe</td>
+            <td><?php echo $this->proceed_ui; ?></td>
+        </tr>
+        <tr>
+            <td>Intervention</td>
+            <td><textarea name="interventions[intervention]"><?php echo $intervention->intervention;  ?></textarea></td>
+        </tr>
+        <tr>
+            <td>Leitsymptom</td>
+            <td><?php echo $this->leitsymptom_ui; ?></td>
+        </tr>
+
+
+        <tr>
+            <td>Häufigkeit der Intervention</td>
+            <td><?php echo $this->frequenz_ui; ?>
+                <div id="count_day_ui" style="display:inline-block;">
+                    <span class="anzahl_gaben"> Anzahl Interventionen pro Tag:</span> <input type="text" class="small_input" name="interventions[count_day]">
+                </div>
+
+            </td>
+        </tr>
+
+
+        <tr>
+            <td>Dauer in Stunden</td>
+            <td><input type="number" name="interventions[duration_hours]"  value="<?php echo $intervention->duration_hours; ?>"></td>
+        </tr>
+        <tr>
+            <td>Interval in Stunden</td>
+            <td><input type="number"  name="interventions[interval_hours]" value="<?php echo $intervention->interval_hours; ?>"></td>
+        </tr>
+        <tr>
+            <td>Erste Durchführung</td>
+            <td><input type="text" class="datepicker small_input2" name="interventions[first]" value="<?php echo $intervention_date_first; ?>"> <input type="text" class="timepicker small_input" name="interventions[first_time]" value="<?php echo $intervention_time_first; ?>"></td>
+        </tr>
+        <tr>
+            <td>Letzte Durchführing</td>
+            <td><input type="text" class="datepicker small_input2"  name="interventions[last]" value="<?php echo $intervention_date_last; ?>"> &nbsp;<input type="text" class="timepicker small_input" name="interventions[last_time]" value="<?php echo $intervention_time_last; ?>"> <label for="nonmedical_ongoing">ist fortlaufend</label> <input type="checkbox" id="nonmedical_ongoing" <?php if(intval($intervention->is_ongoing) == 1) {echo 'checked="checked"';} ?> name="interventions[is_ongoing]" value="1"></td>
+        </tr>
+        <tr>
+            <td>Ort der Durchführung</td>
+            <?php //ISPC-2630, elena, 29.09.2020, fixes ?>
+            <td>
+                <input type="text" id="action_place" name="interventions[action_place]" value="<?php echo $intervention->action_place; ?>">
+            </td>
+        </tr>
+
+        <tr>
+            <?php //ISPC-2630, elena, 29.09.2020, fixes ?>
+            <td>Indikation</td>
+            <td><textarea name="interventions[aim_reason]"><?php echo $intervention->aim_reason; ?></textarea></td>
+        </tr>
+
+    </table>
+</form>

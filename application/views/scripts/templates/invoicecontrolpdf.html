@@ -1,0 +1,159 @@
+<?php 
+$month_days = $this->month_days;
+$patient_locations = $this->patient_locations;
+$dp_subproduct_days = $dp_day_keys = $this->dp_subproduct_days;
+$national_holidays = $this->national_holidays;
+$product_details = $this->period_pricelist_products;
+$specific_products = $this->specific_products;
+$day_products = $this->day_products;
+$totals = $this->totals;
+
+$weekend = 'bgcolor="#DEDEDE"';
+$holiday = 'bgcolor="#FAEBD7"';
+?>
+<h1><?php echo $this->translate('internal_invoice_control');  ?></h1>
+<br />
+<table width="1300" border="0" style="font-size: 8pt;" cellpadding="0">
+	<tr>
+		<td width="1300">
+			<table width="100%" border="1" style="font-size: 8pt;" cellpadding="3">
+				<thead>
+					<tr>
+						<?php foreach($month_days as $k_day => $v_day): ?>
+							<td height="38" width="40" valign="middle" style="font-size:8pt; text-align: center;" <?php $day_type = date('w', strtotime($v_day)); if($day_type == 0 || $day_type == 6): echo $weekend; elseif(in_array($v_day, $national_holidays)): echo $holiday; endif;?>>
+								<b><?php echo date('d', strtotime($v_day)); ?> <br /> <?php echo strftime('%a', strtotime($v_day));  ?></b>
+							</td>
+						<?php endforeach; ?>
+							<td width="60" align="center" style="border:1px solid #000;"  height="38" valign="middle" style="font-size:8pt;"><b>Anzahl</b><br />&nbsp;</td>
+					</tr>
+				</thead>
+				<tbody>
+					<?php 
+						foreach($patient_locations as $k_location => $v_location)
+						{
+							if(empty($location_days))
+							{
+								$location_days = array();
+							}
+							$location_days = array_merge($location_days, $v_location['all_days']);
+						}
+
+						$location_days = array_values(array_unique($location_days));
+					?>
+					<?php if($patient_locations): ?>
+					<!--Locations Row-->
+					<tr id="location_row">
+							<?php $next_allowed_day = false; ?>
+							<?php foreach($month_days as $k_day => $v_day): ?>
+								<?php $previous_cell_eh = false; ?>
+								<?php foreach($patient_locations as $k_loc => $v_loc): ?>
+
+									<?php if($v_loc['counted_days'] > '2'): ?>
+										<?php if(in_array($v_day, $v_loc['days']) && $previous_cell_eh === false): ?>
+											<?php if($v_day == $v_loc['days']['start']): //start cell ?>
+												<td height="30" valign="middle" style="font-size:8pt;"></td>
+											<?php elseif($v_day == $v_loc['days']['end'] && ($v_day != $patient_locations[($k_loc + 1)]['days']['start'] || empty($patient_locations[($k_loc + 1)]['days']['start']))): //end cell simple ?>
+												<td height="30" valign="middle" style="font-size:8pt;"></td>
+											<?php elseif($v_day == $v_loc['days']['end'] && ($v_day == $patient_locations[($k_loc + 1)]['days']['start'] || $v_day == $next_allowed_day)): //end cell half ?>
+												<td height="30" valign="middle" style="font-size:8pt;">															
+													<table cellpadding="0" style="width:100%;" border="0">
+														<tr>
+															<td class="end_h">&nbsp;</td>
+																<?php $start_half = true; ?>
+																<?php foreach($patient_locations as $k_second_loc => $v_second_loc): ?>
+																	<?php if($v_day == $v_second_loc['days']['start'] && $v_day == $v_second_loc['days']['end']): ?>
+																		<td class="middle_h"><?php echo $v_second_loc['master_details']['location']; ?></td>
+																		<?php $start_half = false; ?>
+																	<?php else: ?>
+																		<?php $start_half = true; ?>
+																	<?php endif; ?>
+
+																<?php endforeach; ?>
+															<?php if($start_half === true): ?>
+																<td class="start_h">&nbsp;</td>
+																<?php $start_half = false; ?>
+															<?php endif; ?>
+														</tr>
+													</table>
+													<?php $previous_cell_eh = true; ?>
+													<?php $next_allowed_day = false; ?>
+												</td>
+											<?php endif; ?>
+										<?php elseif(in_array($v_day, $v_loc['all_days']) && $previous_cell_eh === false && $next_allowed_day === false): //middle cell ?>
+
+											<td height="30" valign="middle" style="font-size:8pt;" colspan="<?php echo ($v_loc['counted_days'] - 2); ?>">
+												<?php if($v_loc['master_details']): ?>
+													<?php echo $v_loc['master_details']['location']; ?>
+												<?php else: ?>
+													<?php echo $this->translate('discharge_location'); ?>
+												<?php endif; ?>
+
+												<?php $next_allowed_day = $v_loc['days']['end']; //force to skip days till the end if colspan is used ?>
+											</td>
+										<?php endif; ?>
+									<?php elseif($v_loc['counted_days'] == '2'): ?>
+										<?php if($previous_cell_eh === false && $v_day == $v_loc['days']['end'] && ($v_day != $patient_locations[($k_loc + 1)]['days']['start'] || empty($patient_locations[($k_loc + 1)]['days']['start']))): //simple end if last was eh?>
+											<td height="30" valign="middle" style="font-size:8pt;">
+												<?php // echo "E"; ?>
+												<?php echo $v_loc['master_details']['location']; ?>
+											</td>
+										<?php else: ?>
+
+										<?php endif; ?>
+									<?php elseif($v_loc['counted_days'] == '1'): ?>
+										<?php if($v_day == $v_loc['days']['end'] && ($v_day == $patient_locations[($k_loc + 1)]['days']['start'] || $v_day == $next_allowed_day)): //end cell half ?>
+
+										<?php endif; ?>
+									<?php endif; ?>
+								<?php endforeach; ?>	
+
+								<?php if(!in_array($v_day, $location_days)): ?>
+									<td height="30" valign="middle" style="font-size:8pt;"></td>
+								<?php endif; ?>
+						<?php endforeach; ?>
+									<td></td>
+					</tr>
+					<?php endif; ?>
+
+
+					 <!--Specific Products-->
+					 <?php foreach($specific_products as $k_d_product => $v_sp_subproducts): ?>
+						<tr>
+							<?php foreach($month_days as $k_d => $v_d): ?>
+								<td height="30" valign="middle" style="font-size:8pt;text-align: center;" <?php $day_type = date('w', strtotime($v_d)); if($day_type == 0 || $day_type == 6): echo $weekend; elseif(in_array($v_d, $national_holidays)): echo $holiday; endif;?>>
+									<?php if(in_array($v_d, $v_sp_subproducts['normal_days'])): ?>
+										<?php echo $product_details['sp'][$k_d_product]['code']; ?>
+									<?php endif; ?>
+								</td>
+							<?php endforeach; ?>
+								<td valign="middle" style="font-size:8pt;text-align: center;">
+									<?php echo $v_sp_subproducts['normal']; ?>
+								</td>
+						</tr>
+					<?php endforeach; ?>
+
+
+
+					<!--Day Products 1-->
+					<?php foreach($day_products as $k_d_product => $v_d_subproducts): ?>
+						<tr>
+							<?php foreach($month_days as $k_d => $v_d): ?>
+								<td height="30" valign="middle" style="font-size:8pt;text-align: center;" <?php $day_type = date('w', strtotime($v_d)); if($day_type == 0 || $day_type == 6): echo $weekend; elseif(in_array($v_d, $national_holidays)): echo $holiday; endif;?>>
+									<?php foreach($v_d_subproducts as $k_d_subproduct => $v_d_products): ?>
+										<?php if(in_array($k_d_subproduct, $dp_day_keys)): ?>
+										<?php $subproduct_key = str_replace('_days', '', $k_d_subproduct); ?>
+											<?php if(in_array($v_d, $v_d_products)): ?>
+												<?php echo $product_details['dp'][$k_d_product][$subproduct_key.'_price_name']; ?>
+											<?php endif; ?>
+										<?php endif; ?>
+									<?php endforeach; ?>
+								</td>
+							<?php endforeach; ?>
+							<td valign="middle" style="font-size:8pt;text-align: center;"><?php echo $totals['dp_'.$k_d_product]; ?></td>
+						</tr>
+					<?php endforeach; ?>		
+				</tbody>
+			</table>
+		</td>
+	</tr>
+</table>

@@ -1,0 +1,282 @@
+<?php
+//ISPC-2697, elena, 13.11.2020
+$blockname = 'anordnung';
+//print_r($this->f_values);
+$machine_chosen = $this->machine_chosen;
+$anordnung_name = '';
+$color = 'ffffff';
+$params = null;
+$description = '';
+$anordnung_id = 0;
+$machine_opt = $this->machine_opt;
+if(isset($this->anordnung)){
+
+$params = json_decode($this->anordnung['parameters'], true);
+$anordnung_id = $this->anordnung['id'];
+$anordnung_name = $this->anordnung['name'];
+$color = $this->anordnung['color'];
+$description = $this->anordnung['description'];
+$machine_opt = $this->anordnung['machine'];
+}
+
+
+
+?>
+<script>
+    var aErrors = {};
+
+
+    $(document).ready(function(){
+/*
+        $('#colorSelector').ColorPicker({
+            color: '#<? echo $color ?>',
+
+            onShow: function (colpkr) {
+                $(colpkr).css('z-index', 20000);
+
+                $(colpkr).fadeIn(500);
+                return false;
+            },
+            onHide: function (colpkr) {
+                $(colpkr).fadeOut(500);
+                return false;
+            },
+            onChange: function (hsb, hex, rgb) {
+                //$('#icon_color').val(hex);
+                $('#anordnung_color').val(hex);
+                $('#colorSelector div').css('backgroundColor', '#' + hex);
+            }
+        });*/
+
+    <?php if(isset($this->machine_opt)) : ?>
+        $('#choose_machine').val("<?php echo $this->machine_opt; ?>");
+        setTimeout(function(){$('#choose_machine').trigger('change');}, 300);
+
+
+    <?php endif; ?>
+
+        $('#colorSelector div').css('backgroundColor', '#<? echo $color ?>');
+
+
+
+    <?php if(isset($this->with_datetime) && $this->with_datetime): ?>
+        $('.datepicker').datepicker();
+        $('.timepicker').timepicker({
+            hourText: 'Stunde',
+            minuteText: 'Minute'
+        });
+
+    <?php endif; ?>
+
+
+    <?php if(!$this->machine_chosen): ?>
+        $('#sets_table').hide();
+
+
+
+        $('#choose_machine').on('change', function(){
+            console.log('select machine', $(this).val());
+            var selected_machine_opt = $(this).val();
+            $('#anordnung_name').val('device_' + $(this).val());
+
+            $.ajax({
+                type: 'POST',
+                data : {
+                    blockname: '<?php echo $blockname; ?>'
+                },
+                url: '<?php echo APP_BASE; ?>ajax/beatmungsform?opt=' + $('#choose_machine').val(),
+
+                beforeSend: function () {
+                    //loading image
+
+                },
+                success: function (data) {
+                    $('#machine_opt').val(selected_machine_opt);
+
+                    $('#anordnung_data').html(data).promise().done(function () {
+
+
+                    });
+                },
+            })
+
+        });
+
+    <?php if(isset($this->used_machine)): ?>
+        console.log('<?php echo $this->used_machine; ?>');
+        $('#choose_machine').val('<?php echo $this->used_machine; ?>');
+        $('#choose_machine').trigger('change');
+
+    <?php endif; ?>
+
+
+    <?php else: ?>
+        $('#choose_machine').hide();
+
+    <?php endif; ?>
+
+
+        function rebuildErrors(){
+            var message = '';
+            console.log('rebuild');
+            console.log(aErrors);
+
+            $('.beatmung_errors').html('');
+            if(Object.keys(aErrors).length > 0){
+                console.log(aErrors.length);
+
+                $('.submitform').hide();
+            }else{
+                $('.submitform').show();
+            }
+
+            $.each( aErrors, function( index, val ){
+                console.log('error',val, index);
+                message += val + '<br>';
+            });
+            $('.beatmung_errors').html(message);
+
+        }
+
+        $('input').live('input', function(e){
+            console.log('input changed');
+            var validation = $(this).attr('data-validation');
+            var val = $(this).val();
+            var label = $(this).attr('data-name');
+            console.log(validation);
+            console.log(val);
+            console.log(label);
+            if(validation == 'integer' && val != ''){
+                var val2 = parseInt(val);
+                if(val2 != val){
+                    aErrors[label] = label + ' muss eine Ganzzahl sein.';
+                    console.log(aErrors);
+                }
+                else{
+                    delete aErrors[label];
+                }
+                rebuildErrors();
+
+            }else if(validation == 'decimal'  && val != ''){
+                var val_with_point = val.replace(',', '.')
+                var val2 = parseFloat(val_with_point);
+                if(val2 != val_with_point){
+                    aErrors[label] = label + ' muss eine Dezimalzahl sein.';
+                }
+                else{
+                    delete aErrors[label];
+                }
+                rebuildErrors()
+            }
+
+        })
+
+    });
+</script>
+<style>
+    .beatmung_errors{
+        color: red;
+    }
+    .alarm_box{
+        width: 40px;
+    }
+    #description{
+        width: 89%;
+        height:50px;
+    }
+
+</style>
+<div class="beatmung_errors"></div>
+<form id="anordnung_form">
+    <div id="anordnung">
+        <input type="hidden"  name="<?php echo $blockname; ?>[anordnung_id]"  id="anordnung_id" value="<?php echo $anordnung_id; ?>">
+        <?php if(isset($this->machine)): ?>
+        <h2>Gerät: <?php echo $this->machine['machine_name']; ?></h2>
+        <h4><?php echo $this->machine_types[$this->machine['machine_type']]; ?></h4>
+        <?php else: ?>
+        <h4>Bitte wählen Sie eine Machine</h4>
+        <?php endif; ?>
+
+        <select id="choose_machine">
+            <?php $mcounter = 0; ?>
+            <option value="-1">-----</option>
+            <?php foreach($this->machines as $device): ?>
+
+            <option value="<?php echo $device['id']; ?>"><?php echo $device['machine_name']; ?></option>
+            <?php $mcounter++; ?>
+            <?php endforeach; ?>
+        </select>
+        <input type="hidden"  name="<?php echo $blockname; ?>[anordnung_name]"  id="anordnung_name" value="<?php echo $anordnung_name; ?>">
+        <input type="hidden"  name="<?php echo $blockname; ?>[anordnung_color]"  id="anordnung_color" value="ffffff">
+
+
+        <input type="hidden" name="<?php echo $blockname; ?>[machine]" id="machine_opt" value="<?php echo $machine_opt; ?>">
+        <div id="anordnung_data">
+            <?php if($this->machine_chosen): ?>
+            <table class="datatable" id="sets_table">
+                <tr>
+                    <th>Bezeichnung</th><!-- ISPC-2816,Elena,04.02.2021-->
+                    <th>Wert</th>
+                    <th>Einheit</th><!-- ISPC-2816,Elena,04.02.2021-->
+                    <th>Alarmgrenzen</th>
+                    <!--<th>Emergency</th>-->
+
+                </tr>
+                <?php $sets = json_decode($this->machine['parameters'], true);  ?>
+                <?php foreach($sets as $set): ?>
+                <tr>
+                    <td><?php echo $set['label']; ?></td>
+                    <td>
+                        <?php if($set['value'] == 'dropdown'): ?>
+                        <select class="input_field" name="<?php echo $blockname; ?>[beatmung][<?php echo $set['label']; ?>]" data-name="<?php echo $set['label']; ?>">
+                            <?php foreach($set['list'] as $listentry) : ?>
+                            <option value="<?php echo $listentry; ?>"  <?php if($listentry == $params[$set['label']]){ echo 'selected' ;} ?> ><?php echo $listentry; ?></option>
+                            <?php endforeach; ?>
+                        </select>
+
+                        <?php else: ?>
+                        <input type="text" class="input_field" data-validation="<?php echo $set['validation'] ?>" name="<?php echo $blockname; ?>[beatmung][<?php echo $set['label']; ?>]" data-name="<?php echo $set['label']; ?>" value="<?php echo  $params[$set['label']]; ?>" >
+
+                        <?php endif; ?>
+
+                    </td>
+                    <td><?php echo $set['unit']; ?></td>
+                    <td>
+                        <?php if($set['has_alarm'] == '1'): ?>
+                        <?php if($set['value'] == 'dropdown'): ?>
+                        <select class="input_field" name="<?php echo $blockname; ?>[beatmung][<?php echo $set['label']; ?>_alarm_higher]" data-name="<?php echo $set['label']; ?>: höhere Alarmgrenze">
+                            <?php foreach($set['list'] as $listentry) : ?>
+                            <option value="<?php echo $listentry; ?>"  <?php if($listentry == $params[$set['label'] . '_alarm_higher']) { echo 'selected '; } ?> ><?php echo $listentry; ?></option>
+                            <?php endforeach; ?>
+                        </select> /
+                        <select class="input_field" name="<?php echo $blockname; ?>[beatmung][<?php echo $set['label']; ?>_alarm_lower]" data-name="<?php echo $set['label']; ?>: niedrigere Alarmgrenze">
+                            <?php foreach($set['list'] as $listentry) : ?>
+                            <option value="<?php echo $listentry; ?>" <?php if($listentry == $params[$set['label'] . '_alarm_lower']) { echo 'selected '; } ?> ><?php echo $listentry; ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <?php else: ?>
+                        <input type="text" class="alarm_box" name="<?php echo $blockname; ?>[beatmung][<?php echo $set['label']; ?>_alarm_higher]" value="<?php echo  $params[$set['label'] . '_alarm_higher']; ?>" data-validation="<?php echo $set['validation'] ?>" data-name="<?php echo $set['label']; ?>: höhere Alarmgrenze" > /
+                        <input type="text" class="alarm_box" value="<?php echo $params[$set['label'] . '_alarm_lower']; ?>" name="<?php echo $blockname; ?>[beatmung][<?php echo $set['label']; ?>_alarm_lower]" data-validation="<?php echo $set['validation'] ?>" data-name="<?php echo $set['label']; ?>: niedrigere Alarmgrenze">
+                        <?php endif; ?>
+                        <?php endif; ?>
+
+                    </td>
+                    <!--<td>
+                        <?php if($set['has_emergency'] == '1'): ?>
+                        <input type="text" class="alarm_box" readonly value="<?php echo $set['emergency']; ?>">
+                        <?php endif; ?>
+
+                    </td>-->
+
+                </tr>
+
+                <?php endforeach; ?>
+            </table>
+
+            <?php endif; ?>
+
+        </div>
+        <textarea id="description" name="anordnung[description]" ><?php echo $description; ?></textarea>
+    </div>
+</form>
+

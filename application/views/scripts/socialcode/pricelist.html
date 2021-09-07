@@ -1,0 +1,174 @@
+<?php
+	$this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/pricelist_style.css?'.date('Ymd'));
+	
+	$pl =  $this->price_list;
+	$pv_pl = $this->pv_price_list;
+	$list_id = $this->listid;
+?>
+<script>
+	$(document).ready(function() {
+		$( "#start,#start_pv, #end, #end_pv" ).datepicker({
+			dateFormat: 'dd.mm.yy',
+			showOn: "both",
+			buttonImage: $('#calImg').attr('src'),
+			buttonImageOnly: true,
+			changeMonth: true,
+			changeYear: true
+		});
+		
+		$('.delete_link').live('click', function(){
+			var list_id = $(this).attr('id');
+			
+			   jConfirm('<?php echo $this->translate('confirmdeleterecord'); ?>', '', function(r) {
+					if(r)
+					{
+	 					location.href = "<?php echo APP_BASE.'socialcode/pricelist?list="+list_id+"&op=del';  ?>";
+					}
+			});
+			return false;
+			
+		})
+	});
+
+
+</script>
+<div style="display: none;"><img id="calImg" src="<? echo RES_FILE_PATH;  ?>/images/calendar.png" alt="Popup" class="trigger"></div>
+<h1><?php echo $this->translate('Price List');  ?></h1><span><a href="<?php echo APP_BASE; ?>socialcode/listpricelistgroup"> <?php echo $this->translate('show_price_list_groups'); ?></a></span>
+<form  method="POST" action="" id="save_prices_list" name="save_prices_list">
+<table class="datatable">
+	<thead>
+		<tr>
+			<th><?php echo $this->translate('no');  ?></th>
+			<th><?php echo $this->translate('price sheet name');  ?></th>
+			<th><?php echo $this->translate('p_start_date');  ?></th>
+			<th><?php echo $this->translate('p_end_date');  ?></th>
+			<th><?php echo $this->translate('p_group');  ?></th>
+			<th><?php echo $this->translate('actions');  ?></th>
+		</tr>
+	</thead>
+	<tbody>
+		<?php if(!empty($this->price_list)): ?>
+			<?php $i = 1; foreach($this->price_list as $k_list=>$price_listed):  ?>
+			<tr class="<?php if($price_listed['id'] == $this->listid): $selected = $k_list;?> selected_row <?php else: ?> alternate <?php endif;  ?> hoover">
+				<td><?php echo $i;  ?></td>
+				<td><?php echo $price_listed['price_sheet'];  ?></td>
+				<td><?php echo date('d.m.Y', strtotime($price_listed['start']));  ?></td>
+				<td><?php echo date('d.m.Y', strtotime($price_listed['end']));  ?></td>
+				<td><?php echo $this->pricelist_groups[$price_listed['pricelist_group']];  ?></td>
+				<td>
+					<a href="<?php echo APP_BASE.'socialcode/pricelistdetails?list='.$price_listed['id'];  ?>" class="inline_link"><?php echo $this->translate('select');  ?></a>
+					<a href="<?php echo APP_BASE.'socialcode/pricelist?list='.$price_listed['id'].'&op=edit&pv='.$price_listed['private'].'';  ?>" class="inline_link"><?php echo $this->translate('edit');  ?></a>
+					<a href="javascript:void(0);" id="<?php echo $price_listed['id'];  ?>" class="inline_link delete_link" ><?php echo $this->translate('delete');  ?></a>
+				</td>
+			</tr>
+			<?php $i++; endforeach;  ?>
+		<?php else:  ?>
+			<tr class="nohover">
+				<td colspan="6"><?php echo $this->translate('No price list saved.');  ?></td>
+			</tr>
+		<?php endif;  ?>
+		<tr class="nohover">
+			<td>&nbsp;</td>
+			<td><input type="text" value="<?php if($this->price_list && $this->listid == $_REQUEST['list'] && $_REQUEST['op'] == 'edit' && $_REQUEST['pv'] == '0'): ?><?php echo $pl[$selected]['price_sheet'];  ?><?php elseif($this->price_sheet && $this->private == '0'): ?><?php echo $this->price_sheet; ?><?php endif;  ?>" name="price_sheet" id="price_sheet" /></td>
+			<td><input type="text" value="<?php if($this->price_list && $this->listid == $_REQUEST['list'] && $_REQUEST['op'] == 'edit' && $_REQUEST['pv'] == '0'): ?><?php echo date('d.m.Y', strtotime($pl[$selected]['start']));  ?><?php elseif($this->start && $this->private == '0'): ?><?php echo $this->start; ?><?php endif;  ?>" name="start" id="start"  class="date_small"/></td>
+			<td><input type="text" value="<?php if($this->price_list && $this->listid == $_REQUEST['list'] && $_REQUEST['op'] == 'edit' && $_REQUEST['pv'] == '0'): ?><?php echo date('d.m.Y', strtotime($pl[$selected]['end']));  ?><?php elseif($this->end && $this->private == '0'): ?><?php echo $this->end; ?><?php endif;  ?>" name="end" id="end"  class="date_small"/></td>
+			<td>				
+				<select name="group" id="group">
+					<option value=""><?php echo $this->translate('select'); ?></option>
+					<?php foreach($this->pricelist_groups as $k_pricelist => $v_pricelist): ?>
+						<option value="<?php echo $k_pricelist; ?>" <?php if($pl[$selected]['pricelist_group'] == $k_pricelist): ?>selected="selected"<?php endif; ?> ><?php echo $v_pricelist; ?></option>
+					<?php endforeach; ?>
+				</select>				
+			</td>
+			<td><input type="hidden" value="<?php if($this->price_list && $this->listid == $_REQUEST['list'] && $_REQUEST['op'] == 'edit' && $_REQUEST['pv'] == '0'): ?>1<?php endif; ?>" name="edit_period" id="edit_period" />
+			<input type="hidden" value="0" name="private" id="private" />
+			&nbsp;<input type="submit" value="<?php echo $this->translate('save');?>" id="save_list" name="save_list" /></td>
+		</tr>
+		<tr>
+		<?php if($this->private == '0'): ?>
+		<?php if($this->error_date):  ?>
+			<td colspan="6" class="invalid_date_errors">
+				<?php echo $this->error_date;  ?>
+			</td>
+		<?php elseif($this->error_group): ?>
+			<td colspan="6" class="invalid_date_errors">
+				<?php echo $this->error_group;  ?>
+			</td>
+		<?php endif; ?>
+		<?php endif; ?>
+		</tr>
+	</tbody>
+</table>
+</form>
+<br/>
+&nbsp;
+<br/>
+<br/>
+
+<h1><?php echo $this->translate('Private Price List');  ?></h1><span><a href="<?php echo APP_BASE; ?>socialcode/listpricelistgroup"> <?php echo $this->translate('show_price_list_groups'); ?></a></span>
+<form  method="POST" action="" id="save_pv_prices_list" name="save_pv_prices_list">
+<table class="datatable">
+	<thead>
+		<tr>
+			<th><?php echo $this->translate('no');  ?></th>
+			<th><?php echo $this->translate('price sheet name');  ?></th>
+			<th><?php echo $this->translate('p_start_date');  ?></th>
+			<th><?php echo $this->translate('p_end_date');  ?></th>
+			<th><?php echo $this->translate('p_group');  ?></th>
+			<th><?php echo $this->translate('actions');  ?></th>
+		</tr>
+	</thead>
+	<tbody>
+		<?php if(!empty($pv_pl)): ?>
+			<?php $c = 1; foreach($pv_pl as $k_pv_list=>$pv_price_listed):  ?>
+			<tr class="<?php if($pv_price_listed['id'] == $list_id ): $pv_selected = $k_pv_list;?> pv_selected_row <?php else: ?> pv_alternate <?php endif; ?> hoover">
+				<td><?php echo $c;  ?></td>
+				<td><?php echo $pv_price_listed['price_sheet'];  ?></td>
+				<td><?php echo date('d.m.Y', strtotime($pv_price_listed['start']));  ?></td>
+				<td><?php echo date('d.m.Y', strtotime($pv_price_listed['end']));  ?></td>
+				<td><?php echo $this->pv_pricelist_groups[$pv_price_listed['pricelist_group']];  ?></td>
+				<td>
+					<a href="<?php echo APP_BASE.'socialcode/pricelistdetails?list='.$pv_price_listed['id'];  ?>" class="inline_link"><?php echo $this->translate('select');  ?></a>
+					<a href="<?php echo APP_BASE.'socialcode/pricelist?list='.$pv_price_listed['id'].'&op=edit&pv='.$pv_price_listed['private'].'';  ?>" class="inline_link"><?php echo $this->translate('edit');  ?></a>
+					<a href="<?php echo APP_BASE.'socialcode/pricelist?list='.$pv_price_listed['id'].'&op=del';  ?>" class="inline_link" ><?php echo $this->translate('delete');  ?></a>
+				</td>
+			</tr>
+			<?php $c++; endforeach;  ?>
+		<?php else:  ?>
+			<tr class="nohover">
+				<td colspan="6"><?php echo $this->translate('No private price list saved.');  ?></td>
+			</tr>
+		<?php endif;  ?>
+		<tr class="nohover">
+			<td>&nbsp;</td>
+			<td><input type="text" value="<?php if($pv_pl && $list_id == $_REQUEST['list'] && $_REQUEST['op'] == 'edit' && $_REQUEST['pv'] == '1'): ?><?php echo $pv_pl[$pv_selected]['price_sheet'];  ?><?php elseif($this->price_sheet && $this->private == '1'): ?><?php echo $this->price_sheet; ?><?php endif;  ?>" name="pv[price_sheet]" id="pv_price_sheet" /></td>
+			<td><input type="text" value="<?php if($pv_pl && $list_id == $_REQUEST['list'] && $_REQUEST['op'] == 'edit' && $_REQUEST['pv'] == '1'): ?><?php echo date('d.m.Y', strtotime($pv_pl[$pv_selected]['start']));  ?><?php elseif($this->start && $this->private == '1'): ?><?php echo $this->start; ?><?php endif;  ?>" name="pv[start]" id="start_pv"  class="date_small"/></td>
+			<td><input type="text" value="<?php if($pv_pl && $list_id == $_REQUEST['list'] && $_REQUEST['op'] == 'edit' && $_REQUEST['pv'] == '1'): ?><?php echo date('d.m.Y', strtotime($pv_pl[$pv_selected]['end']));  ?><?php elseif($this->end && $this->private == '1'): ?><?php echo $this->end; ?><?php endif;  ?>" name="pv[end]" id="end_pv"  class="date_small"/></td>
+			<td>
+				<select name="pv[group]" id="group">
+					<option value=""><?php echo $this->translate('select'); ?></option>
+					<?php foreach($this->pv_pricelist_groups as $k_pv_pricelist => $v_pv_pricelist): ?>
+						<option value="<?php echo $k_pv_pricelist; ?>" <?php if(($pv_pl[$pv_selected]['pricelist_group'] == $k_pv_pricelist) || ($this->private == '1' && $this->group == $k_pv_pricelist) ): ?>selected="selected"<?php endif; ?> ><?php echo $v_pv_pricelist; ?></option>
+					<?php endforeach; ?>
+				</select>
+			</td>
+			<td><input type="hidden" value="<?php if($pv_pl && $list_id == $_REQUEST['list'] && $_REQUEST['op'] == 'edit' && $_REQUEST['pv'] == '1'): ?>1<?php endif; ?>" name="pv[edit_period]" id="pv_edit_period" />
+			<input type="hidden" value="1" name="pv[private]" id="pv_private" />
+			&nbsp;<input type="submit" value="<?php echo $this->translate('save');?>" id="save_pv_list" name="pv[save_list]" /></td>
+		</tr>
+		<?php if($this->private == '1'): ?>
+		<?php if($this->error_date):  ?>
+		<tr>
+			<td colspan="6" class="invalid_date_errors">
+				<?php echo $this->error_date;  ?>
+			</td>
+		</tr>
+		<?php elseif($this->error_group): ?>
+			<td colspan="6" class="invalid_date_errors">
+				<?php echo $this->error_group;  ?>
+			</td>
+		<?php endif; ?>
+		<?php endif; ?>
+	</tbody>
+</table>
+</form>

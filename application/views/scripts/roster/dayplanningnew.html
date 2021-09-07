@@ -1,0 +1,3404 @@
+<!-- Maria:: Migration ISPC to CISPC 08.08.2020 -->
+<?php
+//$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/jquery.blockUI.js');
+
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/chosen_v1.6.2/chosen.jquery.min.js');
+$this->headLink()->appendStylesheet(RES_FILE_PATH.'/javascript/chosen_v1.6.2/chosen_2016.09.22.css');
+
+?>
+<link rel='stylesheet' type='text/css'	href='<?php echo RES_FILE_PATH;  ?>/css/day_planning.css' />
+<?php 
+$day_planning = $this->day_planning ;
+
+$pat_visits_settings_visiting_users = $this->pat_visits_settings_visiting_users;
+
+$users_in_pseudogroup = $this->users_in_pseudogroup;
+
+$number_of_this_day = date( "N" , strtotime($day_planning['plan_date']));
+
+$name_of_this_day = date( "l" , strtotime($day_planning['plan_date']));
+?>
+	
+<script type="text/javascript">
+	var submited = false;
+	var changes = false;
+	var masterObj = new Object();
+
+	var mouseEnterWait = 0;
+	var mouseEnterWaitInterval;
+	
+	
+	var extra_patient_tabs = {};
+	var extra_patient_tabs_fetched = {};
+
+	function zebra_style(element){
+			$("li", element).removeClass("evenItem").removeClass("oddItem");
+			$("li:odd", element).addClass("oddItem");
+   			$("li:even", element).addClass("evenItem");
+		}
+
+
+
+	function update_pat_remaining_visits(patientid, visits_nr)
+	{
+		if(visits_nr == '0')
+		{
+			$('#patient_row_'+patientid).addClass('tr_disabled');
+			$('#patient_row_'+patientid).next('tr').addClass('tr_disabled');
+		}
+		else
+		{
+			$('#patient_row_'+patientid).removeClass('tr_disabled');
+			$('#patient_row_'+patientid).next('tr').removeClass('tr_disabled');
+		}
+
+		$('#p_vrpd_'+patientid).html(visits_nr);
+		changes = true;
+	}
+	
+	function remove_user_plan(userid)
+	{
+		//check if userplan has any visits then remove plan or restore them
+		var plan_visits_nr = $('.patient_plan_'+userid).length;
+		var has_visits = false;
+		
+		if($('.patient_plan_'+userid).length > '0') {
+			var has_visits = true;
+		}
+		
+		if(has_visits) {
+			var incr = '0';
+			//restore visits
+			$('.patient_plan_'+userid).each(function() {
+				//get patient id
+				var visit_patient_id = $(this).find('td input[type="hidden"]:eq(1)').val();//second input found in td
+				
+				
+				//restore visit qty in users table and remove visit element
+				//get remaining patient visits
+				var remaining_pat_visits = $('#p_vrpd_'+visit_patient_id).html();
+
+				//increment remaining visits
+				remaining_pat_visits++
+
+				//update patient table with curent remaining visit
+				update_pat_remaining_visits(visit_patient_id, remaining_pat_visits);
+				
+				$('tr.patient_plan_'+userid+'.patient_'+visit_patient_id).remove();
+				incr++;
+			});
+			
+			if(incr == plan_visits_nr)
+			{
+				//destroy plan if removed visits are equal with existing visits
+				$('#day_plan_user_'+ userid).remove();
+			}
+		} else {
+			//destroy plan
+			$('#day_plan_user_'+ userid).remove();
+		}
+		changes = true;
+	}
+	
+	function calculate_times(start_date_ts, pat_visit_duration)
+	{
+		var time = [];
+		var separator = ':';
+		var duration_sec = (pat_visit_duration*60);
+		var start_date = new Date(start_date_ts*1000);
+		var end_date = new Date((start_date_ts+duration_sec)*1000);
+		
+//		console.log("TS:"+ (start_date_ts*1000) + " - TS 2:"+start_date.getTime());
+		
+		var start_h = start_date.getHours();
+		var start_m = start_date.getMinutes();
+
+		var end_h = end_date.getHours();
+		var end_m = end_date.getMinutes();
+
+		if(end_h < '10') { end_h = '0' + end_h; }
+		if(start_h < '10') { start_h = '0' + start_h; }
+		if(end_m < '10') { end_m = '0' + end_m; }
+		if(start_m < '10') { start_m = '0' + start_m; }
+
+		time['start'] = start_h + separator + start_m;
+		time['end'] = end_h + separator + end_m;
+		
+		return time;
+	}
+	
+	function check_user_visits(userid)
+	{
+		if($('.patient_plan_'+userid).length > '0') {
+			var last_visit = $('div#day_plan_user_'+userid).find('tr.patient_plan_'+userid+':last').attr('id');
+			
+			//return last visit id
+			return last_visit;
+		} else {
+			return false;
+		}
+	}
+
+//	function get_patient_visit_settings(pid)
+//	{
+//		xhr = $.ajax({
+//			url : 'ajax/patientvisitsplanninglimits?id='+pid,
+//			success : function(response) {
+//				var response_obj = jQuery.parseJSON(response);
+//				console.log(response_obj);
+//				return response_obj;
+//			}
+//		});
+//	}
+	
+	//weird "leave page" function
+	var dontLeave = function(e) {
+		if (changes === true && submited === false) {
+			return "<?php echo $this->translate('no_save_leave_alert'); ?>";
+		}
+	}
+
+	
+	
+	function calcutate_visits_time( obj, this_visit_duration , this_parent){
+		if ("order" == master_viewmode) return true;
+		
+		var total_duration_this_hour = Number(this_visit_duration);
+		$(".visit_duration", obj).each(function(){
+				var visit_duration = $(this).val();
+				total_duration_this_hour += Number(visit_duration);
+		});
+		
+		if (total_duration_this_hour > 60){
+			if($('.duration', this_parent).length == 0){
+				$(this_parent).prepend("<p class='duration'>"+ '<?php echo $this->translate('total_visit_time'); ?>' +total_duration_this_hour+" min"+"</p>");
+			}else{
+				$('.duration', this_parent).text( '<?php echo $this->translate('total_visit_time'); ?>' +total_duration_this_hour+" min");
+			}
+		}else{
+			$('.duration', this_parent).text("");
+		}
+	}
+		
+
+	
+	window.onbeforeunload = dontLeave;
+	
+	$(document).ready(function() {
+		var users_shifts = jQuery.parseJSON('<?php echo $this->users_json_shifts; ?>');
+		var user_has_shift_today = jQuery.parseJSON('<?php echo $this->user_has_shift_today; ?>');
+		var cnt_plan_user = $('div.day_plan_user').length;
+
+		var getTeamCustomEvents = <?php echo $this->getTeamCustomEvents_on_day; ?>; 
+		var getDoctorCustomEvents = jQuery.parseJSON('<?php echo $this->getDoctorCustomEvents_on_day; ?>');
+		var users_with_isinactive = jQuery.parseJSON('<?php echo json_encode($day_planning['users_with_isinactive']); ?>');
+		
+
+		
+
+		/*	
+		$('#MainContent').block({
+			css: {
+					border: 'none',
+					padding: '5px',
+					backgroundColor: '#000',
+					'-webkit-border-radius': '5px',
+					'-moz-border-radius': '5px',
+					opacity: .5,
+					color: '#fff',
+					height: 'auto'
+				},
+				message: '<h1 style="padding:5px;">Verarbeitung</h1><img src="<?php echo RES_FILE_PATH.'/images/ajax-loader-bar.gif'; ?>">'
+		});
+		*/					
+		
+		
+		//allow submit without "leave page" alert
+		$('#save_planning').on('click', function() {
+			submited = true;
+			changes = false;
+		});
+		
+		//detach from patients_lists_board the patients without visit settings
+		var moved_row = [];
+		$('tbody tr.patient_without_visit_settings' , $("#patients_lists_board") ).each( function( index, element ) {
+			//$(this).hide();
+			var row = $(this).detach();
+			moved_row.push(row);
+			
+		});
+		//re-attach at the end of patients_lists_board the patients without visit settings
+		$.each(moved_row, function(i, v) {
+			$('#patients_lists_board').append(v);
+		});
+
+		
+		var is_dragging = false;
+		$('tbody tr:not(.patient_tourplan_settings,.not_draggable)' , $("#patients_lists_board") ).each( function( index, element ) {
+    	
+			var $el = $(element),
+        	firstRun = true;
+
+			<?php if ( $this->has_link_permissions == true ) : ?>
+			$el.draggable({
+			 	cursorAt : [0, 0], 
+				cursor: 'move',
+				handle: 'tr',
+				helper: 'clone',
+				drag : function( evt, ui ) { // Fires after start event, and continuously during drag
+					if ( firstRun ) {
+						// Reset proxy position here since cursorAt cannot be set for 
+						ui.position.left -= Math.floor( ui.helper.width() / 2 );
+						ui.position.top -= Math.floor( ui.helper.height() /2 );
+					};
+				},
+				start: function (event, ui) {
+					is_dragging = true;
+					if ( firstRun ) {
+						// Center proxy relative to cursor for future drags
+						$(this).draggable( 'option', 'cursorAt', {
+							left : Math.floor( ui.helper.width() / 2 ),
+							top : Math.floor( ui.helper.height() /2 )
+						});
+					};
+
+				},
+				 stop : function( evt, ui ) { // Fires once
+					 is_dragging = false;
+            		if ( firstRun ) {
+                		firstRun = false;
+            		};
+				 }
+			
+			})
+			<?php endif; ?>
+			
+			$el.on('click', function () {
+				if (is_dragging) return false;
+		  		$(this).next("tr").toggle();
+		  	
+			});
+			
+		});
+
+		//hide the visit settings info row
+		$(".patient_tourplan_settings")
+		.on('click', '.settings', function () {
+		  	$(this).parent().hide();
+		});
+
+		function droppable_drop(ev, ui , _this){
+			if (is_sorting) return false;
+			
+				if ( "order" == master_viewmode){
+					$(".day_plan_visit_hourly tr:eq(0)", $(_this).parent()).show(); 
+				}
+				
+				var drag_a = ui.draggable.children('td').find('a');
+			
+				var patient_id = drag_a.attr('rel') || "";
+				
+				var patient_enc_id = drag_a.data('patient_enc_id') || patient_id;
+
+				//data-type is used for the add_extra_patients button from the patient_list bottom 
+				var data_type = drag_a.attr('data-type') || "";
+				
+				var closest_div = $(_this).closest("div");
+				var this_parent = $(_this).parent();
+				
+				var user_chk = closest_div.parent().find('input.add_user_to_dayplan').val();
+				cnt_plan_user++;
+				
+				var cnt = cnt_plan_user;
+				var p_last_name = $('span#p_last_name_' + patient_id).html();
+				var p_first_name = $('span#p_first_name_' + patient_id).html();
+	
+				//patient remaining visits
+				var remaining_visits = $('#p_vrpd_' + patient_id).html();
+				if (remaining_visits<1) return false;
+				
+				//recalcutate this hour visits tottal time
+				var this_visit_duration = $('#visit_duration_' + patient_id).val();		
+				calcutate_visits_time($(_this) , this_visit_duration , this_parent);
+				
+				
+				//decrement remaining visits
+				remaining_visits--;
+
+				//update patient remaining visits
+				update_pat_remaining_visits(patient_id, remaining_visits);
+
+				closest_div.parent().find(".placeholder").hide();
+					
+				var patient_plan = "";
+				
+				patient_plan += '<a href="javascript:void(0)" class="visit_contextmenu" rel="'+cnt+'"><b></b></a>';
+				
+				patient_plan += '<span> ' + p_last_name + ' ' + p_first_name + ' </span> ';
+				patient_plan += "<br><span id='v_comment_" + cnt + "'> </span> ";
+
+				//patient_plan += '<a href="javascript:void(0)" class="remove_visit_from_user" rel="visit_'+cnt+'" data-id="'+patient_id+'"><b></b></a>';
+				//patient_plan += '<a href="javascript:void(0)" class="edit_visit_from_user" rel="'+cnt+'"><b></b></a>';
+				
+				
+				
+				
+				patient_plan += '<input type="hidden" name="visit_userid[visit_'+cnt+']" id="visit_userid_visit_'+cnt+'"  value="'+user_chk+'" />';
+				patient_plan += '<input type="hidden" class="visit_patient" name="visit_patient[visit_'+cnt+']" id="visit_patient_visit_'+cnt+'"  value="'+data_type+patient_enc_id+'" />';
+				patient_plan += '<input type="hidden" class="visit_comment" id="visit_patient_comment_'+cnt+'"  value="" />';
+				patient_plan += '<input type="hidden" class="data_type" id="data_type'+cnt+'"  value="'+data_type+'" />';
+				patient_plan += '<input type="hidden" class="visit_duration"  value="'+this_visit_duration+'" />';
+				patient_plan += '<input type="hidden" class="patient_enc_id"  value="'+patient_enc_id+'" />';
+
+				
+				
+				//add first element when list is empty
+				if ($(_this).find("li").length == 0){
+					$("<li id='new_"+patient_id+"'></li>").html(patient_plan).appendTo(_this);
+				}else{
+					var i = 0; //used as flag to find out if element added or not
+					$(_this).children('li').each(function () {
+						if ($(this).offset().top >= ui.offset.top) //compare
+						{
+                         	$("<li id='new_"+patient_id+"'></li>").html(patient_plan).insertBefore(this);
+                         	i = 1;
+                         	return false; //break loop
+                     	}
+                 	});
+					if (i != 1) //if element dropped at the end of cart
+					{
+						$("<li id='new_"+patient_id+"'></li>").html(patient_plan).appendTo(_this);
+					}
+					
+				}
+				
+				//redraw zebra
+				zebra_style(_this);
+		}
+		
+		/*
+		//pseudogroup info icon rollover or maybe onclick toggle?
+		$('.show_user_info').mouseover(function() {
+			var user_id = $(this).data('uid');
+			$('#show_info_'+user_id).show();
+		}).mouseleave(function() {
+			var user_id = $(this).data('uid');
+			$('#show_info_'+user_id).hide();
+		});
+		*/
+		
+		//click on the name of the user	
+		$(".day_plan_user_title")
+		.on("click", function(event){
+			
+			
+			
+			 
+			
+			var parent = $(this).parent();
+			$(".day_plan_body", parent).toggle();
+			
+			//hide context menu
+			$( "#sett_visit_from_user" ).hide();
+			
+				//verify if no table is displayed to show the default one for this user
+			if ($(".day_plan_visit_hourly", parent).is( ":hidden" ) && $(".day_plan_visit", parent).is( ":hidden" )){	
+				if (master_viewmode == "timed"){
+					$(parent).attr("data-viewmode" , "timed");
+					$(".day_plan_visit_hourly", parent).show();
+				}else{
+					$(parent).attr("data-viewmode" , "order");
+					$(".day_plan_visit", parent).show();
+				}
+			}		
+		});
+		
+		
+	$('div.day_plan_user', $("#day_planning_table_board")).each(function(){
+		
+		var div_id = $('.add_user_to_dayplan', this).val();
+		if (users_with_isinactive[div_id] === undefined){		
+			
+			//drop visit on one hour
+			$('.day_plan_visit_hourly .droptrue', this).droppable({
+				hoverClass: 'ui-state-hover',// droptrue-ui-state-hover',
+				greedy: true,        
+				tolerance: "pointer",
+
+				drop: function (ev, ui){
+					droppable_drop(ev, ui , $(this));
+
+					return false;
+				},
+
+				over :function (ev, ui){
+
+				},
+
+				out :function (ev, ui){
+
+				}
+
+			});
+
+			
+			
+			//drop visit on the name of the user	
+			$(".day_plan_user_title", this)
+			.droppable({
+				hoverClass: 'ui-state-hover user_title-ui-state-hover',
+				greedy: true,        
+				tolerance: "pointer",
+				over: function(event, ui) {
+					var day_plan_body = $(this).parent().find(".day_plan_body");
+					var is_visible = $(day_plan_body).is(":visible");
+
+					if (!is_visible && is_dragging){
+						var item = $(this);
+						mouseEnterWait = 0;
+						if(!mouseEnterWaitInterval) {
+
+							mouseEnterWaitInterval = setInterval(
+								function(){
+									if(mouseEnterWait>=3){
+										clearInterval(mouseEnterWaitInterval);
+										mouseEnterWaitInterval = '';
+
+										$(item).parent().find(".day_plan_body").show();
+										mouseEnterWait = 0;
+									}
+
+
+									mouseEnterWait++;
+								},
+								150
+							);				
+						};
+
+
+					}
+
+				},
+				out: function() {
+					clearInterval(mouseEnterWaitInterval);
+					mouseEnterWaitInterval = '';
+				},
+
+				drop: function (ev, ui){
+					if (is_sorting) return false;
+					droppable_drop(ev, ui , $(".droptrue:eq(0)", $(this).parent()))
+					if ( "order" == master_viewmode){
+						$(".day_plan_visit_hourly tr:eq(0)", $(this).parent()).show(); 
+					}
+					$(this).parent().find(".day_plan_body").show();
+					return true;
+
+				}
+			});
+
+			
+			
+
+
+		}else{
+			//else = users_with_isinactive is defined);
+			//this div should not be here because it has isactive=1 .. but it has visits
+		}
+		
+	});
+		
+		
+
+		
+				
+
+		$('.loading').hide()
+		
+		//draw zebra for patients assigned to plans
+		$(".day_plan_visit_hourly ul").each(function(){
+			window.zebra_style(this);
+		});
+		
+		
+		function strpad24Hours(str) {
+			var _str = "" + str,
+			_pad = "00";
+			return _pad.substring(0, _pad.length - _str.length) + _str;
+		}
+		
+		//color boxex for TeamCustomEvents
+		$.each(getTeamCustomEvents, function(i, meeting){
+			
+			//return false;
+			
+			if (typeof(meeting['start_hour']) !== undefined && typeof(meeting['end_hour']) !== undefined){
+				
+				var arr = meeting['startDate'].split(/[- :]/),
+			    startDate = new Date(arr[0], arr[1]-1, arr[2], arr[3], arr[4], arr[5]);
+				var startDateH = startDate.getHours(); 
+				var startDateM = (startDate.getMinutes()<10?'0':'') + startDate.getMinutes() ; 
+				
+				arr = meeting['endDate'].split(/[- :]/),
+			    endDate = new Date(arr[0], arr[1]-1, arr[2], arr[3], arr[4], arr[5]);
+				var endDateH = endDate.getHours(); 
+				var endDateM = (endDate.getMinutes()<10?'0':'') + endDate.getMinutes() ; 	
+				
+				
+				if(meeting['allDay'] == "1"){
+					$(".day_plan_user").each( function(){
+						$(".day_plan_body", this)
+							.prepend($('<div class="team_event_info"><span><?php echo $this->translate("Team Termin"); ?>: ' +meeting.eventTitle + ' - <?php echo $this->translate("ganztags"); ?></span></div>'));		
+					});
+				
+				}
+				
+				for(var h=Number(meeting['start_hour']); h<=Number(meeting['end_hour']); h++){
+					
+					$(".day_plan_user .day_plan_visit_hourly").each( function(){
+						
+						var __infoBoxTeam =  $(this).data('__infoBoxTeam_id_' + meeting.id) || false;
+						
+						var _parent_tr = $("ul[data-hour='" + strpad24Hours(h) + "']", this).parents('tr:first');
+						
+						if ( ! _parent_tr) return true;
+						
+						
+						
+						$("td", _parent_tr)
+							.css({"background-color":convertHex("#999999",10)});
+							//.attr("title",meeting.eventTitle +": "+ meeting['start_hour'] +"-"+ meeting['end_hour']);		
+						
+						if (meeting['allDay'] != "1"
+							&& _parent_tr.length
+							&&  (h == Number(meeting['start_hour']) || ! __infoBoxTeam) 
+						){
+							
+							$(this).data('__infoBoxTeam_id_' + meeting.id, true);
+							
+							$("td:eq(1)", _parent_tr)
+							.prepend($('<div class="team_event_info"><span><?php echo $this->translate("Team Termin"); ?>: ' +meeting.eventTitle +"<br>"+ startDateH +":"+ startDateM +" - "+ endDateH +":"+ endDateM  + '</span></div>'));
+							/*
+							$("tr:eq("+h+") td:eq(1)", this)
+							.prepend($('<div class="team_event_info"><span><?php echo $this->translate("Team Termin"); ?>: ' +meeting.eventTitle +"<br>"+ startDateH +":"+ startDateM +" - "+ endDateH +":"+ endDateM  + '</span></div>'));
+							*/
+						}
+
+						if (meeting['dayplan_inform'] == "1"){
+							//we must block this hour for visit assigning
+						
+							$('ul', _parent_tr)
+							.removeClass("droptrue")
+                            .addClass("droptrue_disabled")
+                            .droppable('disable')
+                            .sortable('disable');
+							/*
+							$("tr:eq("+h+") ul", this)
+								.removeClass("droptrue")
+								.addClass("droptrue_disabled")
+								.droppable('disable')
+								.sortable('disable');
+							*/
+							$('td:eq(1)', _parent_tr)
+								.prepend($('<div class="custom_event_is_blocking_this_hour"><?php echo $this->translate("custom_event_is_blocking_this_hour"); ?></div>'));
+							/*
+							$("tr:eq("+h+") td:eq(1)", this)
+								.prepend($('<div class="custom_event_is_blocking_this_hour"><?php echo $this->translate("custom_event_is_blocking_this_hour"); ?></div>'));
+							*/
+						}
+					
+					});
+				}
+			}
+		});
+		
+		//color boxex for DoctorCustomEvents
+		$.each(getDoctorCustomEvents, function(i, meeting){
+			
+			//return false;
+
+			if (typeof(meeting['start_hour']) !== undefined && typeof(meeting['end_hour']) !== undefined){
+
+				var userid = meeting['userid'];
+				var _this = $("#day_plan_user_"+userid).not( "[data-usertype='pseudogrups']" );
+				
+				if (! _this.length ){
+					return true;
+				}
+				
+				var arr = meeting['startDate'].split(/[- :]/),
+			    startDate = new Date(arr[0], arr[1]-1, arr[2], arr[3], arr[4], arr[5]);
+				var startDateH = startDate.getHours(); 
+				var startDateM = (startDate.getMinutes()<10?'0':'') + startDate.getMinutes() ; 
+				
+				arr = meeting['endDate'].split(/[- :]/),
+			    endDate = new Date(arr[0], arr[1]-1, arr[2], arr[3], arr[4], arr[5]);
+				var endDateH = endDate.getHours(); 
+				var endDateM = (endDate.getMinutes()<10?'0':'') + endDate.getMinutes() ; 	
+				
+				if(meeting['allDay'] == "1"){
+					$(".day_plan_body" , _this)
+							.prepend($('<div class="doctor_event_info"><span><?php echo $this->translate("Doctor Termin"); ?>: ' +meeting.eventTitle + ' - <?php echo $this->translate("ganztags"); ?></span></div>'));
+				}
+				
+				_this = $(".day_plan_visit_hourly" , _this);
+				
+				for(var h=Number(meeting['start_hour']); h<=Number(meeting['end_hour']); h++) {
+					
+					var _parent_tr = $("ul[data-hour='" + strpad24Hours(h) + "']", _this).parents('tr:first');
+					   
+					if ( ! _parent_tr) return true;
+					   
+					$("td", _parent_tr)
+						.css({"background-color":convertHex("#999999",10)});
+						//.attr("title",meeting.eventTitle +": "+ meeting['start_hour'] +"-"+ meeting['end_hour']);
+						
+		
+					if(_parent_tr.length
+						&& meeting['allDay'] != "1"
+						&& (h == Number(meeting['start_hour']) || ! meeting.hasOwnProperty('__infoBoxDoctor'))
+					) {
+						meeting.__infoBoxDoctor = true;
+						$("td:eq(1)", _parent_tr)
+						.prepend($('<div class="doctor_event_info"><span><?php echo $this->translate("Doctor Termin"); ?>: ' +meeting.eventTitle +"<br>"+ startDateH +":"+ startDateM +" - "+ endDateH +":"+ endDateM  + '</span></div>'));
+						/*
+							$("tr:eq("+h+") td:eq(1)", _this)
+							.prepend($('<div class="doctor_event_info"><span><?php echo $this->translate("Doctor Termin"); ?>: ' +meeting.eventTitle +"<br>"+ startDateH +":"+ startDateM +" - "+ endDateH +":"+ endDateM  + '</span></div>'));
+						*/
+					}
+						
+					
+					if (meeting['dayplan_inform'] == "1")
+					{
+							//we must block this hour for visit assigning
+
+	                         $("ul", _parent_tr)
+	                         .removeClass("droptrue")
+                             .addClass("droptrue_disabled")
+                             .droppable('disable')
+                             .sortable('disable');
+							/*
+							$("tr:eq("+h+") ul", _this)
+								.removeClass("droptrue")
+								.addClass("droptrue_disabled")
+								.droppable('disable')
+								.sortable('disable');
+							*/
+
+							$("td:eq(1)", _parent_tr)
+							.prepend($('<div class="custom_event_is_blocking_this_hour"><?php echo $this->translate("doctor_custom_event_is_blocking_this_hour"); ?></div>'));
+							/*
+							$("tr:eq("+h+") td:eq(1)", _this)
+								.prepend($('<div class="custom_event_is_blocking_this_hour"><?php echo $this->translate("doctor_custom_event_is_blocking_this_hour"); ?>SSSSS</div>'));
+							*/
+						}
+					
+				}
+			}
+		});
+		
+		
+		//open close boxes for users with shift today or holidays
+		$.each(user_has_shift_today, function(i, v){
+			
+			//return false;
+			
+			var this_user_shifts = users_shifts[i];	
+			
+			if (typeof this_user_shifts === 'object' && ! $.isEmptyObject(this_user_shifts)){
+				$.each(this_user_shifts, function(shift, values){				
+					
+					//if shift=tours, color only if it's the only shift
+					if(values['istours'] != "0" && ObjectLength(this_user_shifts) >1 ){
+						return true;
+					}
+					
+					if (typeof(values['start_hour']) !== undefined && typeof(values['end_hour']) !== undefined){
+						if (Number(values['start_hour']) <= Number(values['end_hour'])){
+
+							//console.log(values['start_hour'], values['end_hour']);
+							
+							if(Number(values['start']) >=  Number(values['end'])){
+								//24 hour shift is coloring all?
+								$("#day_plan_user_"+i+" .day_plan_visit_hourly > tbody > tr > td:nth-child(1)")
+										.addClass("user_has_shift_bold");
+								$("#day_plan_user_"+i+" .day_plan_visit_hourly > tbody > tr > td:nth-child(2)")
+										.css({"background-color":convertHex(values['color'],15)});
+								
+							}else{
+								for(var h = Number(values['start_hour']); h <= Number(values['end_hour']); h++){
+									
+									var _parent_tr = $("#day_plan_user_"+i+" .day_plan_visit_hourly ul[data-hour='" + strpad24Hours(h) + "']").parents('tr:first');
+									
+									$('td:eq(0)', _parent_tr).addClass("user_has_shift_bold");
+									$('td:eq(1)', _parent_tr).css({"background-color":convertHex(values['color'],15)});
+									/*
+									$("#day_plan_user_"+i+" .day_plan_visit_hourly tr:eq("+h+") td:eq(0)")
+										.addClass("user_has_shift_bold");
+									$("#day_plan_user_"+i+" .day_plan_visit_hourly tr:eq("+h+") td:eq(1)")
+										.css({"background-color":convertHex(values['color'],15)});
+									*/
+								}
+							}
+						}else{
+							for(var h = Number(values['start_hour']); h <= 23; h++){
+								
+                                var _parent_tr = $("#day_plan_user_"+i+" .day_plan_visit_hourly ul[data-hour='" + strpad24Hours(h) + "']").parents('tr:first');
+                                
+                                $('td:eq(0)', _parent_tr).addClass("user_has_shift_bold");
+                                $('td:eq(1)', _parent_tr).css({"background-color":convertHex(values['color'],15)});
+                                /*
+								$("#day_plan_user_"+i+" .day_plan_visit_hourly tr:eq("+h+") td:eq(0)")
+									.addClass("user_has_shift_bold");
+								$("#day_plan_user_"+i+" .day_plan_visit_hourly tr:eq("+h+") td:eq(1)")
+									.css({"background-color":convertHex(values['color'],15)});
+								*/
+							}
+							
+							for(var h = 0; h <= Number(values['end_hour']); h++){
+								
+								var _parent_tr = $("#day_plan_user_"+i+" .day_plan_visit_hourly ul[data-hour='" + strpad24Hours(h) + "']").parents('tr:first');
+	                                
+                                $('td:eq(0)', _parent_tr).addClass("user_has_shift_bold");
+                                $('td:eq(1)', _parent_tr).css({"background-color":convertHex(values['color'],15)});
+	                            /*    
+								$("#day_plan_user_"+i+" .day_plan_visit_hourly tr:eq("+h+") td:eq(0)")
+									.addClass("user_has_shift_bold");
+								$("#day_plan_user_"+i+" .day_plan_visit_hourly tr:eq("+h+") td:eq(1)")
+									.css({"background-color":convertHex(values['color'],15)});
+								*/
+							}
+						}
+						
+						if(values['isholiday'] != "1"){
+							$("#day_plan_user_"+i+" .day_plan_body").show();
+						}
+					}
+				});
+			}			
+		});
+		
+
+		
+		
+		$(window).load(function() {
+			 $('.page_loading').show().hide()
+		});
+
+
+		$( "#current_date_input" ).datepicker({
+			dateFormat: 'dd.mm.yy',
+			buttonImageOnly: true,
+			changeMonth: true,
+			changeYear: true,
+			onSelect:function( selectedDate ) {
+				$('.page_loading').show();
+
+				window.location.href = "<?php echo APP_BASE; ?>roster/dayplanningnew?sel=1&date="+selectedDate;
+			}
+		});
+
+
+		$('#go_to_previous').live('click',function(){
+			$('.page_loading').show();
+		});
+
+		$('#go_to_next').live('click',function(){
+			$('.page_loading').show();
+		});
+
+
+		
+		
+		
+		$('#save_planning').on('click', function(event) {
+			
+			//TODO-2774 Ancuta 06.01.2020 - added check for client change 
+			if(checkclientchanged())
+			{
+				//get all doctors
+				$(".day_plan_user").each(function(){
+					
+					var user_id = $(".add_user_to_dayplan", this).val();
+					var data_usertype = $(this).attr("data-usertype");
+									
+					$(".day_plan_visit_hourly ul", this).each(function( i ){
+						
+						var idsInOrder = $(this).sortable("toArray");
+						if (idsInOrder.length < 1) return;
+						var this_ul = this;
+						
+						//var this_hour = i;
+						var this_hour = $(this).data('hour');
+						
+						$.each(idsInOrder, function(i,v){
+						
+							
+							$("form#save_plan")
+								.append("<input type='hidden' name='visit_order["+user_id+"]["+this_hour+"]["+i+"][data_usertype]' value='"+ data_usertype + "'>")
+								.append("<input type='hidden' name='visit_order["+user_id+"]["+this_hour+"]["+i+"][patid]' value='"+ v + "'>")
+								.append("<input type='hidden' name='visit_order["+user_id+"]["+this_hour+"]["+i+"][comment]' value='"+ ($("li:eq("+i+") .visit_comment", this_ul).val() || "") + "'>")
+								.append("<input type='hidden' name='visit_order["+user_id+"]["+this_hour+"]["+i+"][data_type]' value='"+ ($("li:eq("+i+") .data_type", this_ul).val() || "0" )+ "'>")
+								.append("<input type='hidden' name='visit_order["+user_id+"]["+this_hour+"]["+i+"][patient_enc_id]' value='"+ ($("li:eq("+i+") .patient_enc_id", this_ul).val() || "0" )+ "'>");
+							
+							if ( $("li:eq("+i+")", this_ul).data("manual-edit") != undefined && $("li:eq("+i+")", this_ul).data("manual-edit")=="1") {						
+								$("form#save_plan")
+								.append("<input type='hidden' name='visit_order["+user_id+"]["+this_hour+"]["+i+"][manual_edit]' value='1'>");
+							}
+	
+						});
+					});			
+				});
+				
+				
+				//visit_default_hours append all changed
+				$('#save_plan').append($("input.visit_default_hour[name]").clone());			
+				
+				$('#save_plan').submit();
+			} 
+		});
+
+		/* ########################## REMOVE VISIT FROM USER ########################################  */
+/*
+		$('.remove_visit_from_user').live('click',function()
+		{
+				
+			var visit_id = $(this).data('id');
+			var parent_li = $(this).closest('li');
+			var parent_ul = $(this).closest('ul');
+			
+			//get patient id before visit is deleted
+			var visit_patient_id =  $('.visit_patient', parent_li).val();
+			var patient_enc_id =  $('.patient_enc_id', parent_li).val();
+
+			//remove visit from user plan
+			$(parent_li).remove();
+			
+			
+			var tr_with_patient_details = $( "tr[data-patient_enc_id='"+patient_enc_id+"']" ,$("#patients_lists_board"));
+			tr_with_patient_details.removeClass('tr_disabled');
+			 
+			//$('#patient_row_'+visit_id).removeClass('tr_disabled');
+
+			//get remaining patient visits
+			//var remaining_pat_visits = $('#p_vrpd_'+visit_id).html();
+
+			var remaining_pat_visits = $(".visits_remaining_per_day" , tr_with_patient_details).html();
+			remaining_pat_visits = Number(remaining_pat_visits);
+			
+			//increment remaining visits
+			remaining_pat_visits++
+
+			//update patient table with curent remaining visit
+			//update_pat_remaining_visits(visit_id, remaining_pat_visits);			
+			$(".visits_remaining_per_day" , tr_with_patient_details).html(remaining_pat_visits);
+			
+			
+			//recalcutate this hour visits tottal time
+			calcutate_visits_time(parent_ul , 0 , parent_ul.parent());
+			
+			if ( $("li", $(parent_ul).closest("table")).length == 0){
+				$(".placeholder" , $(parent_ul).closest("div").parent()).show();
+			}
+
+
+			 
+		 });
+*/
+		
+
+		var this_ul_height = 0;
+		var is_sorting = false;
+
+		//sort the visits
+		<?php if ( $this->has_link_permissions == true ) : ?>
+		$( "ul.droptrue" )
+			.sortable({ 
+				dropOnEmpty: true,
+				//axis: "y",
+				revert: false,
+				scroll: false,
+				cursor: "move",
+				placeholder: 'slide-placeholder',
+				tolerance: "pointer",
+
+				start: function(event, ui) {
+					item = ui.item;
+					is_sorting = true;
+
+					this_ul_height = Number($(this).height());
+
+					$(this).height(this_ul_height+60);				
+					$(this).css({"padding-top": "20px"});				
+
+					placeholderHeight = ui.item.outerHeight();
+					ui.placeholder.height(placeholderHeight + 15);
+
+					$('<div class="slide-placeholder-animator" data-height="' + placeholderHeight + '"></div>').insertAfter(ui.placeholder);
+				},
+
+				change: function(event, ui) {
+					// Center proxy relative to cursor for future drags			
+					ui.placeholder.stop().height(0).animate({
+						height: ui.item.outerHeight() + 15
+					}, 300);
+
+					placeholderAnimatorHeight = parseInt($(".slide-placeholder-animator").attr("data-height"));
+
+					$(".slide-placeholder-animator").stop().height(placeholderAnimatorHeight + 15).animate({
+						height: 0
+					}, 300, function() {
+						$(this).remove();
+						placeholderHeight = ui.item.outerHeight();
+						$('<div class="slide-placeholder-animator" data-height="' + placeholderHeight + '"></div>').insertAfter(ui.placeholder);
+					});
+
+				},
+
+				stop: function(event, ui) {
+					is_sorting = false;
+
+					$(this).height("auto");
+					$(this).css({"padding-top": "0"});
+
+					$(".slide-placeholder-animator").remove();
+
+					//$(this).closest("tr").removeClass("dayplanning_sorting_on");
+
+
+				},
+
+				update: function(event, ui) {
+					changes = true,
+					$( "ul.droptrue" , $(this).closest("div").parent()).each(function(){				
+						if ( $("li", this).length == 0){
+							if ( "order" == master_viewmode){
+								$(this).closest("tr").hide();
+							}
+						}else{
+							zebra_style(this);
+						}
+					});
+					
+					//this is now a manual visit
+					if (ui.item[0] != undefined){					
+						$(ui.item[0]).data("manual-edit", "1");
+					}
+					
+					
+					
+						//$(this).closest("ul").height(this_ul_height);
+						$(this).height("auto"); 
+						$(this).css({"padding-top": "0"});
+						if (master_viewmode != "timed") return true;
+						//set default hour for auto-assign
+						if (this === ui.item.parent()[0]) {
+							var new_hour = $(ui.item).closest("tr").find('td:eq(0)').text() || 0;
+							new_hour = parseInt(new_hour, 10);
+							//get patient id
+							var visit_patient_id =  $('.visit_patient', ui.item).val();
+							var patient_enc_id =  $('.patient_enc_id', ui.item).val();
+							var patient_name = ui.item[0].innerText;
+
+							var user_type =  $(ui.item).closest("div").parent().attr('data-usertype');
+							var user_id =  $(ui.item).closest("div").parent().find('input.add_user_to_dayplan').val();
+							var user_name =  $(ui.item).closest("div").parent().find('.user_title').text();
+							
+							if (Number(user_id) >0 && $("input.visit_default_hour[data-userid='"+user_id+"'][data-userid_type='"+user_type+"'][data-patient_enc_id='"+patient_enc_id+"']").length == 1)
+							{
+								
+								var old_default_hour_input = $("input.visit_default_hour[data-userid='"+user_id+"'][data-userid_type='"+user_type+"'][data-patient_enc_id='"+patient_enc_id+"']") || 0;
+								var old_default_hour  = $(old_default_hour_input).attr("data-visithour") || 0;
+								old_default_hour = parseInt(old_default_hour, 10);
+
+								if( new_hour != old_default_hour){
+
+									var future_autoassign_hour_boby = String("<?php echo $this->translate('future_autoassign_hour_boby'); ?>");
+									var future_autoassign_hour_title =  String("<?php echo $this->translate('future_autoassign_hour_title'); ?>");
+									future_autoassign_hour_boby = future_autoassign_hour_boby.replace("%doctor_name%", String(user_name));
+									future_autoassign_hour_boby = future_autoassign_hour_boby.replace("%patient_name%", String(patient_name));
+									future_autoassign_hour_boby = future_autoassign_hour_boby.replace("%old_hour%", String(old_default_hour));
+									future_autoassign_hour_boby = future_autoassign_hour_boby.replace("%new_hour%", String(new_hour));
+
+									jConfirm(future_autoassign_hour_boby, future_autoassign_hour_title, function(r) {
+										if(r)
+										{	
+											//add to input submit 
+											$(old_default_hour_input)
+												.attr("data-visithour" , String(new_hour))
+												.attr("value" , String(new_hour))
+												.attr("name" , "default_autoasign_hour["+patient_enc_id+"]["+user_id+"]");
+
+											changes = true;
+										}
+									});
+
+
+								}
+							}
+
+						 }
+					},
+					connectWith: ".droptrue"
+
+			})
+			.disableSelection();
+		<?php endif; ?>
+		
+		
+		
+		/* $(".day_plan_user").each(function(){
+			var id_conn = "#"+$(this).attr("id");
+			var contain = id_conn +" .day_plan_body";
+			id_conn += " .day_plan_visit_hourly ul";
+
+			//$( id_conn ).sortable( "option", "connectWith", id_conn );	
+			//$( id_conn ).sortable( "option", "containment", $(this) );	//contain
+						
+			$( ".day_plan_visit_hourly ul", this ).sortable( "option", "connectWith", id_conn );	
+			//$( ".day_plan_visit_hourly ul", this ).sortable( "option", "containment", contain );	//contain
+			
+		}) */
+	
+	
+		//toggle view mode for this user preferences
+		window.toggle_viewmode(true);
+	
+	
+	
+	
+		/*  */
+		
+		$('.visit_contextmenu').live('click',function(event){
+			
+			//event.preventDefault();
+			event.stopPropagation(); //stop going forward
+			event.stopImmediatePropagation(); //stop going forward
+			
+			var _this = event.target;
+			
+			var visit_id = $(this).attr('rel');
+			
+			var contextmenu = $( "#sett_visit_from_user" );
+			
+			//hide the contextmenu
+			if (contextmenu.data("visit_id") == visit_id) {
+				//contextmenu.data("visit_id", "0");
+				contextmenu.toggle();
+				return;
+			}			
+    		
+			//display contextmenu
+			
+			//add treateddby on the last line
+			var parent_li = $(_this).closest('li');
+			var patient_enc_id =  $('.patient_enc_id', parent_li).val();
+			var tr_with_patient_details = $( "tr[data-patient_enc_id='"+patient_enc_id+"']" ,$("#patients_lists_board"));
+			var treateddby = "";
+
+			if (tr_with_patient_details.length) {
+				treateddby = tr_with_patient_details.next('tr').find('.treateddby').html().trim() || "";
+
+				if (treateddby != "") {
+					treateddby = translate('treateddby') + ": " +treateddby;
+				}			
+			}
+			$(".treateddby", contextmenu).html(treateddby);
+		
+			contextmenu
+			.css({"display":"block", "position":"absolute"})
+    		.position({
+    		    my: "right top",
+    		   	at: "left bottom",
+    		    //of: event,
+    		    of: _this,
+    		   	offset: "25 -5",
+    		    collision: "none"
+    		})
+    		.data("visit_id", visit_id)
+			.show();
+
+    		
+    		$("a", contextmenu).off('click');
+
+    		$('a.edit_visit_from_user', contextmenu).on('click', function() { 
+    			contextmenu
+    			.data("visit_id", "0")
+    			.hide();
+    			
+    			edit_visit_from_user(_this, visit_id);
+    			
+    		});
+    		
+
+    		$('a.remove_visit_from_user', contextmenu).on('click', function() { 
+    			contextmenu
+    			.data("visit_id", "0")
+    			.hide();
+
+    			remove_visit_from_user(_this, visit_id);
+    			
+    		});
+    		
+    		$('a.extra_visit_from_user', contextmenu).on('click', function() { 
+    			contextmenu
+    			.data("visit_id", "0")
+    			.hide();
+
+    			extra_visit_from_user(_this, visit_id);
+    			
+    		});    		
+    		
+    		return;
+			
+		
+		});
+		
+		/*end */
+	
+		
+	
+	
+		/* ########################## EDIT VISIT FROM USER ########################################  */
+		
+		/*
+		$('.edit_visit_from_user').live('click',function(event){
+			
+			var visit_id = $(this).attr('rel');
+			
+			var visit_comment = $('#visit_patient_comment_'+visit_id).val();
+			
+			$('#edit_visit_id').val(visit_id);
+			$('#edit_visit_comment').val(visit_comment);
+
+			$('#edit_visit').dialog('open');
+		});
+		*/
+		
+		
+		
+		
+		$('#edit_visit').dialog({
+		    autoOpen: false,
+		    modal: true,
+		    width: 400,
+		   	height: 250,
+		   	title:  "<?php echo $this->translate('Edit planned visit'); ?>",
+		   	open: function(){
+		   		$('#save_visit').val('0');
+		   	},
+		    buttons:{
+				"<?php echo $this->translate('save'); ?>": function(){
+					var visit_id = $('#edit_visit_id').val();
+					var my_target = $("#edit_visit").data('ultarget');
+					
+					if(!visit_id)
+					{
+						save_dummy_visit(my_target);
+						var visit_id = my_target.find('.visit_contextmenu').attr('rel');
+						//alert(my_target.find('.visit_contextmenu').attr('rel'));
+					}
+					
+					$('#visit_patient_comment_'+visit_id).val($('#edit_visit_comment').val());
+					$('#v_comment_'+visit_id).text($('#edit_visit_comment').val());					
+				
+					changes = true;
+					$('#edit_visit').dialog('close');
+					
+					//this is now a manual visit
+					$("li#"+visit_id).data("manual-edit", "1"); 
+					
+				},
+				"<?php echo $this->translate('cancel'); ?>": function(){
+					$('#edit_visit').dialog('close');
+				}
+		    },
+		    close:function () {
+				$('#edit_visit_id').val('');
+				$('#edit_visit_comment').val('');
+		    },
+		});
+	
+		
+		
+	//build search array so not to parse table every time
+	//dissadvantage is that visit_counter gets ignored this way, so we filter only in the patients that still can have visits
+		
+	var _rowsPatients = new Object();
+	$('.patients_lists tbody tr:not(.patient_tourplan_settings)').each(function(){
+		
+		var visits_cnt = $("span[id^=p_vrpd]", this).text();
+		if (Number(visits_cnt) < 1) return;
+
+		var stringsFromRowNodes = $(this).text().toLowerCase();
+		_rowsPatients[$(this).attr("id")] = stringsFromRowNodes;
+	});
+		
+	// filter patinet row
+	$("#searchInput").keyup(function() {
+		var searchText = $(this).val().toLowerCase();	
+		
+		$.each(_rowsPatients, function(i, stringsFromRowNodes){
+	
+			if (~stringsFromRowNodes.indexOf(searchText)) {
+            	//show row
+				$('.patients_lists #'+i).show();
+				
+            }else{
+				$('.patients_lists #'+i).hide();
+			}
+
+		});
+
+	});
+		
+	
+		
+		//pre-defined tabs for ajax request
+		extra_patient_tabs[0] = "standby";
+		extra_patient_tabs[1] = "discharged_alive";
+		extra_patient_tabs[2] = "discharged_dead";
+		extra_patient_tabs_fetched[0] = extra_patient_tabs_fetched[1] = extra_patient_tabs_fetched[2] = false;
+		
+		
+		//add extra patients 
+		$("#extra_patients-dialog").dialog({
+		        autoOpen: false,
+		        height: 450,
+		        width: 650,
+		        modal: true,
+		        open: function () {
+ 
+					$('.select_patients', this).removeAttr('checked');
+					
+					var active_tab = $( "#tabs_extra_patients" ).tabs( "option", "selected");
+					if (extra_patient_tabs_fetched[active_tab] == false ){
+						load_extra_patients( active_tab , extra_patient_tabs[active_tab] );
+					}
+		        },
+
+			    buttons:{
+					"<?php echo $this->translate('save'); ?>": function(){
+
+						submited = true;
+						
+						var cnt_existing = $('#number_of_existing_patients').val();
+						var cnt_start = Number(cnt_existing) +1;
+						
+						var icon_location = "<!-- no location -->";
+						if ($( "#tabs_extra_patients" ).tabs( "option", "selected") == 0){
+							icon_location = '<img class="system_icon_filters_list" src="<?php echo RES_FILE_PATH;  ?>/icons_system/is_standby_icon.png">';
+
+						}
+						
+						 var selected_patients = $('.select_patients:checked').map(function() {
+							//  form an array with all the data -> get details of patients 							 
+							    return this.value;
+							}).get();
+						$('.select_patients:checked',this).each(function(){
+							
+							var patient_id = this.value; //now epid
+							var first_name = $(this).closest("tr").find("td:eq(2)").text(); 						
+							var last_name =  $(this).closest("tr").find("td:eq(3)").text(); 
+							
+							var text = '<tr id="patient_row_'+patient_id+'">';
+							text += '<td>';
+							text += '<a href="javascript:void(0)" class="add_to_dayplan" rel="'+patient_id+'" data-type="isepid_"></a>';
+							text += '</td>';
+							
+							text += '<td>';
+							text += '<span id="p_last_name_'+patient_id+'">'+last_name+'</span>';
+							text += '</td>';
+
+							text += '<td>';
+							text += '<span id="p_first_name_'+patient_id+'">'+first_name+'</span>';
+							text += '</td>';
+							
+							text += '<td>';
+							text += '<span id="p_vrpd_'+patient_id+'">1</span>';
+							text += '</td>';
+							
+							text += '<td><!-- no visit duration --></td>';
+
+							text += '<td>'+ icon_location +'</td>';					
+							text += '</tr>';
+							
+							text += '<tr class="tr_disabled"><td colspan="6"></td></tr>';
+							
+							$(".patients_lists table tbody").append(text);
+							
+							//@TODO: this draggable should be the same function with the main-draggable.... putit as a function xxx() so we can call it here
+							$("#patient_row_"+patient_id).draggable({
+								cursor: 'move',
+								handle: 'tr',
+								helper: 'clone'
+							});
+							
+						});
+											
+						
+						 $('#extra_patients').val(selected_patients);
+
+
+						 $("#extra_patients-dialog").dialog("close");
+						
+
+					},
+
+					"<?php echo $this->translate('cancel'); ?>": function(){
+						 $("#extra_patients-dialog").dialog("close");		
+					}
+				    },
+		        
+		        close: function() {
+		    
+		        }
+		    });
+		
+		
+		var last_length = 0;
+		//hidden_users
+		$("#hidden_users")
+			.chosen({
+				multiple:0,
+				inherit_select_classes:true,
+				width: "260px",
+				"search_contains": true,
+				no_results_text: "<?php echo $this->translate('noresultfound'); ?>"
+			})
+		
+		
+		//add extra hidden users 
+		$("#hidden_users-dialog").dialog({
+		        autoOpen: false,
+		        height: 360,
+		        width: 400,
+		        modal: true,
+		        open: function () {
+ 
+					
+		        },
+
+			    buttons:{
+					"<?php echo $this->translate('save'); ?>": function(){
+						
+						var hidden_user = $('#hidden_users option:selected').val();
+
+						$("#hidden_users-dialog").dialog("close");
+						
+						$("#hidden_users option[value='"+hidden_user+"']").remove();
+						
+						$('#hidden_users ').trigger( "chosen:updated" );
+						
+						var boxes_lenght = $("#users_without_shift_table .day_plan_user:visible").length;
+						var box_td_eq = boxes_lenght%3;
+						
+						$("#users_without_shift_table > tbody > tr > td:eq("+box_td_eq+")").append($("#day_plan_user_"+hidden_user));
+						$("#day_plan_user_"+hidden_user).show();
+
+					},
+
+					"<?php echo $this->translate('cancel'); ?>": function(){
+						 $("#hidden_users-dialog").dialog("close");		
+						
+						
+						
+					}
+					
+					
+				},
+		        
+		        close: function() {}
+		    });
+		
+
+
+		
+		/* ########################## Print to pdf  ########################################  */
+		$('#pdf_print').live('click',function(){
+			$('#pdf_print_action').val('1');
+			$('#pdf_print_users').val('0');
+			$('#pdf_print_patients').val('0');
+			$('#pdf_print_period').val('0');
+			
+			$('#pdf_print_form').submit();
+		});
+		
+		
+		$('#pdf_print_allweek').on('click',function(){
+			$("#print_dialog").dialog('open');
+		});
+		
+		$("#print_dialog #print_patients")
+			.chosen({
+				multiple:0,
+				inherit_select_classes:true,
+				width: "260px",
+				"search_contains": true,
+				no_results_text: "<?php echo $this->translate('noresultfound'); ?>"
+			})
+			.change(function(){
+				var newval = "all_users";
+				/*
+				if ($(this).val() == "all_patients"){
+					newval = "all_users";
+				}
+				*/
+				$("#print_dialog #print_users").val( newval ).trigger( "chosen:updated" );
+			});
+		
+		$("#print_dialog #print_users")
+			.chosen({
+				multiple:0,
+				inherit_select_classes:true,
+				width: "260px",
+				"search_contains": true,
+				no_results_text: "<?php echo $this->translate('noresultfound'); ?>"
+			})
+			.change(function(){
+				var newval = "all_users";
+				/*
+				if ($(this).val() == "all_users"){
+					newval = "all_patients";
+				}
+				*/
+				$("#print_dialog #print_patients").val( newval ).trigger( "chosen:updated" );
+			});
+		
+
+		
+		$("#print_dialog").dialog({
+		    autoOpen: false,
+		    height: 410,
+		    width: 650,
+		    modal: true,
+			zIndex: 998,
+		    
+			open: function () {
+ 
+		    },
+			
+			buttons:{
+				"<?php echo $this->translate('submit'); ?>": function(){
+									
+					
+					var post_data = {};
+					var print_users = $("#print_users", this).val() || "none";
+					var print_patients = $("#print_patients", this).val() || "none";
+					
+					
+					
+					$('#pdf_print_form #pdf_print_users').val( print_users);
+					$('#pdf_print_form #pdf_print_patients').val( print_patients );
+					$('#pdf_print_form #pdf_print_period').val( "allweek" );
+					$('#pdf_print_form').submit();
+					
+					$(this).dialog('close');
+				},
+				"<?php echo $this->translate('cancel'); ?>": function(){
+					$(this).dialog('close');
+				}
+		    }
+					  
+		});
+		
+
+		//set page to full screen	
+		$(".outer").css({'min-width':'99%'});
+		$("#Wrapper").css({'min-width':'99%'});
+		
+		var window_width = $(window).width();
+		$("#MainContent").css({
+			'width' : String(window_width - 260) + 'px',
+			'float' : 'left',
+			'overflow' : 'hidden'
+			//TODO-3820 Ancuta 05.02.2021 - comment padding lines 
+			//'padding-left' : '10px',
+			//'padding-right' : '5px'
+			//--
+		});
+		
+		
+		function debounce(func, wait, immediate) {
+			var timeout;
+			return function() {
+				var context = this, args = arguments;
+				var later = function() {
+					timeout = null;
+					if (!immediate) func.apply(context, args);
+				};
+				var callNow = immediate && !timeout;
+				clearTimeout(timeout);
+				timeout = setTimeout(later, wait);
+				if (callNow) func.apply(context, args);
+			};
+		};
+		var myResizeWindowFn = debounce(function() {
+
+			var window_width = $(window).width();
+			$("#MainContent").css({
+				'width' : String(window_width - 260) + 'px',
+			});
+			
+		}, 300);
+		myResizeWindowFn();
+		$(window).on('resize', myResizeWindowFn);
+		
+		
+		
+		//extra patient dialog modal
+		$("#tabs_extra_patients" )
+		.tabs()
+		.bind('tabsshow', function(event, ui) { 
+			
+			$('.select_patients', this).removeAttr('checked');
+			
+			if (extra_patient_tabs_fetched[ui.index] == false ){
+				load_extra_patients( ui.index , extra_patient_tabs[ui.index] );
+			}
+			
+		});
+		
+
+		
+		$(".extra_visit_from_user_righttable").live('click',function(event){
+		
+
+			var patient_enc_id = $(this).closest('tr').data('parent_patient_enc_id');			
+			var tr_with_patient_details = $( "tr[data-patient_enc_id='"+patient_enc_id+"']" ,$("#patients_lists_board"));
+			var row_number = tr_with_patient_details.children('td').find('a').attr('rel') || ""; 
+			
+			//get remaining patient visits
+			var remaining_pat_visits_span = $(".visits_remaining_per_day" , tr_with_patient_details);
+			var visits_per_day_settings = Number(remaining_pat_visits_span.data("visits_per_day_settings")) || 0;
+			var remaining_pat_visits = Number(remaining_pat_visits_span.html()) || 0;
+					
+			//increment remaining visits
+			remaining_pat_visits++
+			if (remaining_pat_visits < 1) {
+				remaining_pat_visits = 1;
+			}
+
+			//update patient table with curent remaining visit		
+			update_pat_remaining_visits(row_number, remaining_pat_visits);
+			
+			//set the row to be red for 2 seconds
+			red_row_hint(tr_with_patient_details);
+			
+		});
+
+		$(document).on('click', 'ul', function(){
+			if( ($(this).has("li").length === 0) ) {
+				edit_visit_from_user( $(this), null);
+			}
+		});
+		
+		function save_dummy_visit(_this){
+			if (is_sorting) return false;				
+				var closest_div = $(_this).closest("div");
+				var this_parent = $(_this).parent();
+			
+				var user_chk = closest_div.parent().find('input.add_user_to_dayplan').val();
+				cnt_plan_user++;
+				//alert(user_chk);		
+				var cnt = cnt_plan_user;
+
+				closest_div.parent().find(".placeholder").hide();
+					
+				var patient_plan = "";
+				
+				patient_plan += '<a href="javascript:void(0)" class="visit_contextmenu" rel="'+cnt+'"><b></b></a>';
+				
+				patient_plan += '<span>&nbsp;</span> ';
+				patient_plan += "<br><span id='v_comment_" + cnt + "'> </span> ";
+
+				//patient_plan += '<a href="javascript:void(0)" class="remove_visit_from_user" rel="visit_'+cnt+'" data-id="'+patient_id+'"><b></b></a>';
+				//patient_plan += '<a href="javascript:void(0)" class="edit_visit_from_user" rel="'+cnt+'"><b></b></a>';
+				
+				
+				
+				
+				patient_plan += '<input type="hidden" name="visit_userid[visit_'+cnt+']" id="visit_userid_visit_'+cnt+'"  value="'+user_chk+'" />';
+				patient_plan += '<input type="hidden" class="visit_patient" name="visit_patient[visit_'+cnt+']" id="visit_patient_visit_'+cnt+'"  value="" />';
+				patient_plan += '<input type="hidden" class="visit_comment" id="visit_patient_comment_'+cnt+'"  value="" />';
+				patient_plan += '<input type="hidden" class="data_type" id="data_type'+cnt+'"  value="" />';
+				patient_plan += '<input type="hidden" class="visit_duration"  value="" />';
+				patient_plan += '<input type="hidden" class="patient_enc_id"  value="dummy_'+user_chk+'_'+cnt+'" />';
+
+				
+				
+				//add first element when list is empty
+				if ($(_this).find("li").length == 0){
+					$("<li id='new_"+cnt+"'></li>").html(patient_plan).appendTo(_this);
+				}else{
+					var i = 0; //used as flag to find out if element added or not
+					$(_this).children('li').each(function () {
+						if ($(this).offset().top >= ui.offset.top) //compare
+						{
+                         	$("<li id='new_"+cnt+"'></li>").html(patient_plan).insertBefore(this);
+                         	i = 1;
+                         	return false; //break loop
+                     	}
+                 	});
+					if (i != 1) //if element dropped at the end of cart
+					{
+						$("<li id='new_"+cnt+"'></li>").html(patient_plan).appendTo(_this);
+					}
+					
+				}
+				
+				//redraw zebra
+				zebra_style(_this);
+		}
+		
+		
+});//document.ready
+	
+	
+	
+	var master_viewmode = '<?php echo $this->master_viewmode; ?>' ;//"order"; //this will be from user settings enum('order','timed')
+	//$(".day_plan_visit_hourly").show();	
+	function toggle_viewmode( onpageload ){
+		
+		//hide context menu
+		$( "#sett_visit_from_user" ).hide();
+		
+		if (onpageload === true){
+			if (master_viewmode == "order" ){master_viewmode = "timed";}
+			else {master_viewmode = "order";}
+		}
+		
+		if( master_viewmode == "order" ){
+			master_viewmode = "timed" ;
+			$("#master_viewmode").val(master_viewmode);
+			$("#viewmode_span_info").text("<?php echo $this->translate('you_are_in_timed_mode'); ?>");
+
+			
+			//$("#toggle_viewmode").val("<?php echo $this->translate('change_to_order_mode_view_btn'); ?>");
+			
+			$("#toggle_viewmode_timed").val(translate("you_are_in_timed_mode"));
+			$("#toggle_viewmode_order").val(translate('change_to_order_mode_view_btn'));
+			
+			
+			
+			$(".day_plan_visit_hourly").each(function(){
+				$("tr",this).show();
+				$('tr td:nth-child(1)', this).show();
+				$('tr th:nth-child(1)', this).show();				
+			});
+
+		}else{
+			master_viewmode = "order";
+			$("#master_viewmode").val(master_viewmode);
+			$("#viewmode_span_info").text("<?php echo $this->translate('you_are_in_order_mode'); ?>");
+
+			//$("#toggle_viewmode").val("<?php echo $this->translate('change_to_timed_mode_view_btn'); ?>");
+			
+			$("#toggle_viewmode_timed").val(translate("change_to_timed_mode_view_btn"));
+            $("#toggle_viewmode_order").val(translate('you_are_in_order_mode'));
+			
+			$(".day_plan_visit_hourly").each(function(){
+				var len = $("li", this).length;
+				if (len>=0){
+					//hide first td
+					$('tr td:nth-child(1)', this).hide();
+					$('tr th:nth-child(1)', this).hide();
+					
+					
+					//hide rows
+					$("ul", this).each(function(){
+						if($("li", this).length <1) 
+							$(this).closest("tr").hide();					
+					});			
+				}
+				if (len == 0){
+					//show first tr so we have a droppable row
+					$('tr:nth-child(1)', this).show();
+				}
+				$('.duration', this).hide();
+			});
+
+		}	
+		
+		if (!onpageload){
+			//ajax save new view mode for this day
+			$.ajax({
+				type : 'POST',
+				url : 'ajax/dayplanningviewmode',
+				data : {
+					"dayplanningnew" : "1",
+					"viewmode" : master_viewmode,
+					"date" : "<?php  echo $day_planning['current_date'];?>"
+				},
+				success : function(data) {
+				},
+				error : function() {
+					var ajax_done = 1;
+				}
+			});
+		}
+	}
+	
+	
+	function convertHex(hex,opacity){
+		hex = hex.replace('#','');
+		r = parseInt(hex.substring(0,2), 16);
+		g = parseInt(hex.substring(2,4), 16);
+		b = parseInt(hex.substring(4,6), 16);
+
+		result = 'rgba('+r+','+g+','+b+','+opacity/100+')';
+		return result;
+	}
+	
+	function add_extra_patients(){
+		$("#extra_patients-dialog").dialog("open");
+		return false;
+	}
+
+	function add_extra_users(){
+		$("#hidden_users-dialog").dialog("open");
+		return false;
+	}
+	
+	function close_all_user_boxes(){
+		$("html, body").animate({ scrollTop: 0 }, "fast");
+		$(".day_plan_body").hide();
+		$( "#sett_visit_from_user" ).hide();
+
+		return false;
+	}
+	
+	function load_extra_patients(tab_index , patient_status)
+	{
+		if (!patient_status) {
+			var patient_status = "standby";
+			var tab_index = 0;
+		}
+
+		if(patient_status.length>0)
+		{
+
+			var table = '';
+
+			if ($('#extra_patients-dialog').is(':visible')) {
+				$('#extra_patients-dialog').block({
+									css : {
+										border : 'none',
+										padding : '5px',
+										backgroundColor : '#000',
+										'-webkit-border-radius' : '5px',
+										'-moz-border-radius' : '5px',
+										opacity : .5,
+										color : '#fff',
+										height : 'auto'
+									},
+									message : '<h1 style="padding:5px;">Verarbeitung</h1><img src="<?php echo RES_FILE_PATH.'/images/ajax-loader-bar.gif'; ?>">'
+								});
+			}
+
+			$.ajax({
+				type : 'POST',
+				url : 'ajax/patientsearchteammeeting',
+				data : {
+					"dayplanningnew" : "1",
+					status : patient_status,
+					"sort_by" : "last_name",
+					"sort_dir" : "ASC"
+				},
+				success : function(data) {
+										
+					$("#tabs-" + tab_index + "-" + patient_status).html(data);
+					
+					extra_patient_tabs_fetched[tab_index] =  true;
+
+					$('#extra_patients-dialog').unblock();
+
+				},
+				error : function() {
+					var ajax_done = 1;
+				}
+			});
+		}
+	}
+	
+	function ObjectLength_Modern( object ) {
+    	return Object.keys(object).length;
+	}
+
+	function ObjectLength_Legacy( object ) {
+		var length = 0;
+		for( var key in object ) {
+			if( object.hasOwnProperty(key) ) {
+				++length;
+			}
+		}
+		return length;
+	}
+	var ObjectLength = Object.keys ? ObjectLength_Modern : ObjectLength_Legacy;
+	
+	
+	function edit_visit_from_user( _this, visit_id ) 
+	{		
+		if(!visit_id)
+		{
+			var user_dummy = _this.closest('div.day_plan_user').attr('data-userid');
+		}
+		var visit_comment = $('#visit_patient_comment_'+visit_id).val();
+		
+		$('#edit_visit_id').val(visit_id);
+		$('#edit_visit_comment').val(visit_comment);
+
+		$('#edit_visit').data('ultarget', _this).dialog('open');
+	}
+	
+	function remove_visit_from_user( _this, visit_id ) 
+	{			
+		
+		var parent_li = $(_this).closest('li');
+		var parent_ul = $(_this).closest('ul');
+		
+		//get patient id before visit is deleted
+		var visit_patient_id =  $('.visit_patient', parent_li).val();
+		var patient_enc_id =  $('.patient_enc_id', parent_li).val();
+		var tr_with_patient_details = $( "tr[data-patient_enc_id='"+patient_enc_id+"']" ,$("#patients_lists_board"));
+
+		var row_number = tr_with_patient_details.children('td').find('a').attr('rel') || ""; //row in the right tables
+
+		//remove visit from user plan
+		$(parent_li).remove();
+			
+		//get remaining patient visits
+		var remaining_pat_visits_span = $(".visits_remaining_per_day" , tr_with_patient_details);
+		var visits_per_day_settings = Number(remaining_pat_visits_span.data("visits_per_day_settings")) || 0;
+		var remaining_pat_visits = Number(remaining_pat_visits_span.html()) || 0;
+		
+		//increment remaining visits
+		remaining_pat_visits++
+
+		if (remaining_pat_visits < 1) {
+			remaining_pat_visits = 1;
+		}
+		if (remaining_pat_visits > visits_per_day_settings) {
+			remaining_pat_visits = visits_per_day_settings;
+		}
+		
+		//update patient table with curent remaining visit
+		update_pat_remaining_visits(row_number, remaining_pat_visits);
+
+		//set the row to be red for 2 seconds
+		red_row_hint(tr_with_patient_details);
+		
+		//recalcutate this hour visits tottal time
+		calcutate_visits_time(parent_ul , 0 , parent_ul.parent());
+		
+		if ( $("li", $(parent_ul).closest("table")).length == 0){
+			$(".placeholder" , $(parent_ul).closest("div").parent()).show();
+		}
+		 
+	}
+	
+	
+	function extra_visit_from_user(_this, visit_id) 
+	{
+		var parent_li = $(_this).closest('li');
+		var parent_ul = $(_this).closest('ul');
+		
+		//get patient id
+		var patient_enc_id =  $('.patient_enc_id', parent_li).val();		
+		var tr_with_patient_details = $( "tr[data-patient_enc_id='"+patient_enc_id+"']" ,$("#patients_lists_board"));
+		var row_number = tr_with_patient_details.children('td').find('a').attr('rel') || ""; 
+
+		 
+		//get remaining patient visits
+		var remaining_pat_visits_span = $(".visits_remaining_per_day" , tr_with_patient_details);
+		var visits_per_day_settings = Number(remaining_pat_visits_span.data("visits_per_day_settings")) || 0;
+		var remaining_pat_visits = Number(remaining_pat_visits_span.html()) || 0;
+
+		
+		//increment remaining visits
+		remaining_pat_visits++
+		if (remaining_pat_visits < 1) {
+			remaining_pat_visits = 1;
+		}
+
+		//update patient table with curent remaining visit		
+		update_pat_remaining_visits(row_number, remaining_pat_visits);
+		
+		//set the row to be red for 2 seconds
+		red_row_hint(tr_with_patient_details);
+		
+		
+	}
+	
+	function red_row_hint (_tr) {
+		//set the row to be red for 2 seconds
+		$(_tr)
+		.addClass('extra_visit_from_user_hint')
+		.delay(2000)
+		.queue(function(){
+		   $(this).removeClass('extra_visit_from_user_hint'); 
+		   $(this).dequeue();
+		});
+	}
+</script>
+<style type="text/css">
+.ui-accordion .ui-accordion-header a {
+	display: block;
+	font-size: .9em;
+	padding: .3em .3em .3em 2em;
+}
+	
+	.ui-state-hover .day_plan_user_title{
+		background: #ffffcc none repeat scroll 0 0;
+	}
+	
+	.print_patients_class  .chosen-results {
+		max-height:160px!important;
+	}
+
+	.print_users_class .chosen-results {
+		max-height:180px!important;
+	}
+	
+	.pseudogroup_usertitle_table, 
+	.pseudogroup_usertitle_table td{
+		border: none!important;
+		padding:0!important;
+	}
+	
+
+}
+    
+    
+    
+</style>
+<div id="selector_manual_forms_editmode"></div>
+<div style="display: none;">
+	<img id="calImg" src="<?php echo RES_FILE_PATH;  ?>/images/calendar.png"
+		alt="Popup" class="trigger">
+</div>
+	<input type="hidden" name="plan_date" value="<?php echo date('Y-m-d 00:00:00', strtotime($day_planning['plan_date'])) ;?>"  id="plan_date"  />
+	<form action="" name="pdf_print_form" method="post" id="pdf_print_form" >
+		
+		<input type="hidden" name="pdf_print_users" id="pdf_print_users" value="0"/>
+		<input type="hidden" name="pdf_print_patients" id="pdf_print_patients" value="0"/>
+		<input type="hidden" name="pdf_print_period" id="pdf_print_period" value="0"/>
+			
+		<input type="hidden" name="pdf_print_action" id="pdf_print_action" value="1"/>
+
+		<input type="button" name="pdf_print" id="pdf_print" value="<?php echo $this->translate('planning_pdf'); ?>"/>
+		<input type="button" id="pdf_print_allweek" value="<?php echo $this->translate('planning_pdf_allweek'); ?>"/>
+
+	</form>
+	
+	<?php if ( $this->has_link_permissions == true ) : ?>
+	<input type="button" name="save_planning" id="save_planning" value="<?php echo $this->translate('save') ?>" style="float:right;"/>
+	<?php endif; ?>
+	
+	<form action="" name="date_form" method="post" id="date_form" >
+		<input type="hidden" name="date_action" id="date_action" value="0"/>
+		<div class="previous_date" >
+			<input type="hidden" name="previous_date" id="previous_date" value="<?php  echo $day_planning['previous_date'];?>" />
+			<a href="<?php echo APP_BASE; ?>roster/dayplanningnew?date=<?php echo strtotime($day_planning['previous_date'])?>"  id="go_to_previous">	</a>
+		</div>
+		
+		<div class="current_date">
+			<input type="text" name="date" value="<?php  echo $day_planning['current_date'];?>" id="current_date_input" />
+		</div>
+
+
+		<div class="next_date">
+			<input type="hidden" name="next_date"  id="next_date"  value="<?php  echo $day_planning['next_date'];?>" />
+			<a href="<?php echo APP_BASE; ?>roster/dayplanningnew?date=<?php echo strtotime($day_planning['next_date'])?>" id="go_to_next" >	</a>
+		</div>
+
+		<div class="page_loading">&nbsp;</div>
+	</form>
+<div class="day_planning_wrapper">
+	<table id="planning_days_bar" class="datatable">
+		<tr>
+			<td class="bar_row">
+				<div class="pagination clearfix">
+					<?php foreach($this->current_month_days as $k_day => $v_day): ?>
+						<a href="<?php echo APP_BASE; ?>roster/dayplanningnew?date=<?php echo strtotime($v_day);?>" class="<?php if(strtotime($v_day) == strtotime($day_planning['current_date'])): ?>active<?php endif; ?>" ><?php echo date('d', strtotime($v_day)); ?></a>
+					<?php endforeach; ?>
+				</div>
+			</td>
+		</tr>
+	</table>
+<div class="page">
+
+	<table width="100%">
+    <!-- 
+		<tr>
+			<td colspan="2" class="selector_forms_editmode">
+				<img src="<?php echo RES_FILE_PATH; ?>/images/manual_duty.jpg" />
+			</td>
+		</tr>
+     -->
+		<tr>
+			<th class="header_title">
+				<?php echo $this->translate('day_planning_board')?>: <b><?php  echo $day_planning['current_date'];?></b>
+				
+				<?php if ( $this->has_link_permissions == true ) : ?>
+				<span style="float:right">
+                    <input type="button" value="<?=$this->translate('change_to_order_mode_view_btn')?>" onclick="toggle_viewmode();" id="toggle_viewmode_order" class="toggle_viewmode_btn">
+                    <input type="button" value="<?=$this->translate('change_to_timed_mode_view_btn')?>" onclick="toggle_viewmode();" id="toggle_viewmode_timed" class="toggle_viewmode_btn">
+                </span>
+				<?php endif; ?>				
+			</th>
+			
+			<th class="header_title" style="width:20%;">
+				<?php echo $this->translate('day_planning_patients')?>
+                <input type="text" id="searchInput" style="width:80px" placeholder= "<?=$this->translate("filter")?> <?=$this->translate("patient")?>">
+			</th>
+		
+		</tr>
+		<tr>
+			<td class="day_planning_board">
+				<div id="day_planning_board_floater">
+				<form name="save_plan" id="save_plan" method="POST">
+					<input type="hidden" name="save_users_to_plan" id="save_users_to_plan" value="1" />
+					<input type="hidden" value="<?php echo $this->master_viewmode; ?>" id="master_viewmode" name="master_viewmode">
+
+				<table  id="day_planning_table_board" height="100%">
+					<tr>
+						<th>
+                            <?php echo $this->translate('dayplanning')?> &raquo;  <?php echo $this->translate( $name_of_this_day );?> &raquo; <span id="viewmode_span_info"></span>
+                            <div style="float:right;">
+                                <input onclick="close_all_user_boxes()" type="button" id="close_all_user_boxes_label" value="<?php echo $this->translate('close_all_user_boxes_label'); ?>" style="float:right" >
+                            </div>
+
+                        </th>
+					</tr>
+					
+                    
+                    
+                    <!-- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ -->
+                    <!-- ++++++++++++++++    starttof board for users with shifts or visits    ++++++++++++++++ -->
+                    <!-- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ -->
+                    <tr><td style="border-bottom:none;"><h5><?=$this->translate('User with a shift');?></h5></td></tr>
+                    <tr>
+						<td class="board" style="border-top:none;">
+						
+							<table class="board_users_table selector_sortables_board_users_table">
+								<tr>
+<?php 
+$user_count = 0;
+$count_day_planning_users = 0;
+                            
+
+
+//reorder array so users with shifts and visits are first, and users with no shifts are last
+//this action should/must be performed in controler
+
+$users_without_shifts = $users_with_something = array();
+foreach($day_planning['users'] as $user_id=>$user_values){
+    if(!in_array($user_id, $this->user_has_shift_today_roster) && empty($user_values['planned_visits'] )){
+        $users_without_shifts[$user_id] = $day_planning['users'][$user_id];
+    }else{
+        $users_with_something[$user_id] = $day_planning['users'][$user_id];
+    }
+}
+
+
+$total_day_planning_users = count($users_with_something);
+$users_per_td_count = ceil($total_day_planning_users / 3);
+?>
+                                
+<?php 
+if ( ! empty($this->customBoxOrder[301])|| ! empty($this->customBoxOrder[302]) || ! empty($this->customBoxOrder[303])) :
+
+    $users_in_boxorder = array_merge(
+        array_column($this->customBoxOrder[301], 'boxid'),
+        array_column($this->customBoxOrder[302], 'boxid'),
+        array_column($this->customBoxOrder[303], 'boxid')
+    );
+
+    $users_with_something_missing_on_boxorder = array_filter($users_with_something, function($i, $k) use($users_in_boxorder) {return ! in_array($k, $users_in_boxorder);}, ARRAY_FILTER_USE_BOTH);
+
+    if ( ! empty($users_with_something_missing_on_boxorder)) {
+
+        $users_with_something_missing_on_boxorder = array_keys($users_with_something_missing_on_boxorder);
+
+        array_walk($users_with_something_missing_on_boxorder, function(&$item) {
+            //dd($item);
+            $item = [ 
+            'boxcol' => 303,
+            'boxid' => $item,
+            'boxorder' => null,
+            ];
+        });
+
+        if (empty($this->customBoxOrder[303]))
+            $this->customBoxOrder[303] = [];
+        $this->customBoxOrder[303] = array_merge($this->customBoxOrder[303], $users_with_something_missing_on_boxorder);
+
+    }
+
+    for ($customBoxOrder_i = 301; $customBoxOrder_i<=303; $customBoxOrder_i++) : 
+        $empty_custom_td = true;
+?>
+
+      <td class="td_users td_users_column_<?=$customBoxOrder_i?>">
+      
+      <?php
+            foreach ($this->customBoxOrder[$customBoxOrder_i] as $userOrder) :
+
+                $user_id = $userOrder['boxid'];
+
+                if ( ! isset($users_with_something[$user_id])) continue;
+
+
+                $empty_custom_td = false;
+
+                $user_values = $users_with_something[$user_id];
+
+                $data_viewmode = "";
+                                    if (!empty($user_values['active_today'])){
+                                        $data_viewmode = $user_values['active_today']['view_mode'];
+                                    }else{
+                                        $data_viewmode = $this->master_viewmode;
+                                    }
+
+                                    $hide_this_user = false;
+                                    //check to see if client setting hide the users without shift
+                                    if( $this->tagesplanung_only_user_with_shifts == "1" && !in_array($user_id, $this->user_has_shift_today_roster) && empty($user_values['planned_visits'] )){
+                                        $hide_this_user = true;
+                                    }
+
+?>
+
+<div class="day_plan_user selector_sortables_item_day_plan" style="<?php if($hide_this_user) echo 'display:none;';?> float:none;" id="day_plan_user_<?php echo $user_id; ?>" data-viewmode="<?php echo $data_viewmode;?>" data-userid ="<?=$user_id?>" data-usertype="user">
+                                    
+                                        <input type="hidden" name="day_planning[users][<?php echo $user_id; ?>]" id="user_plan_<?php echo $user_id; ?>" class="add_user_to_dayplan" value="<?php echo $user_id; ?>">
+                                        
+                                        <div class="day_plan_user_title">
+                                            <h3 style="width:100%" class="user_title"><?php echo $day_planning['all_client_users'][$user_id]['user_title']?> <?php echo $day_planning['all_client_users'][$user_id]['last_name']?>, <?php echo $day_planning['all_client_users'][$user_id]['first_name']?>
+                                                <?php if(isset($day_planning['users_with_isinactive'][$user_id])):?>
+                                                - <?php echo $this->translate('userinactive');?>
+                                                <?php endif; ?>
+                                            </h3>                       
+                                        </div>
+                                        
+                                        <div style="clear:both"></div>
+
+                                        <div class="day_plan_body" style="<?php if (empty($user_values['planned_visits']) ) :?> display:none; <?php endif; ?>" >
+
+                                            <div class="placeholder" id="no_visits_<?php echo $user_id; ?>" style="<?php if(!empty($user_values['planned_visits'])): ?> display:none;<?php endif; ?>" >
+                                                    <?php echo $this->translate('no visits planned for today')?>
+                                            </div>
+                                            <div style="clear:both;"></div>
+
+
+                                                <!-- timed table -->
+                                                <table class="day_plan_visit_hourly">
+
+                                                <tbody>
+                                                    <?php $hours_visits =  array(); ?>
+                                                    <?php if (!empty($user_values['planned_visits'])):?>
+
+
+                                                    <?php 
+
+                                                        $i=1;
+
+                                                        $visit_orderid = array();
+                                                        foreach($user_values['planned_visits']  as $ku =>$vistits_values ):
+
+                                                    ?>
+                                                    <?php 
+
+                                                            if ($vistits_values['hour'] == "0" && $vistits_values['start_date']!= "0000-00-00 00:00:00"){
+
+                                                                $date = date('H', strtotime($vistits_values['start_date']));
+                                                                $hours_visits_html = "<li id='". $vistits_values['id'] ."' ><span>".$day_planning['active_patients'][$vistits_values['ipid']]['patient_name'] ."</span>"
+                                                                            ."<br></span><span id='v_comment_".$vistits_values["id"]."'>".html_entity_decode($vistits_values["comment"]);
+
+                                                                    if ( $this->has_link_permissions == true ) {
+                                                                            /*      
+                                                                            $hours_visits_html .='<a href="javascript:void(0)" class="remove_visit_from_user" rel="'.$vistits_values['id'] .'" ><b></b></a>'
+                                                                            .'<a href="javascript:void(0)" class="edit_visit_from_user" rel="'.$vistits_values['id'] .'"><b></b></a>';
+                                                                            */
+                                                                            $hours_visits_html .= '<a href="javascript:void(0)" class="visit_contextmenu" rel="'.$vistits_values['id'] .'"><b></b></a>';
+
+                                                                    }
+                                                                    $hours_visits_html .= '<input type="hidden" class="visit_patient" name="visit_patient['.$vistits_values["id"].']"  value="'.$day_planning['active_patients'][$vistits_values['ipid']]['id_encrypt_format'] .'" />'
+                                                                            .'<input type="hidden" id="visit_patient_comment_'.$vistits_values["id"].'" class="visit_comment"  value="'.$this->escape( $vistits_values["comment"] ).'" />'
+                                                                            .'<input type="hidden" class="visit_duration"  value="'. $day_planning['active_patients'][$vistits_values['ipid']]['visit_duration'] .'"  />'
+                                                                            .'<input type="hidden" class="patient_enc_id"  value="'. $day_planning['active_patients'][$vistits_values['ipid']]['id_encrypt_format'] .'" />'
+                                                                            .'</li>';
+                                                                $hours_visits[$date][] = $hours_visits_html;
+
+                                                            }else{
+
+                                                                $date = sprintf("%02d", $vistits_values['hour']);
+                                                                
+                                                                
+                                                                if (isset($visit_orderid[$date][$vistits_values['orderid']]) )  {
+
+                                                                    $vistits_values['orderid'] = $vistits_values['id'];
+                                                                }
+
+
+                                                                $visit_orderid[$date] [$vistits_values['orderid']] = $vistits_values['orderid'];
+
+                                                                $hours_visits[$date][$vistits_values['orderid']] = "<li id='". $vistits_values['id'] ."' ><div><span>". $day_planning['active_patients'][$vistits_values['ipid']]['patient_name']; 
+
+                                                                $hours_visits[$date][$vistits_values['orderid']] .= "<br></span><span id='v_comment_".$vistits_values["id"]."'>".html_entity_decode($vistits_values["comment"]);
+
+                                                                $hours_visits[$date][$vistits_values['orderid']] .= "</span></div>";
+                                                                
+                                                                if ( $this->has_link_permissions == true ) {
+                                                                    /*
+                                                                    $hours_visits[$date][$vistits_values['orderid']] .='<div>'
+                                                                            .'<a href="javascript:void(0)" class="remove_visit_from_user" rel="'.$vistits_values['id'] .'" ><b></b></a>'
+                                                                            .'<a href="javascript:void(0)" class="edit_visit_from_user" rel="'.$vistits_values['id'] .'" ><b></b></a>'
+                                                                            .'</div>';
+                                                                            */
+                                                                    $hours_visits[$date][$vistits_values['orderid']] .= '<div>'
+                                                                            . '<a href="javascript:void(0)" class="visit_contextmenu" rel="'.$vistits_values['id'] .'"><b></b></a>'
+                                                                            . '</div>';
+
+                                                                }
+                                                                $hours_visits[$date][$vistits_values['orderid']] .= '<input type="hidden" class="visit_patient" name="visit_patient['.$vistits_values["id"].']"  value="'.$day_planning['active_patients'][$vistits_values['ipid']]['id_encrypt_format'] .'" />'
+                                                                            .'<input type="hidden" id="visit_patient_comment_'.$vistits_values["id"].'" class="visit_comment"  value="'.html_entity_decode($vistits_values["comment"]) .'" />'
+                                                                            .'<input type="hidden" class="visit_duration"  value="'. $day_planning['active_patients'][$vistits_values['ipid']]['visit_duration'] .'" />'
+                                                                            .'<input type="hidden" class="patient_enc_id"  value="'. $day_planning['active_patients'][$vistits_values['ipid']]['id_encrypt_format'] .'" />'
+                                                                            .'</li>';
+                                                            }
+
+                                                            ksort($hours_visits[$date]);
+
+                                                    ?>
+                                                    <?php $i++; endforeach; //var_dump( $visit_orderid); exit;?>
+
+                                                    <?php endif;?>
+
+
+
+<?php
+
+$hh = array_map(function ($hh) {return str_pad($hh, 2, "0", STR_PAD_LEFT);}, range(0, 23));
+
+foreach ($hh as $one_hh) :
+
+    if ($this->tourenplanung_settings 
+        && (int)$this->tourenplanung_settings['workhours_start']>-1 && (int)$this->tourenplanung_settings['workhours_end'] > -1
+        &&  ((int)$one_hh < (int)$this->tourenplanung_settings['workhours_start'] || (int)$one_hh > (int)$this->tourenplanung_settings['workhours_end'])
+    ) {
+
+        $data_forcedDisplay = false;
+
+        if (empty ($hours_visits[$one_hh])) {
+            continue;
+        } else {
+            $data_forcedDisplay = true; //this should not be!.. but we display
+        }
+    }
+
+?>
+
+    <tr>
+        <td width="18px"><?=$one_hh?></td>
+        <td>
+            <ul class="droptrue" data-hour="<?=$one_hh?>" <?=($data_forcedDisplay ? "data_forcedDisplay='{$data_forcedDisplay}'" : '')?>><?php echo implode("\r\n", $hours_visits[$one_hh]); ?></ul>
+        </td>
+    </tr>
+                                                        
+
+<?php
+endforeach;
+?>
+                                    
+                                                </tbody>                                    
+                                            </table>
+                                            <div style="clear:both;"></div>
+                                        </div>
+                                        <div style="clear:both"></div>
+
+                                    </div>   
+
+<?php
+                 
+
+            endforeach;
+
+            if ($empty_custom_td) : ?>
+                <div class='selector_sortables_item_day_plan selector_sortables_empty boxsort_placeholder'><?=$this->translate("This row is empty, you can drag/drop here a box")?></div>
+            <?php
+            endif;
+      ?>
+        
+      </td>
+      
+
+<?php
+        endfor; //customBoxOrder_i
+?>
+
+
+<?php
+// endif customBoxOrder
+else : 
+?>
+                                
+                                
+                                
+                                
+						
+
+
+
+							<?php foreach($users_with_something as $user_id=>$user_values):?>
+							
+                            
+                            <?php //dd($users_with_something, $this->customBoxOrder); ?>
+							
+									
+							<?php if(1==1 ||  !empty($user_values['active_today'])) :?>
+							<?php 
+									$user_count++; 
+									$count_day_planning_users++;
+									$data_viewmode = "";
+									if (!empty($user_values['active_today'])){
+										$data_viewmode = $user_values['active_today']['view_mode'];
+									}else{
+										$data_viewmode = $this->master_viewmode;
+									}
+
+									$hide_this_user = false;
+									//check to see if client setting hide the users without shift
+									if(	$this->tagesplanung_only_user_with_shifts == "1" && !in_array($user_id, $this->user_has_shift_today_roster) && empty($user_values['planned_visits'] )){
+										$hide_this_user = true;
+									}
+
+
+							?>
+							<?php if ($user_count == 1 ) :?>
+                                 <td class="td_users">
+							<?php endif;?>
+								
+									<div class="day_plan_user selector_sortables_item_day_plan" style="<?php if($hide_this_user) echo 'display:none;';?> float:none;" id="day_plan_user_<?php echo $user_id; ?>" data-viewmode="<?php echo $data_viewmode;?>" data-userid ="<?=$user_id?>" data-usertype="user">
+									
+										<input type="hidden" name="day_planning[users][<?php echo $user_id; ?>]" id="user_plan_<?php echo $user_id; ?>" class="add_user_to_dayplan" value="<?php echo $user_id; ?>">
+										
+										<div class="day_plan_user_title">
+											<h3 style="width:100%" class="user_title"><?php echo $day_planning['all_client_users'][$user_id]['user_title']?> <?php echo $day_planning['all_client_users'][$user_id]['last_name']?>, <?php echo $day_planning['all_client_users'][$user_id]['first_name']?>
+												<?php if(isset($day_planning['users_with_isinactive'][$user_id])):?>
+												- <?php echo $this->translate('userinactive');?>
+												<?php endif; ?>
+											</h3>						
+										</div>
+										
+										<div style="clear:both"></div>
+
+										<div class="day_plan_body" style="<?php if (empty($user_values['planned_visits']) ) :?> display:none; <?php endif; ?>" >
+
+											<div class="placeholder" id="no_visits_<?php echo $user_id; ?>" style="<?php if(!empty($user_values['planned_visits'])): ?> display:none;<?php endif; ?>" >
+													<?php echo $this->translate('no visits planned for today')?>
+											</div>
+											<div style="clear:both;"></div>
+
+
+												<!-- timed table -->
+												<table class="day_plan_visit_hourly">
+
+												<tbody>
+													<?php $hours_visits =  array(); ?>
+													<?php if (!empty($user_values['planned_visits'])):?>
+
+
+													<?php 
+
+														$i=1;
+
+														$visit_orderid = array();
+														foreach($user_values['planned_visits']  as $ku =>$vistits_values ):
+
+													?>
+													<?php 
+
+															if ($vistits_values['hour'] == "0" && $vistits_values['start_date']!= "0000-00-00 00:00:00"){
+
+																$date = date('H', strtotime($vistits_values['start_date']));
+																$hours_visits_html = "<li id='". $vistits_values['id'] ."' ><span>".$day_planning['active_patients'][$vistits_values['ipid']]['patient_name'] ."</span>"
+																			."<br></span><span id='v_comment_".$vistits_values["id"]."'>".html_entity_decode($vistits_values["comment"]);
+
+																	if ( $this->has_link_permissions == true ) {
+																			/*		
+																			$hours_visits_html .='<a href="javascript:void(0)" class="remove_visit_from_user" rel="'.$vistits_values['id'] .'" ><b></b></a>'
+																			.'<a href="javascript:void(0)" class="edit_visit_from_user" rel="'.$vistits_values['id'] .'"><b></b></a>';
+																			*/
+																			$hours_visits_html .= '<a href="javascript:void(0)" class="visit_contextmenu" rel="'.$vistits_values['id'] .'"><b></b></a>';
+
+																	}
+																	$hours_visits_html .= '<input type="hidden" class="visit_patient" name="visit_patient['.$vistits_values["id"].']"  value="'.$day_planning['active_patients'][$vistits_values['ipid']]['id_encrypt_format'] .'" />'
+																			.'<input type="hidden" id="visit_patient_comment_'.$vistits_values["id"].'" class="visit_comment"  value="'.$this->escape( $vistits_values["comment"] ).'" />'
+																			.'<input type="hidden" class="visit_duration"  value="'. $day_planning['active_patients'][$vistits_values['ipid']]['visit_duration'] .'"  />'
+																			.'<input type="hidden" class="patient_enc_id"  value="'. $day_planning['active_patients'][$vistits_values['ipid']]['id_encrypt_format'] .'" />'
+																			.'</li>';
+																$hours_visits[$date][] = $hours_visits_html;
+
+															}else{
+
+																$date = sprintf("%02d", $vistits_values['hour']);
+																
+																
+																if (isset($visit_orderid[$date][$vistits_values['orderid']]) )  {
+																	$vistits_values['orderid'] = $vistits_values['id'];
+																}
+
+
+																$visit_orderid[$date][$vistits_values['orderid']] = $vistits_values['orderid'];
+
+																$hours_visits[$date][$vistits_values['orderid']] = "<li id='". $vistits_values['id'] ."' ><div><span>". $day_planning['active_patients'][$vistits_values['ipid']]['patient_name']; 
+
+																$hours_visits[$date][$vistits_values['orderid']] .= "<br></span><span id='v_comment_".$vistits_values["id"]."'>".html_entity_decode($vistits_values["comment"]);
+
+																$hours_visits[$date][$vistits_values['orderid']] .= "</span></div>";
+																
+																if ( $this->has_link_permissions == true ) {
+																	/*
+																	$hours_visits[$date][$vistits_values['orderid']] .='<div>'
+																			.'<a href="javascript:void(0)" class="remove_visit_from_user" rel="'.$vistits_values['id'] .'" ><b></b></a>'
+																			.'<a href="javascript:void(0)" class="edit_visit_from_user" rel="'.$vistits_values['id'] .'" ><b></b></a>'
+																			.'</div>';
+																			*/
+																	$hours_visits[$date][$vistits_values['orderid']] .= '<div>'
+																			. '<a href="javascript:void(0)" class="visit_contextmenu" rel="'.$vistits_values['id'] .'"><b></b></a>'
+																			. '</div>';
+
+																}
+																$hours_visits[$date][$vistits_values['orderid']] .= '<input type="hidden" class="visit_patient" name="visit_patient['.$vistits_values["id"].']"  value="'.$day_planning['active_patients'][$vistits_values['ipid']]['id_encrypt_format'] .'" />'
+																			.'<input type="hidden" id="visit_patient_comment_'.$vistits_values["id"].'" class="visit_comment"  value="'.html_entity_decode($vistits_values["comment"]) .'" />'
+																			.'<input type="hidden" class="visit_duration"  value="'. $day_planning['active_patients'][$vistits_values['ipid']]['visit_duration'] .'" />'
+																			.'<input type="hidden" class="patient_enc_id"  value="'. $day_planning['active_patients'][$vistits_values['ipid']]['id_encrypt_format'] .'" />'
+																			.'</li>';
+															}
+
+															ksort($hours_visits[$date]);
+
+													?>
+													<?php $i++; endforeach;?>
+
+													<?php endif;?>
+
+
+
+<?php
+
+$hh = array_map(function ($hh) {return str_pad($hh, 2, "0", STR_PAD_LEFT);}, range(0, 23));
+
+foreach ($hh as $one_hh) :
+
+    if ($this->tourenplanung_settings 
+        && (int)$this->tourenplanung_settings['workhours_start']>-1 && (int)$this->tourenplanung_settings['workhours_end'] > -1
+        &&  ((int)$one_hh < (int)$this->tourenplanung_settings['workhours_start'] || (int)$one_hh > (int)$this->tourenplanung_settings['workhours_end'])
+    ) {
+
+        $data_forcedDisplay = false;
+
+        if (empty ($hours_visits[$one_hh])) {
+            continue;
+        } else {
+            $data_forcedDisplay = true; //this should not be!.. but we display
+        }
+    }
+
+?>
+
+    <tr>
+        <td width="18px"><?=$one_hh?></td>
+        <td>
+            <ul class="droptrue" data-hour="<?=$one_hh?>" <?=($data_forcedDisplay ? "data_forcedDisplay='{$data_forcedDisplay}'" : '')?>><?php echo implode("\r\n", $hours_visits[$one_hh]); ?></ul>
+        </td>
+    </tr>
+                                                        
+
+<?php
+endforeach;
+?>
+  									
+												</tbody>									
+											</table>
+											<div style="clear:both;"></div>
+										</div>
+										<div style="clear:both"></div>
+
+									</div>	 
+							<?php endif; ?>
+							
+							<?php  if ($user_count == $users_per_td_count  || $count_day_planning_users == $total_day_planning_users) :?>
+							<?php 	$user_count = 0; ?>
+								
+                                </td>
+							<?php endif;?>
+	
+							<?php if ($total_day_planning_users==1) echo '<td class="td_users s2">&nbsp;</td>'; ?>
+									
+						<?php endforeach;?>
+                        
+<?php endif; // end if customBoxOrder ?>
+                        
+								</tr>
+							</table>
+						</td>
+					</tr>
+					<!-- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ -->
+                    <!-- ++++++++++++++++    end of board for users with shifts or visits    ++++++++++++++++ -->
+                    <!-- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ -->
+					
+                    
+                    
+                    
+                    
+                    
+                    <!-- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ -->
+					<!-- ++++++++++++++++    start users_pseudo_group    ++++++++++++++++ -->
+                    <!-- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ -->
+					<?php if(!empty($pat_visits_settings_visiting_users['pseudogrups']) && count(($pat_visits_settings_visiting_users['pseudogrups'])) > 1): ?>
+                    <tr><td style="border-bottom:none;"><h5><?=$this->translate('User groups');?></h5></td></tr>                    
+					<tr>
+						<td class="board" style="border-top:none;">
+							<table class="board_users_table selector_sortables_board_pseudogroups_table">
+								<tr>
+
+
+
+<?php
+
+
+$users_pseudo_group = $pat_visits_settings_visiting_users['pseudogrups'];
+$pseudo_grups_visits = $this->pseudo_grups_visits;
+
+$user_count = 0;
+$count_day_planning_pseudo = 0;
+
+$total_day_planning_pseudo = count($users_pseudo_group);
+$users_per_td_count = ceil($total_day_planning_pseudo / 3);
+
+?>
+
+
+
+<?php 
+if ( ! empty($this->customBoxOrder[304])|| ! empty($this->customBoxOrder[305]) || ! empty($this->customBoxOrder[306])) :
+
+    $pseudogroups_in_boxorder = array_merge(
+        array_column($this->customBoxOrder[304], 'boxid'),
+        array_column($this->customBoxOrder[305], 'boxid'),
+        array_column($this->customBoxOrder[306], 'boxid')
+    );
+
+    $pseudogroups_missing_on_boxorder = array_filter($users_pseudo_group, function($i, $k) use($pseudogroups_in_boxorder) {return ! in_array($k, $pseudogroups_in_boxorder) && $k !='groupname';}, ARRAY_FILTER_USE_BOTH);
+
+
+    if ( ! empty($users_pseudo_group)) {
+
+        $pseudogroups_missing_on_boxorder = array_keys($pseudogroups_missing_on_boxorder);
+
+        array_walk($pseudogroups_missing_on_boxorder, function(&$item) {
+            //dd($item);
+            $item = [ 
+            'boxcol' => 306,
+            'boxid' => $item,
+            'boxorder' => null,
+            ];
+        });
+
+        if (empty($this->customBoxOrder[306]))
+            $this->customBoxOrder[306] = [];
+        $this->customBoxOrder[306] = array_merge($this->customBoxOrder[306], $pseudogroups_missing_on_boxorder);
+
+    }
+
+    for ($customBoxOrder_i = 304; $customBoxOrder_i<=306; $customBoxOrder_i++) : 
+        $empty_custom_td = true;
+?>
+
+    <td class="td_users td_users_column_<?=$customBoxOrder_i?>">
+      
+    <?php
+            foreach ($this->customBoxOrder[$customBoxOrder_i] as $userOrder) :
+
+                $user_id = $userOrder['boxid'];
+
+                if (! isset($users_pseudo_group[$user_id])) 
+                    continue;
+
+                $user_values = $pseudo_grups_visits[$user_id];
+                $pseudo_group = $users_pseudo_group[$user_id];
+
+                $empty_custom_td = false;
+
+
+
+
+
+
+    ?>
+    
+               <div class="day_plan_user selector_sortables_item_day_plan" id="day_plan_user_<?php echo $user_id; ?>" data-viewmode="<?php echo $data_viewmode;?>" data-usertype="pseudogrups" data-userid="<?=$user_id;?>">
+                                    
+                                        <input type="hidden" name="day_planning[pseudogrups][<?php echo $user_id; ?>]" id="pseudogrups_plan_<?php echo $user_id; ?>" class="add_user_to_dayplan" value="<?php echo $user_id; ?>">
+                                        
+                                        <div class="day_plan_user_title">
+                                            <table class="pseudogroup_usertitle_table">
+                                                <tr>
+                                                    <td>
+                                                        <h3 class="user_title"><?php echo $pseudo_group?></h3>
+                                                    </td>
+                                                    
+                                                    <?php if (isset($users_in_pseudogroup[$user_id])) : ?>
+                                                    <td width="20px">
+                                                        <div class="tooltip">
+                                                            <span class="tooltiptext">
+                                                                <?php echo implode("<br/>",$users_in_pseudogroup[$user_id]); ?> 
+                                                            </span>
+
+                                                        </div>
+                                                    </td>
+                                                    <?php endif; ?>
+                                                </tr>
+                                            </table>
+                                        </div>
+                                        
+                                        <div style="clear:both"></div>
+
+                                        <div class="day_plan_body" style="<?php if (empty($user_values['planned_visits']) ) :?> display:none; <?php endif; ?>" >
+
+                                            <div class="placeholder" id="no_visits_<?php echo $user_id; ?>" style="<?php if(!empty($user_values['planned_visits'])): ?> display:none;<?php endif; ?>" >
+                                                    <?php echo $this->translate('no visits planned for today')?>
+                                            </div>
+                                            <div style="clear:both;"></div>
+
+
+                                                <!-- timed table -->
+                                                <table class="day_plan_visit_hourly">
+
+                                                <tbody>
+                                                    <?php $hours_visits =  array(); ?>
+                                                    <?php if (!empty($user_values['planned_visits'])):?>
+
+
+                                                    <?php 
+
+                                                        $i=1;
+
+                                                        $visit_orderid = array();
+                                                        foreach($user_values['planned_visits']  as $ku =>$vistits_values ):
+
+                                                    ?>
+                                                    <?php 
+
+                                                        
+                                                                $date = sprintf("%02d", $vistits_values['hour']);
+                                                                
+                                                                                                                        
+                                                                
+                                                                if (isset($visit_orderid[$date][$vistits_values['orderid']]) )  {
+                                                                        $vistits_values['orderid'] = $vistits_values['id'];
+                                                                }
+
+
+                                                                $visit_orderid[$date][$vistits_values['orderid']] = $vistits_values['orderid'];
+
+
+
+                                                                $hours_visits[$date][$vistits_values['orderid']] = "<li id='". $vistits_values['id'] ."' ><div><span>". $day_planning['active_patients'][$vistits_values['ipid']]['patient_name']; 
+
+
+                                                                $hours_visits[$date][$vistits_values['orderid']] .= "<br></span><span id='v_comment_".$vistits_values["id"]."'>".html_entity_decode($vistits_values["comment"]);
+
+
+                                                                $hours_visits[$date][$vistits_values['orderid']] .= "</span></div>";
+
+                                                                if ( $this->has_link_permissions == true ) {
+                                                                    /*
+                                                                    $hours_visits[$date][$vistits_values['orderid']] .= '<div>'
+                                                                            .'<a href="javascript:void(0)" class="remove_visit_from_user" rel="'.$vistits_values['id'] .'" ><b></b></a>'
+                                                                            .'<a href="javascript:void(0)" class="edit_visit_from_user" rel="'.$vistits_values['id'] .'" ><b></b></a>'
+                                                                            .'</div>';
+                                                                    */
+                                                                    $hours_visits[$date][$vistits_values['orderid']] .= '<div>'
+                                                                            .'<a href="javascript:void(0)" class="visit_contextmenu" rel="'.$vistits_values['id'] .'"><b></b></a>'
+                                                                            .'</div>';
+
+                                                                }
+
+                                                                $hours_visits[$date][$vistits_values['orderid']] .='<input type="hidden" class="visit_patient" name="visit_patient['.$vistits_values["id"].']"  value="'.$day_planning['active_patients'][$vistits_values['ipid']]['id_encrypt_format'] .'" />'
+                                                                            .'<input type="hidden" id="visit_patient_comment_'.$vistits_values["id"].'" class="visit_comment"  value="'.html_entity_decode($vistits_values["comment"]) .'" />'
+                                                                            .'<input type="hidden" class="visit_duration"  value="'. $day_planning['active_patients'][$vistits_values['ipid']]['visit_duration'] .'" />'
+                                                                            .'<input type="hidden" class="patient_enc_id"  value="'. $day_planning['active_patients'][$vistits_values['ipid']]['id_encrypt_format'] .'" />'
+                                                                            .'</li>';
+                                                            
+
+                                                            ksort($hours_visits[$date]);
+
+                                                    ?>
+                                                    <?php $i++; endforeach;?>
+
+                                                    <?php endif;?>
+<?php
+
+$hh = array_map(function ($hh) {return str_pad($hh, 2, "0", STR_PAD_LEFT);}, range(0, 23));
+
+foreach ($hh as $one_hh) :
+
+    if ($this->tourenplanung_settings 
+        && (int)$this->tourenplanung_settings['workhours_start']>-1 && (int)$this->tourenplanung_settings['workhours_end'] > -1
+        &&  ((int)$one_hh < (int)$this->tourenplanung_settings['workhours_start'] || (int)$one_hh > (int)$this->tourenplanung_settings['workhours_end'])
+    ) {
+
+        $data_forcedDisplay = false;
+
+        if (empty ($hours_visits[$one_hh])) {
+            continue;
+        } else {
+            $data_forcedDisplay = true; //this should not be!.. but we display
+        }
+    }
+
+?>
+
+    <tr><td width="18px"><?=$one_hh?></td><td><ul class="droptrue" data-hour="<?=$one_hh?>" <?=($data_forcedDisplay ? "data_forcedDisplay='{$data_forcedDisplay}'" : '')?> ><?php echo implode("\r\n", $hours_visits[$one_hh]); ?></ul></td></tr>                                               
+
+<?php
+endforeach;
+?>
+
+                                                </tbody>                                    
+                                            </table>
+                                            <div style="clear:both;"></div>
+                                        </div>
+                                        <div style="clear:both"></div>
+
+                                    </div>   
+    
+    <?php 
+            endforeach;
+
+            if ($empty_custom_td) : ?>
+                <div class='selector_sortables_item_day_plan selector_sortables_empty boxsort_placeholder'><?=$this->translate("This row is empty, you can drag/drop here a box")?></div>
+            <?php
+            endif;
+    ?>
+    
+    </td>        
+
+
+<?php   
+    endfor;//customBoxOrder_i
+
+else : 
+?>
+
+
+<?php 
+
+
+
+
+foreach ($users_pseudo_group as $user_id => $pseudo_group ) :
+
+    if ($user_id == "groupname") continue;
+
+
+
+    $user_count++;
+
+    $user_values = $pseudo_grups_visits[$user_id];
+
+?>
+
+							<?php if ($user_count == 1 ) : ?>
+								<td class="td_users">
+							<?php endif;?>
+									
+																		
+									
+									<div class="day_plan_user selector_sortables_item_day_plan" id="day_plan_user_<?php echo $user_id; ?>" data-viewmode="<?php echo $data_viewmode;?>" data-usertype="pseudogrups" data-userid="<?=$user_id;?>">
+									
+										<input type="hidden" name="day_planning[pseudogrups][<?php echo $user_id; ?>]" id="pseudogrups_plan_<?php echo $user_id; ?>" class="add_user_to_dayplan" value="<?php echo $user_id; ?>">
+										
+										<div class="day_plan_user_title">
+											<table class="pseudogroup_usertitle_table">
+												<tr>
+													<td>
+														<h3 class="user_title"><?php echo $pseudo_group?></h3>
+													</td>
+													
+													<?php if (isset($users_in_pseudogroup[$user_id])) : ?>
+													<td width="20px">
+														<div class="tooltip">
+															<span class="tooltiptext">
+																<?php echo implode("<br/>",$users_in_pseudogroup[$user_id]); ?>	
+															</span>
+
+														</div>
+													</td>
+													<?php endif; ?>
+												</tr>
+											</table>
+										</div>
+										
+										<div style="clear:both"></div>
+
+										<div class="day_plan_body" style="<?php if (empty($user_values['planned_visits']) ) :?> display:none; <?php endif; ?>" >
+
+											<div class="placeholder" id="no_visits_<?php echo $user_id; ?>" style="<?php if(!empty($user_values['planned_visits'])): ?> display:none;<?php endif; ?>" >
+													<?php echo $this->translate('no visits planned for today')?>
+											</div>
+											<div style="clear:both;"></div>
+
+
+												<!-- timed table -->
+												<table class="day_plan_visit_hourly">
+
+												<tbody>
+													<?php $hours_visits =  array(); ?>
+													<?php if (!empty($user_values['planned_visits'])):?>
+
+
+													<?php 
+
+														$i=1;
+
+														$visit_orderid = array();
+														foreach($user_values['planned_visits']  as $ku =>$vistits_values ):
+
+													?>
+													<?php 
+
+														
+																$date = sprintf("%02d", $vistits_values['hour']);
+																
+																														
+																
+																if (isset($visit_orderid[$date][$vistits_values['orderid']]) )  {
+																		$vistits_values['orderid'] = $vistits_values['id'];
+																}
+
+
+																$visit_orderid[$date][$vistits_values['orderid']] = $vistits_values['orderid'];
+
+
+
+																$hours_visits[$date][$vistits_values['orderid']] = "<li id='". $vistits_values['id'] ."' ><div><span>". $day_planning['active_patients'][$vistits_values['ipid']]['patient_name']; 
+
+
+																$hours_visits[$date][$vistits_values['orderid']] .= "<br></span><span id='v_comment_".$vistits_values["id"]."'>".html_entity_decode($vistits_values["comment"]);
+
+
+																$hours_visits[$date][$vistits_values['orderid']] .= "</span></div>";
+
+																if ( $this->has_link_permissions == true ) {
+																	/*
+																	$hours_visits[$date][$vistits_values['orderid']] .= '<div>'
+																			.'<a href="javascript:void(0)" class="remove_visit_from_user" rel="'.$vistits_values['id'] .'" ><b></b></a>'
+																			.'<a href="javascript:void(0)" class="edit_visit_from_user" rel="'.$vistits_values['id'] .'" ><b></b></a>'
+																			.'</div>';
+																	*/
+																	$hours_visits[$date][$vistits_values['orderid']] .= '<div>'
+																			.'<a href="javascript:void(0)" class="visit_contextmenu" rel="'.$vistits_values['id'] .'"><b></b></a>'
+																			.'</div>';
+
+																}
+
+																$hours_visits[$date][$vistits_values['orderid']] .='<input type="hidden" class="visit_patient" name="visit_patient['.$vistits_values["id"].']"  value="'.$day_planning['active_patients'][$vistits_values['ipid']]['id_encrypt_format'] .'" />'
+																			.'<input type="hidden" id="visit_patient_comment_'.$vistits_values["id"].'" class="visit_comment"  value="'.html_entity_decode($vistits_values["comment"]) .'" />'
+																			.'<input type="hidden" class="visit_duration"  value="'. $day_planning['active_patients'][$vistits_values['ipid']]['visit_duration'] .'" />'
+																			.'<input type="hidden" class="patient_enc_id"  value="'. $day_planning['active_patients'][$vistits_values['ipid']]['id_encrypt_format'] .'" />'
+																			.'</li>';
+															
+
+															ksort($hours_visits[$date]);
+
+													?>
+													<?php $i++; endforeach;?>
+
+													<?php endif;?>
+<?php
+
+$hh = array_map(function ($hh) {return str_pad($hh, 2, "0", STR_PAD_LEFT);}, range(0, 23));
+
+foreach ($hh as $one_hh) :
+
+    if ($this->tourenplanung_settings 
+        && (int)$this->tourenplanung_settings['workhours_start']>-1 && (int)$this->tourenplanung_settings['workhours_end'] > -1
+        &&  ((int)$one_hh < (int)$this->tourenplanung_settings['workhours_start'] || (int)$one_hh > (int)$this->tourenplanung_settings['workhours_end'])
+    ) {
+
+        $data_forcedDisplay = false;
+
+        if (empty ($hours_visits[$one_hh])) {
+            continue;
+        } else {
+            $data_forcedDisplay = true; //this should not be!.. but we display
+        }
+    }
+
+?>
+
+    <tr><td width="18px"><?=$one_hh?></td><td><ul class="droptrue" data-hour="<?=$one_hh?>" <?=($data_forcedDisplay ? "data_forcedDisplay='{$data_forcedDisplay}'" : '')?> ><?php echo implode("\r\n", $hours_visits[$one_hh]); ?></ul></td></tr>                                               
+
+<?php
+endforeach;
+?>
+
+												</tbody>									
+											</table>
+											<div style="clear:both;"></div>
+										</div>
+										<div style="clear:both"></div>
+
+									</div>	 
+									
+									
+									
+	
+							<?php  if ($user_count == $users_per_td_count  || $count_day_planning_pseudo == $total_day_planning_pseudo) :?>
+							<?php 	$user_count = 0; ?>
+								</td>
+							<?php endif;?>
+									
+							<?php if ($total_day_planning_pseudo==2) echo '<td class="td_users">&nbsp;</td>'; ?>
+
+									
+<?php
+endforeach;
+?>
+
+<?php
+endif;
+?>
+
+								</tr>
+							</table>
+						</td>
+					</tr>	
+					<?php endif; ?>
+					<!-- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ -->
+                    <!-- ++++++++++++++++    end users_pseudo_group    ++++++++++++++++ -->
+                    <!-- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ -->
+					
+
+
+
+
+
+
+					
+                    <!-- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ -->
+                    <!-- ++++++++++++++++    start users without shift    ++++++++++++++++ -->
+                    <!-- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ -->
+					<tr>
+                        <tr><td style="border-bottom:none;"><h5><?=$this->translate('User without shift');?></h5></td></tr>  
+						<td class="board" style="border-top:none;">
+							<table class="board_users_table" id="users_without_shift_table">
+								<tr>									
+							<?php	
+								$total_day_planning_users = count($users_without_shifts);
+								$users_per_td_count = ceil($total_day_planning_users / 3);
+								$user_count = 0;
+								$count_day_planning_users = 0;
+
+								foreach($users_without_shifts as $user_id=>$user_values):
+
+									$user_count++;
+
+									$hide_this_user = false;
+									//check to see if client setting hide the users without shift
+									if(	$this->tagesplanung_only_user_with_shifts == "1" && !in_array($user_id, $this->user_has_shift_today_roster) && empty($user_values['planned_visits'] )){
+										$hide_this_user = true;
+									}
+
+							?>
+
+							<?php if ($user_count == 1 ) : ?>
+								<td class="td_users">
+							<?php endif;?>
+							
+									<div class="day_plan_user" style="<?php if($hide_this_user) echo 'display:none;';?>" id="day_plan_user_<?php echo $user_id; ?>" data-viewmode="<?php echo $data_viewmode;?>" data-usertype="user">
+									
+										<input type="hidden" name="day_planning[users][<?php echo $user_id; ?>]" id="user_plan_<?php echo $user_id; ?>" class="add_user_to_dayplan" value="<?php echo $user_id; ?>">
+										
+										<div class="day_plan_user_title">
+											<h3 style="width:100%" class="user_title"><?php echo $user_values['user_title']?> <?php echo $user_values['last_name']?>, <?php echo $user_values['first_name']?></h3>						
+										</div>
+										
+										<div style="clear:both"></div>
+
+										<div class="day_plan_body" style="<?php if (empty($user_values['planned_visits']) ) :?> display:none; <?php endif; ?>" >
+
+											<div class="placeholder" id="no_visits_<?php echo $user_id; ?>" style="<?php if(!empty($user_values['planned_visits'])): ?> display:none;<?php endif; ?>" >
+													<?php echo $this->translate('no visits planned for today')?>
+											</div>
+											<div style="clear:both;"></div>
+
+
+												<!-- timed table -->
+												<table class="day_plan_visit_hourly">
+
+												<tbody>
+                                                
+<?php
+
+$hh = array_map(function ($hh) {return str_pad($hh, 2, "0", STR_PAD_LEFT);}, range(0, 23));
+
+foreach ($hh as $one_hh) :
+
+    if ($this->tourenplanung_settings 
+        && (int)$this->tourenplanung_settings['workhours_start']>-1 && (int)$this->tourenplanung_settings['workhours_end'] > -1
+        &&  ((int)$one_hh < (int)$this->tourenplanung_settings['workhours_start'] || (int)$one_hh > (int)$this->tourenplanung_settings['workhours_end'])
+    ) {
+        continue;
+    }
+
+?>
+
+    <tr><td width="18px"><?=$one_hh?></td><td><ul class="droptrue" data-hour="<?=$one_hh?>"></ul></td></tr>
+
+<?php
+endforeach;
+?>
+                                                
+													
+												</tbody>									
+											</table>
+											<div style="clear:both;"></div>
+										</div>
+										<div style="clear:both"></div>
+
+									</div>			
+									
+							<?php  if ($user_count == $users_per_td_count  || $count_day_planning_users == $total_day_planning_users) :?>
+							<?php 	$user_count = 0; ?>
+								</td>
+							<?php endif;?>
+							<?php if ($total_day_planning_users==1) echo '<td class="td_users">&nbsp;</td>'; ?>
+							<? endforeach;?>
+									</tr>
+							</table>
+						</td>
+					</tr>
+                    <!-- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ -->
+                    <!-- ++++++++++++++++    end users without shift    ++++++++++++++++ -->
+                    <!-- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ -->
+					
+                    
+                    
+                    
+                    
+                    
+					
+					<tr>
+						<td>
+							<?php if( !empty($this->hidden_users)) :?>
+								<a href="javascript:void(0)" id="add_extra_users" onclick="add_extra_users()" style="font-size:12px;">
+									<img src="<?php echo RES_FILE_PATH; ?>/images/action_add.png" />
+									<b><? echo $this->translate('add_users_without_shifts_today');?></b>
+								</a>
+							<?php endif; ?>
+							
+							<input onclick="close_all_user_boxes()" type="button" id="close_all_user_boxes_label" value="<?php echo $this->translate('close_all_user_boxes_label'); ?>" style="float:right" >
+
+						</td>
+					</tr>
+					
+				</table>
+				</form>
+				
+				</div><!--	day_planning_board_floater -->
+					
+			</td>
+			
+
+			
+			
+			
+			
+			<td class="patients_lists">
+				<table id="patients_lists_board">
+					<thead>
+					<tr>
+						<th width="18px"></th>
+						<th><?php echo $this->translate('lastname') ?></th>
+						<th><?php echo $this->translate('firstname') ?></th>
+						<th width="25px"><?php echo $this->translate('visits_per_day_column') ?></th>
+						<th width="40px"><?php echo $this->translate('visit_duration_column') ?></th>
+						<th width="25px"><?php echo $this->translate('location_td_header') ?></th>
+					</tr>
+					</thead>
+					
+					<tbody>
+						<tr class="not_draggable has_visit_settings_tr">
+							<td colspan="6" class="" style="padding-top:10px;" >
+								<b><?php echo $this->translate('Patients with visit settings Today');?></b>
+							</td>
+						</tr>
+						
+					<?php $o = 1;  foreach($day_planning['active_patients'] as $pat_id => $pat_values): ?>
+					
+					<?php 
+						if ( $pat_values['has_visit_settings']) {
+							$has_visit_settings = "patient_with_visit_settings";
+						} else {
+							$has_visit_settings = "patient_without_visit_settings";
+						}
+
+					?>
+					
+					<tr class="<?php echo $has_visit_settings;?> <?php if($pat_values['visits_remaining_per_day'] <= 0): ?> tr_disabled <?php endif; ?>" id="patient_row_<?php echo $pat_values['id']; ?>" data-patient_enc_id="<?php echo $pat_values['id_encrypt_format']; ?>">
+						<td>
+							<a href="javascript:void(0)" class="add_to_dayplan" data-patient_enc_id="<?php echo $pat_values['id_encrypt_format']; ?>" rel="<?php echo $pat_values['id']; ?>"></a>
+						</td>
+						<td>
+							<span id="p_last_name_<?php echo $pat_values['id']; ?>"><?php echo $pat_values['last_name']; ?></span>
+							<!-- ISPC-2545 Lore 17.03.2020 -->
+							<?php if (isset($pat_values['verordnung_type']) && count($pat_values['verordnung_type']) > 0 ): ?>
+								<img class="system_icon_filters_list" src="<?php echo RES_FILE_PATH;  ?>/icons_system/<?php echo $pat_values['verordnung_type_icon']; ?>">
+							<?php endif; ?>
+						</td>
+
+						<td>
+							<span id="p_first_name_<?php echo $pat_values['id']; ?>"><?php echo $pat_values['first_name'] ?></span>
+						</td>
+						<td>
+							<span id="p_vrpd_<?php echo $pat_values['id']; ?>" class="visits_remaining_per_day" data-visits_per_day_settings="<?php echo (int)$pat_values['visits_per_day'] ?>"><?php echo $pat_values['visits_remaining_per_day'] ?></span>
+						</td>
+						<td>
+							<span id="p_vd_<?php echo $pat_values['id']; ?>"><?php echo $pat_values['visit_duration'] ?></span>
+							<input type="hidden" name="visits_duration" id="visit_duration_<?php echo $pat_values['id']; ?>" value="<?php echo $pat_values['visit_duration'] ?>" />
+						</td>
+						
+						<td>
+							<?php if ($pat_values['actual_location']['location_type'] == "1"): ?>
+								<img class="system_icon_filters_list" src="<?php echo RES_FILE_PATH;  ?>/icons_system/is_hospital_icon.png">
+							<?php elseif ($pat_values['isstandby'] == "1"): ?>
+								<img class="system_icon_filters_list" src="<?php echo RES_FILE_PATH;  ?>/icons_system/is_standby_icon.png">
+							<?php endif; ?>
+						</td>
+						
+						
+					</tr>
+					
+					<tr class="<?php echo $has_visit_settings;?> patient_tourplan_settings" style="display:none;" data-parent_patient_enc_id="<?php echo $pat_values['id_encrypt_format']; ?>">
+						<td colspan="3" class="settings" >
+							<b><?php echo $this->translate('patientlocation')?></b> : <?php echo $pat_values['actual_location'][location]; ?>
+							<br>
+							<b>	<?php echo $this->translate($name_of_this_day);?>	<?php echo $this->translate('displayvisitssettings');?>	</b>
+							<br>
+							<?php
+								$visit_settings = ($pat_values['visit_settings']['visit_settings']);
+
+								foreach( $visit_settings as $k => $visit) :
+									$name = "";
+									if ($visit['visitor_type'] == 'pseudogrups'){
+										$name = $this->escape($pat_visits_settings_visiting_users['pseudogrups'][ $visit['visitor_id'] ]);
+?>
+									<input type="hidden" class="visit_default_hour" data-patient_enc_id="<?php echo $pat_values['id_encrypt_format']; ?>" data-patid="<?php echo $pat_values['id']; ?>" data-userid="<?php echo $visit['visitor_id']?>" data-userid_type="<?php echo $visit['visitor_type']?>" data-visithour="<?php echo $visit['visit_hour'];?>">
+
+							<?php
+
+									}
+									elseif ($visit['visitor_type'] == 'grups'){
+										$name = $this->escape($pat_visits_settings_visiting_users['grups'][ $visit['visitor_id'] ]['groupname']);
+									}else{
+										if (isset($pat_visits_settings_visiting_users['alldoctors'][ $visit['visitor_id'] ])) {
+											$name =  $this->escape($pat_visits_settings_visiting_users['alldoctors'][ $visit['visitor_id'] ]) ;
+										} else {
+											//this user is inaktive or keine visit or something wrong
+											$name = "<span  style='text-decoration: line-through;'>". $this->escape($day_planning['all_client_users'][ $visit['visitor_id'] ]['nice_name']) . "</span>"; 
+										}
+
+?>
+							
+										<input type="hidden" class="visit_default_hour" data-patient_enc_id="<?php echo $pat_values['id_encrypt_format']; ?>" data-patid="<?php echo $pat_values['id']; ?>" data-userid="<?php echo $visit['visitor_id']?>" data-userid_type="<?php echo $visit['visitor_type']?>" data-visithour="<?php echo $visit['visit_hour'];?>">
+
+								<?php 
+										}//end if is user type	
+									if ( (int)$visit['visits_per_day']  > 0 ) {
+										echo ("&nbsp;&nbsp;" . trim($name) . " : ". $this->escape($visit['visits_per_day'])  . " visits" . "<br>\n");
+									}
+								?>
+							<?php endforeach; ?>
+							
+							<b>	<?php echo $this->translate('treateddby');?></b>
+							<br>
+							<span class="treateddby">
+							<?php
+							//echo treated-by doctor initials
+							 foreach($pat_values['PatientQpaMapping'] as $userid) :
+								$leading_class = "";
+								if (is_array($pat_values['PatientQpaLeading']) && in_array($userid, $pat_values['PatientQpaLeading'])) {
+									$leading_class = "<a class='user-star leading' style='background-size: 8px 24px;background-position: 0 -16px; width: 8px;height: 8px; padding 0px; display:inline-block; float:none;'></a> ";
+								}
+
+								if ($day_planning['all_client_users'][$userid]['isactive'] == 0 && $day_planning['all_client_users'][$userid]['isdelete'] == 0 ) {
+									$name =  $this->escape($day_planning['all_client_users'][$userid]['initials']) ;
+								} else {
+									//this user is inaktive or keine visit or something wrong
+									$name = "<span  style='text-decoration: line-through;'>". $this->escape($day_planning['all_client_users'][$userid]['initials'])  . "</span>"; 
+								}
+								//echo ( $leading_class. $day_planning['all_client_users'][$userid]['initials'] . "- ".  $this->escape($day_planning['all_client_users'][$userid]['nice_name']) . "<br>\n"); 							
+								echo ( $leading_class. $name . "; \n"); 							
+							?>
+							<?php endforeach; ?>		
+							</span>
+							
+							
+							<!-- ISPC-2545 Lore 17.03.2020 -->
+							<?php if (isset($pat_values['verordnung_type'])) : ?> 
+								<br>
+								<b>	<?php echo $this->translate('verordnet').':';?></b>
+								
+								<span class="verordnungtype">
+								<?php
+								 foreach($pat_values['verordnung_type'] as $keyvdt => $valvdt) :
+									echo ( $valvdt . "; \n"); 							
+								?>
+								<?php endforeach; ?>		
+								</span>
+							<?php endif; ?>
+						</td>
+						
+						<td colspan="3" class="patientdetails" >
+							<a href="patientnew/patientdetails?id=<?php echo $pat_values['id_encrypt_format']; ?>" ><?php echo $this->translate("patientmasterdata"); ?></a>
+							<hr>
+							<div class="highcharts-menu-item" ><a class="extra_visit_from_user extra_visit_from_user_righttable"><?php echo $this->translate("Extra visit"); ?></a></div>
+						</td>
+					</tr>
+					
+					<?php $o++;	endforeach; ?>
+						
+						<tr class="not_draggable not_has_visit_settings_tr">
+							<td colspan="6" class="" style="padding-top:10px;" >
+								<b><?php echo $this->translate('Patients without visit settings Today');?></b>
+							</td>
+						</tr>
+						
+					</tbody>
+				</table>
+			
+				<?php if ( $this->has_link_permissions == true ) : ?>
+				<a href="javascript:void(0)" id="add_extra_patients" onclick="add_extra_patients()" >
+					<img src="<?php echo RES_FILE_PATH; ?>/images/action_add.png" />
+					<b><? echo $this->translate('add extra patients');?></b>
+				</a>
+				<?php endif; ?>
+				
+			</td>
+
+			
+		</tr>
+	</table>
+</div>
+</div>
+
+	<div class="edit_visit" id="edit_visit" style="display:none">
+		<input type="hidden" name="edit_visit_action" value="0" id="edit_visit_action" />
+		<input type="hidden" name="edit_visit_id" value="0" id="edit_visit_id" />
+		<div>
+			<fieldset>
+    		<legend><?php echo $this->translate('dayplanning_add_comment') ?></legend>
+		
+				<textarea id="edit_visit_comment"></textarea>
+				
+			</fieldset>
+				
+			
+		</div>
+	</div>
+
+	<!-- modal dialog to add extra patients -->
+	<div id="extra_patients-dialog" title="<? echo  $this->translate('Add extra Patients');?>" style="display:none">
+		<div id="tabs_extra_patients">
+			<ul>
+				<li><a href="#tabs-0-standby"><? echo  $this->translate('Extra_Standby_Patients');?></a></li>
+				<li><a href="#tabs-1-discharged_alive"><? echo  $this->translate('Extra Discharge Patients');?></a></li>
+				<li><a href="#tabs-2-discharged_dead"><? echo  $this->translate('Extra Dead Patients');?></a></li>
+		  	</ul>
+		  	
+			<div id="tabs-0-standby"></div>
+			<div id="tabs-1-discharged_alive"></div>
+			<div id="tabs-2-discharged_dead"></div>
+		</div>
+	</div>
+
+<!-- print allweek dialog box-->
+<div id="print_dialog" title="<?php echo $this->translate('planning_pdf_allweek'); ?>" style="display:none;">
+	<fieldset>
+		<legend><?php echo $this->translate('please select'); ?></legend>
+		<div style="line-height: 30px;">
+			<?php 
+			$select_users = array();
+			//$select_users[ "none" ] = "";
+			$select_users[ "all_users" ] = $this->translate('allvisitorslist') ; //"All Users"; 
+			foreach($day_planning['users'] as $user){
+				if((int)$user ['id'] > 0){
+					$select_users[ $user ['id'] ] = $user['user_title'] ." " . $user['last_name'] .", ". $user[first_name];
+				}
+			}
+
+			//add pseudogroups also
+			if(!empty($pat_visits_settings_visiting_users['pseudogrups']) && count(($pat_visits_settings_visiting_users['pseudogrups'])) > 1){
+
+				foreach ($users_pseudo_group as $user_id => $pseudo_group ) {
+					if ($user_id == "groupname") continue;
+					$select_users[ "pseudo_".$user_id ] = $pseudo_group;
+				}
+			}
+			?>
+			<label for="print_users"  style="display:inline-block; width: 140px"><?php echo $this->translate("assigned_doctors"); ?></label>
+			<?php echo $this->formSelect('print_users', "all_users", array("id"=> "print_users", "class"=>"print_users_class"), $select_users );?>
+		</div>
+		<div style="clear:both"></div>
+		
+		<lable> <?php echo $this->translate("and"); ?> </label>
+
+		<div style="line-height: 30px;">
+		<?php
+			$select_patients = array();
+			//$select_patients[ "none" ] = "";
+			$select_patients[ "all_patients" ] = $this->translate('allpatientlist') ;
+
+			foreach($day_planning['active_patients'] as $pat_id => $pat_values){
+				$select_patients[ $pat_values ['id_encrypt_format'] ] = $pat_values['last_name'] .", ". $pat_values[first_name];
+			}
+		?>
+			<label for="print_users"  style="display:inline-block; width: 140px"><?php echo $this->translate("selected_patient"); ?></label>
+			<?php echo $this->formSelect('print_patients', "all_patients", array("id"=> "print_patients", "class"=>"print_patients_class") , $select_patients );?>
+		</div>
+	</fieldset>
+</div>
+
+
+	
+
+	
+	<div style="clear:both;"></div>
+	
+	<div class="highcharts-menu-copy" id="sett_visit_from_user" onclick="this.style.display = 'none';" style="display:none">
+
+		<div class="highcharts-menu-item" ><a class="edit_visit_from_user"><?php echo $this->translate("comment"); ?></a></div>
+		<hr>
+		<div class="highcharts-menu-item" ><a class="remove_visit_from_user"><?php echo $this->translate("deletes"); ?></a></div>
+		<hr>
+		<div class="highcharts-menu-item" ><a class="extra_visit_from_user"><?php echo $this->translate("Extra visit"); ?></a></div>
+		<hr>
+		<div class="highcharts-menu-item treateddby"></div>
+	</div>
+
+<?php if( !empty($this->hidden_users)) :?>
+<!-- hidden users dialog box -->
+<div id="hidden_users-dialog" title="<?php echo $this->translate('add_users_without_shifts_today'); ?>" style="display:none;">
+	
+	<label for="hidden_users"><?php echo $this->translate('pleaseselect');?> : </label>
+	<?php echo $this->formSelect('print_users', "all_users", array("id"=> "hidden_users", "class"=>"print_users_class"), $this->hidden_users );?>
+
+</div>	
+<?php endif; ?>
+
+
+<div style="clear:both;"></div>

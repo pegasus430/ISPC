@@ -1,0 +1,179 @@
+<script type="text/javascript">
+ var jsmedcount = "";
+ medcount = 2;
+ jsmedis = <? echo $this->jsmedis ?>;
+
+
+    function removeElem(ids){
+	$(ids).remove();
+    }
+	$(function() {
+		if($('#apothekeusers').val() !='' && $('#apothekeusers').val() !== null){
+ 
+			var hasmed = 0;
+			$('#medaddtable').find(":checkbox:checked").each(function(){
+				if($(this).val() != '') {
+					hasmed = 1;
+				}
+			});
+			if(hasmed == 1) {
+				$('#bestellen').attr('disabled',false);
+			} else {
+				$('#bestellen').attr('disabled',true);
+			}
+		} else {
+			$('#bestellen').attr('disabled',true);
+		}
+
+        $('#apothekeusers').change(function(){
+            if($(this).val() != '') {
+                var hasmed = 0;
+	        	$('#medaddtable').find(":checkbox:checked").each(function(){
+	            	if($(this).val() != '') {
+		            	hasmed = 1;
+	            	}
+	            });
+	            if(hasmed == 1) {
+	            	$('#bestellen').attr('disabled',false);
+	            } else {
+	            	$('#bestellen').attr('disabled',true);
+	            }
+            } else {
+                $('#bestellen').attr('disabled',true);
+            }
+
+        });
+
+        $('#medaddtable').find(':checkbox').change(function(){
+            if($('#apothekeusers').val() != '') {
+                var hasmed = 0;
+	        	$('#medaddtable').find(":checkbox:checked").each(function(){
+	            	if($(this).val() != '') {
+		            	hasmed = 1;
+	            	}
+	            });
+	            if(hasmed == 1) {
+	            	$('#bestellen').attr('disabled',false);
+	            } else {
+	            	$('#bestellen').attr('disabled',true);
+	            }
+            } else {
+                $('#bestellen').attr('disabled',true);
+            }
+
+        });
+
+    });
+$(document).ready(function() {
+
+
+   $('#assign_user_dialog').dialog({
+		autoOpen: false,
+		modal: true,
+		title: '<?php echo $this->translate('assignusertopatient'); ?>',
+		buttons: {
+			"<?php echo $this->translate('yesconfirm'); ?>": function() {
+				$('#assign_user_to_patient').val('1');
+				$( this ).dialog( "close" );
+				$('#frmpharmacyorder').submit();
+			},
+			"<?php echo $this->translate('noconfirm'); ?>": function() {
+				$('#assign_user_to_patient').val('0');
+				$( this ).dialog( "close" );
+				$('#frmpharmacyorder').submit();
+			}
+		}
+	});
+
+
+	$('#bestellen').bind('click', function(e) {
+		e.preventDefault() // prevents the form from being submitted
+
+		if ( ! checkclientchanged()){
+			return false;
+		}
+		
+		var selected_user = $('#apothekeusers').val();
+		var assigned_users = <?php echo $this->assigned_users; ?>;
+
+		var assigned_users_arr = [];
+		$.each(assigned_users, function(k,v){
+			assigned_users_arr[k] = v;
+		});
+
+		if(jQuery.inArray(''+selected_user+'', assigned_users_arr) != '-1'){
+			$('#assign_user_to_patient').val('0');
+			$('#frmpharmacyorder').submit();
+		} else {
+			//open modal to ask for assign
+			$('#assign_user_dialog').dialog('open');
+		}
+		
+	});
+
+
+
+
+});
+</script>
+<script type="text/javascript" src="<? echo RES_FILE_PATH;  ?>/javascript/livesearch/medication.js?<?php echo date('Ymd'); ?>"></script>
+<form action="" name="frmpharmacyorder" id="frmpharmacyorder" method="post" autocomplete="off" >
+<input type="hidden" name="assign_user" id="assign_user_to_patient" value="0" />
+<? echo $this->patientinfo ?>
+<? echo $this->tabmenus ?>
+<div class="tab_container">
+<br />
+<div id="pat_medication_add">
+<fieldset>
+<legend>Apotheken Bestellung</legend>
+<div id="med">
+<table width="85%" border="0" align="left" cellpadding="0" cellspacing="0" id="medaddtable" class="datatable">
+    <tr>
+	<th colspan="2" align="left" valign="top"><strong><? echo $this->translate('medication');?></strong></th>
+    </tr>
+    <tr>
+    <td style="width: 30px"><input type="checkbox" name="default" id="default"  value="1" checked="checked"/></td>
+    <td><label for="default">andere Bestellung laut Kommentar</label></td>
+    </tr>
+    <?php $i = 1; foreach( $this->medis as $kex=>$value):?>
+    <tr>
+    <td style="width: 30px;"><input type="checkbox" name="medication[<? echo $i ;?>]" id="medication[<? echo $i ;?>]"  value="<?php echo $kex; ?>"/></td>
+
+    <td> <span class="pharma_med_label"><?php echo $value; ?></span> </td>
+    </tr>
+    <?php $i++; endforeach;?>
+
+</table>
+    <br/>&nbsp;<br/>
+
+    <label for="komment">Kommentar</label>
+    <textarea name="komment" id="komment" style="width:100%;" ></textarea>
+</div><div class="clearer"></div>
+
+   <br/>&nbsp;<br/>
+ <label for="apothekeusers" class="pharmacyusers">Welche Apotheke?</label>
+ <select name="phuser" id="apothekeusers">
+ <?php if(count($this->pharmacyusers )!= 1 ):?>
+ <option value=""> </option>
+ <?php endif;?>
+ <?php foreach ($this->pharmacyusers as $key=>$value):?>
+ <option value="<?php echo $key; ?>"><?php echo $value; ?></option>
+ <?php endforeach; ?>
+
+ </select>
+    <br/>&nbsp;<br/>
+	<div class="clearer"></div>
+  	<input type="submit" name="bestellen" id="bestellen" value="Bestellen" disabled="disabled" class="button">
+
+
+
+
+
+
+</fieldset>
+</div>
+</div>
+</form>
+<div id="assign_user_dialog" >
+	<p><?php echo $this->translate('assignaphoteketouser'); ?></p>
+</div>

@@ -1,0 +1,1301 @@
+<!-- ISPC-2507 Lore 31.01.2020 -->
+<?php 
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/page-css/requestchanges.css?' . date('Ymd'));
+
+$form = $this->form_data;
+$thematics = $this->thematics;
+
+$medication_array = $this->medication;
+$medication_type = $this->medi_type ;
+$med_count = $this->med_count ;
+
+
+$client_medication_extra = $this->client_medication_extra;
+$allow_normal_scheduled = $this->allow_normal_scheduled;
+?>
+
+<script type="text/javascript">
+var modal_show_mmi = "<?php echo $this->show_mmi; ?>";
+
+ $(function() {
+
+		
+		$('.indication_color_select_modal').chosen({
+			placeholder_text_single: translate('please select'),
+			placeholder_text_multiple : translate('please select'),
+			multiple:0,
+			//width:'250px',// TODO-2762 Ancuta 19.12.2019
+			style: "padding-top:10px",
+			"search_contains": true,
+			disable_search: true,		// @Lore 31.10.2019
+			no_results_text: translate('noresultfound')
+		}).change(function () {
+			var color = $(this).find(":selected").attr('id').substr(-7);
+			$(this).parent().find('span').attr('style', 'background-color: '+color +' !important');
+	    });
+/* 
+  		$('.indication_color_select_modal').live('change', function() {
+	  		var that = $(this).find('option:selected'); 
+	  		//console.log(that);
+	  		//alert(that.val());
+	  		if(that.val()!=0){
+	  			$(this).attr("style",that.attr("style"));
+	  		} else{
+	  			$(this).removeAttr("style")  			
+	  		}
+  			
+  		});
+ */
+		$('.modal_referral').live('change keyup', function() {
+			var medication_type = $(this).attr("rel");
+			if ($(this).hasClass('modal_referral')) 
+			{
+				var input_row = parseInt($(this).attr('title').substr((medication_type+'_').length)); 			
+			}
+			$('#modal_edited_'+medication_type+'_'+input_row).val('1');
+		});
+		
+		 
+		$('.modal_expand_details').live('click',function(){
+			var med_id = $(this).data('expand_details_id');
+			
+			 
+			if( $('.modal_medication_row_'+med_id).hasClass('expanded')){
+				$('.modal_medication_row_'+med_id).removeClass('expanded')
+				$('.modal_medication_details_row_'+med_id).hide();
+			} else{
+				$('.modal_medication_row_'+med_id).addClass('expanded')
+				$('.modal_medication_details_row_'+med_id).show();
+				
+			}
+		});
+	 
+		$('.modal_edit_expand_details').live('click',function(){
+			var med_id = $(this).data('expand_details_id');
+			
+			 
+			if( $('.modal_edit_medication_row_'+med_id).hasClass('expanded')){
+				$('.modal_edit_medication_row_'+med_id).removeClass('expanded')
+				$('.modal_edit_medication_details_row_'+med_id).hide();
+			} else{
+				$('.modal_edit_medication_row_'+med_id).addClass('expanded')
+				$('.modal_edit_medication_details_row_'+med_id).show();
+				
+			}
+		});
+
+
+
+
+
+
+
+
+
+
+		
+	$('.submit_form').click(function(e){
+		e.preventDefault();
+		var action = $(this).data("action");
+		
+		$('#form_action').val(action);
+		$('#add_requestchanges_medication').submit();
+		setTimeout(function () {$('.submit_form').attr('disabled', true);}, 150);
+		setTimeout(function () {$('.submit_form').attr('disabled', false);}, 3000);
+	})
+	
+	
+	$('.insert_texts').live('click', function() {
+		
+		 
+		 var field_name  = $(this).data('id');
+		 var form_name  = $(this).data('form_name');
+		 
+		 if(field_name){
+			var url = appbase + 'ajax/formstexts';
+			xhr = $.ajax({
+				url : url,
+				data : {
+					field_name : field_name,
+					form_name : form_name
+				},
+				success : function(response) {
+					$('.requestchanges_content').html(response);
+
+				}
+			});
+		 }
+		 
+		$('#requestchanges-modal')
+			.data('options',field_name)
+			.dialog('open');
+	});
+
+	
+/* 	$('.livesearchmedinp_modal').live('change', function() {
+		var medication_type = $(this).attr('rel');
+		var input_row = parseInt($(this).attr('id').substr(('modal_medication_'+medication_type+'_').length));
+		reset_medications_modal(medication_type,input_row);
+	}).liveSearch({
+		url: 'pharmaindex/getproductsmedils?ik_no='+healthinsuranceik+'&sm=0&client='+client+'&searchtext=',
+		id: 'livesearch_admission_medications',
+		aditionalWidth: '300',
+		noResultsDelay: '900',
+		typeDelay: '900',
+		returnRowId: function (input) {
+			var medication_type = $(this).attr('rel');
+			return $(input).attr('id'); // not integer, ex :: medicationactual1 
+			}
+	}); */
+
+
+
+	if (modal_show_mmi == "1") {
+		//used in mmi dialog
+		var active_recipe_row = null;
+		$(document).off('click',".mmi_search_button").on('click', '.mmi_search_button', function(){
+			//var receipt_field = $(this).prev().prev();
+			var receipt_field = $(this);
+			active_recipe_row = receipt_field;
+		});
+	}
+	
+		// DEFINE MEDICATION LIVESEARCH - WITH MMI OR NOT
+		if (modal_show_mmi == "1") {
+		//INSTALL MEDIINDEX-WIDGET
+		var pim = new pharmaindex();
+		pim.input_medname = ".med";
+		pim.input_rowparent = "tr";
+		pim.input_receipe_butt = ".mmi_search_button";
+		pim.input_to_recipe = ".to_recipe";
+		pim.mode="recipe";
+		pim.ikno = "#ikno_input";
+		pim.use_suggestions = '0';
+		pim.otcWarningSw = '0';
+
+		//PATH FOR THE AJAX SCRIPTS
+		pim.ajaxPath = "pharmaindex";
+
+		//PATH FOR THE IMAGE FOLDER
+		pim.imagePath="images/pharmaindex";
+
+		/*
+		pim.callback = function(recipe,drug){ //
+			
+			var medication_type = active_recipe_row.attr('rel');
+			var input_row = parseInt(active_recipe_row.attr('id').substr(('medication_'+medication_type+'_').length));
+
+			$(active_recipe_row).val(recipe);
+			
+			if(drug){
+				$('#drug_'+medication_type+'_'+input_row).val(drug);
+			}
+			
+			$('#hidd_medication_'+medication_type+'_'+input_row).val('');
+			$('#edited_'+medication_type+'_'+input_row).val('1');
+		};
+		*/		
+
+		pim.callback = function(recipe, drug, extra_object ){
+			
+			var input_row = (active_recipe_row.attr('id').substr(('mmi_search_').length));
+			var res = input_row.split("_"); 
+			var medication_type = res[0];
+			
+			var pzn = 0;
+			var source = "custom";
+			var dbf_id = 0;
+			
+			//extra_object
+			if (arguments.length == 3 && typeof arguments[2] == 'object') {
+
+				if (arguments[2]['source'] == "mmi_dialog_price" && typeof arguments[2]['PRICE_ITEM'] == 'object') {
+					//this is a medication selected from the mmi pricelist
+					var PRICE_ITEM = arguments[2]['PRICE_ITEM'];
+					pzn = PRICE_ITEM.PZN;
+					dbf_id = PRICE_ITEM.ID;
+					source = arguments[2]['source'];
+				} else if (arguments[2]['source'] == "mmi_dialog_product" && typeof arguments[2]['PRODUCT'] == 'object') {
+					//this is a medication selected from the packages list
+					//!!! we don't use the pzn from the package list here ...
+					//PRODUCT.PACKAGE_LIST is [{}]
+					/*
+					var PACKAGE_ITEM_0 = arguments[2]['PRODUCT']['PACKAGE_LIST'][0];
+					pzn = PACKAGE_ITEM_0.PZN;
+					dbf_id = PACKAGE_ITEM_0.ID;
+					*/
+					var PRODUCT = arguments[2]['PRODUCT']
+					pzn = 0;
+					dbf_id = PRODUCT.ID;
+					source = arguments[2]['source'];
+				} else {
+					//error
+					pzn = 0;
+					source = "custom";
+					dbf_id = 0;
+				}
+			}
+							
+            var parent_tr;
+            if (parent_tr = $(active_recipe_row).closest("tr")) {
+            	 $('.modal_medication_pzn', parent_tr).val(pzn.toString().escapeValue());
+    	   	     $('.modal_medication_source', parent_tr).val(source.toString().escapeValue());
+    	   	     $('.modal_medication_dbf_id', parent_tr).val(dbf_id.toString().escapeValue());
+            }
+   	     
+			
+			
+			if(drug){
+				$('#modal_drug_'+input_row).val(drug);
+			}else{
+				$('#modal_drug_'+input_row).val('');
+			}
+			
+			$('#modal_medication_'+input_row).val(recipe);
+			$('#modal_hidd_medication_'+input_row).val('');
+			$('#modal_edited_'+input_row).val('1');
+ 
+		};
+
+		pim.install();
+		
+		$('.livesearchmedinp_modal').live('change', function() {
+			var medication_type = $(this).attr('rel');
+			var input_row = parseInt($(this).attr('id').substr(('modal_medication_'+medication_type+'_').length));
+			reset_medications_modal(medication_type,input_row);
+		}).liveSearch({
+			url: 'pharmaindex/getproductsmedils?ik_no='+healthinsuranceik+'&sm=0&client='+client+'&searchtext=',
+			id: 'livesearch_admission_medications',
+			aditionalWidth: '300',
+			noResultsDelay: '900',
+			typeDelay: '900',
+			returnRowId: function (input) {
+				var medication_type = $(this).attr('rel');
+				return $(input).attr('id'); // not integer, ex :: medicationactual1 
+				}
+		});
+		} else {
+		$('.livesearchmedinp_modal').live('change', function() {
+			var medication_type = $(this).attr('rel');
+			var input_row = parseInt($(this).attr('id').substr(('modal_medication_'+medication_type+'_').length));
+			reset_medications_modal(medication_type,input_row);
+		}).liveSearch({
+			url: 'ajax/medications?q=',
+			id: 'livesearch_admission_medications',
+			aditionalWidth: '300',
+			noResultsDelay: '900',
+			typeDelay: '900',
+			returnRowId: function (input) {
+				return $(input).attr('id'); // not integer, ex :: medicationactual1 
+			}
+		});
+	
+		}
+
+
+		$(document).off('click',".has_interval").on('click', '.has_interval', function(){
+			var medication_type = $(this).data('medication_type');
+			var medcount_line = $(this).data('medcount');
+			if($(this ).prop( "checked" )){
+				$("#modal_int_set_"+medication_type+"_"+medcount_line).show();		
+				$('#modal_edited_'+medication_type+'_'+medcount_line).val('1');
+			}
+			else
+			{
+				$("#modal_int_set_"+medication_type+"_"+medcount_line).hide();
+				$('#modal_edited_'+medication_type+'_'+medcount_line).val('1');
+				// empty lines
+				// interval				
+			}
+	
+
+
+		});
+
+		/* -------------------------------------------------------------- */
+		$('.modal_calculate_dosage_concentration').live('keyup change ', function(){
+			var row_info = $(this).data('dosage_row_info');
+			var column_info = $(this).data('dosage_column_info');
+
+			if($('#modal_concentration_'+row_info).val() != undefined){
+				concentration = $('#modal_concentration_'+row_info).val();
+				concentration = + concentration.replace(",","."); 	
+ 
+				dosage = $(this).val();
+				dosage = + dosage.replace(",","."); 	
+
+				if($.isNumeric(dosage))
+				{
+					if(concentration.length != '0' && concentration != '' && concentration != '0' && dosage.length != '0'){
+						var dosage_concentration = dosage / concentration;			
+						
+						var has_comma = dosage_concentration.toString().indexOf(".");
+						
+						if(has_comma != "-1"){
+							dosage_concentration = dosage_concentration.toFixed(3).toString().replace(".",",").replace(/0+$/,'').replace(/,$/, "");  
+						}
+						
+						if (dosage_concentration == "0" && !~has_comma) {
+							dosage_concentration = '';
+						}
+						
+						$('#modal_dosage_concentration_' + column_info).val(dosage_concentration);	
+					} else{
+
+						$('#modal_dosage_concentration_' + column_info).val('');
+					}
+				}
+				else
+				{
+					$('#modal_dosage_concentration_' + column_info).val('');
+				}
+			}
+		});
+		
+		$('.modal_calculate_dosage').live('keyup change ', function(){
+			console.log('modal_calculate_dosage');
+			var row_info = $(this).data('dosage_row_info');
+			var column_info = $(this).data('dosage_column_info');
+			
+			if($('#modal_concentration_'+row_info).val() != undefined){
+				concentration = $('#modal_concentration_'+row_info).val();
+				concentration = + concentration.replace(",","."); 	
+				dosage_concentration = $(this).val();
+				dosage_concentration = + dosage_concentration.replace(",",".");
+				
+				if( concentration.length != '0' && concentration != '' && dosage_concentration.length != '0'){
+				
+					if($.isNumeric(dosage_concentration))
+					{
+						if( concentration.length != '0' && concentration != '' && dosage_concentration.length != '0'){
+							var dosage = dosage_concentration * concentration;
+							var has_comma = dosage.toString().indexOf(".");
+							
+							if(has_comma != "-1"){
+								dosage = dosage.toFixed(3).toString().replace(".",",").replace(/0+$/,'').replace(/,$/, "");   	
+							}
+							
+							if (dosage == "0" && !~has_comma) {
+								dosage = '';
+							}
+							
+							$('#modal_dosage_' + column_info).val(dosage);
+						} else{
+							$('#modal_dosage_' + column_info).val('');
+						}
+					}
+					else
+					{
+						$('#modal_dosage_' + column_info).val('');
+					}
+				}
+			}
+		});
+		
+		$('.modal_concentration_calculation').live('keyup change ', function(){
+
+			var row_info = $(this).data('dosage_row_info');
+			var concentration = $(this).val();
+
+			if(isNumeric($(this).val()))
+			{
+				$('.modal_cdc_'+row_info).each(function(){
+					
+					var column_info  = $(this).data('dosage_column_info');
+					
+					concentration = $('#modal_concentration_'+row_info).val();
+					concentration = + concentration.replace(",",".");
+					
+					dosage = $(this).val();
+					dosage = + dosage.replace(",","."); 	
+					
+					if(dosage.length != "0" && dosage !="" && concentration.length != '0' && concentration != '' && concentration != '0')
+					{
+						
+						var dosage_concentration = dosage / concentration;
+						
+						var has_comma = dosage_concentration.toString().indexOf(".");
+						
+						if(has_comma != "-1"){
+							dosage_concentration = dosage_concentration.toFixed(3).toString().replace(".",",").replace(/0+$/,'').replace(/,$/, "");
+						}
+										
+						
+						if (dosage_concentration == "0" && !~has_comma) {
+							dosage_concentration = '';
+						}
+						
+						
+						$('#modal_dosage_concentration_' + column_info).val(dosage_concentration);	
+					} 
+					else
+					{
+						$('#modal_dosage_concentration_' + column_info).val("");	
+					}
+					
+				 });
+			}
+		});
+		
+ 
+
+		
+	
+ });
+
+
+	
+	function reset_medications_modal(medication_type,input_row, pumpe_number)
+	{
+		if($('#modal_hidd_medication_'+medication_type+'_'+input_row).val()){
+			
+			$('#modal_hidd_medication_'+medication_type+'_'+input_row).val('');
+			$('#modal_drid_'+medication_type+'_'+input_row).val('');
+		}
+	 
+	}
+
+
+	function selectMedications(mid, row, mmi_handler)   
+	{
+		if($.isNumeric(row))
+		{
+		}		
+		else
+		{
+			var details = row.split("_");
+
+			if(details.length == 4)
+			{
+				if($.isNumeric(details[2])){ // schmerzpumpe :like medication_isschmerzpumpe_2_3   
+					var row = details[3];	
+					var medication_type = details[1];
+					var pumpe_number = details[2]; 
+				}
+				else
+				{
+					if(details[0] == 'modal'){
+    					var row = details[3];	
+    					var medication_type = details[2];
+					} else{
+						var row = details[3];	
+						var medication_type = details[1]+'_'+details[2];// treatment_care
+					}
+				}
+			} else {
+				var row = details[2];
+				var medication_type = details[1];
+			}
+
+			var table_search_results = $("#medinosis_drop_table");
+			var pzn = $('#medi_PZN_'+mid , table_search_results).val() || 0;
+			var source = $('#medi_TYPE_'+mid , table_search_results).val() || "custom";
+			var dbf_id = $('#medi_DBF_ID_'+mid , table_search_results).val() || "";
+
+			
+			if(pumpe_number)
+			{
+
+				$('#modal_medication_'+medication_type+'_'+pumpe_number+'_'+row).val($('#medi_me_'+mid).val());
+			 	$('#modal_drug_'+medication_type+'_'+pumpe_number+'_'+row).val($('#medi_wirkstoffe_'+mid).val());
+				if(!mmi_handler)
+				{
+					$('#modal_comments_'+medication_type+'_'+pumpe_number+'_'+row).val($('#medi_comment_'+mid).val());
+					$('#modal_hidd_medication_'+medication_type+'_'+pumpe_number+'_'+row).val($('#medi_id_'+mid).val());
+				} 
+				else 
+				{					
+					$('#modal_hidd_medication_'+medication_type+'_'+pumpe_number+'_'+row).val('');
+					$('#modal_edited_'+medication_type+'_'+pumpe_number+'_'+row).val('1');
+				}
+				
+				var parent_tr = $("#tr" + medication_type + "" + pumpe_number + "" + row);
+				$('input.modal_medication_pzn' , parent_tr).val(pzn);
+			    $('input.modal_medication_source' , parent_tr).val(source);
+			    $('input.modal_medication_dbf_id' , parent_tr).val(dbf_id);			     
+							    
+
+			}
+			else
+			{
+	 
+				$('#modal_medication_'+medication_type+'_'+row).val($('#medi_me_'+mid).val());
+				$('#modal_drug_'+medication_type+'_'+row).val($('#medi_wirkstoffe_'+mid).val());
+				if(!mmi_handler)
+				{
+					$('#modal_comments_'+medication_type+'_'+row).val($('#medi_comment_'+mid).val());
+					$('#modal_hidd_medication_'+medication_type+'_'+row).val($('#medi_id_'+mid).val());
+				}
+				var parent_tr = $("#tr"+medication_type+""+row);
+				$('input.modal_medication_pzn' , parent_tr).val(pzn);
+			    $('input.modal_medication_source' , parent_tr).val(source);
+			    $('input.modal_medication_dbf_id' , parent_tr).val(dbf_id);			     
+							    
+				
+			}
+		}
+	}
+	
+</script>
+ 
+
+
+<form action="" name="add_requestchanges_medication" id="add_requestchanges_medication" method="post" >
+<input type="hidden" name="request_id" value="<?php echo $this->request_id; ?>"/>
+	<!-- ================================ Medi NOT EDITABLE =============================== -->
+	<div class="medication_block mk-container mk-edit" 	style="margin-bottom: 10px;" >	
+		<h1><?php echo $this->translate("Mediation - as it is: ")?></h1>
+		<table id="nonedit_medication_<?php echo $medication_type; ?>_med_table" class="medikation medication_edit_table" data-medication_type="<?php echo $medication_type; ?>">
+		
+			<thead>
+                <tr>
+                    <!-- TH:: SORT -->		 		   
+                    <th  rowspan="2" class="name sort"><?php echo $this->translate('medication_importance'); ?></th>
+		 		
+		 		
+		 		    <!-- TH:: Name | Drug | packaging if isintubated -->
+    		 		<th rowspan="2"  class="name">
+    		 		   <?php echo $this->translate('medication_name');?> / <br/><span><?php echo $this->translate('medication_drug'); ?></span> 
+    		 		   <?php if ($medication_type == "isintubated"): ?>/<br/> <?php echo $this->translate('medication_packaging'); ?><?php endif;?>
+    		 		</th>
+    		 		 
+		 			<?php if(in_array($medication_type,$this->timed_scheduled_medications) && $this->individual_medication_time != "0" ):?>
+		 		        <!-- TH:: Dosage times per type -->		
+		 				<th rowspan="1" colspan="<?php echo count($this->interval_array['interval'][$medication_type]);?>" class="dosage_intervals_holder_header">
+		 					<?php echo $this->translate('medication_dosage'); ?>
+		 				</th>
+		 			<?php elseif(in_array($medication_type,$this->timed_scheduled_medications) && $this->individual_medication_time == "0" ):?>
+		 			      <!-- TH:: Dosage times per overall -->
+		 				<th rowspan="2" colspan="<?php echo count($this->interval_array['interval'][all]);?>" class="dosage_intervals_holder_header">
+		 					<?php echo $this->translate('medication_dosage'); ?>
+		 				</th>
+		 			<?php else: ?>
+		 			    <!-- TH:: Dosage simple -->
+		 				<th rowspan="2">
+		 					<?php echo $this->translate('medication_dosage'); ?><?=($medication_type == 'isbedarfs' || $medication_type == 'iscrisis') ? ' / ' . $this->translate('Interval for dosage') : ''; ?>    
+		 				</th>
+		 			<?php endif; ?>
+		 			
+		 			
+					<?php if ($medication_type == "isintubated"): ?>	
+						<!-- TH:: Indication | Kcal | Volume | Comment -->
+    		 			<th rowspan="2"  ><?php echo $this->translate('medication_indication'); ?> /
+    		 			<br/><?php echo $this->translate('medication_kcal'); ?> /
+    		 			<br/><?php echo $this->translate('medication_volume'); ?> /
+    		 			<br/><?php echo $this->translate('medication_comments'); ?>
+    		 			</th>
+                    <?php else:?>
+                    	<!-- TH:: Indication | Comment -->	 			
+                        <th rowspan="2"  ><?php echo $this->translate('medication_indication'); ?> /<br/><?php echo $this->translate('medication_comments'); ?></th>
+ 					<?php endif;?>
+ 					
+                    <!-- TH:: Prescribed by | Date --> 					
+		 			<th rowspan="2" colspan="2"><?php echo $this->translate('medication_prescribed_by'); ?> / <br/><?php echo $this->translate('medication_change_date'); ?></th>
+		 		</tr>
+		 		
+		 		<?php if($this->individual_medication_time != "0"): ?>
+		 		
+		 		<tr class="dosage_intervals_holder time">	
+		 			<?php if(in_array($medication_type,$this->timed_scheduled_medications)):?>	 					
+
+		 					<?php $rel = 1; $int_id = 1;?> 
+
+		 					<?php foreach($this->interval_array['interval'][$medication_type]  as $interval_id => $interval_details):?>
+		 					<!-- TH:: Dosage -time columns (<?php echo $interval_details['time']; ?>) -->
+			                 <th>					
+								<div class="one_dosage_hour <?php if (count($this->interval_array['interval'][$medication_type]) == $int_id) {echo 'one_dosage_hour_last';} ?>	"  >
+						 
+									<input type="text" style="float:left;"  readonly="readonly" rel="time" value="<?php echo $interval_details['time']; ?>"   class="time_interval_style  int_time_style time_interval_<?php echo $medication_type; ?> int_time_<?php echo $medication_type; ?>" name="original_interval[<?php echo $medication_type; ?>][<?php echo $int_id;?>][time]" />
+									<input type="hidden" rel="custom" value="<?php echo $interval_details['custom']; ?>"  class="custom" name="interval[<?php echo $medication_type; ?>][<?php echo $int_id;?>][custom]" />
+
+									<?php if( $interval_details['custom'] != "1"):?>
+										<input type="hidden" rel="interval_id" value="<?php echo $interval_id; ?>"  class="interval_id" name="interval[<?php echo $medication_type; ?>][<?php echo $int_id;?>][interval_id]" />
+									<?php endif;?>
+									
+								</div>
+
+							</th>
+							
+							<?php $rel++; $int_id++; ?>
+							<?php endforeach; ?>
+					
+		 					<!-- 	INPUT FOR DELETED TIME INTERVALS-->
+							<input type="hidden" class="deleted_intervals_hidden_input" id="deleted_intervals_<?php echo $medication_type; ?>" name="deleted_intervals_ids[<?php echo $medication_type; ?>]" value="" />
+				 			
+		 			<?php endif; ?>
+		 			
+		 		</tr>
+		 		<?php endif; ?>
+		 				 		
+    		 </thead>
+    		 
+    		 <tbody>
+		 		<?php $cnt = 0; foreach($medication_array[$medication_type] as $k =>$med):?>
+    				<tr id="tr<?php echo $medication_type;?><?php echo $cnt;?>"  class="modal_medication_row_<?php echo $med['id']?>  selector_medication_tr_1 single <?= (($this->acknowledge  == "1" && !empty($med['on_hold_changes'][$med['id']]))  || ($this->ModulePrivileges[155] == true && !empty($med['on_hold_changes_offline'][$med['id']])) ) ? 'has_ack' : '' ?>"  >
+        		 	
+    				   <!-- TD :: SORT  -->
+    				   <td class="sortnum">
+    				       <input type="text"  readonly="readonly"  name="original_medication_block[<?php echo $medication_type; ?>][importance][<?php echo $cnt;?>]"    data-medication_type="<?php echo $medication_type; ?>"  class="small_input medication_importance modal_referral change_status sort" title="<?php echo $medication_type; ?>_<?php echo $cnt;?>"  value="<?php echo $med['importance'];?>"  rel="<?php echo $medication_type; ?>" />
+    					   <input type="hidden" name="original_medication_block[<?php echo $medication_type; ?>][replace_with][<?php echo $cnt;?>]"   data-medication_type="<?php echo $medication_type; ?>"  class="small_input replace_with modal_referral sort" value="<?php echo $med['replace_with'];?>"  rel="<?php echo $medication_type; ?>" />
+    				   </td>
+    					       		 	    		 
+    					<!-- TD:: NAME | DRUG | Packaging if intubated -->
+    					<td class="name">
+    					    <div class="cn">
+    							<!-- Name -->						
+    							<? if($medication_type == "isnutrition"):?>
+    								<input type="text"  readonly="readonly" name="original_medication_block[<?php echo $medication_type; ?>][medication][<?php echo $cnt;?>]"  value="<?php echo $med['medication'];?>" id="modal_medication_<?php echo $medication_type; ?>_<?php echo $cnt; ?>"  autocomplete="off"  data-medication_type="<?php echo $medication_type; ?>"  class="livesearchmedinp_nutrition med meds_<?php echo $medication_type; ?>_line_<?php echo $cnt; ?> modal_referral change_status onchange_reset_pzn name" title="<?php echo $medication_type; ?>_<?php echo $cnt;?>" rel="<?php echo $medication_type; ?>"/>
+    							<?php else:?>
+    								<input type="text"  readonly="readonly" name="original_medication_block[<?php echo $medication_type; ?>][medication][<?php echo $cnt;?>]"  value="<?php echo $med['medication'];?>" id="modal_medication_<?php echo $medication_type; ?>_<?php echo $cnt; ?>"  autocomplete="off"  data-medication_type="<?php echo $medication_type; ?>"  class="livesearchmedinp_modal med meds_<?php echo $medication_type; ?>_line_<?php echo $cnt; ?> modal_referral change_status livesearchmedinp_fixedwidth onchange_reset_pzn name" title="<?php echo $medication_type; ?>_<?php echo $cnt;?>" rel="<?php echo $medication_type; ?>"/>
+    							<?php endif;?>
+    							
+    			    			<input type="hidden" id="modal_hidd_medication_<?php echo $medication_type; ?>_<?php echo $cnt; ?>"  name="original_medication_block[<?php echo $medication_type; ?>][hidd_medication][<?php echo $cnt; ?>]"  value="<?php echo $med['medication_master_id'];?>" >						
+    		    				<input type="hidden" id="modal_drid_<?php echo $medication_type; ?>_[<?php echo $cnt; ?>]" name="original_medication_block[<?php echo $medication_type; ?>][drid][<?php echo $cnt; ?>]" value="<?php echo $med['id'];?>" />
+    						    <input type="hidden" id="modal_edited_<?php echo $medication_type; ?>_<?php echo $cnt; ?>" name="original_medication_block[<?php echo $medication_type; ?>][edited][<?php echo $cnt; ?>]" value="0" />
+
+    			    			<input type="hidden"    name="original_medication_block[<?php echo $medication_type; ?>][pharma_med_type][<?php echo $cnt; ?>]"  value="original" >						
+    					    </div>
+    					    
+    					    
+    						<!--TD:: DRUG -->
+    						<input type="text"   readonly="readonly"  name="original_medication_block[<?php echo $medication_type; ?>][drug][<?php echo $cnt; ?>]"  id="drug_<?php echo $medication_type; ?>_<?php echo $cnt; ?>"  value="<?php echo $med['drug'];?>"  data-medication_type="<?php echo $medication_type; ?>"  class="medication_drug modal_referral  change_status onchange_reset_pzn" title="<?php echo $medication_type; ?>_<?php echo $cnt;?>" rel="<?php echo $medication_type; ?>"/>
+    										
+                            <?php /** hidden inputs neded for the PZN **/ ?>				
+                            <?php $medication_row = $cnt; ?>
+                            <?php
+                                $field_name = "original_medication_block[{$medication_type}][{$medication_row}][pzn]";
+                                $field_value = $med['MedicationMaster']['pzn'];
+                                $attr = array("id" => "{$medication_type}_medication_pzn-{$medication_row}", "class" => "modal_medication_pzn");
+                                echo $this->formHidden($field_name, $field_value, $attr); 
+                            ?>
+                            <?php
+                                $field_name = "original_medication_block[{$medication_type}][{$medication_row}][source]";
+                                $field_value = $med['MedicationMaster']['source'];
+                                $attr = array("id" => "{$medication_type}_medication_source-{$medication_row}", "class" => "modal_medication_source");
+                                echo $this->formHidden($field_name, $field_value, $attr); 
+                            ?>
+                            <?php
+                                $field_name = "original_medication_block[{$medication_type}][{$medication_row}][dbf_id]";
+                                $field_value = $med['MedicationMaster']['dbf_id'];
+                                $attr = array("id" => "{$medication_type}_medication_dbf_id-{$medication_row}", "class" => "modal_medication_dbf_id");
+                                echo $this->formHidden($field_name, $field_value, $attr); 
+                            ?>
+    					</td>    
+    
+    						<?php if(in_array($medication_type,$this->timed_scheduled_medications)):?>					
+    						    <!-- TD:: Dosage inputs-->
+    							<?php foreach($this->dosage_intervals[$medication_type] as $k => $dosage_time):?>
+    									<td>
+        									<div class="dosage_firstrow_div" >
+                                                <input type="text"  readonly="readonly"  name="original_medication_block[<?php echo $medication_type; ?>][dosage][<?php echo $cnt;?>][<?php echo $dosage_time;?>]"  value="<?php echo $med['dosage'][$dosage_time];?>"  data-medication_type="<?php echo $medication_type; ?>"  class="small_dosage_inptuts dosage_input modal_referral  change_status modal_calculate_dosage_concentration modal_cdc_<?php echo $medication_type; ?>_<?php echo $cnt;?>" title="<?php echo $medication_type; ?>_<?php echo $cnt;?>" data-dosage_column_info="<?php echo $medication_type; ?>_<?php echo $cnt;?>_<?php echo str_replace(':','',$k);?>" data-dosage_row_info="<?php echo $medication_type; ?>_<?php echo $cnt;?>"  rel="<?php echo $medication_type; ?>"  id="modal_dosage_<?php echo $medication_type; ?>_<?php echo $cnt;?>_<?php echo str_replace(':','',$k);?>"/>
+                                                <span class="over_the_input selector_dosage_text"><?=$client_medication_extra['unit'] [$med['unit_id']]?></span>
+        									</div>
+        									<div class="dosage_secondrow_div" >
+                                                <input type="text"  readonly="readonly"  name="original_medication_block[<?php echo $medication_type; ?>][dosage_concentration][<?php echo $cnt;?>][<?php echo $dosage_time;?>]"  value="<?php echo $med['dosage_concentration'][$dosage_time];?>"  data-medication_type="<?php echo $medication_type; ?>"  class="small_dosage_inptuts dosage_input modal_referral  change_status modal_calculate_dosage" title="<?php echo $medication_type; ?>_<?php echo $cnt;?>"  data-dosage_column_info="<?php echo $medication_type; ?>_<?php echo $cnt;?>_<?php echo str_replace(':','',$k);?>" data-dosage_row_info="<?php echo $medication_type; ?>_<?php echo $cnt;?>"   rel="<?php echo $medication_type; ?>" id="modal_dosage_concentration_<?php echo $medication_type; ?>_<?php echo $cnt;?>_<?php echo str_replace(':','',$k);?>"/>
+                                                <span class="over_the_input selector_concentration_text">
+                                                    <? 
+                                                        if( ! empty($client_medication_extra['dosage_form'] [$med['dosage_form_id']]) ){
+                                                        	echo $client_medication_extra['dosage_form'] [$med['dosage_form_id']];
+            											} else if( ! empty($client_medication_extra['dosage_form_custom'] [$med['dosage_form_id']]) ){
+                                                        	echo $client_medication_extra['dosage_form_custom'] [$med['dosage_form_id']];
+            											}
+        											?>
+                                                </span>
+        									</div>
+    									</td>
+    			 				<?php endforeach;?>
+    						<?php else:?>
+    							<td class="dosierung">
+                                    <div class="item">
+        								<input type="text"  readonly="readonly" name="original_medication_block[<?php echo $medication_type; ?>][dosage][<?php echo $cnt;?>]"  value="<?php echo $med['dosage'];?>"  data-medication_type="<?php echo $medication_type; ?>"  class="dosage_inptuts dosage_input modal_referral  change_status dosierung" title="<?php echo $medication_type; ?>_<?php echo $cnt;?>"  rel="<?php echo $medication_type; ?>"/>
+                                    </div>
+                                    
+                                    
+                                    <?php if ($medication_type == 'isbedarfs' || $medication_type == 'iscrisis') : ?>
+                                        <div>
+                                            <?php
+                                                $field_name = "original_medication_block[{$medication_type}][{$medication_row}][dosage_interval]";
+                                                $field_value = $med['dosage_interval'];
+                                                $attr = array("id" => "{$medication_type}_dosage_interval-{$medication_row}", "class" => "dosage_interval selector_medication_edited",'readonly'=>'readonly');
+                                                echo $this->formText($field_name, $field_value, $attr); 
+                                            ?>
+                                        </div>
+                                    <?php endif; //($medication_type == 'isbedarf' || $medication_type == 'iscrisis') ?>
+    							</td>
+    						<?php endif; ?>
+    											
+    						<!-- ##################################### -->
+    						<!-- TD MEDICATION :: INDICATION / COMMENTS-->
+    						<td class="ind-comm" style="width: 300px;">
+    							<!--  MEDICATION INDICATION -->			
+            						<div class="indikation">
+										<?php if(!empty($med['indication_id']) && $med['indication_id']!="0"):?>
+            							     <div  style="background: #<?php echo $client_medication_extra['indication'][$med['indication_id']]['color'];?>;line-height: 26px;" >
+            							     	<?php echo $client_medication_extra['indication'][$med['indication_id']]['name']; ?>
+            							     </div>
+            							     <input  readonly="readonly"  type="hidden" name="original_medication_block[<?php echo $medication_type; ?>][indication][<?php echo $cnt;?>]"  value="<?php echo $med['indication_id'];?>";>
+        							     <?php endif;?>
+        							     
+        							</div>
+        							<?php if ($medication_type == "isintubated"): ?>
+        							
+        								<!-- MEDICATION kcal -->
+        								<input type="text"  readonly="readonly"  name="original_medication_block[<?php echo $medication_type; ?>][kcal][<?php echo $cnt; ?>]" id="drug_<?php echo $medication_type; ?>_<?php echo $cnt; ?>"  value="<?php echo $med['kcal'];?>"  data-medication_type="<?php echo $medication_type; ?>"  class="medication_drug modal_referral  change_status onchange_reset_pzn" title="<?php echo $medication_type; ?>_<?php echo $cnt;?>" rel="<?php echo $medication_type; ?>"/>			
+        								<!-- MEDICATION volume -->
+        								<input type="text"  readonly="readonly"  name="original_medication_block[<?php echo $medication_type; ?>][volume][<?php echo $cnt; ?>]" id="drug_<?php echo $medication_type; ?>_<?php echo $cnt; ?>"  value="<?php echo $med['volume'];?>"  data-medication_type="<?php echo $medication_type; ?>"  class="medication_drug modal_referral  change_status onchange_reset_pzn" title="<?php echo $medication_type; ?>_<?php echo $cnt;?>" rel="<?php echo $medication_type; ?>"/>			
+        							
+        							<?php endif; ?>
+        							
+        							<!--  MEDICATION COMMENTS-->
+        							<textarea  readonly="readonly"  name="original_medication_block[<?php echo $medication_type; ?>][comments][<?php echo $cnt;?>]"  id="modal_comments_<?php echo $medication_type; ?>_<?php echo $cnt;?>" data-medication_type="<?php echo $medication_type; ?>"  class="med_com_textarea modal_referral  change_status editcomment" placeholder="Kommentar" title="<?php echo $medication_type; ?>_<?php echo $cnt;?>" rows="" cols=""  rel="<?php echo $medication_type; ?>" ><?php echo $med['comments'];?></textarea>						
+    						</td>	
+    					
+    						<!-- ############################################# -->
+    						<!-- TD  MEDICATION  VERORDNET VON  / DATUM / SORT -->
+    						<td style="width: 50px;">
+    							<!--  MEDICATION  VERORDNET VON -->
+    							<div style="line-height: 26px;">
+    								<?php echo $this->users[$med['verordnetvon']] ?>
+    								<input type="hidden"  readonly="readonly"  value="<?php echo $med['verordnetvon'];?>" name="original_medication_block[<?php echo $medication_type; ?>][verordnetvon][<?php echo $cnt;?>]"  > 
+    							</div>
+    							
+    							<!--  MEDICATION DATUM  -->
+    							<input type="text"  readonly="readonly"  name="original_medication_block[<?php echo $medication_type; ?>][medication_change][<?php echo $cnt;?>]"  value="<?php echo date('d.m.Y',strtotime($med['medication_change']));?>"  data-medication_type="<?php echo $medication_type; ?>"  class="date_input modal_referral  change_status" title="<?php echo $medication_type; ?>_<?php echo $cnt;?>"  rel="<?php echo $medication_type; ?>" />
+    							
+    						</td>					
+    
+    						<!-- ############################## -->
+    						<!-- TD MEDICATION :: DETAILS -->
+    						<td class="details modal_expand_details" <?php echo $row_span?> data-expand_details_id="<?php echo $med['id']?>"></td>				
+    									
+        		 	</tr>
+        		 
+    		 		<!-- child row  -->
+    				<tr id="tr<?php echo $medication_type;?><?php echo $cnt;?>_child"    class="modal_medication_details_row_<?php echo $med['id']?> hide_details child_row child_row_holder selector_medication_tr_3 expandedItem <?=(($this->acknowledge  == "1" && !empty($med['on_hold_changes'][$med['id']]))  || ($this->ModulePrivileges[155] == true && !empty($med['on_hold_changes_offline'][$med['id']])) ) ? 'has_ack' : '' ?>">
+    					<!-- ############################## -->
+    					<!-- TD  MEDICATION :: UNIT / TYPE / DOSAGE FORM / CONCENTRATION -->
+    					<td class="border_bottom_solid"
+    						<?php if(in_array($medication_type,$this->timed_scheduled_medications)):?>
+    						 colspan="<?php echo (count($this->dosage_intervals[$medication_type]) + 6) ?>">
+    						<?php else : ?>
+    							colspan="7" >
+    						<?php endif; ?>
+    							      <h3>
+    							<?php echo $this->translate('medication_type'); ?>,
+    							<?php echo $this->translate('medication_dosageform'); ?>,
+    							<?php echo $this->translate('medication_unit'); ?>,
+    					      </h3>
+    						
+    						<div class="ei-content">
+                                <ul class="item">
+        							<!--  MEDICATION  CONCENTRATION  -->
+    							    <li>
+    							        <span><?php echo $this->translate('medication_concentration');?>:</span>						
+    							        <input style="width:85px" readonly="readonly"  type="text" name="original_medication_block[<?php echo $medication_type; ?>][concentration][<?php echo $cnt;?>]"   data-medication_type="<?php echo $medication_type; ?>"  class="small_input numeric_only medication_concentration modal_referral change_status modal_concentration_calculation" data-dosage_row_info="<?php echo $medication_type; ?>_<?php echo $cnt;?>"  title="<?php echo $medication_type; ?>_<?php echo $cnt;?>"  value="<?php echo $med['concentration'];?>"  rel="<?php echo $medication_type; ?>"   id="concentration_<?php echo $medication_type; ?>_<?php echo $cnt;?>"   />
+    							    </li>
+    						
+    						         <!--  MEDICATION  UNIT -->
+    						         <li>
+    						             <span><?php echo $this->translate('medication_unit');?>:</span>
+   							        	<input  type="hidden" name="original_medication_block[<?php echo $medication_type; ?>][unit][<?php echo $cnt;?>]"   data-medication_type="<?php echo $medication_type; ?>"  class="small_input numeric_only medication_unit modal_referral" data-dosage_row_info="<?php echo $medication_type; ?>_<?php echo $cnt;?>"  title="<?php echo $medication_type; ?>_<?php echo $cnt;?>"  value="<?php echo $med['unit_id'];?>"  rel="<?php echo $medication_type; ?>"   id="unit_<?php echo $medication_type; ?>_<?php echo $cnt;?>"   />
+   							        	<input style="width:85px" readonly="readonly"  type="text" name=" "    class="small_input numeric_only medication_unit modal_referral"    value="<?php echo $client_medication_extra['unit'][$med['unit_id']];?>"     />
+            							
+    						         </li>
+    						     </ul>
+    
+                                 <ul class="item">
+    						        <!--  MEDICATION  DOSAGE FORM -->
+                                    <li>
+    							         <span><?php echo $this->translate('medication_dosageform');?>:</span>
+            							<input type="hidden"  name="original_medication_block[<?php echo $medication_type; ?>][dosage_form][<?php echo $cnt;?>]"   value="<?php echo $med['dosage_form_id']; ?>">
+            							<?php if ($client_medication_extra['dosage_form'][$med['dosage_form_id']]):?>
+            								<input type="text"  style="width:85px" readonly="readonly" name=" "   value="<?php echo $client_medication_extra['dosage_form'][$med['dosage_form_id']]; ?>">
+            							<?php elseif(!empty($client_medication_extra['dosage_form_custom'][$med['dosage_form_id']])) : ?>
+            								<input type="text"  style="width:85px" readonly="readonly" name=" "   value="<?php echo $client_medication_extra['dosage_form_custom'][$med['dosage_form_id']]?>">
+            							<?php else:?>
+            								<input type="text"  style="width:85px" readonly="readonly" name=" "   value="">
+            							<?php endif;?>
+            							
+        							</li>
+        							
+                                    <!--  MEDICATION  TYPE  -->
+        							<li>
+            							<span><?php echo $this->translate('medication_type');?>:</span>
+            							<input type="hidden" name="original_medication_block[<?php echo $medication_type; ?>][type][<?php echo $cnt;?>]"  value="<?php echo $med['type_id'];?>">
+            							
+            							<?php if ($client_medication_extra['type'][$med['type_id']]):?>
+            								<input type="text"  style="width:85px" readonly="readonly" name=" "   value="<?php echo $client_medication_extra['type'][$med['type_id']]; ?>">
+            							<?php elseif(!empty($client_medication_extra['dosage_form_custom'][$med['dosage_form_id']])) : ?>
+            								<input type="text"  style="width:85px" readonly="readonly" name=" "   value="<?php echo $client_medication_extra['type_custom'][$med['type_id']]?>">
+            							<?php else:?>
+            								<input type="text"  style="width:85px" readonly="readonly" name=" "   value="">
+            							<?php endif;?>
+            							
+        							</li>
+        						</ul>
+        							
+        							
+                                 <ul class="item">
+        							<?php if(($medication_type == "actual" || $medication_type == "isivmed") && $allow_normal_scheduled == "1"):?>
+            							<li>
+            								<input type="checkbox" name="original_medication_block[<?php echo $medication_type; ?>][has_interval][<?php echo $cnt;?>]" value="1" class="has_interval" data-medication_type="<?php echo $medication_type; ?>" data-medcount="<?php echo $cnt; ?>" <?php if($med['has_interval'] == "1"):?> checked="checked" <?php endif; ?> /><label><?php echo $this->translate("is interval medi?")?></label>
+            							</li>
+                                        <li class="interval_block <?php if($med['has_interval'] != '1'):?> has_no_interval <?php endif; ?>"  id="modal_int_set_<?php echo $medication_type; ?>_<?php echo $cnt;?>">
+                                            <ul class="item">
+                    							<li>
+                        							<span><?php echo $this->translate('medication_days_interval');?>:</span>						
+                        							<input type="text" name="original_medication_block[<?php echo $medication_type; ?>][days_interval][<?php echo $cnt;?>]"   data-medication_type="<?php echo $medication_type; ?>"  class="small_input medication_days_interval modal_referral change_status" title="<?php echo $medication_type; ?>_<?php echo $cnt;?>"  value="<?php echo $med['days_interval'];?>"  rel="<?php echo $medication_type; ?>" />
+                                                </li>
+                                                <li>            
+                        							<span><?php echo $this->translate('medication_administration_date');?>:</span>						
+                        							<?php if($med['administration_date'] != "0000-00-00 00:00:00"):?>
+                        							<input type="text" name="original_medication_block[<?php echo $medication_type; ?>][administration_date][<?php echo $cnt;?>]"  value="<?php echo date('d.m.Y',strtotime($med['administration_date']));?>"  data-medication_type="<?php echo $medication_type; ?>"  class="date_input modal_referral  change_status" title="<?php echo $medication_type; ?>_<?php echo $cnt;?>"  rel="<?php echo $medication_type; ?>" />
+                        							<? else:?>
+                        							<input type="text" name="original_medication_block[<?php echo $medication_type; ?>][administration_date][<?php echo $cnt;?>]"  value=""  data-medication_type="<?php echo $medication_type; ?>"  class="date_input modal_referral  change_status" title="<?php echo $medication_type; ?>_<?php echo $cnt;?>"  rel="<?php echo $medication_type; ?>" />
+                        							<?php endif;?>
+                    							</li>                    							
+                							</ul>
+                                        </li>
+                                     
+        							<?php endif; ?>
+        							 
+    						     </ul>
+    						
+    						
+    						<?php if($medication_type == "isbedarfs" || $medication_type == "iscrisis"):?>
+    						   <ul class="item">
+    						   <li>
+        							<span><?php echo $this->translate('medication_escalation');?>:</span>
+        							<select name="original_medication_block[<?php echo $medication_type; ?>][escalation][<?php echo $cnt;?>]"  data-medication_type="<?php echo $medication_type; ?>"  class="medication_escalation modal_referral  change_status small_input" title="<?php echo $medication_type; ?>_<?php echo $cnt;?>"  rel="<?php echo $medication_type; ?>">
+        								<option value="0" >  </option>
+        								<?php foreach($client_medication_extra['escalation'] as $esk_id => $escalation_label) :?>
+        									<option value="<?php echo  $esk_id; ?>" <?php if($med['escalation'] == $esk_id):?> selected="selected" <?php endif; ?> ><?php echo $escalation_label;?></option>
+        								<?php endforeach; ?>
+        							</select>
+    						     </li>
+    							     
+    						</ul>
+    						<?php endif; ?>
+    						</div>
+    						
+    						
+    						    <input type="hidden" name="original_medication_block[<?php echo $medication_type; ?>][has_request_change][<?php echo $cnt;?>]" value="1" class="pharma_request_change" data-medication_type="<?php echo $medication_type; ?>" data-medcount="<?php echo $cnt; ?>" /> 							
+    					</td>
+    					
+    					<td class="border_bottom_solid"> </td>
+    					
+    				</tr>
+					
+    		 	 <?php endforeach; ?>
+    		 
+    		 </tbody>		
+    	</table> 	
+   </div>
+	<!-- ================================ Medi Editable =============================== -->
+	<div class="medication_block mk-container mk-edit" 	style="margin-bottom: 10px;" >	
+		<h1><?php echo $this->translate("Mediation - requested changes: ")?></h1>
+		<table id="nonedit_medication_<?php echo $medication_type; ?>_med_table" class="medikation medication_edit_table" data-medication_type="<?php echo $medication_type; ?>">
+		
+			<thead>
+                <tr>
+                    <!-- TH:: SORT -->		 		   
+                    <th  rowspan="2" class="name sort"><?php echo $this->translate('medication_importance'); ?></th>
+		 		
+		 		
+		 		    <!-- TH:: Name | Drug | packaging if isintubated -->
+    		 		<th rowspan="2"  class="name">
+    		 		   <?php echo $this->translate('medication_name');?> / <br/><span><?php echo $this->translate('medication_drug'); ?></span> 
+    		 		   <?php if ($medication_type == "isintubated"): ?>/<br/> <?php echo $this->translate('medication_packaging'); ?><?php endif;?>
+    		 		</th>
+    		 		 
+		 			<?php if(in_array($medication_type,$this->timed_scheduled_medications) && $this->individual_medication_time != "0" ):?>
+		 		        <!-- TH:: Dosage times per type -->		
+		 				<th rowspan="1" colspan="<?php echo count($this->interval_array['interval'][$medication_type]);?>" class="dosage_intervals_holder_header">
+		 					<?php echo $this->translate('medication_dosage'); ?>
+		 				</th>
+		 			<?php elseif(in_array($medication_type,$this->timed_scheduled_medications) && $this->individual_medication_time == "0" ):?>
+		 			      <!-- TH:: Dosage times per overall -->
+		 				<th rowspan="2" colspan="<?php echo count($this->interval_array['interval'][all]);?>" class="dosage_intervals_holder_header">
+		 					<?php echo $this->translate('medication_dosage'); ?>
+		 				</th>
+		 			<?php else: ?>
+		 			    <!-- TH:: Dosage simple -->
+		 				<th rowspan="2">
+		 					<?php echo $this->translate('medication_dosage'); ?><?=($medication_type == 'isbedarfs' || $medication_type == 'iscrisis') ? ' / ' . $this->translate('Interval for dosage') : ''; ?>    
+		 				</th>
+		 			<?php endif; ?>
+		 			
+		 			
+					<?php if ($medication_type == "isintubated"): ?>	
+						<!-- TH:: Indication | Kcal | Volume | Comment -->
+    		 			<th rowspan="2"  ><?php echo $this->translate('medication_indication'); ?> /
+    		 			<br/><?php echo $this->translate('medication_kcal'); ?> /
+    		 			<br/><?php echo $this->translate('medication_volume'); ?> /
+    		 			<br/><?php echo $this->translate('medication_comments'); ?>
+    		 			</th>
+                    <?php else:?>
+                    	<!-- TH:: Indication | Comment -->	 			
+                        <th rowspan="2"  ><?php echo $this->translate('medication_indication'); ?> /<br/><?php echo $this->translate('medication_comments'); ?></th>
+ 					<?php endif;?>
+ 					
+                    <!-- TH:: Prescribed by | Date --> 					
+		 			<th rowspan="2" colspan="2"><?php echo $this->translate('medication_prescribed_by'); ?> / <br/><?php echo $this->translate('medication_change_date'); ?></th>
+		 		</tr>
+		 		
+		 		<?php if($this->individual_medication_time != "0"): ?>
+		 		
+		 		<tr class="dosage_intervals_holder time">	
+		 			<?php if(in_array($medication_type,$this->timed_scheduled_medications)):?>	 					
+
+		 					<?php $rel = 1; $int_id = 1;?> 
+
+		 					<?php foreach($this->interval_array['interval'][$medication_type]  as $interval_id => $interval_details):?>
+		 					<!-- TH:: Dosage -time columns (<?php echo $interval_details['time']; ?>) -->
+			                 <th>					
+								<div class="one_dosage_hour <?php if (count($this->interval_array['interval'][$medication_type]) == $int_id) {echo 'one_dosage_hour_last';} ?>	"  >
+						 
+									<input type="text" style="float:left;" rel="time" value="<?php echo $interval_details['time']; ?>"   class="time_interval_style  int_time_style time_interval_<?php echo $medication_type; ?> int_time_<?php echo $medication_type; ?>" name="interval[<?php echo $medication_type; ?>][<?php echo $int_id;?>][time]" />
+									<input type="hidden" rel="custom" value="<?php echo $interval_details['custom']; ?>"  class="custom" name="interval[<?php echo $medication_type; ?>][<?php echo $int_id;?>][custom]" />
+
+									<?php if( $interval_details['custom'] != "1"):?>
+										<input type="hidden" rel="interval_id" value="<?php echo $interval_id; ?>"  class="interval_id" name="interval[<?php echo $medication_type; ?>][<?php echo $int_id;?>][interval_id]" />
+									<?php endif;?>
+									
+									<!-- Dosage buttons  Start-->
+<!-- 									
+									<br style="clear:both"/>
+									<a href="javascript:void(0)" onclick="add_dosage_intervals_before(this)"    class="btnBlue btnPlus add_button add_before_btn add_before_<?php echo $medication_type ?> change" rel="<?php echo $rel; ?>" ></a>
+									<a href="javascript:void(0)" onclick="delete_dosage_intervals(this)"        class="btnBlue btnDelete delete_interval_button delete_interval_<?php echo $medication_type; ?> <?php if(count($this->interval_array['interval'][$medication_type]) < 5 ){ echo " hidden_delete ";}?>  "></a>
+									<?php if (count($this->interval_array['interval'][$medication_type]) == $int_id) : ?>		
+					 					<a href="javascript:void(0)" onclick="add_dosage_intervals_after(this)" class="btnBlue btnPlus  add_button add_after_<?php echo $medication_type ?> change add_after_button" rel="<?php echo $rel; ?>" ></a>
+									<?php endif; ?> 
+ -->
+									<!-- Dosage buttons  END-->
+									
+									
+								</div>
+
+							</th>
+							
+							<?php $rel++; $int_id++; ?>
+							<?php endforeach; ?>
+					
+		 					<!-- 	INPUT FOR DELETED TIME INTERVALS-->
+							<input type="hidden" class="deleted_intervals_hidden_input" id="deleted_intervals_<?php echo $medication_type; ?>" name="deleted_intervals_ids[<?php echo $medication_type; ?>]" value="" />
+				 			
+		 			<?php endif; ?>
+		 			
+		 		</tr>
+		 		<?php endif; ?>
+		 				 		
+    		 </thead>
+    		 
+    		 <tbody>
+		 		<?php $cnt = 1; foreach($medication_array[$medication_type] as $k =>$med):?>
+    				<tr id="tr<?php echo $medication_type;?><?php echo $cnt;?>"  class="modal_edit_medication_row_<?php echo $med['id']?>  selector_medication_tr_1 single <?= (($this->acknowledge  == "1" && !empty($med['on_hold_changes'][$med['id']]))  || ($this->ModulePrivileges[155] == true && !empty($med['on_hold_changes_offline'][$med['id']])) ) ? 'has_ack' : '' ?>"  >
+        		 	
+    				   <!-- TD :: SORT  -->
+    				   <td class="sortnum">
+    				       <input type="text"   name="medication_block[<?php echo $medication_type; ?>][importance][<?php echo $cnt;?>]"    data-medication_type="<?php echo $medication_type; ?>"  class="small_input medication_importance modal_referral change_status sort" title="<?php echo $medication_type; ?>_<?php echo $cnt;?>"  value="<?php echo $med['importance'];?>"  rel="<?php echo $medication_type; ?>" />
+    					   <input type="hidden" name="medication_block[<?php echo $medication_type; ?>][replace_with][<?php echo $cnt;?>]"   data-medication_type="<?php echo $medication_type; ?>"  class="small_input replace_with modal_referral sort" value="<?php echo $med['replace_with'];?>"  rel="<?php echo $medication_type; ?>" />
+    				   </td>
+    					       		 	    		 
+    					<!-- TD:: NAME | DRUG | Packaging if intubated -->
+    					<td class="name">
+    					    <div class="cn">
+    							<!-- Name -->						
+    							<? if($medication_type == "isnutrition"):?>
+    								<input type="text" name="medication_block[<?php echo $medication_type; ?>][medication][<?php echo $cnt;?>]"  value="<?php echo $med['medication'];?>" id="modal_medication_<?php echo $medication_type; ?>_<?php echo $cnt; ?>"  autocomplete="off"  data-medication_type="<?php echo $medication_type; ?>"  class="livesearchmedinp_nutrition med meds_<?php echo $medication_type; ?>_line_<?php echo $cnt; ?> modal_referral change_status onchange_reset_pzn name" title="<?php echo $medication_type; ?>_<?php echo $cnt;?>" rel="<?php echo $medication_type; ?>"/>
+    							<?php else:?>
+    								<input type="text" name="medication_block[<?php echo $medication_type; ?>][medication][<?php echo $cnt;?>]"  value="<?php echo $med['medication'];?>" id="modal_medication_<?php echo $medication_type; ?>_<?php echo $cnt; ?>"  autocomplete="off"  data-medication_type="<?php echo $medication_type; ?>"  class="livesearchmedinp_modal med meds_<?php echo $medication_type; ?>_line_<?php echo $cnt; ?> modal_referral change_status livesearchmedinp_fixedwidth onchange_reset_pzn name" title="<?php echo $medication_type; ?>_<?php echo $cnt;?>" rel="<?php echo $medication_type; ?>"/>
+    							<?php endif;?>
+    							
+    							<?php if($this->show_mmi == "1" && $medication_type != "isnutrition"):?>
+    							    <!-- MMI Button -->
+    								<input type="button" class="mmi_search_button btnBlue btnMMI" value="<?php echo $this->translate('mmi_button');?>"  id="mmi_search_<?php echo $medication_type; ?>_<?php echo $cnt; ?>" name="mmi_search">
+    							<?php endif;?>
+    							
+    			    			<input type="hidden" id="modal_hidd_medication_<?php echo $medication_type; ?>_<?php echo $cnt; ?>"  name="medication_block[<?php echo $medication_type; ?>][hidd_medication][<?php echo $cnt; ?>]"  value="<?php echo $med['medication_master_id'];?>" >						
+    		    				<input type="hidden" id="modal_drid_<?php echo $medication_type; ?>_[<?php echo $cnt; ?>]" name="medication_block[<?php echo $medication_type; ?>][drid][<?php echo $cnt; ?>]" value="<?php echo $med['id'];?>" />
+    						    <input type="hidden" id="modal_edited_<?php echo $medication_type; ?>_<?php echo $cnt; ?>" name="medication_block[<?php echo $medication_type; ?>][edited][<?php echo $cnt; ?>]" value="0" />
+    						    
+    						    <input type="hidden"    name="medication_block[<?php echo $medication_type; ?>][pharma_med_type][<?php echo $cnt; ?>]"  value="requested" >
+    					    </div>
+    					    
+    					    
+    						<!--TD:: DRUG -->
+    						<input type="text" name="medication_block[<?php echo $medication_type; ?>][drug][<?php echo $cnt; ?>]"  id="modal_drug_<?php echo $medication_type; ?>_<?php echo $cnt; ?>"  value="<?php echo $med['drug'];?>"  data-medication_type="<?php echo $medication_type; ?>"  class="medication_drug modal_referral  change_status onchange_reset_pzn" title="<?php echo $medication_type; ?>_<?php echo $cnt;?>" rel="<?php echo $medication_type; ?>"/>
+    										
+                            <?php /** hidden inputs neded for the PZN **/ ?>				
+                            <?php $medication_row = $cnt; ?>
+                            <?php
+                                $field_name = "medication_block[{$medication_type}][{$medication_row}][pzn]";
+                                $field_value = $med['MedicationMaster']['pzn'];
+                                $attr = array("id" => "{$medication_type}_medication_pzn-{$medication_row}", "class" => "medication_pzn");
+                                echo $this->formHidden($field_name, $field_value, $attr); 
+                            ?>
+                            <?php
+                                $field_name = "medication_block[{$medication_type}][{$medication_row}][source]";
+                                $field_value = $med['MedicationMaster']['source'];
+                                $attr = array("id" => "{$medication_type}_medication_source-{$medication_row}", "class" => "medication_source");
+                                echo $this->formHidden($field_name, $field_value, $attr); 
+                            ?>
+                            <?php
+                                $field_name = "medication_block[{$medication_type}][{$medication_row}][dbf_id]";
+                                $field_value = $med['MedicationMaster']['dbf_id'];
+                                $attr = array("id" => "{$medication_type}_medication_dbf_id-{$medication_row}", "class" => "medication_dbf_id");
+                                echo $this->formHidden($field_name, $field_value, $attr); 
+                            ?>
+    					</td>    
+    
+    						<?php if(in_array($medication_type,$this->timed_scheduled_medications)):?>					
+    						    <!-- TD:: Dosage inputs-->
+    							<?php foreach($this->dosage_intervals[$medication_type] as $k => $dosage_time):?>
+    									<td>
+        									<div class="dosage_firstrow_div" >
+                                                <input type="text" name="medication_block[<?php echo $medication_type; ?>][dosage][<?php echo $cnt;?>][<?php echo $dosage_time;?>]"  value="<?php echo $med['dosage'][$dosage_time];?>"  data-medication_type="<?php echo $medication_type; ?>"  class="small_dosage_inptuts dosage_input modal_referral  change_status modal_calculate_dosage_concentration modal_cdc_<?php echo $medication_type; ?>_<?php echo $cnt;?>" title="<?php echo $medication_type; ?>_<?php echo $cnt;?>" data-dosage_column_info="<?php echo $medication_type; ?>_<?php echo $cnt;?>_<?php echo str_replace(':','',$k);?>" data-dosage_row_info="<?php echo $medication_type; ?>_<?php echo $cnt;?>"  rel="<?php echo $medication_type; ?>"  id="modal_dosage_<?php echo $medication_type; ?>_<?php echo $cnt;?>_<?php echo str_replace(':','',$k);?>"/>
+                                                <span class="over_the_input selector_dosage_text"><?=$client_medication_extra['unit'] [$med['unit_id']]?></span>
+        									</div>
+        									<div class="dosage_secondrow_div" >
+                                                <input type="text" name="medication_block[<?php echo $medication_type; ?>][dosage_concentration][<?php echo $cnt;?>][<?php echo $dosage_time;?>]"  value="<?php echo $med['dosage_concentration'][$dosage_time];?>"  data-medication_type="<?php echo $medication_type; ?>"  class="small_dosage_inptuts dosage_input modal_referral  change_status modal_calculate_dosage" title="<?php echo $medication_type; ?>_<?php echo $cnt;?>"  data-dosage_column_info="<?php echo $medication_type; ?>_<?php echo $cnt;?>_<?php echo str_replace(':','',$k);?>" data-dosage_row_info="<?php echo $medication_type; ?>_<?php echo $cnt;?>"   rel="<?php echo $medication_type; ?>" id="modal_dosage_concentration_<?php echo $medication_type; ?>_<?php echo $cnt;?>_<?php echo str_replace(':','',$k);?>"/>
+                                                <span class="over_the_input selector_concentration_text">
+                                                    <? 
+                                                        if( ! empty($client_medication_extra['dosage_form'] [$med['dosage_form_id']]) ){
+                                                        	echo $client_medication_extra['dosage_form'] [$med['dosage_form_id']];
+            											} else if( ! empty($client_medication_extra['dosage_form_custom'] [$med['dosage_form_id']]) ){
+                                                        	echo $client_medication_extra['dosage_form_custom'] [$med['dosage_form_id']];
+            											}
+        											?>
+                                                </span>
+        									</div>
+    									</td>
+    			 				<?php endforeach;?>
+    						<?php else:?>
+    							<td class="dosierung">
+                                    <div class="item">
+        								<input type="text" name="medication_block[<?php echo $medication_type; ?>][dosage][<?php echo $cnt;?>]"  value="<?php echo $med['dosage'];?>"  data-medication_type="<?php echo $medication_type; ?>"  class="dosage_inptuts dosage_input modal_referral  change_status dosierung" title="<?php echo $medication_type; ?>_<?php echo $cnt;?>"  rel="<?php echo $medication_type; ?>"/>
+                                    </div>
+                                    
+                                    
+                                    <?php if ($medication_type == 'isbedarfs' || $medication_type == 'iscrisis') : ?>
+                                        <div>
+                                            <?php
+                                                $field_name = "medication_block[{$medication_type}][{$medication_row}][dosage_interval]";
+                                                $field_value = $med['dosage_interval'];
+                                                $attr = array("id" => "{$medication_type}_dosage_interval-{$medication_row}", "class" => "dosage_interval selector_medication_edited");
+                                                echo $this->formText($field_name, $field_value, $attr); 
+                                            ?>
+                                        </div>
+                                    <?php endif; //($medication_type == 'isbedarf' || $medication_type == 'iscrisis') ?>
+    							</td>
+    						<?php endif; ?>
+    											
+    						<!-- ##################################### -->
+    						<!-- TD MEDICATION :: INDICATION / COMMENTS-->
+    						<td class="ind-comm" style="width: 300px;">
+    							<!--  MEDICATION INDICATION -->			
+            						<div class="indikation">
+            							<select name="medication_block[<?php echo $medication_type; ?>][indication][<?php echo $cnt;?>]"  data-medication_type="<?php echo $medication_type; ?>"  class="indication_color_select_modal modal_referral" title="<?php echo $medication_type; ?>_<?php echo $cnt;?>" <?php if(strlen($med['indication_id'])>0 && $med['indication_id'] != "0"):?> style="background: #<?php echo $client_medication_extra['indication'][$med['indication_id']]['color'];?>" <?php endif; ?>   rel="<?php echo $medication_type; ?>">
+           								    <option id="<?php echo $medication_type; ?>_<?php echo $cnt; ?>_<?php echo $indication_id; ?>#FFFFFF" value="0" style="background: #FFFFFF!important"  >Auswahl</option>
+            								<?php foreach($client_medication_extra['indication'] as $indication_id => $indication) :?>
+            									<option value="<?php echo $indication_id; ?>"  id="<?php echo $medication_type; ?>_<?php echo $cnt; ?>_<?php echo $indication_id; ?>#<?php echo $indication['color'];?>" style="background: #<?php echo $indication['color'];?>"  <?php if($med['indication_id'] == $indication_id):?> selected="selected" <?php endif; ?> ><?php echo $indication['name'];?></option>
+            								<?php endforeach; ?>
+        							     </select>
+        							</div>
+        							<?php if ($medication_type == "isintubated"): ?>
+        							
+        								<!-- MEDICATION kcal -->
+        								<input type="text" name="medication_block[<?php echo $medication_type; ?>][kcal][<?php echo $cnt; ?>]" id="drug_<?php echo $medication_type; ?>_<?php echo $cnt; ?>"  value="<?php echo $med['kcal'];?>"  data-medication_type="<?php echo $medication_type; ?>"  class="medication_drug modal_referral  change_status onchange_reset_pzn" title="<?php echo $medication_type; ?>_<?php echo $cnt;?>" rel="<?php echo $medication_type; ?>"/>			
+        								<!-- MEDICATION volume -->
+        								<input type="text" name="medication_block[<?php echo $medication_type; ?>][volume][<?php echo $cnt; ?>]" id="drug_<?php echo $medication_type; ?>_<?php echo $cnt; ?>"  value="<?php echo $med['volume'];?>"  data-medication_type="<?php echo $medication_type; ?>"  class="medication_drug modal_referral  change_status onchange_reset_pzn" title="<?php echo $medication_type; ?>_<?php echo $cnt;?>" rel="<?php echo $medication_type; ?>"/>			
+        							
+        							<?php endif; ?>
+        							
+        							<!--  MEDICATION COMMENTS-->
+        							<textarea name="medication_block[<?php echo $medication_type; ?>][comments][<?php echo $cnt;?>]"  id="comments_<?php echo $medication_type; ?>_<?php echo $cnt;?>" data-medication_type="<?php echo $medication_type; ?>"  class="med_com_textarea modal_referral  change_status editcomment" placeholder="Kommentar" title="<?php echo $medication_type; ?>_<?php echo $cnt;?>" rows="" cols=""  rel="<?php echo $medication_type; ?>" ><?php echo $med['comments'];?></textarea>						
+    						</td>	
+    					
+    						<!-- ############################################# -->
+    						<!-- TD  MEDICATION  VERORDNET VON  / DATUM / SORT -->
+    						<td style="width: 50px;">
+    							<!--  MEDICATION  VERORDNET VON -->
+    							<select name="medication_block[<?php echo $medication_type; ?>][verordnetvon][<?php echo $cnt;?>]"  data-medication_type="<?php echo $medication_type; ?>"  class="verordnetvon_select modal_referral  change_status" title="<?php echo $medication_type; ?>_<?php echo $cnt;?>"  rel="<?php echo $medication_type; ?>">
+    								<?php foreach($this->users as $user_id => $unsername) :?>
+    									<option value="<?php echo $user_id; ?>" <?php if($med['verordnetvon'] == $user_id):?> selected="selected" <?php endif; ?> ><?php echo $unsername;?></option>
+    								<?php endforeach; ?>
+    							</select>
+    							
+    							<!--  MEDICATION DATUM  -->
+    							<input type="text" name="medication_block[<?php echo $medication_type; ?>][medication_change][<?php echo $cnt;?>]"  value="<?php echo date('d.m.Y',strtotime($med['medication_change']));?>"  data-medication_type="<?php echo $medication_type; ?>"  class="date_input modal_referral  change_status" title="<?php echo $medication_type; ?>_<?php echo $cnt;?>"  rel="<?php echo $medication_type; ?>" />
+    							
+    						</td>					
+    
+    						<!-- ############################## -->
+    						<!-- TD MEDICATION :: DETAILS -->
+    						<td class="details modal_edit_expand_details" <?php echo $row_span?> data-expand_details_id="<?php echo $med['id']?>"></td>				
+    									
+        		 	</tr>
+        		 
+    		 		<!-- child row  -->
+    				<tr id="tr<?php echo $medication_type;?><?php echo $cnt;?>_child"    class="modal_edit_medication_details_row_<?php echo $med['id']?> hide_details child_row child_row_holder selector_medication_tr_3 expandedItem ">
+    					<!-- ############################## -->
+    					<!-- TD  MEDICATION :: UNIT / TYPE / DOSAGE FORM / CONCENTRATION -->
+    					<td class="border_bottom_solid"
+    						<?php if(in_array($medication_type,$this->timed_scheduled_medications)):?>
+    						 colspan="<?php echo (count($this->dosage_intervals[$medication_type]) + 6) ?>">
+    						<?php else : ?>
+    							colspan="7" >
+    						<?php endif; ?>
+    							      <h3>
+    							<?php echo $this->translate('medication_type'); ?>,
+    							<?php echo $this->translate('medication_dosageform'); ?>,
+    							<?php echo $this->translate('medication_unit'); ?>,
+    					      </h3>
+    						
+    						<div class="ei-content">
+                                <ul class="item">
+        							<!--  MEDICATION  CONCENTRATION  -->
+    							    <li>
+    							        <span><?php echo $this->translate('medication_concentration');?>:</span>						
+    							        <input style="width:85px" type="text" name="medication_block[<?php echo $medication_type; ?>][concentration][<?php echo $cnt;?>]"   data-medication_type="<?php echo $medication_type; ?>"  class="small_input numeric_only medication_concentration modal_referral change_status modal_concentration_calculation" data-dosage_row_info="<?php echo $medication_type; ?>_<?php echo $cnt;?>"  title="<?php echo $medication_type; ?>_<?php echo $cnt;?>"  value="<?php echo $med['concentration'];?>"  rel="<?php echo $medication_type; ?>"   id="modal_concentration_<?php echo $medication_type; ?>_<?php echo $cnt;?>"   />
+    							    </li>
+    						
+    						         <!--  MEDICATION  UNIT -->
+    						         <li>
+    						             <span><?php echo $this->translate('medication_unit');?>:</span>
+            							<select name="medication_block[<?php echo $medication_type; ?>][unit][<?php echo $cnt;?>]"  data-medication_type="<?php echo $medication_type; ?>" class="medication_unit modal_referral  change_status small_input selector_medication_unit" title="<?php echo $medication_type; ?>_<?php echo $cnt;?>" rel="<?php echo $medication_type; ?>">
+            								<option value="0" >  </option>
+            								<?php foreach($client_medication_extra['unit'] as $unit_id => $unit) :?>
+            									<option value="<?php echo $unit_id; ?>" <?php if($med['unit_id'] == $unit_id):?> selected="selected" <?php endif; ?> ><?php echo $unit;?></option>
+            								<?php endforeach; ?>
+            							</select>
+    						         </li>
+    						     </ul>
+    
+                                 <ul class="item">
+    						        <!--  MEDICATION  DOSAGE FORM -->
+                                    <li>
+    							         <span><?php echo $this->translate('medication_dosageform');?>:</span>
+            							 <select name="medication_block[<?php echo $medication_type; ?>][dosage_form][<?php echo $cnt;?>]"  data-medication_type="<?php echo $medication_type; ?>" class="medication_dosage_form modal_referral  change_status small_input selector_medication_dosage_form" title="<?php echo $medication_type; ?>_<?php echo $cnt;?>" rel="<?php echo $medication_type; ?>">
+            								<option value="0" >  </option>
+            								<?php foreach($client_medication_extra['dosage_form'] as $dosage_form_id => $dosage_form) :?>
+            									<option value="<?php echo $dosage_form_id; ?>" <?php if($med['dosage_form_id'] == $dosage_form_id):?> selected="selected" <?php endif; ?> ><?php echo $dosage_form;?></option>
+            								<?php endforeach; ?>
+            								<?php if(!empty($client_medication_extra['dosage_form_custom'][$med['dosage_form_id']])): ?>
+            									<option value="<?php echo $med['dosage_form_id']; ?>" selected="selected" ><?php echo $client_medication_extra['dosage_form_custom'][$med['dosage_form_id']]?></option>
+            								<?php endif; ?>
+            		 
+            							</select>
+        							</li>
+        							
+                                    <!--  MEDICATION  TYPE  -->
+        							<li>
+            							<span><?php echo $this->translate('medication_type');?>:</span>
+            							<select name="medication_block[<?php echo $medication_type; ?>][type][<?php echo $cnt;?>]"  data-medication_type="<?php echo $medication_type; ?>"  class="medication_type modal_referral  change_status small_input" title="<?php echo $medication_type; ?>_<?php echo $cnt;?>"  rel="<?php echo $medication_type; ?>">
+            								<option value="0" >  </option>
+            								<?php foreach($client_medication_extra['type'] as $type_id => $type) :?>
+            									<option value="<?php echo $type_id; ?>" <?php if($med['type_id'] == $type_id):?> selected="selected" <?php endif; ?> ><?php echo $type;?></option>
+            								<?php endforeach; ?>
+            								<?php if(!empty($client_medication_extra['type_custom'][$med['type_id']])): ?>
+            									<option value="<?php echo $med['type_id']; ?>" selected="selected" ><?php echo $client_medication_extra['type_custom'][$med['type_id']]; ?></option>
+            								<?php endif; ?>
+            								
+            							</select>
+        							</li>
+        						</ul>
+        							
+        							
+                                 <ul class="item">
+        							<?php if(($medication_type == "actual" || $medication_type == "isivmed") && $allow_normal_scheduled == "1"):?>
+            							<li>
+            								<input type="checkbox" name="medication_block[<?php echo $medication_type; ?>][has_interval][<?php echo $cnt;?>]" value="1" class="has_interval" data-medication_type="<?php echo $medication_type; ?>" data-medcount="<?php echo $cnt; ?>" <?php if($med['has_interval'] == "1"):?> checked="checked" <?php endif; ?> /><label><?php echo $this->translate("is interval medi?")?></label>
+            							</li>
+                                        <li class="interval_block <?php if($med['has_interval'] != '1'):?> has_no_interval <?php endif; ?>"  id="modal_int_set_<?php echo $medication_type; ?>_<?php echo $cnt;?>">
+                                            <ul class="item">
+                    							<li>
+                        							<span><?php echo $this->translate('medication_days_interval');?>:</span>						
+                        							<input type="text" name="medication_block[<?php echo $medication_type; ?>][days_interval][<?php echo $cnt;?>]"   data-medication_type="<?php echo $medication_type; ?>"  class="small_input medication_days_interval modal_referral change_status" title="<?php echo $medication_type; ?>_<?php echo $cnt;?>"  value="<?php echo $med['days_interval'];?>"  rel="<?php echo $medication_type; ?>" />
+                                                </li>
+                                                <li>            
+                        							<span><?php echo $this->translate('medication_administration_date');?>:</span>						
+                        							<?php if($med['administration_date'] != "0000-00-00 00:00:00"):?>
+                        							<input type="text" name="medication_block[<?php echo $medication_type; ?>][administration_date][<?php echo $cnt;?>]"  value="<?php echo date('d.m.Y',strtotime($med['administration_date']));?>"  data-medication_type="<?php echo $medication_type; ?>"  class="date_input modal_referral  change_status" title="<?php echo $medication_type; ?>_<?php echo $cnt;?>"  rel="<?php echo $medication_type; ?>" />
+                        							<? else:?>
+                        							<input type="text" name="medication_block[<?php echo $medication_type; ?>][administration_date][<?php echo $cnt;?>]"  value=""  data-medication_type="<?php echo $medication_type; ?>"  class="date_input modal_referral  change_status" title="<?php echo $medication_type; ?>_<?php echo $cnt;?>"  rel="<?php echo $medication_type; ?>" />
+                        							<?php endif;?>
+                    							</li>                    							
+                							</ul>
+                                        </li>
+                                     
+        							<?php endif; ?>
+        							 
+    						     </ul>
+    						
+    						
+    						<?php if($medication_type == "isbedarfs" || $medication_type == "iscrisis"):?>
+    						   <ul class="item">
+    						   <li>
+        							<span><?php echo $this->translate('medication_escalation');?>:</span>
+        							<select name="medication_block[<?php echo $medication_type; ?>][escalation][<?php echo $cnt;?>]"  data-medication_type="<?php echo $medication_type; ?>"  class="medication_escalation modal_referral  change_status small_input" title="<?php echo $medication_type; ?>_<?php echo $cnt;?>"  rel="<?php echo $medication_type; ?>">
+        								<option value="0" >  </option>
+        								<?php foreach($client_medication_extra['escalation'] as $esk_id => $escalation_label) :?>
+        									<option value="<?php echo  $esk_id; ?>" <?php if($med['escalation'] == $esk_id):?> selected="selected" <?php endif; ?> ><?php echo $escalation_label;?></option>
+        								<?php endforeach; ?>
+        							</select>
+    						     </li>
+    							     
+    						</ul>
+    						<?php endif; ?>
+    						</div>
+    						
+    						<input type="hidden" name="medication_block[<?php echo $medication_type; ?>][has_request_change][<?php echo $cnt;?>]" value="1" class="pharma_request_change" data-medication_type="<?php echo $medication_type; ?>" data-medcount="<?php echo $cnt; ?>" />
+    						     							
+    					</td>
+    					
+    					<td class="border_bottom_solid"> </td>
+    					
+    				</tr>
+					
+    		 	 <?php endforeach; ?>
+    		 
+    		 </tbody>		
+    	</table> 	
+   </div>
+ 
+ 
+ 
+    <!-- textarea and comment-ul -->	 	
+	<div class="mk-container">
+    	 <?php foreach($thematics as $thematic_code=>$thematic): ?>
+        	 <table class="them_table">
+    			
+        	 	<tr>
+        	 		<th style="width: 99%; padding-left: 10px;"><?php echo $this->translate("Change_reason")?>  </th>
+        	 		<th style="width: 1%;">
+        				<a href="javascript:void(0);" id="<?php echo $thematic_code; ?>" class="insert_texts" data-id="<?php echo $thematic_code; ?>" data-form_name="<?php echo $this->form_name; ?>" ><img src="<?php echo RES_FILE_PATH;  ?>/images/edit_add.png"  width="20" height="20" alt="" /></a>
+        	 		</th>
+        	 	</tr>
+        	 	<tr>
+        	 		<td style="padding-left: 5px;"><textarea rows="" cols="" class="full_textarea pharmacymedicheck"  name="request_reason" style="width: 100%;" ></textarea></td>
+        	 	</tr>
+        	 	
+    			<tr class="separator">
+    				<td ><br/> </td>
+    			</tr>
+    			
+        	 	<tr>
+        	 		<th style="width: 99%; padding-left: 10px;"><?php echo $this->translate("Change_comment")?>  </th>
+        	 	</tr>
+        	 	<tr>
+        	 		<td style="padding-left: 5px;"><textarea rows="" cols="" class=""  name="request_comment" style="width: 100%;" ></textarea></td>
+        	 	</tr>
+        	 	
+        	 </table>
+    	 <?php endforeach;	?>
+	</div>
+
+
+
+</form>
+
+

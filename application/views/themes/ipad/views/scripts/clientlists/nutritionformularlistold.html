@@ -1,0 +1,145 @@
+<?php
+
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/data_tables/jquery.dataTables.js?'.date('Ymd'));
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/data_tables/dataTables.jqueryui.js?'.date('Ymd'));
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/data_tables/dataTables.jqueryui.css?' . date('Ymd'));
+
+$nutritionformlist_lang = $this->translate('nutritionformlist');
+?>
+ 
+<script type="text/javascript">
+$(document).ready(function() { /*------ Start $(document).ready --------------------*/
+	
+	// DATATABLE
+	$('#table').DataTable({
+		// ADD language
+		 "language": {
+                "url": "<?php echo RES_FILE_PATH.'/javascript/data_tables/de_language.json?'.date('Ymd')?>"
+         },
+ 
+		"lengthMenu": [[10, 25, 50], [10, 25, 50]],
+			
+		processing: true,
+
+		info: false,
+		filter: true,
+		paginate: true,
+
+		serverSide: true,
+		"autoWidth": false,
+		"stateSave": true,
+		"scrollX": false,
+		"scrollCollapse": true,
+		
+		"stateLoadCallback": function (settings)
+		{
+			 o = false;
+			
+			 $.ajax( {
+				 url: appbase+'user/loadtablepref',
+				method: "POST",
+			    "async": false,
+			    data: { page: "nutritionformularlist" },
+			    "dataType": "json",
+			    "success": function (json) {
+			    	if (typeof json !== 'undefined' && json !== null
+			    		&& typeof json.columns !== 'undefined' && json.columns !== null
+			    		&& typeof json.colOrder !== 'undefined' && json.colOrder !== null
+			    	){
+			    		o = json;
+			    	}
+			        
+			    }
+			 });
+			 
+			 return o;
+		},
+		
+		columns: [
+		          { data: "field_value", className: "","width": "30%"},
+		          { data: "actions", className: " ","width": "10%" }
+			],
+			
+		columnDefs: [ 
+				       	{ "targets": -1, "searchable": false, "orderable": false }
+				],
+ 		order: [[ 0, "asc" ]],
+		
+ 		ajax: {
+			url:'clientlists/nutritionformularlistold',
+			type: 'POST'
+		}
+		
+	});
+ 
+	
+	// DELETE 
+	$(".delete").live('click', function() {
+		$.confirmdeleteid = $(this).attr('rel');
+			jConfirm('<? echo $this->translate('confirmdeleterecord'); ?>', '<? echo $this->translate('confirmdeletetitle'); ?>', function(r) {
+			if(r)
+			{	
+				location.href = "<?php echo APP_BASE ?>clientlists/nutritionformularlist?delete=1&id="+ $.confirmdeleteid;
+			}
+		});
+	});
+ 
+	
+	 
+	$("select[name='table_length']").live('change', function() {
+			
+		if($(this).val())
+		{
+			$.ajax({
+				url : 'ajax/saveuserpageresults',
+				type : 'POST',
+				data : {
+					page: "nutritionformularlist",
+					results: $(this).val()
+				} 
+			});
+			
+			 $('#setlimit').val( $(this).val());
+		}
+		
+	});
+	
+});/*-- END  $(document).ready ----------- --*/
+
+</script>
+<style type="text/css">
+#table_wrapper{
+	clear: none!important;
+	float: left;
+	width: 100%;
+}
+</style>
+<br/>
+ <h1><? echo $nutritionformlist_lang['legend'] ?></h1>
+
+<br/>
+<br/>
+<?php if ($this->has_edit_permissions) : ?>
+	<div class="add_link">
+		<a href="clientlists/nutritionformularlistedit?addnew=1"><? echo $this->translate('canadd') ?></a>
+	</div>
+<?php endif; ?>
+
+<form action="" method="post" id="report_list">
+
+<div class="row" id="projects-list">
+	<!-- Table -->
+  
+	  <table id="table" class="table table-striped table-bordered table-hover table-condensed dataTable no-footer  left_menu_datatable">
+	  	<thead>
+	  		<tr>
+	  			<th><?php echo $nutritionformlist_lang['application'];?></th>
+	  			<th><?php echo $this->translate('actions'); ?></th>
+	  		</tr>
+	  	</thead>
+	  </table>
+</div>
+</form>
+
+ 
+

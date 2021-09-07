@@ -1,0 +1,195 @@
+<!-- Maria:: Migration ISPC to CISPC 08.08.2020 -->
+<?php
+
+	$active_patients = $this->active_patients ;
+	$pdf_post = $this->pdf_post;
+	$locations_master = $this->locations_master;
+	$location_contact_persons = $this->location_contact_persons;
+	$week_days = $this->week_days;
+
+	$patient_array = $this->patient_array;
+
+?>
+<style>
+	.strikethrough_print td{
+		color:#a6a6a6;
+	}
+</style>
+<table style="border-collapse: collapse; height: 100%;" >
+	<tr>
+		<td colspan="5" bgcolor="#FFFFCC" style="border: 1px solid #e6e6e6;">
+			<h3>Gesamtplan Patient - <?php echo  $patient_array['last_name'] .", ".  $patient_array['first_name'] ?></h3>
+		</td>
+		
+		<td colspan="2" style="text-align:right;border: 1px solid #e6e6e6;"  bgcolor="#FFFFCC">
+			<?php if(!empty($userid_array['mobile'])):?>
+			<h3>Mobil: <?php echo $patient_array['mobile']?></h3>
+			<?php else: ?>
+			<h3>Telefon: <?php echo $patient_array['phone']?></h3>
+			<?php endif;?>
+		</td>
+	
+	</tr>
+	
+	
+	<tr><td colspan="7" ></td></tr>
+	
+	
+	
+	<tr>
+	<?php 
+		for ($i = 1; $i <= 7; $i++) :
+			$day_planning = $pdf_post[$i];
+	?>
+	
+	<td style="border: 1px solid #e6e6e6;" valign="top">
+		<div style="border-bottom:1px solid #e6e6e6; ">
+			<strong><?php echo strftime('%A', strtotime($week_days[$i]));?></strong> 
+			<br>
+			<?php echo date('d.m.Y', strtotime($week_days[$i]));?>
+		</div>
+		
+
+	<?php foreach($day_planning as $type_id=>$user_arr): ?>
+					
+	<?php foreach($user_arr as $user_id=>$user_values): ?>
+		<?php if( !empty($user_values['planned_visits']) ) :?>
+		
+		
+			<?php 
+				$isactive_class = "";
+				$isactive_message = "";
+				if ((	$user_values['user_details']['isactive'] == "1"    
+					&&
+					strtotime($week_days[$i]) >= strtotime($user_values['user_details']['isactive_date'] ) 
+					)
+					//|| ($user_values['user_details']['makes_visits'] == "0")
+				)
+				{
+					$isactive_class = " strikethrough_print ";
+					$isactive_message = "<br>".$this->translate("user_cantvisit_or_inactive_label");
+				}
+			?>	
+		
+				<table border="0"  class="<?php echo $isactive_class;?>">					
+					<?php $k=1; foreach($user_values['planned_visits']  as $ku =>$vistits_values ):?>
+					
+					<?php //if ($user_values['user_details']['users_viewmode'] =="timed") : ?>
+					<tr>
+						<td align="center"  bgcolor="#efefef">
+						<?php 
+
+						if ( $vistits_values['start_date'] == "0000-00-00 00:00:00" ) {
+								//use hour if not null
+							if ($vistits_values['hour'] !="")		
+								echo sprintf('%02s', $vistits_values['hour'] ) . ":00";
+						}
+						else{
+						?>
+						<?php echo date('H:i',strtotime($vistits_values['start_date'])); ?> - <?php echo date('H:i',strtotime($vistits_values['end_date'])); ?>
+													
+						<?php } ?>
+														
+						</td>
+					</tr>
+					<?php //endif; ?>
+				
+					<tr>
+						<td  bgcolor="#FFFFCC">
+							<strong><?php echo $user_values['user_details']['nice_name']?></strong>
+							<?php echo $isactive_message;?>
+						</td>
+					</tr>
+					<tr >
+										<?php if(!empty($user_values['user_details']['mobile'])):?>
+											<td  bgcolor="#FFFFee" ><span>Mobil: <?php echo $user_values['user_details']['mobile']?></span></td>
+										<?php else: ?>
+											<td  bgcolor="#FFFFee" ><span>Telefon: <?php echo $user_values['user_details']['phone']?></span></td>
+										<?php endif;?>
+									</tr>
+									
+					<?php if( !empty($vistits_values['comment'] )) : ?>
+					<tr><td><?php echo html_entity_decode($vistits_values['comment']) ?></td></tr>
+					<?php endif; ?>
+					
+					<tr><td style="border-bottom:1px solid #efefef;"></td></tr>							
+					<?php $k++; endforeach;?>
+				
+			
+			</table>
+		<?php endif; ?>
+	<?php endforeach; ?>
+	<?php endforeach; ?>
+	
+		
+		
+	</td>
+	
+<?php endfor; ?>
+		
+	</tr>
+
+	
+	
+	
+
+	
+		<tr>
+		<?php 
+
+	for ($i = 1; $i <= 7; $i++) :
+		$day_planning = $pdf_post[$i];
+
+	?>
+	
+	<td style="border: 1px solid #e6e6e6;" valign="top">
+		<?php if ( count($day_planning['actual_location']) > 0 ) :?>											
+		<div style="min-height:200px; position: absolute;bottom: 0;">
+		<?php foreach($day_planning['actual_location'] as $one_location): ?>
+			<b><?php echo $this->translate('patientlocation');?> </b>
+															<?php if (substr($one_location['location_id'], 0, 4) == '8888'){
+																//zu the contact location
+																//TODO-3756 Ancuta 26.01.2021
+																//$loc_contact = $location_contact_persons [$one_location['ipid']] [0];
+																$loc_contact = $this->location_contact_persons_array [$one_location['ipid']] [$one_location['location_id']];
+																//--
+																if(!empty($loc_contact['cnt_phone'])) echo "priv:" . $loc_contact['cnt_phone'] ;
+																if(!empty($loc_contact['cnt_first_name']) || !empty($loc_contact['cnt_last_name'])) echo "<br>" . $loc_contact['cnt_first_name'] ." ". $loc_contact['cnt_last_name'] ;
+																if(!empty($loc_contact['cnt_street1'])) echo "<br>" . $loc_contact['cnt_street1'] ;
+																if(!empty($loc_contact['cnt_zip'])) echo "<br>" . $loc_contact['cnt_zip'] ;
+																if(!empty($loc_contact['cnt_city'])) echo "<br>" . $loc_contact['cnt_city'] ;
+
+															}
+															elseif ($locations_master[ $one_location['location_id'] ] ['location_type'] == 5 ){
+																	//zu Hause ist this patient 		
+																if(!empty($vistits_values['patients_details'] ['phone'])) echo "priv:" . $vistits_values['patients_details'] ['phone'] ;
+																if(!empty($locations_master[ $one_location['location_id'] ] ['location'])) echo "<br>".$locations_master[ $one_location['location_id'] ] ['location'];
+																if(!empty($vistits_values['patients_details'] ['street1'])) echo "<br>".$vistits_values['patients_details'] ['street1'] ;
+																if(!empty($vistits_values['patients_details'] ['zip'])) echo "<br>".$vistits_values['patients_details'] ['zip'] ;
+																if(!empty($vistits_values['patients_details'] ['city'])) echo "<br>".$vistits_values['patients_details'] ['city'] ;
+															}else{
+																if(!empty($locations_master[ $one_location['location_id'] ] ['phone1'])) echo "priv:" . $locations_master[ $one_location['location_id'] ] ['phone1']  ;
+																if(!empty($locations_master[ $one_location['location_id'] ] ['location'])) echo "<br>".$locations_master[ $one_location['location_id'] ] ['location'];
+																if(!empty($locations_master[ $one_location['location_id'] ] ['street'])) echo "<br>".$locations_master[ $one_location['location_id'] ] ['street'];
+																if(!empty($locations_master[ $one_location['location_id'] ] ['zip'])) echo "<br>".$locations_master[ $one_location['location_id'] ] ['zip'];
+																if(!empty($locations_master[ $one_location['location_id'] ] ['city'])) echo "<br>".$locations_master[ $one_location['location_id'] ] ['city'];
+															}
+																					
+															?>
+														
+		
+								<?php endforeach; ?>
+			
+				</div>							
+		
+	<?php endif; ?>
+
+		
+		
+	</td>
+	<?php endfor; ?>
+		</tr>
+	
+</table>
+
+

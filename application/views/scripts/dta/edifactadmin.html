@@ -1,0 +1,257 @@
+<?php
+ # Nico :: DemSTepCare - Special EDIFACT-Billing ISPC-2598
+if(!$this->no_errors) return;
+?>
+<?php if(strlen($this->serror)):?>
+<div class="edifactadmin-toperror">
+    <?php echo $this->serror;?>
+</div>
+<?php endif;?>
+
+<style>
+    .edifactadmin-toperror{
+        padding:6px;
+        font-size:12px;
+        color:red;
+        border: 5px double  red;
+        margin:4px;
+        width:700px;
+    }
+    #edifactadmin-keyupload-preview{
+        display:none;
+    }
+
+    .edifactadmin-newkey-preview-buttonbar{
+        text-align: center;
+        padding:4px;
+    }
+
+    .edifactadmin-section{
+        margin:18px;
+    }
+
+    .edifactadmin-section h2{
+        color: #253c8b;
+        margin-bottom:8px;
+    }
+
+    .edifactadmin-newkey-step{
+        margin-left:16px;
+        margin-bottom:8px;
+    }
+
+    #edifactadmin-certupload-dlg,
+    #edifactadmin-pkeyupload-dlg{
+        display:none;
+    }
+</style>
+<script>
+    $(document).on('click', '#edifactadmin-cert-butt', function(){
+        $('#edifactadmin-certupload-dlg').dialog(
+            {
+                width:340,
+                height:200,
+                title:"Zertifikat hinzufügen"
+            }
+        );
+    });
+    $(document).on('click', '#edifactadmin-pkey-butt', function(){
+        $('#edifactadmin-pkeyupload-dlg').dialog(
+            {
+                width:340,
+                height:200,
+                title:"privaten Schlüssel hinzufügen"
+            }
+        );
+    });
+
+    $(document).on('change', '#edifactadmin-certupload-dlg input, #edifactadmin-pkeyupload-dlg input', function(){
+        $(this).parents('form').submit();
+    });
+
+    $(document).on('click', '.edifactadmin-newkey-preview-buttonbar input', function(){
+        $('#edifactadmin-newkey-form input[name="step"]').val(2);
+        $('#edifactadmin-newkey-form').submit();
+    });
+
+    $(document).on('change', '.edifactadmin-newkey-step input[type="file"]', function() {
+        jQuery.ajax({
+            type: 'POST',
+            url: "<?php echo APP_BASE;?>/dta/edifactadmin",
+            data: new FormData($("#edifactadmin-newkey-form")[0]),
+            processData: false,
+            contentType: false,
+            success: function (returnval) {
+                $("#edifactadmin-keyupload-preview").empty();
+                var p=JSON.parse(returnval);
+                $('#edifactadmin-newkey-form input[name="keys"]').val(returnval);
+                var ec=p.length;
+
+                $('#edifactadmin-keyupload-preview').append('<p>Es werden diese '+ec+' Schlüssel importiert.</p>');
+
+                $('#edifactadmin-keyupload-preview').append('<div class="edifactadmin-newkey-preview-buttonbar"><input type="button" value="alle importieren"></div>');
+
+
+                var tab=$("<table class='datatable' style='width:100%;'>");
+                $('#edifactadmin-keyupload-preview').append(tab);
+
+                $(p).each(function(){
+                    var ikname=this['name'];
+                    var ikno=this['ik'];
+                    var valid=this['valid'];
+                    var row=$('<tr>');
+                    $(row).append('<td>'+ikname+'</td>');
+                    $(row).append('<td>'+ikno+'</td>');
+                    $(row).append('<td>'+valid+'</td>');
+                    $('#edifactadmin-keyupload-preview table').append(row);
+                });
+
+                $('#edifactadmin-keyupload-preview').dialog({
+                        width: 700,
+                        height: 500,
+                        title: 'import'
+                    }
+                );
+                $('#edifactadmin-keyupload-preview').show();
+            }
+        });
+    });
+
+    $(document).on('keyup change', '#edifactadmin-tabfilter-reckeys', function(){
+        var s=$(this).val().toLowerCase();
+        $('#edifactadmin-table-reckeys tr').show();
+        $('#edifactadmin-table-reckeys tr').each(function(){
+            if($(this).text().toLowerCase().indexOf(s)<0){
+                $(this).hide();
+            }
+        });
+    })
+</script>
+<h1>Verwaltung von Schlüsseln und Zertifikaten für EDIFACT Datenübertragung</h1>
+
+<div class="edifactadmin-section">
+
+    <h2>Versenderinformationen für diesen Client:</h2>
+    <table class="datatable">
+        <tr>
+            <th style="background-color: lightgrey;">IK-Nummer</th>
+            <td><?php echo $this->ik;?></td>
+            <td><a href="<?php echo APP_BASE;?>/client/clientedit?id=<?php echo $this->clientid;?>">ändern</a></td>
+        </tr>
+        <tr>
+            <th style="background-color: lightgrey;">Rechnungstyp</th>
+            <td><?php echo $this->invoice_type;?></td>
+            <td><a href="<?php echo APP_BASE;?>/client/clientinvoicepermissions?cid=<?php echo $this->clientid;?>">ändern</a></td>
+        </tr>
+        <tr>
+            <th style="background-color: lightgrey;">TrustCenter</th>
+            <td><?php echo $this->trustcenter[$this->selected_trustcenter]['name'];?></td>
+            <td>(ergibt sich aus Rechnungstyp)</td>
+        </tr>
+        <tr>
+            <?php
+            $color="background-color: #ff7777;";
+            $verb="fehlt";
+            $valid="";
+            if($this->privcerts[0]!==false){
+                $verb = "vorhanden";
+                $color = "";
+                $valid=substr($this->privcerts[0]['valid'],0,10);
+                $verb=$verb . " (gültig bis: ".$valid.")";
+                if($valid<date('Y-m-d')){
+                    $color="background-color: #ff7777;";
+                    $verb="abgelaufen . \" (gültig bis: \".$valid.\")\"";
+                }
+            }
+            ?>
+            <th style="background-color: lightgrey;">Zertifikat</th>
+            <td style="<?php echo $color;?>"><?php echo $verb;?></td>
+            <td><input type="button" id="edifactadmin-cert-butt" value="ändern"></td>
+        </tr>
+        <tr>
+            <?php
+            $color="background-color: #ff7777;";
+            $verb="fehlt";
+            if($this->privcerts[1]!==false){
+                $verb = "vorhanden";
+                $color = "";
+            }
+            ?>
+            <th style="background-color: lightgrey;">private Key</th>
+            <td style="<?php echo $color;?>"><?php echo $verb;?></td>
+            <td><input type="button" id="edifactadmin-pkey-butt" value="ändern"></td>
+        </tr>
+    </table>
+</div>
+<div class="edifactadmin-section">
+    <h2>Verfügbare Empfängerschlüssel:</h2>
+
+    <?php if(count($this->ikpublickeys)==0):?>
+        <p>Es gibt keine Empfängerschlüssel.</p>
+    <?php else:?>
+    <div>
+        <label>Filter:</label>
+        <input type="text" id="edifactadmin-tabfilter-reckeys">
+    </div>
+        <div style="width:820px;height:500px;overflow:scroll;">
+            <table class="datatable" id="edifactadmin-table-reckeys">
+                <tr>
+                    <th>Name</th>
+                    <th>IK</th>
+                    <th>Gültig bis</th>
+                </tr>
+                <?php foreach ($this->ikpublickeys as $cert):?>
+                    <tr>
+                        <td><?php echo htmlspecialchars($cert->name);?></td>
+                        <td><?php echo htmlspecialchars($cert->ik);?></td>
+                        <td><?php echo date("Y-m-d", strtotime($cert->valid));?></td>
+                    </tr>
+                <?php endforeach;?>
+            </table>
+        </div>
+    <?php endif;?>
+</div>
+
+
+<div class="edifactadmin-section">
+    <h2>Empfängerschlüssel aktualisieren/hinzufügen</h2>
+
+    <div class="edifactadmin-newkey-step">
+        <div><b>1. Schlüssel besorgen:</b>         <?php echo $this->trustcenter[$this->selected_trustcenter]['keysource'];?></div>
+
+    </div>
+    <div class="edifactadmin-newkey-step">
+        <div><b>2. Schlüsseldatei hier hochladen</b></div>
+        <form method="post" id="edifactadmin-newkey-form">
+            <input type="file" name="ik_keyfile">
+            <input type="hidden" name="step" value="1">
+            <input type="hidden" name="keys" value="">
+        </form>
+        </form>
+    </div>
+</div>
+
+<div class="edifactadmin-section">
+    <h2>Mehr zum Thema</h2>
+
+    <a href="<?php echo APP_BASE;?>/dta/listdtainvoicessystem">Rechnungsliste</a>
+</div>
+
+
+<div id="edifactadmin-keyupload-preview">
+
+</div>
+
+<div id="edifactadmin-certupload-dlg">
+    <p>Wähle hier die Datei mit dem Zertifikat aus.</p>
+    <form method="post" enctype="multipart/form-data" id="edifactadmin-certupload-form">
+        <input type="file" name="certfile">
+    </form>
+</div>
+
+<div id="edifactadmin-pkeyupload-dlg">
+    <p>Wähle hier die Datei mit dem privaten Schlüssel aus.</p>
+    <form method="post" enctype="multipart/form-data" id="edifactadmin-pkeyupload-form">
+        <input type="file" name="pkeyfile">
+    </form>
+</div>

@@ -1,0 +1,1737 @@
+<script type="text/javascript">
+
+
+var patid = '<?php echo $this->pat_enc_id ?>';
+var isdischarged = <?php echo $this->isdischarged ?>;
+var first_admission_ever = "<?php echo $this->first_admission_ever ?>";
+
+var loading = function(){
+	var dlist = '<div class="DropDwnTable" style="position:absolute;"><table border="0" align="left" cellpadding="0" cellspacing="0" class="Dropdwntble"><tr class="bluerow"><td valign="top"><img src="<?php echo RES_FILE_PATH; ?>/images/loading.gif"></td></tr></table></div>';
+	document.getElementById('doctdropdown').style.display = "";
+	document.getElementById('doctdropdown').innerHTML=dlist;
+}
+
+
+$(function(){
+
+//date edit dialog
+$("#fall_edit-dialog").dialog({
+        autoOpen: false,
+        height: 140,
+        modal: true,
+        open: function () {
+        	var current_date = ($(this).data('current_date'));
+        	var current_date_time = ($(this).data('current_date_time'));
+        	
+        	var previous_date_full = ($(this).data('previous_date_full'));
+        	var current_date_full = ($(this).data('current_date_full'));
+        	var next_date_full = ($(this).data('next_date_full'));
+        	
+        	var fald = ($(this).data('fald'));
+        	var date_type = ($(this).data('date_type'));
+        	var previous_date = ($(this).data('previous_date'));
+        	var next_date = ($(this).data('next_date'));
+        	var period_status = ($(this).data('period_status'));
+        	var fall_nr = ($(this).data('fall_nr'));
+			var current_dateobj = new Date(current_date_full);
+
+			$('.datepick-popup').css('z-index','1005');
+
+			$('#previous_date').val(previous_date_full);
+			$('#current_date').val(current_date_full);
+			$('#next_date').val(next_date_full);
+			
+			
+			
+			$('#fald').val(fald);
+			$('#date_type').val(date_type);
+			$('#fall_type').val(period_status);
+			$('#fall_nr').val(fall_nr);
+
+			$('#edit_date').val(''); //clear the input field
+        	$('#edit_date').val(current_date); //populate the input field
+
+			$('#edit_date').datepicker({
+				dateFormat: 'dd.mm.yy',
+				showOn: "both",
+				buttonImage: $('#calImg').attr('src'),
+				buttonImageOnly: true,
+				changeMonth: true,
+				changeYear: true,
+				nextText: '',
+				prevText: '',
+		        minDate: previous_date,
+		        maxDate: next_date
+		    });
+        	
+        	
+			$('#edit_time').val(''); //clear the input field
+        	$('#edit_time').val(current_date_time); //populate the input field
+        	
+			$('#edit_time').timepicker({
+						minutes : {
+							interval : 5
+						},
+						showPeriodLabels : false,
+						rows : 4,
+						hourText : 'Stunde',
+						minuteText : 'Minute'
+					});
+        },
+
+        close: function() {
+	        //clear and destroy datepicker on modal close	        	
+        	$('#edit_date').datepicker("destroy");
+        }
+    });
+
+
+	$(".fall_delete")
+	.mouseenter( function () {
+		var fall_nr = $(this).attr('rel');
+		$('#fall_'+fall_nr).addClass('fall_hover_delete');
+	} )
+	.mouseleave( function () {
+		var fall_nr = $(this).attr('rel');
+		$('#fall_'+fall_nr).removeClass('fall_hover_delete');
+	} ).click(function(){
+		var fall_nr = $(this).attr('rel');
+		var fall_adm = $(this).data('adm');
+		var fall_dis = $(this).data('dis');
+		var fall_type = $(this).data('fall_type');
+		
+		// delete fall function
+		var str_date = '<?php echo $this->translate("Are you sure you want to delete this fall"); ?>';
+		var str_action = '<?php echo $this->translate("remove entire fall"); ?>';
+		
+		jConfirm(str_date, str_action, function(r) {
+			
+			if(r)
+			{
+				$('body').addClass('body-overlay');
+				
+				$.ajax({
+					type: 'POST',
+					url: 'ajax/deletepatientfalls?id=' + window.idpd,
+					data: {
+						fall: fall_nr,
+						fall_type: fall_type,
+						admission_date: fall_adm,
+						discharge_date: fall_dis
+					},
+
+					success:function(data){
+						
+						var checkdata = jQuery.parseJSON(data);
+						//console.log(checkdata );
+						if(checkdata.error == "0"){
+							location.href = "<?php echo APP_BASE ?>patientnew/patientdetails?id=" + window.idpd;
+						} 
+						else
+						{
+							$('body').removeClass('body-overlay');
+							alert(checkdata.text);	
+						}
+						
+					},
+					error:function(){
+						ajax_done = 1;
+					}
+				});
+			}
+		});
+		
+	});
+	
+	$(".fall_date_delete")
+	.mouseenter( function () {
+		var fall_nr = $(this).data('fall_nr');
+		var fall_date = $(this).data('fall_date');
+		var fall_date_type = $(this).data('fall_date_type');
+		$('.fall_date_'+fall_nr+'_'+fall_date_type).addClass('fall_hover_date');
+	} )
+	.mouseleave( function () {
+		var fall_nr = $(this).data('fall_nr');
+		var fall_date = $(this).data('fall_date');
+		var fall_date_type = $(this).data('fall_date_type');
+		$('.fall_date_'+fall_nr+'_'+fall_date_type).removeClass('fall_hover_date');
+	} ).click(function(){
+		var fall_nr = $(this).data('fall_nr');
+		var fall_date = $(this).data('fall_date');
+		var fall_date_type = $(this).data('fall_date_type');
+		$('.fall_date_'+fall_nr+'_'+fall_date_type).addClass('fall_hover_date');
+		var fall_type = $(this).data('period_status');
+		
+		//console.log($(this));
+		
+		//console.log(fall_nr);
+		//console.log(fall_date);
+		//console.log(fall_date_type);
+		var move_to_standby = "0";
+		if(first_admission_ever ==  fall_date){
+			move_to_standby = "1";
+		}
+		
+		// delete fall date function
+		// delete fall date function
+		if(fall_date_type == "1" && move_to_standby == "0"){
+			var str_date = '<?php echo $this->translate("Are you sure you want to delete this admission date"); ?>'
+			var str_action = '<?php echo $this->translate("remove admission, move to discharge"); ?>'
+		} 
+		else if(fall_date_type == "1" && move_to_standby == "1"){
+			var str_date = '<?php echo $this->translate("Are you sure you want to delete this admission date and set as STANDBY"); ?>'
+			var str_action = '<?php echo $this->translate("remove admission, move to Standby"); ?>'
+		}
+		else
+		{
+			var str_date = '<?php echo $this->translate("Are you sure you want to delete this discharge date"); ?>'
+			var str_action = '<?php echo $this->translate("remove discharge and reactivate pateint"); ?>'
+		}
+		
+		
+		jConfirm(str_date,str_action, function(r) {
+			
+			if(r)
+			{
+				if( ! checkclientchanged() ){
+					return false;
+				}
+				$('body').addClass('body-overlay');
+				
+				$.ajax({
+					type: 'POST',
+					url: 'ajax/managepatientfalls?id=' + window.idpd,
+					data: {
+						fall: fall_nr,
+						date: fall_date,
+						date_type: fall_date_type,
+						fall_type: fall_type
+					},
+
+					success:function(data){
+						
+						var checkdata = jQuery.parseJSON(data);
+						//console.log(checkdata );
+						if(checkdata.error == "0"){
+							// add class to body
+							//ui-widget-overlay 
+							location.href = "<?php echo APP_BASE ?>patientnew/patientdetails?id=" + window.idpd;
+						} 
+						else
+						{
+							$('body').removeClass('body-overlay');
+							alert(checkdata.text);	
+						}
+						
+					},
+					error:function(){
+						ajax_done = 1;
+					}
+				});
+			}
+		});
+	});
+	
+	
+
+	$(".fall_edit").click(function () {
+//			var edit_data = $(this).attr('rel').split('|');
+		//console.log(edit_data);
+		
+		//console.log($(this));
+		
+		var current_date_full = $(this).data('current_date_full');
+		var date_type = $(this).data('date_type');
+		var fald = $(this).data('fald');
+		var current_date = $(this).data('current_date');
+		var current_date_time = $(this).data('current_date_time');
+		var previous_date = $(this).data('previous_date');
+		var previous_date_full = $(this).data('previous_date_full');
+		var next_date = $(this).data('next_date');
+		var next_date_full = $(this).data('next_date_full');
+		var period_status = $(this).data('period_status');
+		var fall_nr = $(this).data('fall_nr');
+		
+		$("#fall_edit-dialog")
+		.data('current_date_full',current_date_full)
+		.data('date_type',date_type)
+		.data('fald',fald)
+		.data('current_date',current_date)
+		.data('current_date_time',current_date_time)
+		.data('previous_date',previous_date)
+		.data('previous_date_full',previous_date_full)
+		.data('next_date',next_date)
+		.data('next_date_full',next_date_full)
+		.data('period_status',period_status)
+		.data('fall_nr',fall_nr)
+		.dialog("open");
+	        return false;
+	});
+	
+	//vv fall edit start
+	$("#vv_fall_edit_dialog").dialog({
+        autoOpen: false,
+        height: 140,
+        modal: true,
+        open: function () {
+        	var vv_current_date = ($(this).data('vv_current_date'));
+        	var vv_previous_date = ($(this).data('vv_previous_date'));
+        	var vv_next_date = ($(this).data('vv_next_date'));
+        	var vv_fallid = ($(this).data('vv_fallid'));
+        	var vv_date_type = ($(this).data('vv_date_type'));
+        	var vv_current_date_full = ($(this).data('vv_current_date_full'));
+        	var vv_next_date_full = ($(this).data('vv_next_date_full'));
+        	var vv_previous_date_full = ($(this).data('vv_previous_date_full'));
+        	
+        	
+			var current_dateobj = new Date(vv_current_date);
+
+			$('.datepick-popup').css('z-index','1005');
+
+			$('#vv_previous_date').val(vv_previous_date);
+			$('#vv_current_date').val(vv_current_date);
+			$('#vv_next_date').val(vv_next_date);
+			$('#vv_fallid').val(vv_fallid);
+			$('#vv_date_type').val(vv_date_type);
+			$('#vv_current_date_full').val(vv_current_date_full);
+			$('#vv_previous_date_full').val(vv_previous_date_full);
+			$('#vv_next_date_full').val(vv_next_date_full);
+			
+			$('#vv_edit_date').val(''); //clear the input field
+        	$('#vv_edit_date').val(vv_current_date); //populate the input field
+
+			$('#vv_edit_date').datepicker({
+				dateFormat: 'dd.mm.yy',
+				showOn: "both",
+				buttonImage: $('#calImg').attr('src'),
+				buttonImageOnly: true,
+				changeMonth: true,
+				changeYear: true,
+				nextText: '',
+				prevText: '',
+		        minDate: vv_previous_date,
+		        maxDate: vv_next_date
+		    });
+		},
+
+        close: function() {
+	        //clear and destroy datepicker on modal close	        	
+        	$('#vv_edit_date').datepicker("destroy");
+        }
+    });
+
+	$(".vv_fall_edit").click(function () {
+		var edit_data = $(this).attr('rel').split('|');
+		//console.log(edit_data);
+		$("#vv_fall_edit_dialog")
+		.data('vv_current_date',edit_data[0])
+		.data('vv_date_type',edit_data[1])
+		.data('vv_fallid',edit_data[2])
+		.data('vv_previous_date',edit_data[3])
+		.data('vv_next_date',edit_data[4])
+		.data('vv_current_date_full',edit_data[5])
+		.data('vv_previous_date_full',edit_data[6])
+		.data('vv_next_date_full',edit_data[7])
+		.dialog("open");
+	        return false;
+	});
+	//vv fall edit end
+
+	
+	$("#check_fall_history").live('click', function(e){
+		e.preventDefault();
+
+		$('.fall_err span#fall_alert').replaceWith("");
+		if( ! checkclientchanged()){
+			return false;
+		}
+		$.ajax({
+			type: 'POST',
+			url: 'ajax/checkfalledit?id=' + window.idpd,
+			data: {
+				previous_date: $('#previous_date').val(),
+				next_date: $('#next_date').val(),
+				edit_date: $('#edit_date').val(),
+				edit_time: $('#edit_time').val()
+			},
+
+			success:function(data){
+				
+				var checkdata = jQuery.parseJSON(data);
+				var edit_action = "1"
+				var alert_text = "";
+
+				if(checkdata.error == 1){
+					 alert_text = '<span id="fall_alert"><?php echo $this->translate("date must be bigger than previous date"); ?>:'+checkdata.previous_date+'</span>';
+					 edit_action = "0"
+				} else if(checkdata.error == 2){
+					 alert_text = '<span id="fall_alert"><?php echo $this->translate("date must be lower than next date"); ?>:'+checkdata.next_date+'</span>';
+					 edit_action = "0"
+				} else if(checkdata.error == 3){
+					 alert_text = '<span id="fall_alert"><?php echo $this->translate("date_error_before_2008"); ?></span>';
+					 edit_action = "0"
+				} else {
+					 alert_text = '<span id="fall_alert"><img src="<?php echo RES_FILE_PATH; ?>/images/ajax-loader.gif"></span>';
+					 edit_action = "1"
+				}
+				
+				$('.fall_err').append(alert_text);
+				
+				if(edit_action == "1"){
+					$('#edit').submit();
+				}
+				
+			},
+			error:function(){
+				ajax_done = 1;
+			}
+		});
+		
+		
+
+	});
+	
+	
+	
+	
+	
+	
+
+	$("#vv_fall_end-dialog").dialog({
+		autoOpen: false,
+		height: 140,
+		modal: true,
+		open: function () {
+			var current_date = ($(this).data('current_date'));
+			var vv_previous_date = ($(this).data('vv_previous_date'));
+			var vv_next_date = ($(this).data('vv_next_date'));
+			$('#end_vv_date').datepicker({
+				dateFormat: 'dd.mm.yy',
+				showOn: "both",
+				buttonImage: $('#calImg').attr('src'),
+				buttonImageOnly: true,
+				changeMonth: true,
+				changeYear: true,
+				nextText: '',
+				prevText: '',
+				showOnFocus: true,
+				maxDate: vv_next_date,
+				minDate: vv_previous_date
+			});
+
+			$('.datepick-popup').css('z-index','1005');
+			$('#vv_next_date').val(vv_next_date);
+			$('#vv_previous_date').val(vv_previous_date);
+
+			$('#end_vv_date').val('');  //clear the input field
+			$('#end_vv_date').val(vv_next_date); //populate the input field
+			$('#end_vv_date').datepicker('show');
+		},
+		close: function() {
+			//clear and destroy datepicker on modal close
+//			$('#end_vv_date').datepicker('clear');
+			$('#end_vv_date').datepicker("destroy");;
+		}
+	});
+	
+	$("#vv_fall_start-dialog").dialog({
+		autoOpen: false,
+		height: 140,
+		modal: true,
+		open: function () {
+			var current_date = ($(this).data('current_date'));
+			var vv_previous_date = ($(this).data('vv_previous_date'));
+			var vv_next_date = ($(this).data('vv_next_date'));
+			$('#start_vv_date').datepicker({
+				dateFormat: 'dd.mm.yy',
+				showOn: "both",
+				buttonImage: $('#calImg').attr('src'),
+				buttonImageOnly: true,
+				changeMonth: true,
+				changeYear: true,
+				nextText: '',
+				prevText: '',
+				showOnFocus: true,
+				maxDate: vv_next_date,
+				minDate: vv_previous_date
+			});
+
+			$('.datepick-popup').css('z-index','1005');
+			$('#vv_next_date').val(vv_next_date);
+			$('#vv_previous_date').val(vv_previous_date);
+
+			$('#start_vv_date').val('');  //clear the input field
+			$('#start_vv_date').val(vv_next_date); //populate the input field
+			$('#start_vv_date').datepicker('show');
+		},
+		close: function() {
+			//clear and destroy datepicker on modal close
+			$('#start_vv_date').datepicker("destroy");;
+		}
+	});
+
+	$('#end_sapv_button').click(function(){
+		var data_sel = $(this).attr('rel').split('|');
+
+		$('#vv_fall_end-dialog').data('vv_previous_date', data_sel[0])
+					.data('vv_next_date', data_sel[1])
+					.data('vv_current_date', data_sel[2])
+					.dialog("open");
+
+	});
+	
+	$('#start_sapv_button').click(function(){
+		var data_sel = $(this).attr('rel').split('|');
+
+		$('#vv_fall_start-dialog').data('vv_previous_date', data_sel[0])
+					.data('vv_next_date', data_sel[1])
+					.data('vv_current_date', data_sel[2])
+					.dialog("open");
+
+	});
+
+ 
+ 
+	$("#visit_number_edit_dialog").dialog({
+        autoOpen: false,
+        height: 250,
+        width: 320,
+        open: function () {
+        	var hl7_visit_number = ($(this).data('hl7_visit_number'));
+        	var hl7_admin_date = ($(this).data('hl7_admin_date'));
+        	var hl7_admin_date_db = ($(this).data('hl7_admin_date_db'));
+        	var hl7_id = $(this).data('hl7_id');
+        	var hl7_ignore = $(this).data('hl7_ignore');
+			var current_dateobj = new Date(vv_current_date);
+
+			$('#hl7_visit_number').val(hl7_visit_number);
+			$('#hl7_admin_date').val(hl7_admin_date_db);
+		
+			$('#hl7_id').val(hl7_id);
+			$('.hlt_date_text').html(hl7_admin_date);
+			
+			if(hl7_ignore == '1') {
+				$('#hl7_ignore_number').prop("checked",true);
+			}
+ 
+		},
+
+        close: function() {
+	        //clear and destroy datepicker on modal close	        	
+        	$('#visit_number_edit_dialog').datepicker("destroy");
+        	$('#hl7_ignore_number').prop("checked",false);
+        	
+			$('#hl7_visit_number').val('');
+			$('#hl7_admin_date').val('');
+		
+			$('#hl7_id').val('');
+			$('.hlt_date_text').html('');
+        }
+    });
+
+
+
+
+
+// ISPC-2883 Ancuta 06.05.2021 START
+	$(".vv_fall_delete")
+	.mouseenter( function () {
+		var fall_nr = $(this).attr('rel');
+		$('#fall_'+fall_nr).addClass('fall_hover_delete');
+	} )
+	.mouseleave( function () {
+		var fall_nr = $(this).attr('rel');
+		$('#fall_'+fall_nr).removeClass('fall_hover_delete');
+	} ).click(function(){
+		var fall_nr = $(this).attr('rel');
+		var fall_adm = $(this).data('adm');
+		var fall_dis = $(this).data('dis');
+		var fall_type = $(this).data('fall_type');
+		
+		// delete fall function
+		var str_date = '<?php echo $this->translate("Are you sure you want to delete this fall"); ?>';
+		var str_action = '<?php echo $this->translate("remove entire fall"); ?>';
+		
+		jConfirm(str_date, str_action, function(r) {
+			
+			if(r)
+			{
+				$('body').addClass('body-overlay');
+				
+				$.ajax({
+					type: 'POST',
+					url: 'ajax/deletepatientvvfalls?id=' + window.idpd,
+					data: {
+						fall: fall_nr,
+						fall_type: fall_type,
+						admission_date: fall_adm,
+						discharge_date: fall_dis
+					},
+
+					success:function(data){
+						
+						var checkdata = jQuery.parseJSON(data);
+						//console.log(checkdata );
+						if(checkdata.error == "0"){
+							location.href = "<?php echo APP_BASE ?>patientnew/patientdetails?id=" + window.idpd;
+						} 
+						else
+						{
+							$('body').removeClass('body-overlay');
+							alert(checkdata.text);	
+						}
+						
+					},
+					error:function(){
+						ajax_done = 1;
+					}
+				});
+			}
+		});
+		
+	});
+
+// ISPC-2883 Ancuta 06.05.2021 END
+});
+
+
+function display_HL7_PV1_19(_obj){
+
+	var _html = "<span style='display: block; padding:2px;' class=''>" + translate("HL7 PV1-19 visit_number") + " : " + translate("HL7 PV1-19 admit_date") + "</span>";
+	
+	//TODO-3837 
+	console.log(_obj);
+	$.map(_obj, function(data){
+	if(data.ignore_number == '1') {
+		_html += '<div style="text-decoration: line-through; color: red; ">';
+	} else{
+		_html += '<div>';
+	} 
+		_html += "<span style='display: block; padding:2px; float: left' class=''>" + data.visit_number + " : " + data.date + "";
+		_html += ' <img src="<?php echo RES_FILE_PATH;  ?>/images/edit.png"  class="edit_visit_number" data-hl7_id="'+data.id+'"  data-hl7_ignore="'+data.ignore_number+'"   data-visit_number="'+data.visit_number+'" data-admit_date="'+data.date+'" data-admit_date_db="'+data.admit_date+'"  />';
+		_html += '</span>';
+		_html += '</div>';
+	});
+	
+	var newDiv = $(document.createElement('div')); 
+	newDiv.html(_html);
+	newDiv.dialog({
+        autoOpen: true,
+        width: 280,
+        autoResize:true,
+        modal: true,
+        title : translate("HL7 PV1-19 visit_number"),
+        close: function() {
+	        //clear and destroy
+	        $(this).dialog('destroy').remove();
+        }
+    });
+    
+        	$(".edit_visit_number").click(function () {
+    		var visit_number = $(this).data('visit_number');
+    		var date = $(this).data('admit_date');
+    		var admit_date_db = $(this).data('admit_date_db');
+    		var hl7_id = $(this).data('hl7_id');
+    		var hl7_ignore = $(this).data('hl7_ignore');
+//hl7_admin_date_label
+    		$("#visit_number_edit_dialog")
+    		.data('hl7_visit_number',visit_number)
+    		.data('hl7_admin_date',date)
+    		.data('hl7_admin_date_db',admit_date_db)
+    		.data('hl7_id',hl7_id)
+    		.data('hl7_ignore',hl7_ignore)
+    		.dialog("open");
+    	        return false;
+    	});
+}
+
+//ISPC-2513 Lore 13.04.2020
+//#ISPC-2512PatientCharts
+function readmission_edit_details(_obj){
+	
+	var arr_values = Object.values(_obj);
+	
+	var modal = $(document.getElementById("readmission_edit_details-dialog"));
+
+	modal.dialog({
+        //autoOpen: true,
+        height: 200,
+        width: 400,
+        modal: true,
+        title : translate("readmission_edit_details"),
+        open: function(event, ui) {
+
+        	var readmission_id   = arr_values[0]; 
+        	var admission_type   = arr_values[1]; 
+        	var admission_reason = arr_values[2]; 
+
+			$('#rad_id').val(readmission_id);
+			$('#admission_type').val(admission_type);
+			$('#admission_reason').val(admission_reason); 
+        	
+        },
+		buttons: {
+			"<?php echo $this->translate('submit'); ?>": function() {
+				$('#rad_edit').submit();
+			},
+			"<?php echo $this->translate('cancel'); ?>": function() {
+				$(this).dialog("close");
+			}
+		}
+           
+	});
+	
+}
+
+</script>
+
+
+<!-- ###########  BOX 2a: Patient history ############ -->
+					<div  id="grow35" class="patientdragbox-content">
+						<div class="curent_status_info">
+							<b><?php echo $this->translate('current_status:'); ?></b>
+							<?php if($this->isstandby):  ?>
+								<span id="fdoc_message"> <?php echo $this->translate('standby'); ?></span>
+							<?php elseif($this->isstandbydelete):  ?>
+								<span id="fdoc_message"> <?php echo $this->translate('standby_deleted'); ?></span>
+							<?php elseif($this->isdischarged == "1"):  ?>
+								<span id="fdoc_message black"> <?php echo $this->translate('isdischarged'); ?></span>
+							<?php else:  ?>
+								<span id="fdoc_message black"> <?php echo $this->translate('isactive'); ?></span>
+							<?php endif;  ?>
+						</div>
+						<div id="PtDetails_first" class="dtbox">
+						
+						
+						
+						<?php if($this->display_edit_history == "1" ):?>
+							<!-- ###########  BOX 2a.1:  Patient history - with delete options ############ -->
+							<?php if($this->allow_change == "1"):?>
+								<table border="0">
+									<tr>
+										<td class="colbold patcontactscol1" style="width: 64px;" valign="top"><?php echo $this->translate('fall_type'); ?></td>
+										<td class="colbold patcontactscol1" style="width: 110px;"  valign="top"><?php echo $this->translate('admissiondate'); ?></td>
+										<td class="colbold patcontactscol1" style="width: 100px;"  valign="top"><?php echo $this->translate('dischargedate'); ?></td>
+										<td valign="top"></td>
+										<?php if ($this->display_HL7_PV1_19) : ?>
+										<td valign="top"></td>
+										<?php endif; ?>
+									</tr>
+									
+									<?php 
+										$patient_falls = $this->patient_falls;
+									$patient_adm_history = $this->patient_adm_history;
+									$patient_history_full = $this->patient_history_full;
+									
+									if (end($patient_adm_history) == 1)
+									{
+										$last_adm_date = array_pop(array_keys($patient_adm_history));
+									}
+									else
+									{
+										$ar_keys = array_keys($patient_adm_history);
+										end($ar_keys);
+										prev($ar_keys);
+										$last_adm_date = current($ar_keys);
+									}
+
+									if (end($patient_adm_history) == 2) {
+										$last_discharge_date = array_pop(array_keys($patient_adm_history));
+									}
+								?>
+									
+									<?php foreach($patient_falls as $fall_nr => $fall_dates):?>
+										<tr id="fall_<?php echo $fall_nr;?>">
+											<?php foreach($fall_dates as $history_type => $history_date):?>
+												<?php 
+												//echo $last_adm_date;
+												$fald = 0;
+
+												if($history_type == "1") {
+
+													if($history_date == $last_adm_date) {
+														$fald = 1;
+													}
+
+													if(isset($patient_falls[$fall_nr - 1]) && $patient_falls[$fall_nr - 1][0] != "discharge" ){
+														if(isset($patient_falls[$fall_nr - 1]['2'])) {
+															$previous_date = $patient_falls[$fall_nr - 1]['2']; // previous discharge date
+														} else {
+															$previous_date = '1900-01-01 00:00:00';
+														}
+													} elseif(isset($patient_falls[$fall_nr - 1]) && $patient_falls[$fall_nr - 1][0] == "discharge" ){
+														if(isset($patient_falls[$fall_nr - 2]['2'])) {
+															$previous_date = $patient_falls[$fall_nr - 2]['2']; // previous discharge date
+														} else {
+															$previous_date = '1900-01-01 00:00:00';
+														}
+													}
+
+
+													if(isset($patient_falls[$fall_nr]['2'])) {
+														$next_date =  $patient_falls[$fall_nr]['2']; // current discharge date
+													} else {
+														$next_date = date('Y-m-d ').'23:59:59';
+													}
+
+												} elseif($history_type == "2") {
+
+													if($history_date == $last_discharge_date) {
+														$fald = 1;
+													}
+
+													$previous_date = $patient_falls[$fall_nr]['1']; // current admission date
+
+													if(isset($patient_falls[$fall_nr+1]) && $patient_falls[$fall_nr+1]['0'] != "discharge" ){
+														if(isset($patient_falls[$fall_nr+1]['1'])) {
+															$next_date =  $patient_falls[$fall_nr+1]['1']; // next admission date 
+														} else {
+															$next_date = date('Y-m-d ').'23:59:59';
+														}
+													} elseif(isset($patient_falls[$fall_nr+1]) && $patient_falls[$fall_nr+1]['0'] == "discharge" ){
+														if(isset($patient_falls[$fall_nr+2]['1'])) {
+															$next_date =  $patient_falls[$fall_nr+2]['1']; // next admission date 
+														} else {
+															$next_date = date('Y-m-d ').'23:59:59';
+														}
+													} 													
+
+		
+												} else {
+													$period_status = $patient_falls[$fall_nr]['0'];// status 
+	
+												}
+
+
+												$edit_string = $history_date.'|'.$history_type.'|'.$fald.'|'.date('d.m.Y', strtotime($history_date)).'|'.date('H:i', strtotime($history_date)).'|'.date('d.m.Y', strtotime($previous_date)).'|'.$previous_date.'|'.date('d.m.Y', strtotime($next_date)).'|'.$next_date.'|'.$period_status;
+ 
+												$edit_string_data = '';
+												$edit_string_data .= 'data-current_date_full="'.$history_date.'"'; 
+												$edit_string_data .= 'data-date_type="'.$history_type.'"';
+												$edit_string_data .= 'data-fald="'.$fald.'"'; 
+												$edit_string_data .= 'data-current_date="'.date('d.m.Y', strtotime($history_date)).'"'; 
+												$edit_string_data .= 'data-current_date_time="'.date('H:i', strtotime($history_date)).'"';
+												$edit_string_data .= 'data-previous_date="'.date('d.m.Y', strtotime($previous_date)).'"'; 
+												$edit_string_data .= 'data-previous_date_full="'.$previous_date.'"'; 
+												$edit_string_data .= 'data-next_date="'.date('d.m.Y', strtotime($next_date)).'"'; 
+												$edit_string_data .= 'data-next_date_full="'.$next_date.'"';
+												$edit_string_data .= 'data-period_status="'.$period_status.'"';  
+												$edit_string_data .= 'data-fall_nr="'.$fall_nr.'"';  
+
+
+												
+											$allow_remove_date = 0;
+
+
+
+
+											// if fall is the last fall -  delete per date - only last date , and not first admission
+
+											if($fall_nr == count($patient_falls) && $history_date != $this->first_admission_ever){
+												//print_R("first");
+												if($history_date == $last_adm_date && isset($patient_falls[$fall_nr]['2'])){
+													// do not allow deletion for admission if discharge is set -->
+													$allow_remove_date = 0;
+
+												} else {
+
+													if($history_date != $patient_falls[$fall_nr]['2']  &&  isset($patient_falls[$fall_nr]['2']))
+													{
+														$allow_remove_date = 0;
+													} else {
+														if($period_status == "discharge"){
+															$allow_remove_date = 0;
+														} else {												
+															$allow_remove_date = 1;
+			    										}
+													}
+			    								}
+    										} elseif($history_date == $this->first_admission_ever && !isset($patient_falls[$fall_nr]['2']) && $this->isstandbydelete == "1"){
+												//print_R("second");
+				    							//first admission : move to standby
+				    							$allow_remove_date = 0; 
+				    														
+    										} elseif($history_date == $this->first_admission_ever && !isset($patient_falls[$fall_nr]['2']) && $this->isstandby == "0"){
+												//print_R("third");
+				    							//first admission : move to standby
+				    							$allow_remove_date = 1; 
+				    														
+    										} elseif($history_date == $this->first_admission_ever && !isset($patient_falls[$fall_nr]['2']) && $this->isstandby == "1"){
+												 //print_R("forth");
+				    							//first admission : move to standby
+				    							$allow_remove_date = 0; 
+				    														
+    										} elseif($history_date == $last_adm_date && !isset($patient_falls[$fall_nr]['2'])){
+												//print_R("fifth");
+			    								//last standby admission : move to discharge
+			    								$allow_remove_date = 1;
+    										} else { 
+												//print_R("sixth");
+    											$allow_remove_date = 0;
+    										}
+
+
+											?>
+											
+											
+												<?php if($history_type == "0" ):?>
+													<td class="fall_status_<?php echo $period_status; ?>" >
+														<span><?php echo $this->translate('fall_status_'.$period_status); ?></span>
+													</td>
+												<? elseif($history_date  ):?>
+													<td  class="fall_date_<?php echo $fall_nr;?>_<?php echo $history_type; ?> fall_status_<?php echo $period_status; ?>"   >
+														
+														<?php if($period_status == "discharge"):?>
+															<?php  echo date("d.m.Y H:i",strtotime($history_date)); ?>
+														<?php else:?>												
+															<a href="javascript:void(0)" class="fall_edit" <?php echo $edit_string_data;?>  ><?php  echo date("d.m.Y H:i",strtotime($history_date)); ?></a>
+														<?php endif;?>
+	
+	
+														<?php if($allow_remove_date == "1"):?>
+															<a href="javascript:void(0)" class="fall_date_delete dontPrint"  <?php echo $edit_string_data;?>   data-fall_nr="<?php echo $fall_nr?>" data-fall_date="<?php echo $history_date; ?>" data-fall_date_type="<?php echo $history_type; ?>"   ><img border="0" src="<?php echo RES_FILE_PATH;  ?>/images/action_remove.png"></a>													
+														<?php else:?>
+																
+														<?php endif;?>
+														
+													</td>
+												<?php else: ?>
+												<?php //elseif(!isset($patient_falls[$fall_nr]['2'])): ?>
+													<?php if($history_type != "0"): ?>
+														<td>
+															-
+														</td>
+													<?php endif;?>
+												<?php endif;?>
+												
+												
+												
+											<?php endforeach;?>
+											<?php if (count($fall_dates) != 3) 
+											    echo "<td></td>";
+											?>
+											<td>
+												<?php  if(count($patient_falls) > "1" && $fall_nr != count($patient_falls)):?>
+													<?php if($period_status == "discharge"): ?>
+														<!-- do not allaw removal of discharge period -->
+													<?php else: ?>
+														<?php if(!isset($patient_falls[$fall_nr]['2'])):?>
+	
+														<?php else: ?>
+															<a href="javascript:void(0)" class="fall_delete dontPrint" data-fall_type="<?php echo $period_status; ?>" data-adm="<?php echo $patient_falls[$fall_nr]['1']; ?>" data-dis="<?php echo $patient_falls[$fall_nr]['2']; ?>" rel="<?php echo $fall_nr; ?>" title="<?php echo $this->translate('delete entire fall!'); ?>"><img border="0" src="<?php echo RES_FILE_PATH;  ?>/images/action_delete.png"></a>
+														<?php endif;?>	
+													<?php endif;?>	
+												<?php endif;?>	
+											</td>
+											
+											<td>
+											<?php if ($this->display_HL7_PV1_19 && isset($this->HL7_PV1_19[$fall_nr])) : ?>
+    											<a onClick='display_HL7_PV1_19(<?=json_encode($this->HL7_PV1_19_full [$fall_nr]); ?>)' class='fall_pv1_list' title='<?=$this->translate("HL7 PV1-19 visit_number")?>'>&nbsp;</a>
+											<?php endif; ?>
+											</td>
+											
+											<!-- ISPC-2513 Lore 13.04.2020 -->	
+											<?php if($this->display_edit_hist_details == "1" && $period_status == "active") : ?>
+											<td>											
+    											<a style="text-decoration: none;" onClick='readmission_edit_details(<?=json_encode( $this->readmision_details [$fall_nr]); ?>)' class='readmission_edit_details' title='<?=$this->translate("readmission_edit_details")?>'>&nbsp;</a>
+											</td>
+											<?php endif; ?>
+											
+										</tr>
+									<?php endforeach;?>
+								</table>
+								 <!-- OLD VERSION -->
+								 <table border="0" style="display: none;">
+									<tr>
+										<td class="colbold patcontactscol1" valign="top"><?php echo $this->translate('admissiondate'); ?></td>
+										<td class="colbold patcontactscol1" valign="top"><?php echo $this->translate('dischargedate'); ?></td>
+										<td valign="top"></td>
+									</tr>
+									
+									<?php 
+										$patient_falls = $this->patient_falls;
+									$patient_adm_history = $this->patient_adm_history;
+									$patient_history_full = $this->patient_history_full;
+									
+									if (end($patient_adm_history) == 1)
+									{
+										$last_adm_date = array_pop(array_keys($patient_adm_history));
+									}
+									else
+									{
+										$ar_keys = array_keys($patient_adm_history);
+										end($ar_keys);
+										prev($ar_keys);
+										$last_adm_date = current($ar_keys);
+									}
+
+									if (end($patient_adm_history) == 2) {
+										$last_discharge_date = array_pop(array_keys($patient_adm_history));
+									}
+								?>
+									
+									<?php foreach($patient_falls as $fall_nr => $fall_dates):?>
+										<tr id="fall_<?php echo $fall_nr;?>">
+											<?php foreach($fall_dates as $history_type => $history_date):?>
+												<? 
+													$fald = 0;
+
+												if($history_type == "1") {
+
+													if($history_date == $last_adm_date) {
+														$fald = 1;
+													}
+													if(isset($patient_falls[$fall_nr - 1]['2'])) {
+														$previous_date = $patient_falls[$fall_nr - 1]['2']; // previous discharge date
+													} else {
+														$previous_date = '1900-01-01 00:00:00';
+													}
+													if(isset($patient_falls[$fall_nr]['2'])) {
+														$next_date =  $patient_falls[$fall_nr]['2']; // current discharge date
+													} else {
+														$next_date = date('Y-m-d ').'23:59:59';
+													}
+
+												} else {
+
+													if($history_date == $last_discharge_date) {
+														$fald = 1;
+													}
+
+													$previous_date = $patient_falls[$fall_nr]['1']; // current admission date
+													if(isset($patient_falls[$fall_nr+1]['1'])) {
+														$next_date =  $patient_falls[$fall_nr+1]['1']; // next admission date 
+													} else {
+														$next_date = date('Y-m-d ').'23:59:59';
+													}		
+												}
+
+												$edit_string = $history_date.'|'.$history_type.'|'.$fald.'|'.date('d.m.Y', strtotime($history_date)).'|'.date('H:i', strtotime($history_date)).'|'.date('d.m.Y', strtotime($previous_date)).'|'.$previous_date.'|'.date('d.m.Y', strtotime($next_date)).'|'.$next_date;
+											?>
+											
+											
+											
+												<? if($history_date):?>
+													<td class="fall_date_<?php echo $fall_nr;?>_<?php echo $history_type; ?>">
+														<a href="javascript:void(0)" class="fall_edit" rel="<?php echo $edit_string; ?>"><?php  echo date("d.m.Y H:i",strtotime($history_date)); ?></a>
+														<? // if fall is the last fall -  delete per date - only last date , and not first admission?>
+														<?php if($fall_nr == count($patient_falls) && $history_date != $this->first_admission_ever):?>
+															<?php if($history_date == $last_adm_date && isset($patient_falls[$fall_nr]['2'])):?>
+																<!-- do not allow deletion for admission if discharge is set -->
+															<?php else:?>												
+																<a href="javascript:void(0)" class="fall_date_delete dontPrint" rel="<?php echo $edit_string; ?>"  data-fall_nr="<?php echo $fall_nr?>" data-fall_date="<?php echo $history_date; ?>" data-fall_date_type="<?php echo $history_type; ?>"   ><img border="0" src="<?php echo RES_FILE_PATH;  ?>/images/action_remove.png"></a>
+															<?php endif;?>
+														<?php elseif($history_date == $this->first_admission_ever && !isset($patient_falls[$fall_nr]['2']) && $this->isstandby == "0"):?>
+	<!-- 															first admission : move to standby  -->
+																<a href="javascript:void(0)" class="fall_date_delete dontPrint" rel="<?php echo $edit_string; ?>"  data-fall_nr="<?php echo $fall_nr?>" data-fall_date="<?php echo $history_date; ?>" data-fall_date_type="<?php echo $history_type; ?>"   ><img border="0" src="<?php echo RES_FILE_PATH;  ?>/images/action_remove.png"></a>
+														<?php endif;?>
+													</td>
+												<?php else: ?>
+												<?php //elseif(!isset($patient_falls[$fall_nr]['2'])): ?>
+													<td>
+														-
+													</td>
+												<?php endif;?>
+											<?php endforeach;?>
+											<?php if (count($fall_dates) != 3) 
+											    echo "<td></td>";
+											?>
+											<td>
+												<?php if(count($patient_falls) > "1" && $fall_nr != count($patient_falls)):?>
+													<a href="javascript:void(0)" class="fall_delete dontPrint" data-adm="<?php echo $patient_falls[$fall_nr]['1']; ?>" data-dis="<?php echo $patient_falls[$fall_nr]['2']; ?>" rel="<?php echo $fall_nr; ?>" title="<?php echo $this->translate('delete entire fall!'); ?>"><img border="0" src="<?php echo RES_FILE_PATH;  ?>/images/action_delete.png"></a>
+												<?php endif;?>	
+											</td>
+										</tr>
+									<?php endforeach;
+								?>
+								</table>  
+							<?php else:  // NO allow_change?>
+								<table border="0">
+									<tr>
+										<td class="colbold patcontactscol1" style="width: 64px;" valign="top"><?php echo $this->translate('fall_type'); ?></td>
+										<td class="colbold patcontactscol1" style="width: 110px;"  valign="top"><?php echo $this->translate('admissiondate'); ?></td>
+										<td class="colbold patcontactscol1" style="width: 100px;"  valign="top"><?php echo $this->translate('dischargedate'); ?></td>
+										<td valign="top"></td>
+										<?php if ($this->display_HL7_PV1_19) : ?>
+										 <td valign="top"></td>
+										<?php endif; ?>
+									</tr>
+								 <?
+										$patient_falls = $this->patient_falls;
+									$patient_adm_history = $this->patient_adm_history;
+									$patient_history_full = $this->patient_history_full;
+									
+									if (end($patient_adm_history) == 1)
+									{
+										$last_adm_date = array_pop(array_keys($patient_adm_history));
+									}
+									else
+									{
+										$ar_keys = array_keys($patient_adm_history);
+										end($ar_keys);
+										prev($ar_keys);
+										$last_adm_date = current($ar_keys);
+									}
+
+									if (end($patient_adm_history) == 2) {
+										$last_discharge_date = array_pop(array_keys($patient_adm_history));
+									}
+								?>
+									
+									<?php foreach($patient_falls as $fall_nr => $fall_dates):?>
+										<tr id="fall_<?php echo $fall_nr;?>">
+											<?php foreach($fall_dates as $history_type => $history_date):?>
+												<? 
+												//echo $last_adm_date;
+												$fald = 0;
+
+												if($history_type == "1") {
+
+													if($history_date == $last_adm_date) {
+														$fald = 1;
+													}
+
+													if(isset($patient_falls[$fall_nr - 1]) && $patient_falls[$fall_nr - 1][0] != "discharge" ){
+														if(isset($patient_falls[$fall_nr - 1]['2'])) {
+															$previous_date = $patient_falls[$fall_nr - 1]['2']; // previous discharge date
+														} else {
+															$previous_date = '1900-01-01 00:00:00';
+														}
+													} elseif(isset($patient_falls[$fall_nr - 1]) && $patient_falls[$fall_nr - 1][0] == "discharge" ){
+														if(isset($patient_falls[$fall_nr - 2]['2'])) {
+															$previous_date = $patient_falls[$fall_nr - 2]['2']; // previous discharge date
+														} else {
+															$previous_date = '1900-01-01 00:00:00';
+														}
+													}
+
+
+													if(isset($patient_falls[$fall_nr]['2'])) {
+														$next_date =  $patient_falls[$fall_nr]['2']; // current discharge date
+													} else {
+														$next_date = date('Y-m-d ').'23:59:59';
+													}
+
+												} elseif($history_type == "2") {
+
+													if($history_date == $last_discharge_date) {
+														$fald = 1;
+													}
+
+													$previous_date = $patient_falls[$fall_nr]['1']; // current admission date
+
+													if(isset($patient_falls[$fall_nr+1]) && $patient_falls[$fall_nr+1]['0'] != "discharge" ){
+														if(isset($patient_falls[$fall_nr+1]['1'])) {
+															$next_date =  $patient_falls[$fall_nr+1]['1']; // next admission date 
+														} else {
+															$next_date = date('Y-m-d ').'23:59:59';
+														}
+													} elseif(isset($patient_falls[$fall_nr+1]) && $patient_falls[$fall_nr+1]['0'] == "discharge" ){
+														if(isset($patient_falls[$fall_nr+2]['1'])) {
+															$next_date =  $patient_falls[$fall_nr+2]['1']; // next admission date 
+														} else {
+															$next_date = date('Y-m-d ').'23:59:59';
+														}
+													} 													
+
+		
+												} else {
+													$period_status = $patient_falls[$fall_nr]['0'];// status 
+	
+												}
+
+												$edit_string = $history_date.'|'.$history_type.'|'.$fald.'|'.date('d.m.Y', strtotime($history_date)).'|'.date('H:i', strtotime($history_date)).'|'.date('d.m.Y', strtotime($previous_date)).'|'.$previous_date.'|'.date('d.m.Y', strtotime($next_date)).'|'.$next_date.'|'.$period_status;
+
+												
+											$allow_remove_date = 0;
+
+
+
+
+											// if fall is the last fall -  delete per date - only last date , and not first admission
+
+											if($fall_nr == count($patient_falls) && $history_date != $this->first_admission_ever){
+												//print_R("first");
+												if($history_date == $last_adm_date && isset($patient_falls[$fall_nr]['2'])){
+
+													// do not allow deletion for admission if discharge is set -->
+
+												} else {
+												
+													if($period_status == "discharge"){
+														$allow_remove_date = 0;
+													} else {												
+														$allow_remove_date = 1;
+			    									}
+			    								}
+    										} elseif($history_date == $this->first_admission_ever && !isset($patient_falls[$fall_nr]['2']) && $this->isstandby == "0"){
+												 //print_R("second");
+				    							//first admission : move to standby
+				    							$allow_remove_date = 1; 
+				    														
+    										} elseif($history_date == $this->first_admission_ever && !isset($patient_falls[$fall_nr]['2']) && $this->isstandby == "1"){
+												 //print_R("third");
+				    							//first admission : move to standby
+				    							$allow_remove_date = 0; 
+				    														
+    										} elseif($history_date == $last_adm_date && !isset($patient_falls[$fall_nr]['2'])){
+												 //print_R("forth");
+			    								//last standby admission : move to discharge
+			    								$allow_remove_date = 1;
+    										} else { 
+												 //print_R("fifth");
+    											$allow_remove_date = 0;
+    										}
+
+
+											?>
+											
+											
+												<? if($history_type == "0" ):?>
+													<td class="fall_status_<?php echo $period_status; ?>" >
+														<span><?php echo $this->translate('fall_status_'.$period_status); ?></span>
+													</td>
+												<? elseif($history_date  ):?>
+													<td  class="fall_date_<?php echo $fall_nr;?>_<?php echo $history_type; ?> fall_status_<?php echo $period_status; ?>"   >
+														<?php if($period_status == "discharge"):?>
+															<?php  echo date("d.m.Y H:i",strtotime($history_date)); ?>
+														<?php else:?>												
+															<?php  echo date("d.m.Y H:i",strtotime($history_date)); ?>
+														<?php endif;?>
+														
+														<?php if($allow_remove_date == "1"):?>
+																												
+														<?php else:?>
+																
+														<?php endif;?>
+														
+													</td>
+												<?php else: ?>
+												<?php //elseif(!isset($patient_falls[$fall_nr]['2'])): ?>
+													<?php if($history_type != "0"): ?>
+														<td>
+															-
+														</td>
+													<?php endif;?>
+												<?php endif;?>
+											<?php endforeach;?>
+											<td>
+												<?php  if(count($patient_falls) > "1" && $fall_nr != count($patient_falls)):?>
+													<?php if($period_status == "discharge"): ?>
+														<!-- do not allaw removal of discharge period -->
+													<?php else: ?>
+														<?php if(!isset($patient_falls[$fall_nr]['2'])):?>
+	
+														<?php else: ?>
+															
+														<?php endif;?>	
+													<?php endif;?>	
+												<?php endif;?>	
+											</td>
+											
+											<?php if ($this->display_HL7_PV1_19 && isset($this->HL7_PV1_19[$fall_nr])) : ?>
+											<td>											
+    											<a onClick='display_HL7_PV1_19(<?=json_encode($this->HL7_PV1_19 [$fall_nr]); ?>)' class='fall_pv1_list' title='<?=$this->translate("HL7 PV1-19 visit_number")?>'>&nbsp;</a>
+											</td>
+											<?php endif; ?>
+										</tr>
+									<?php endforeach;?>
+									
+								</table>
+							<?php endif; // END allow_change ?>
+						<?php else: //  NO  display_edit_history ==  no manage falls?>
+							<!-- ###########  BOX 2a.1:  Patient normal history ############ -->
+							<table border="0">
+									<tr>
+										<td class="colbold patcontactscol1" style="width: 100px;" valign="top"><?php echo $this->translate('fall_type'); ?></td>
+										<td class="colbold patcontactscol1" style="width: 110px;"  valign="top"><?php echo $this->translate('admissiondate'); ?></td>
+										<td class="colbold patcontactscol1" style="width: 110px;"  valign="top"><?php echo $this->translate('dischargedate'); ?></td>
+										<td valign="top"></td>
+										<?php if ($this->display_HL7_PV1_19) : ?>
+										<td valign="top"></td>
+										<?php endif; ?>
+									</tr>
+									
+									<?php 
+										$patient_falls = $this->patient_falls;
+									$patient_adm_history = $this->patient_adm_history;
+									$patient_history_full = $this->patient_history_full;
+									
+									if (end($patient_adm_history) == 1)
+									{
+										$last_adm_date = array_pop(array_keys($patient_adm_history));
+									}
+									else
+									{
+										$ar_keys = array_keys($patient_adm_history);
+										end($ar_keys);
+										prev($ar_keys);
+										$last_adm_date = current($ar_keys);
+									}
+
+									if (end($patient_adm_history) == 2) {
+										$last_discharge_date = array_pop(array_keys($patient_adm_history));
+									}
+								?>
+									
+									<?php foreach($patient_falls as $fall_nr => $fall_dates):?>
+										<tr id="fall_<?php echo $fall_nr;?>">
+											<?php foreach($fall_dates as $history_type => $history_date):?>
+												<? 
+												//echo $last_adm_date;
+												$fald = 0;
+
+												if($history_type == "1") {
+
+													if($history_date == $last_adm_date) {
+														$fald = 1;
+													}
+
+													if(isset($patient_falls[$fall_nr - 1]) && $patient_falls[$fall_nr - 1][0] != "discharge" ){
+														if(isset($patient_falls[$fall_nr - 1]['2'])) {
+															$previous_date = $patient_falls[$fall_nr - 1]['2']; // previous discharge date
+														} else {
+															$previous_date = '1900-01-01 00:00:00';
+														}
+													} elseif(isset($patient_falls[$fall_nr - 1]) && $patient_falls[$fall_nr - 1][0] == "discharge" ){
+														if(isset($patient_falls[$fall_nr - 2]['2'])) {
+															$previous_date = $patient_falls[$fall_nr - 2]['2']; // previous discharge date
+														} else {
+															$previous_date = '1900-01-01 00:00:00';
+														}
+													}
+
+
+													if(isset($patient_falls[$fall_nr]['2'])) {
+														$next_date =  $patient_falls[$fall_nr]['2']; // current discharge date
+													} else {
+														$next_date = date('Y-m-d ').'23:59:59';
+													}
+
+												} elseif($history_type == "2") {
+
+													if($history_date == $last_discharge_date) {
+														$fald = 1;
+													}
+
+													$previous_date = $patient_falls[$fall_nr]['1']; // current admission date
+
+													if(isset($patient_falls[$fall_nr+1]) && $patient_falls[$fall_nr+1]['0'] != "discharge" ){
+														if(isset($patient_falls[$fall_nr+1]['1'])) {
+															$next_date =  $patient_falls[$fall_nr+1]['1']; // next admission date 
+														} else {
+															$next_date = date('Y-m-d ').'23:59:59';
+														}
+													} elseif(isset($patient_falls[$fall_nr+1]) && $patient_falls[$fall_nr+1]['0'] == "discharge" ){
+														if(isset($patient_falls[$fall_nr+2]['1'])) {
+															$next_date =  $patient_falls[$fall_nr+2]['1']; // next admission date 
+														} else {
+															$next_date = date('Y-m-d ').'23:59:59';
+														}
+													} 													
+
+		
+												} else {
+													$period_status = $patient_falls[$fall_nr]['0'];// status 
+	
+												}
+
+
+												$edit_string = $history_date.'|'.$history_type.'|'.$fald.'|'.date('d.m.Y', strtotime($history_date)).'|'.date('H:i', strtotime($history_date)).'|'.date('d.m.Y', strtotime($previous_date)).'|'.$previous_date.'|'.date('d.m.Y', strtotime($next_date)).'|'.$next_date.'|'.$period_status;
+ 
+												$edit_string_data = '';
+												$edit_string_data .= 'data-current_date_full="'.$history_date.'"'; 
+												$edit_string_data .= 'data-date_type="'.$history_type.'"';
+												$edit_string_data .= 'data-fald="'.$fald.'"'; 
+												$edit_string_data .= 'data-current_date="'.date('d.m.Y', strtotime($history_date)).'"'; 
+												$edit_string_data .= 'data-current_date_time="'.date('H:i', strtotime($history_date)).'"';
+												$edit_string_data .= 'data-previous_date="'.date('d.m.Y', strtotime($previous_date)).'"'; 
+												$edit_string_data .= 'data-previous_date_full="'.$previous_date.'"'; 
+												$edit_string_data .= 'data-next_date="'.date('d.m.Y', strtotime($next_date)).'"'; 
+												$edit_string_data .= 'data-next_date_full="'.$next_date.'"';
+												$edit_string_data .= 'data-period_status="'.$period_status.'"';  
+												$edit_string_data .= 'data-fall_nr="'.$fall_nr.'"';  
+
+
+												
+											$allow_remove_date = 0;
+
+
+
+
+											// if fall is the last fall -  delete per date - only last date , and not first admission
+
+											if($fall_nr == count($patient_falls) && $history_date != $this->first_admission_ever){
+												//print_R("first");
+												if($history_date == $last_adm_date && isset($patient_falls[$fall_nr]['2'])){
+													// do not allow deletion for admission if discharge is set -->
+													$allow_remove_date = 0;
+
+												} else {
+
+													if($history_date != $patient_falls[$fall_nr]['2']  &&  isset($patient_falls[$fall_nr]['2']))
+													{
+														$allow_remove_date = 0;
+													} else {
+														if($period_status == "discharge"){
+															$allow_remove_date = 0;
+														} else {												
+															$allow_remove_date = 1;
+			    										}
+													}
+			    								}
+    										} elseif($history_date == $this->first_admission_ever && !isset($patient_falls[$fall_nr]['2']) && $this->isstandbydelete == "1"){
+												//print_R("second");
+				    							//first admission : move to standby
+				    							$allow_remove_date = 0; 
+				    														
+    										} elseif($history_date == $this->first_admission_ever && !isset($patient_falls[$fall_nr]['2']) && $this->isstandby == "0"){
+												//print_R("third");
+				    							//first admission : move to standby
+				    							$allow_remove_date = 1; 
+				    														
+    										} elseif($history_date == $this->first_admission_ever && !isset($patient_falls[$fall_nr]['2']) && $this->isstandby == "1"){
+												 //print_R("forth");
+				    							//first admission : move to standby
+				    							$allow_remove_date = 0; 
+				    														
+    										} elseif($history_date == $last_adm_date && !isset($patient_falls[$fall_nr]['2'])){
+												//print_R("fifth");
+			    								//last standby admission : move to discharge
+			    								$allow_remove_date = 1;
+    										} else { 
+												//print_R("sixth");
+    											$allow_remove_date = 0;
+    										}
+
+
+											?>
+											
+											
+												<? if($history_type == "0" ):?>
+													<td class="fall_status_<?php echo $period_status; ?>" >
+														<span><?php echo $this->translate('fall_status_'.$period_status); ?></span>
+													</td>
+												<? elseif($history_date  ):?>
+													<td  class="fall_date_<?php echo $fall_nr;?>_<?php echo $history_type; ?> fall_status_<?php echo $period_status; ?>"   >
+														<?php if($period_status == "discharge"):?>
+															<?php  echo date("d.m.Y H:i",strtotime($history_date)); ?>
+														<?php else:?>												
+															<a href="javascript:void(0)" class="fall_edit" <?php echo $edit_string_data;?>  ><?php  echo date("d.m.Y H:i",strtotime($history_date)); ?></a>
+														<?php endif;?>
+	
+	
+														
+														<?php if($allow_remove_date == "1"):?>
+																												
+														<?php else:?>
+																
+														<?php endif;?>
+														
+													</td>
+												<?php else: ?>
+												<?php //elseif(!isset($patient_falls[$fall_nr]['2'])): ?>
+													<?php if($history_type != "0"): ?>
+														<td>
+															-
+														</td>
+													<?php endif;?>
+												<?php endif;?>
+											<?php endforeach;?>
+											<td>
+												<?php  if(count($patient_falls) > "1" && $fall_nr != count($patient_falls)):?>
+													<?php if($period_status == "discharge"): ?>
+														<!-- do not allaw removal of discharge period -->
+													<?php else: ?>
+														<?php if(!isset($patient_falls[$fall_nr]['2'])):?>
+	
+														<?php else: ?>
+															
+														<?php endif;?>	
+													<?php endif;?>	
+												<?php endif;?>	
+											</td>
+										</tr>
+									<?php endforeach;?>
+								</table>
+						<?php endif; // END display_edit_history == manage falls?>
+							
+							<br />
+ 
+							<!-- ###########  BOX 2b:  Patient VV history ############ -->
+							<?php if ($this->displayvvhistory == 1)	{?>
+								<h4 style="float: left;"><?php echo $this->translate('vvhistory'); ?></h4>
+								<br />
+								<table class="datatable_stammdaten">
+									<tr>
+										<td colspan="2" style="text-align: right;"></td>
+									</tr>
+									<tr>
+										<td class="colbold patcontactscol1" valign="top"><?php echo $this->translate('begindatedate'); ?></td>
+										<td class="colbold patcontactscol1" valign="top"><?php echo $this->translate('enddate'); ?></td>
+									</tr>
+									<tr>
+									<?php
+									$i = 1000;// ISPC-2883 Ancuta 06.05.2021
+									$startHistoryDates = $this->startDatesHistory;
+									$endHistoryDates = $this->endDatesHistory;
+									
+									$start_dates_ids = $this->start_dates_ids;
+									$end_dates_ids = $this->end_dates_ids;
+									
+									//get previous end vv
+									$patient_adm_history = $this->patient_adm_history;
+									if (end($patient_adm_history) == 1)
+									{
+										$last_adm_date = array_pop(array_keys($patient_adm_history));
+									}
+									else
+									{
+										$ar_keys = array_keys($patient_adm_history);
+										end($ar_keys);
+										prev($ar_keys);
+										$last_adm_date = current($ar_keys);
+									}
+									$period_type = 'open';// ISPC-2883 Ancuta 06.05.2021
+
+									$history_count = count($startHistoryDates);
+									if ($history_count > 0)
+									{
+										foreach ($startHistoryDates as $key => $historyvv_date)
+										{
+											echo '</tr><tr>';
+
+											if (empty($endHistoryDates[$key]))
+											{
+
+												if (($key + 1) == $history_count)
+												{
+													$endDate = '<input type="button" name="Ende VV" value="' . $this->translate('end_vollversorgung') . '" id="end_sapv_button" rel="' . date('d.m.Y', strtotime($historyvv_date)) . '|' . date('d.m.Y', time()) . '|' . date('Y-m-d H:i:s', time()) . '" />';
+												}
+												else
+												{
+													$endDate = "-";
+												}
+											}
+											else
+											{
+//												$endDate = date('d.m.Y', strtotime($endHistoryDates[$key]));
+												$endDate = 'show_link';
+											}
+											
+											//prev/next for start date
+											if($endHistoryDates[($key - 1)])
+											{
+												$start_previous_date = date('d.m.Y', strtotime($endHistoryDates[($key - 1)]));
+												$start_previous_date_full = date('Y-m-d H:i:s', strtotime($endHistoryDates[($key - 1)]));
+											}
+											else
+											{
+												$start_previous_date = date('d.m.Y', strtotime($last_adm_date));
+												$start_previous_date_full = date('Y-m-d H:i:s', strtotime($last_adm_date));
+											}
+
+											if($endHistoryDates[$key])
+											{
+												$start_next_date = date('d.m.Y', strtotime($endHistoryDates[$key]));
+												$start_next_date_full = date('Y-m-d H:i:s', strtotime($endHistoryDates[$key]));
+											}
+											else
+											{
+												$start_next_date = date('d.m.Y', time());
+												$start_next_date_full = date('Y-m-d H:i:s', time());
+											}
+											
+											//prev/next for end date
+											if($startHistoryDates[$key])
+											{
+												$end_previous_date = date('d.m.Y', strtotime($startHistoryDates[$key]));
+												$end_previous_date_full = date('Y-m-d H:i:s', strtotime($startHistoryDates[$key]));
+											}
+											else
+											{
+												$end_previous_date = '';
+												$end_previous_date_full = '';
+											}
+											
+											if($startHistoryDates[($key+1)])
+											{
+												$end_next_date = date('d.m.Y', strtotime($startHistoryDates[($key+1)]));
+												$end_next_date_full = date('Y-m-d H:i:s', strtotime($startHistoryDates[($key+1)]));
+											}
+											else
+											{
+												if($last_discharge_date)
+												{
+													$end_next_date = $last_discharge_date;
+													$end_next_date_full = date('Y-m-d H:i:s', strtotime($last_discharge_date));
+												}
+												else
+												{
+													$end_next_date = date('d.m.Y', time());
+													$end_next_date_full = date('Y-m-d H:i:s', time());
+												}
+											}
+											
+//											curent date(d.m.y) | date_type | fall_id | previous_date | next_date | current_date full | previous_date_full | next_date_full
+											$start_str = date('d.m.Y', strtotime($historyvv_date)).'|1|'.$start_dates_ids[$key].'|'.$start_previous_date.'|'.$start_next_date.'|'.$historyvv_date .'|' .$start_previous_date_full. '|'.$start_next_date_full;
+											if($endDate == 'show_link')
+											{
+												$endDate = '<a href="javascript:void(0);" rel="'.date('d.m.Y', strtotime($endHistoryDates[$key])).'|2|'.$end_dates_ids[$key].'|'.$end_previous_date.'|'.$end_next_date.'|'.$endHistoryDates[$key].'|'.$end_previous_date_full.'|'.$end_next_date_full.'" class="vv_fall_edit">'.date('d.m.Y', strtotime($endHistoryDates[$key])).'</a>';
+											}
+
+											
+											echo '<td><a href="javascript:void(0);" rel="'.$start_str.'" class="vv_fall_edit">' . date('d.m.Y', strtotime($historyvv_date)) . '</a></td><td>' . $endDate . '</td>';
+
+											
+											// ISPC-2883 Ancuta 06.05.2021
+											if($endHistoryDates[$key]){
+											    $period_type = 'closed';
+    											$delete_link ='<a href="javascript:void(0)" class="vv_fall_delete dontPrint" rel="'.$i.'" data-fall_type="'.$period_type.'" data-adm="'.date('d.m.Y', strtotime($historyvv_date)).'" data-dis="'.date('d.m.Y', strtotime($endHistoryDates[$key])).'"  title="Den gesamten Fall löschen"><img src="'.RES_FILE_PATH.'/images/action_delete.png" border="0"></a>';
+											} else{
+											    $period_type = 'open';
+    											$delete_link ='<a href="javascript:void(0)" class="vv_fall_delete dontPrint" rel="'.$i.'" data-fall_type="'.$period_type.'" data-adm="'.date('d.m.Y', strtotime($historyvv_date)).'" data-dis=""  title="Den gesamten Fall löschen"><img src="'.RES_FILE_PATH.'/images/action_delete.png" border="0"></a>';
+											}
+											
+											
+											if(strlen($delete_link)){
+    											echo '<td>'.$delete_link.'</td>';
+											}
+											// ISPC-2883 Ancuta 06.05.2021 END
+											
+											$i++;
+											$last_end_vvhistory_date = $endHistoryDates[$key];
+											
+										}
+										
+										if(count($startHistoryDates) == count($endHistoryDates))
+										{
+										    echo '</tr><tr><td><input class="dontPrint" type="button" name="Start VV" value="' . $this->translate('start_vollversorgung') . '" id="start_sapv_button" rel="' . date('d.m.Y', strtotime($last_end_vvhistory_date)) . '|' . date('d.m.Y', time()) . '|' . date('Y-m-d H:i:s', time()) . '" /></td><td> &nbsp; </td>';
+										}
+									}
+									else
+									{
+										echo '<td><input class="dontPrint" type="button" name="Start VV" value="' . $this->translate('start_vollversorgung') . '" id="start_sapv_button" rel="' . date('d.m.Y', strtotime($last_adm_date)) . '|' . date('d.m.Y', time()) . '|' . date('Y-m-d H:i:s', time()) . '" /></td><td>-</td>';
+									}
+									?>
+									</tr>
+								</table>
+						<?php } ?></div>
+						<div class="clearer"></div>
+					</div>
+			
+	
+	
+	
+	
+<!-- dialogs -->
+
+<div id="fall_edit-dialog" style="width:200px; height: 100px; display:none;" title="Datum ändern">
+	<p id="date_edit">
+	<form action="patient/savepatientneactions?id=<?php echo $this->pid ?>" name="edit" id="edit" method="post" onsumit="return checkclientchanged();">
+	    <input type="hidden" name="date_type" id="date_type" value="" />
+	    <input type="hidden" name="previous_date" id="previous_date" value="" />
+	    <input type="hidden" name="current_date" id="current_date" value="" />
+	    <input type="hidden" name="next_date" id="next_date" value="" />
+	    <input type="hidden" name="fald" id="fald" value="" />
+	    <input type="hidden" name="fall_type" id="fall_type" value="" />
+	    <input type="hidden" name="fall_nr" id="fall_nr" value="" />
+	     <input type="text" style="width: 90px" name="edit_date" id="edit_date" value="" readonly="readonly" />
+	     <input type="text" style="width: 35px" name="edit_time" id="edit_time" value="" readonly="readonly"  />
+	    <input type="submit" value="<?php echo $this->translate('submit')?>" id="check_fall_history" />
+	    
+	    <div class="fall_err"><span id="fall_alert"></span></div>
+	</form>
+	</p>
+</div>
+
+
+<div id="vv_fall_start-dialog" style="width:200px; height: 100px; display:none;" title="Starten Vollversorgung"><!-- ISPC-2703, elena, 05.01.2021 -->
+	<p id="vv_ende">
+		<form action="patient/savepatientneactions?id=<?php echo $this->pid ?>&mode=vv&" name="start_vv" id="start_vv" method="post" onsubmit="return checkclientchanged();">
+			<input type="hidden" name="vv_previous_date" id="vv_previous_date" value="" />
+			<input type="hidden" name="vv_next_date" id="vv_next_date" value="" />
+			<input type="text" style="width: 150px" name="start_vv_date" id="start_vv_date" value="" autocomplete="off" />
+			<input type="submit" value="<?php echo $this->translate('submit')?>" />
+		</form>
+	</p>
+</div>
+<div id="vv_fall_end-dialog" style="width:200px; height: 100px; display:none;" title="Ende vollversorgung">
+	<p id="vv_ende">
+		<form action="patient/savepatientneactions?id=<?php echo $this->pid ?>&mode=vv" name="ende_vv" id="ende_vv" method="post" onsubmit="return checkclientchanged();">
+			<input type="hidden" name="vv_previous_date" id="vv_previous_date" value="" />
+			<input type="hidden" name="vv_next_date" id="vv_next_date" value="" />
+			<input type="text" style="width: 150px" name="end_vv_date" id="end_vv_date" value="" autocomplete="off" />
+			<input type="submit" value="<?php echo $this->translate('submit')?>" />
+		</form>
+	</p>
+</div>	
+
+<div id="vv_fall_edit_dialog" style="width:200px; height: 100px; display:none;" title="Datum ändern">
+	<p id="date_edit">
+	<form  method="post" action="patient/savepatientneactions?id=<?php echo $this->pid ?>&mode=vv_edit" name="vv_edit" id="vv_edit" onsubmit="return checkclientchanged();">
+	    <input type="text" style="width: 90px" name="vv_edit_date" id="vv_edit_date" value="" readonly="readonly" />
+	    <input type="hidden" name="vv_date_type" id="vv_date_type" value="" />
+	    <input type="hidden" name="vv_previous_date" id="vv_previous_date" value="" />
+	    <input type="hidden" name="vv_current_date" id="vv_current_date" value="" />
+	    <input type="hidden" name="vv_next_date" id="vv_next_date" value="" />
+	    <input type="hidden" name="vv_fallid" id="vv_fallid" value="" />
+	    <input type="hidden" name="vv_current_date_full" id="vv_current_date_full" value="" />
+	    <input type="hidden" name="vv_previous_date_full" id="vv_previous_date_full" value="" />
+	    <input type="hidden" name="vv_next_date_full" id="vv_next_date_full" value="" />
+	    <input type="submit" value="<?php echo $this->translate('submit')?>" id="check_vv_fall_history" />
+	    
+	    <div class="vv_fall_err"><span id="vv_fall_alert"></span></div>
+	</form>
+	</p>
+</div>
+
+<!-- ISPC-2513 Lore 13.04.2020 -->
+<div id="readmission_edit_details-dialog" style="width:200px; height: 100px; display:none;" title="Readmission_Edit_Details">
+	<form action="ajax/savepatientreaddetaactions?id=<?php echo $this->pid ?>" name="rad_edit" id="rad_edit" method="post" >
+		<input type="hidden" name="readmission_id" id="rad_id" value="" />
+		<label for="admission_type">Aufnahme:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</label>
+		 <select id="admission_type" name="admission_type" >
+			<option value=""   <?php if(  $pdata["readmision_details"]['admission_type'] == '' )   {echo  'selected="selected"';}?> ></option>
+			<option value="planned"   <?php if(  $pdata["readmision_details"]['admission_type'] == 'planned' )   {echo  'selected="selected"';}?> ><?php echo $this->translate('was_planned')?></option>
+		 	<option value="unplanned" <?php if(  $pdata["readmision_details"]['admission_type'] == 'unplanned' ) {echo  'selected="selected"';}?> ><?php echo $this->translate('unplanned')?></option>
+		 </select>
+		 <br/>
+		<label for="admission_reason">Aufnahmegrund: </label>
+		<input type="text" style="width: 230px" name="admission_reason" id="admission_reason" value="<?php echo $pdata["readmision_details"]['admission_reason']?>" autocomplete="off" />
+	</form>
+</div>
+
+
+
+
+
+<div id="visit_number_edit_dialog">
+	<form  method="post" action="ajax/savepatientvisitnumber?id=<?php echo $this->pid ?>&mode=edit" onsubmit="return checkclientchanged();">
+	<table class="datatable" style="width: 100%" cellpadding="10">
+ 
+		<tr>
+			<td width="50%"><b>Datum</b></td>
+			<td>	
+				<span class="hlt_date_text"></span>
+				<input type="hidden" name="hl7[admin_date]" id="hl7_admin_date" value="" />
+				<input type="hidden" name="hl7[id]" id="hl7_id" value="" />
+			</td>
+		</tr>
+			
+		<tr>
+			<td><b>Fallnummer</b></td>
+			<td><input type="text" style="width: 90px" name="hl7[visit_number]" id="hl7_visit_number" value=""  /> </td>
+		</tr>
+			
+		<tr>
+			<td><b><?php echo $this->translate('hl7_ignore_number')?></b></td>
+			<td><input type="checkbox" name="hl7[ignore_number]"  name="hl7_ignore_number" id="hl7_ignore_number"  value="1"></td>
+		</tr>
+		<tr><td colspan="2">&nbsp;</td></tr>
+		<tr><td colspan="2" ><input type="submit" value="<?php echo $this->translate('submit')?>" id="check_vv_fall_history" style="float: right;" /></td></tr>
+ 
+	</table>
+	    
+	</form>
+</div>

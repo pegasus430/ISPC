@@ -1,0 +1,958 @@
+<?php
+//ISPC-2697, elena, 13.11.2020
+ //css
+	$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/color_picker/colorpicker.css?' . date('Ymd'));
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/color_picker/layout.css?' . date('Ymd'));
+
+//js
+$this->headScript()->appendFile(RES_FILE_PATH . '/javascript/colorpicker/colorpicker.js?' . date('Ymd'));
+$this->headScript()->appendFile(RES_FILE_PATH . '/javascript/colorpicker/eye.js?' . date('Ymd'));
+$this->headScript()->appendFile(RES_FILE_PATH . '/javascript/colorpicker/utils.js?' . date('Ymd'));
+
+$aTimecolors = [];
+
+//ISPC-2891 Ancuta 27.04.2021
+$no_edit_style = "";
+if($this->disable_edit_actions ==1){
+ 	$no_edit_style ='style="display: none"';
+} 
+//--
+?>
+<style>
+#new_anordnung, #new_device{
+    cursor: pointer;
+    display: inline-block;
+    border: 1px solid #cccccc;
+    border-radius: 5px;
+    margin: 5px;
+    padding: 5px;
+    vertical-align: top;
+
+}
+#list_inactive{
+    cursor: pointer;
+    display: inline-block;
+    border: 1px solid #cccccc;
+    border-radius: 5px;
+    margin: 5px;
+    padding: 5px;
+    vertical-align:top;
+}
+
+.device_trenner{
+    margin: 15px 5px 5px 5px;
+    display: inline-block;
+    width: 4px;
+    height:40px;
+    background-color: #000000;
+}
+.anordnung_item{
+    display: inline-block;
+
+    border: 1px solid #cccccc;
+    border-radius: 5px;
+    margin: 5px;
+    padding: 5px;
+    vertical-align: top;
+    width: 200px;
+    vertical-align:top;
+}
+.anordnung_name{
+    font-weight: bold;
+    font-size: 1.2em;
+    line-height: 2em;
+    display:block;
+}
+.anordnung_top_group{
+    display: block;
+}
+.anordnung_color{
+    display: inline-block;
+    float: right;
+
+}
+.anordnung_params{
+    display:table;
+}
+.anordnung-row{
+    display: table-row;
+}
+.anordnung_label{
+    display: table-cell;
+    font-weight:bold;
+    padding:3px 3px 3px 0px;
+}
+.anordnung_val{
+    display: table-cell;
+
+    padding:3px;
+}
+.anordnung_desc{
+    padding: 5px;
+    margin:3px;
+    border: 1px solid #999999;
+    border-radius: 3px;
+    width: 180px;
+    overflow: auto;
+    word-wrap: break-word;
+    position: relative;
+    display: block;
+
+}
+.anordnung_edit, anordnung_edit_device{
+    cursor: pointer;
+}
+.anordnung_toolbar_item{
+    display: inline-block;
+    padding: 5px;
+    cursor: pointer;
+}
+.timeline_day{
+    width:100%;
+    display:block;
+    border: 0px solid #ccc;
+}
+
+#timeline_line{
+    width:100%;
+    display:table;
+    border: 1px solid #ccc;
+}
+.timeline_time{
+    display: table;
+    width: 100%;
+}
+.timeline_group{
+    display: table-cell;
+    width: 4%;
+}
+.timeline_hour{
+    display: block;
+    height: 20px;
+    border-left: 1px solid #ccc;
+}
+.timeline_hour_show{
+    display: block;
+    height: 20px;
+
+
+}
+#timeline_line_anordnung .timeline_hour_show{
+    font-size: 10px;
+}
+#timeline_save{
+    display: none;
+    cursor: pointer;
+    float:left;
+    padding: 5px 10px;
+}
+
+#timeline_abort{
+    display: none;
+    cursor: pointer;
+    float:left;
+    padding: 5px 10px;
+}
+#timeline_toolbar{
+    display:block;
+
+    margin-right: 5px;
+    height: 30px;
+}
+#timeline_toolbar_inner{
+    display: block;
+    float: right;
+}
+#timechooser, #slider_anordnung_container{
+    height: 30px;
+}
+
+#beatmung_devices, #beatmung_anordnung{
+    margin-top: 30px;
+    padding: 15px 7px;
+    border-radius: 7px;
+    border: 1px solid #CCCCCC;
+}
+#beatmung_devices_header, #beatmung_anordnung_header{
+    margin-top: -25px;
+    margin-left: 7px;
+
+    display: block;
+    /*padding: 3px;
+    width: 80px;*/
+    /*text-align: center;*/
+}
+#beatmung_anordnung_header h4, #beatmung_devices_header h4 {
+    background-color: #ffffff;
+    padding: 3px;
+    display: inline-block;
+}
+
+input.input_field{
+    width: 100px;
+}
+
+select.input_field{
+    width: 105px;
+}
+#anordnung .datatable{
+    width: 90% !important;
+}
+/* ISPC-2816,Elena,05.02.2021 */
+#timeline_day_header{
+    padding-top: 15px;
+    margin-left:7px;
+}
+
+</style>
+<script>
+
+    var detailscookies = <?php echo $this->detailscookies; ?>;
+    var current_device = 0;
+    var current_anordnung = 0;
+    var editing_anordnung = 0;
+    <?php if(isset($this->current_device)): ?>
+      current_device = <?php echo $this->current_device; ?>;
+    <?php endif; ?>
+
+	//ISPC-2891 Ancuta 27.04.2021
+	<?php if($this->disable_edit_actions ==1):?>
+	var disable_edit_actions = 1;
+	<?php endif; ?>
+	//--
+    var old_range_bg = '#deedf7 url(images/ui-bg_highlight-soft_100_deedf7_1x100.png) 50% 50% repeat-x;';
+
+    $(document).ready(function(){
+        $('.dialog_info').dialog({
+            autoOpen: false
+        });
+        var hours_from = 0;
+        var hours_till = 0;
+        $('#slider-range').hide();
+        $( "#slider-range" ).slider({
+            range: true,
+            min: 0,
+            max: 24,
+            values: [ 0, 24 ],
+            slide: function( event, ui ) {
+                hours_from = ui.values[ 0 ];
+                hours_till = ui.values[ 1 ];
+                console.log(ui.values);
+            }
+        });
+        
+        //ISPC-2891 Ancuta 27.04.2021 - added e and  disable_edit_actions check
+        <?php if($this->disable_edit_actions != 1 ):?>
+        $('.anordnung_color').on('click', function(){
+            var bgcolor = $(this).css('background-color');
+            console.log(bgcolor);
+            $('#slider-range').show();
+            $('.ui-slider-range').css('background', bgcolor);
+            current_anordnung = $(this).attr('data-id');
+            console.log(current_anordnung);
+            $('#timeline_save').show();
+            $('#timeline_abort').show();
+            //$('#timechooser').show();
+            //ISPC-2816,Elena,04.02.2021
+            $('.anordnung_item').css('background-color', '#ffffff');//firstly remove all highlights on items
+            var item = $(this).parents('.anordnung_item'); //set hightlight on parent
+            console.log(item);
+            item.css('background-color', '#dedede');
+        })
+		<?php endif; ?>
+
+
+
+        $('#timeline_abort').on('click', function(){
+            $('.ui-slider-range').css('background', '#deedf7');
+            current_anordnung = 0;
+            $('#timeline_save').hide();
+            $('#timeline_abort').hide();
+            $('#slider-range').hide();
+            $('.anordnung_item').css('background-color', '#ffffff');
+        });
+
+        $('#timeline_save').on('click', function(){
+            console.log('save timeline');
+            var newdata = {
+                current_anordnung : current_anordnung,
+                hours_from : hours_from,
+                hours_till : hours_till
+
+            }
+            $.ajax({
+                type: 'POST',
+                url: 'ajax/saveanordnungtimeline?id=<?php echo $_GET['id']; ?>',
+                data: newdata ,
+                //dataType: 'json',
+                //encode: true,
+
+                success: function (jdata) {
+
+                    console.log(jdata);
+
+                    var data = jQuery.parseJSON(jdata);
+
+                    if(data.success == true){
+                        console.log('success')
+                        //reload after changes
+                        //later uncomment
+                        location.href = "<?php echo APP_BASE ?>patientformnew/beatmung?id=<?php echo $_GET['id']; ?>";
+
+                    }else{
+
+
+                        console.log(data.errors);
+                    }
+
+                },
+                error : function(error){
+                    console.log(error);
+                }
+            });
+
+
+        });
+
+
+        $( "#patient_anordnung_dialog" ).dialog({
+            autoOpen: false,
+            title:"Anordnung",
+            //resizable: false,
+            //height: 200,
+            width: 800,
+            modal: true,
+            open: function (){
+                $.ajax({
+                    type: 'POST',
+                    url: '<?php echo APP_BASE; ?>ajax/anordnung?id=<?php echo $_REQUEST['id']; ?>&device='+ current_device + '&blockname=anordnung&editing_anordnung=' + editing_anordnung,
+
+                    beforeSend:function(){
+                        //loading image
+                        //$('#medipump_ajax_load_edt').show();
+                    },
+                    success:function(data){
+                        //$('#medipump_ajax_load_edt').hide();
+
+                        $('#patient_anordnung_dialog_content').html(data).promise().done(function(){
+                            //ISPC-2906,Elena,27.04.2021
+                            $( "#slider_anordnung" ).slider({
+                                range: true,
+                                min: 0,
+                                max: 24,
+                                values: [ 0, 24 ],
+                                slide: function( event, ui ) {
+                                    $('#inline_from').val(ui.values[ 0 ]);
+                                    $('#inline_till').val(ui.values[ 1 ]);
+                                    console.log(ui.values);
+                                }
+                            });
+
+
+
+                    })
+                    }
+                })
+
+
+            },
+            buttons: {
+                "Speichern": function(){
+                    //ISPC-2816,Elena,04.02.2021
+                    var saveerrors = '';
+                    var nameToSave = $('#anordnung_name').val();
+                    var colorToSave = $('#anordnung_color').val();
+                    if(nameToSave.trim() == ''){
+                        saveerrors += 'Anordnung muss benannt werden.<br>';
+                    }
+                    /* we don't need it, but...
+                    if(colorToSave == 'ffffff'){
+                        saveerrors += 'Anordnung muss nicht weiß sein.';
+                    }*/
+                    if(saveerrors.length == 0){
+                        ajax_saveanrodnung('#anordnung_form');
+                        console.log('to save');
+                    }else{
+                        console.log('to alert');
+                        jAlert(saveerrors);
+                    }
+
+
+
+
+
+                },
+                "<?php echo $this->translate('cancel'); ?>": function(){
+                    $("#patient_anordnung_dialog" ).dialog('close');
+                }
+            },create:function () {
+                $(this).closest(".ui-dialog")
+                    .find(".ui-button:first") // the first button
+                    .addClass("submitform");
+            },
+            close:function () {
+                $( "#slider_anordnung" ).slider('destroy');//ISPC-2906,Elena,27.04.2021
+                $('#patient_anordnung_dialog_content').html('');
+                $('.submitform').attr('disabled',false),
+                    $(".ui-button:first").attr("disabled", false)
+                        .removeClass("ui-state-disabled").next("button").attr("disabled", false)
+                        .removeClass("ui-state-disabled");
+            }
+        });
+
+        $('#new_anordnung').on('click', function(){
+            console.log('dialog');
+            editing_anordnung = 0;
+            $( "#patient_anordnung_dialog" ).dialog('open');
+        });
+        $('#new_device').on('click', function(){
+            console.log('new');
+        });
+
+        $('.anordnung_edit').on('click', function(){
+            console.log('edit');
+            editing_anordnung = $(this).attr('data-id');
+            $( "#patient_anordnung_dialog" ).dialog('open');
+
+        });
+
+        $('.anordnung_remove').on('click', function(){
+            console.log('remove');
+            var to_remove = $(this).attr('data-id');
+            //<!--//ISPC-2816,Elena,05.02.2021-->
+            var kind = $(this).attr('data-kind');
+            var prompt = 'Möchten Sie diese Anordnung wirklich entfernen?';
+            if(kind == 'device'){
+               prompt = 'Möchten Sie dieses Gerät wirklich entfernen?';
+            }
+
+            jConfirm(prompt, '', function(r) {
+                if(r)
+                {
+                    $.ajax({
+                        type: 'POST',
+                        url: 'ajax/removeanordnung?id=<?php echo $_GET['id']; ?>',
+                        data:  {'to_remove' : to_remove},
+                        //dataType: 'json',
+                        //encode: true,
+
+                        success: function (jdata) {
+
+                            console.log(jdata);
+
+                            var data = jQuery.parseJSON(jdata);
+                            if(data.success == true){
+                                //reload after changes
+                                location.href = "<?php echo APP_BASE ?>patientformnew/beatmung?id=<?php echo $_GET['id']; ?>";
+
+                            }else{
+
+                            }
+
+                        },
+                        error : function(error){
+                            console.log(error);
+                        }
+                    })
+                }
+
+            });
+
+
+        });
+
+        $('.anordnung_unlink').on('click', function(){
+            console.log('unlink');
+            var to_deactivate = $(this).attr('data-id');
+            //<!--//ISPC-2816,Elena,05.02.2021-->
+            jConfirm('Möchten Sie diese Anordnung wirklich deaktivieren?', '', function(r) {
+                if(r) {
+                    $.ajax({
+                        type: 'POST',
+                        url: 'ajax/deactivateanordnung?id=<?php echo $_GET['id']; ?>',
+                        data: {'to_deactivate': to_deactivate},
+                        //dataType: 'json',
+                        //encode: true,
+
+                        success: function (jdata) {
+
+                            console.log(jdata);
+
+                            var data = jQuery.parseJSON(jdata);
+                            if (data.success == true) {
+                                //reload after changes
+                                location.href = "<?php echo APP_BASE ?>patientformnew/beatmung?id=<?php echo $_GET['id']; ?>";
+
+                            } else {
+
+                            }
+
+                        },
+                        error: function (error) {
+                            console.log(error);
+                        }
+                    });
+                }
+
+            })
+        });
+
+        $('#list_inactive').on('click', function(){
+            console.log('click');
+            //patient_anordnung_inactive_dialog
+            $( "#patient_anordnung_inactive_dialog" ).dialog('open');
+        });
+
+
+        $( "#patient_anordnung_inactive_dialog" ).dialog({
+            autoOpen: false,
+            title:"Anordnung",
+            //resizable: false,
+            //height: 200,
+            width: 680,
+            modal: true,
+            open: function (){
+                $.ajax({
+                    type: 'POST',
+                    url: '<?php echo APP_BASE; ?>ajax/showanordnungeninactive?id=<?php echo $_REQUEST['id']; ?>',
+                    beforeSend:function(){
+                        //loading image
+                        //$('#medipump_ajax_load_edt').show();
+                    },
+                    success:function(data){
+                        //$('#medipump_ajax_load_edt').hide();
+
+                        $('#patient_anordnung_inactive_dialog_content').html(data).promise().done(function(){
+
+
+
+                        })
+                    }
+                })
+
+
+            },
+            buttons: {
+                "Speichern": function(){
+
+
+                    ajax_activate('#inactive_anordnungen');
+
+
+                },
+                "<?php echo $this->translate('cancel'); ?>": function(){
+                    $("#patient_anordnung_inactive_dialog" ).dialog('close');
+                }
+            },create:function () {
+                $(this).closest(".ui-dialog")
+                    .find(".ui-button:first") // the first button
+                    .addClass("submitform");
+            },
+            close:function () {
+                $('#patient_anordnung_inactive_dialog_content').html('');
+                $('.submitform').attr('disabled',false),
+                    $(".ui-button:first").attr("disabled", false)
+                        .removeClass("ui-state-disabled").next("button").attr("disabled", false)
+                        .removeClass("ui-state-disabled");
+            }
+        });
+
+        function ajax_saveanrodnung(formid) {
+            //ISPC-2906,Elena,27.04.2021
+            $('.beatmung_overlay').show();
+            $('.ui-dialog-buttonset').hide();
+
+            var formData = ($(formid).serializeArray());
+            //formData = serializeToJson(formData);
+            //console.log(formData);
+            //console.log(formData['interventions']);
+            console.log('save form');
+            $.ajax({
+                type: 'POST',
+                url: 'ajax/saveanordnung?id=<?php echo $_GET['id']; ?>',
+                data:  $(formid).serialize(),
+                //dataType: 'json',
+                //encode: true,
+
+                success: function (jdata) {
+
+                    console.log(jdata);
+
+                    var data = jQuery.parseJSON(jdata);
+                    if(data.success == true){
+                        //reload after changes
+                        location.href = "<?php echo APP_BASE ?>patientformnew/beatmung?id=<?php echo $_GET['id']; ?>";
+
+                    }else{
+                        //ISPC-2906,Elena,27.04.2021
+                        $('.beatmung_overlay').hide();
+                        $('.ui-dialog-buttonset').show();
+                        var errorsMarkup = '';
+                        var error_div = '#reaction_errors';
+
+                        $.each(data.errors, function(key, value){
+                            errorsMarkup += '<span>' + value + '</span>';
+                            //ISPC-2906,Elena,27.04.2021
+                            //console.log(errorsMarkup);
+                            $(error_div).html(errorsMarkup);
+                        })
+
+                        console.log(data.errors);
+                    }
+
+                },
+                error : function(error){
+                    console.log(error);
+                    //ISPC-2906,Elena,27.04.2021
+                    $('.beatmung_overlay').hide();
+                    $('.ui-dialog-buttonset').show();
+                }
+            });
+        }
+
+        function ajax_activate(formid){
+            console.log('ajax_activate');
+            $.ajax({
+                type: 'POST',
+                url: 'ajax/activateanordnung?id=<?php echo $_GET['id']; ?>',
+                data:  $(formid).serialize(),
+                //dataType: 'json',
+                //encode: true,
+
+                success: function (jdata) {
+
+                    console.log(jdata);
+
+                    var data = jQuery.parseJSON(jdata);
+                    if(data.success == true){
+                        //reload after changes
+                        location.href = "<?php echo APP_BASE ?>patientformnew/beatmung?id=<?php echo $_GET['id']; ?>";
+
+                    }else{
+                        var errorsMarkup = '';
+                        var error_div = '#reaction_errors';
+
+                        $.each(data.errors, function(key, value){
+                            errorsMarkup += '<span>' + value + '</span>';
+                            console.log(errorsMarkup);
+                            $(error_div).html(errorsMarkup);
+                        })
+
+                        console.log(data.errors);
+                    }
+
+                },
+                error : function(error){
+                    console.log(error);
+                }
+            });
+        }
+
+        $( "#patient_device_dialog" ).dialog({
+            autoOpen: false,
+            title:"Maschine",
+            //resizable: false,
+            //height: 200,
+            width: 680,
+            modal: true,
+            open: function (){
+                $.ajax({
+                    type: 'POST',
+                    url: '<?php echo APP_BASE; ?>ajax/anordnungdevice?id=<?php echo $_REQUEST['id']; ?>&device='+ current_device + '&blockname=anordnung&editing_anordnung=' + editing_anordnung,
+
+                    beforeSend:function(){
+                        //loading image
+                        //$('#medipump_ajax_load_edt').show();
+                    },
+                    success:function(data){
+                        //$('#medipump_ajax_load_edt').hide();
+
+                        $('#patient_device_dialog_content').html(data).promise().done(function(){
+
+
+
+                        })
+                    }
+                })
+
+
+            },
+            buttons: {
+                "Speichern": function(){
+
+
+                    ajax_saveanrodnung('#anordnung_form');
+
+
+                },
+                "<?php echo $this->translate('cancel'); ?>": function(){
+                    $("#patient_device_dialog" ).dialog('close');
+                }
+            },create:function () {
+                $(this).closest(".ui-dialog")
+                    .find(".ui-button:first") // the first button
+                    .addClass("submitform");
+            },
+            close:function () {
+                $('#patient_device_dialog_content').html('');
+                $('.submitform').attr('disabled',false),
+                    $(".ui-button:first").attr("disabled", false)
+                        .removeClass("ui-state-disabled").next("button").attr("disabled", false)
+                        .removeClass("ui-state-disabled");
+            }
+        });
+
+
+        $('#new_device').on('click', function(){
+            $( "#patient_device_dialog" ).dialog('open');
+        })
+
+        $('.anordnung_edit_device').on('click', function(){
+            editing_anordnung = $(this).attr('data-id');
+            $( "#patient_device_dialog" ).dialog('open');
+        })
+
+        var max_anordnungitem_height = 0;
+        $('div.anordnung_patient').each(function(){
+            console.log($(this));
+            var height = ($(this).outerHeight());
+            if(height > max_anordnungitem_height){
+                max_anordnungitem_height = height;
+            }
+        })
+
+        $('div.anordnung_patient').height(max_anordnungitem_height);
+
+
+       var max_anordnungother_height = 0;
+        $('div.anordnung_other').each(function(){
+            console.log($(this));
+            var height = ($(this).outerHeight());
+            if(height > max_anordnungother_height){
+                max_anordnungother_height = height;
+            }
+        })
+
+        $('div.anordnung_other').height(max_anordnungother_height);
+
+
+
+
+    })
+</script>
+<div class="clear"></div>
+
+<div style="display: none;"> <img id="calImg" src="<?php echo RES_FILE_PATH;  ?>/images/calendar.png" alt="Popup" class="trigger" /> </div>
+
+	<?php echo $this->patientinfo ?>
+	<?php echo $this->tabmenus ?>
+
+	<div id="Einzel"  <?php  if($this->disable_edit_actions != 1): ?> class="tab_container"<?php endif; ?> <br /><!--//ISPC-2891 Ancuta 27.04.2021 - do not add class-->
+    <div class="kvnotitle"><div style="display: block;float: left"><h1>Beatmung</h1></div>
+    </div>
+    <div class="clear"></div>
+
+<div id="beatmung_group_1">
+
+<div id="beatmung_anordnung">
+    <div id="beatmung_anordnung_header"><h4>Anordnungen</h4></div>
+<?php foreach($this->anordnungen as $anordnung): ?>
+    <?php $params = json_decode($anordnung['parameters'], true) ?>
+    <?php
+    //ISPC-2816,Elena,04.02.2021
+    $aAdditionals = [];
+    foreach($params as $key => $value){
+        if(strpos($key, '_alarm_higher')){
+            $key_cleared = str_replace('_alarm_higher', '', $key);
+            $aAdditionals[$key_cleared]['alarm_higher'] = $value;
+        }
+        if(strpos($key, '_alarm_lower')){
+            $key_cleared = str_replace('_alarm_lower', '', $key);
+            $aAdditionals[$key_cleared]['alarm_lower'] = $value;
+        }
+    }
+
+    ?>
+    <?php
+        $timelinedata = json_decode($anordnung['timelinedata'], true);
+        foreach($timelinedata as $timeline){
+        $from = $timeline['from'];
+        $till = $timeline['till'];
+        for($j=$from;$j<$till;$j++){
+            $aColors[$j] = [ 'color'  => $anordnung['color'], 'name' => $anordnung['name'], 'id' => $anordnung['id']];
+    }
+        }
+
+
+    ?>
+
+<div class="anordnung_item anordnung_patient">
+    <div class="anordnung_top_group">
+        <div class="anordnung_name"><?php echo $anordnung['name']; ?></div>
+        <div class="anordnung_device">Maschine: <?php echo $this->anordnung_devices[$anordnung['id']]->machine_name;  ?></div>
+        <!--ISPC-2906,Elena,27.04.2021-->
+        <div class="anordnung_last_change">
+            Letzte Änderung:
+            <?php if( empty($anordnung['change_date']) || ($anordnung['change_date'] = '0000-00-00 00:00:00')): ?>
+                <?php echo date('d.m.Y, H:i', strtotime($anordnung['create_date'])); ?>
+            <?php else: ?>
+                <?php echo date('d.m.Y, H:i', strtotime($anordnung['change_date'])); ?>
+            <?php endif; ?>
+
+        </div>
+    <div class="anordnung_color" data-id="<?php echo $anordnung['id']; ?>" data-name="<?php echo $anordnung['name']; ?>" style="width:20px;height:20px;cursor:pointer;background-color:#<?php echo  $anordnung['color']; ?>"></div>
+    </div>
+        <div class="anordnung_params">
+        <?php foreach($params as $key => $value): ?>
+            <?php if(!strpos($key, '_alarm_higher') && !strpos($key, '_alarm_lower') ): //ISPC-2816,Elena,04.02.2021 ?>
+         <div class="anordnung-row">
+             <?php
+              $label = $key;
+              $label = strtr($label, array('_alarm_higher' => ' höhere Alarmgrenze', '_alarm_lower' => ' niedrigere Alarmgrenze'));
+             //ISPC-2816,Elena,04.02.2021
+              $add = '';
+                if(isset($aAdditionals[$key])){
+                    $add = ' (' . $aAdditionals[$key]['alarm_lower'] . '/' . $aAdditionals[$key]['alarm_higher'] . ')';
+                }
+             ?>
+            <div class="anordnung_label"><?php echo $label; ?></div>
+            <div class="anordnung_val"><?php echo $value; ?><?php echo $add; ?></div><!--//ISPC-2816,Elena,04.02.2021-->
+         </div>
+            <?php endif; ?><!--//ISPC-2816,Elena,04.02.2021-->
+        <?php endforeach; ?>
+    </div>
+    
+    <div class="anordnung_toolbar"  <?php echo $no_edit_style; ?> ><!--//ISPC-2816,Elena,05.02.2021--><!--//ISPC-2891 Ancuta 27.04.2021 -->
+        <div class="anordnung_toolbar_item anordnung_remove" data-kind="anordnung" data-id="<?php echo $anordnung['id']; ?>"><img title="Anordnung entfernen" src="<?php echo RES_FILE_PATH; ?>/images/trash_56858.svg" width="20" /> </div>
+        <div class="anordnung_toolbar_item anordnung_edit" data-id="<?php echo $anordnung['id']; ?>"><img title="Bearbeiten" src="<?php echo RES_FILE_PATH; ?>/images/edit_btn.svg" width="20" /> </div>
+        <div class="anordnung_toolbar_item anordnung_unlink" data-id="<?php echo $anordnung['id']; ?>"><img title="Anordnung deaktivieren" src="<?php echo RES_FILE_PATH; ?>/images/002-toggle.png" width="20" /> </div>
+
+    </div>
+    <?php if(strlen(trim($anordnung['description'])) > 0) : ?>
+    <div class="anordnung_desc"><?php echo $anordnung['description'] ; ?></div>
+    <?php endif; ?>
+</div>
+<?php endforeach; ?>
+
+    <div id="new_anordnung" <?php echo $no_edit_style; ?> ><img src="<?php echo RES_FILE_PATH; ?>/images/add_plus_button.svg" width="20" /> Neue Anordnung</div><!--//ISPC-2891 Ancuta 27.04.2021 -->
+    <div id="list_inactive" <?php echo $no_edit_style; ?> ><img src="<?php echo RES_FILE_PATH; ?>/images/list_icon.svg" width="20" /> Inaktive Anordnungen</div><!--//ISPC-2891 Ancuta 27.04.2021 -->
+</div>
+<div id="timeline_day">
+    <!-- ISPC-2816,Elena,05.02.2021  -->
+    <div id="timeline_day_header"><h4>Zeitschema Anordnung</h4></div>
+    <div id="timeline_toolbar" <?php echo $no_edit_style; ?> ><!--//ISPC-2891 Ancuta 27.04.2021 -->
+        <div id="timeline_toolbar_inner">
+            <div id="timeline_save"><img src="<?php echo RES_FILE_PATH; ?>/images/diskette.svg" width="20" /></div>
+            <div id="timeline_abort"><img src="<?php echo RES_FILE_PATH; ?>/images/abbrechen_btn.svg" width="20" /></div>
+        </div>
+        </div>
+    <div id="timechooser">
+        <div id="slider-range"></div>
+    </div>
+
+    <div id="timeline_line">
+        <?php for($i=0;$i<24;$i++): ?>
+        <div class="timeline_group">
+        <div class="timeline_hour"
+            <?php if(isset($aColors[$i])): ?>
+            style="background-color:#<?php echo $aColors[$i]['color']; ?>;"
+            title="<?php echo $aColors[$i]['name']; ?>"
+            <?php endif; ?> >
+        </div>
+        <!-- ISPC-2816,Elena,05.02.2021  -->
+        <div class="timeline_hour_show"><?php echo ($i ); ?>:00</div>
+        </div>
+
+        <?php endfor; ?>
+
+    </div>
+
+</div>
+
+
+<div id="beatmung_devices">
+    <div id="beatmung_devices_header"><h4>Geräte</h4></div>
+    <?php if(isset($this->beatmung_machine)) : ?>
+    <div class="anordnung_item anordnung_other">
+        <div>
+
+            <div class="anordnung_name"><?php echo $this->machine_types[$this->beatmung_machine['machine_type']];  ?></div>
+            <div class="anordnung_device">Device: <?php echo $this->beatmung_machine['machine_name']  ?></div>
+        </div>
+    </div>
+    <div class="device_trenner"></div>
+    <?php endif; ?>
+    <?php foreach ($this->other_anordnungen as $anordnung): ?>
+    <div class="anordnung_item anordnung_other">
+        <?php //ISPC-2906,Elena,27.04.2021 ?>
+        <?php $params = $anordnung['params']; ?>
+        <?php
+        $aOtherAdditionals = [];
+        foreach($params as $key => $value){
+        if(strpos($key, '_alarm_higher')){
+        $key_cleared = str_replace('_alarm_higher', '', $key);
+        $aOtherAdditionals[$key_cleared]['alarm_higher'] = $value;
+        }
+        if(strpos($key, '_alarm_lower')){
+        $key_cleared = str_replace('_alarm_lower', '', $key);
+        $aOtherAdditionals[$key_cleared]['alarm_lower'] = $value;
+
+        }
+        }
+        ?>
+        <div>
+
+            <div class="anordnung_name"><?php echo $this->machine_types[$anordnung['device_type']];  ?></div>
+            <div class="anordnung_device">Device: <?php echo $anordnung['device_name'];  ?></div>
+
+        </div>
+        <div class="anordnung_params">
+            <?php foreach($anordnung['params'] as $key => $value): ?>
+            <?php if(!strpos($key, '_alarm_higher') && !strpos($key, '_alarm_lower') ): //ISPC-2906,Elena,27.04.2021 ?>
+            <div class="anordnung-row">
+                <?php
+              $label = $key;
+              $label = strtr($label, array('_alarm_higher' => ' höhere Alarmgrenze', '_alarm_lower' => ' niedrigere Alarmgrenze'));
+
+                //ISPC-2906,Elena,27.04.2021
+                $add = '';
+                if(isset($aOtherAdditionals[$key])){
+                $add = ' (' . $aOtherAdditionals[$key]['alarm_lower'] . '/' . $aOtherAdditionals[$key]['alarm_higher'] . ')';
+                }
+                ?>
+                <div class="anordnung_label"><?php echo $label; ?></div>
+                <div class="anordnung_val"><?php echo $value; ?><?php echo $add; ?></div><!--//ISPC-2906,Elena,27.04.2021-->
+            </div>
+            <?php endif; ?><!--//ISPC-2906,Elena,27.04.2021-->
+            <?php endforeach; ?>
+        </div>
+
+
+        <div class="anordnung_toolbar" <?php echo $no_edit_style; ?> ><!--//ISPC-2816,Elena,05.02.2021--><!--//ISPC-2891 Ancuta 27.04.2021 -->
+            <div class="anordnung_toolbar_item anordnung_remove" data-kind="device" data-id="<?php echo $anordnung['id']; ?>"><img title="Gerät entfernen" src="<?php echo RES_FILE_PATH; ?>/images/trash_56858.svg" width="20" /> </div>
+            <div class="anordnung_toolbar_item anordnung_edit_device" data-id="<?php echo $anordnung['id']; ?>"><img title="Bearbeiten" src="<?php echo RES_FILE_PATH; ?>/images/edit_btn.svg" width="20" /> </div>
+            <!--<div class="anordnung_toolbar_item anordnung_unlink" data-id="<?php echo $anordnung['id']; ?>"><img src="<?php echo RES_FILE_PATH; ?>/images/link-break.svg" width="20" /> </div>-->
+
+        </div>
+        <?php if(strlen(trim($anordnung['description'])) > 0) : ?>
+        <div class="anordnung_desc"><?php echo $anordnung['description'] ; ?></div>
+        <?php endif; ?>
+    </div>
+    <?php endforeach; ?>
+
+  <div id="new_device" <?php echo $no_edit_style; ?> ><img src="<?php echo RES_FILE_PATH; ?>/images/add_plus_button.svg" width="20" /> Neue Maschine</div>
+</div>
+
+</div>
+
+
+<div id="patient_anordnung_dialog" class="dialog_container">
+    <div id="patient_anordnung_dialog_content"></div>
+</div>
+<div id="patient_anordnung_inactive_dialog" class="dialog_container">
+    <div id="patient_anordnung_inactive_dialog_content"></div>
+</div>
+
+<div id="patient_device_dialog" class="dialog_container">
+    <div id="patient_device_dialog_content"></div>
+</div>

@@ -1,0 +1,472 @@
+<!-- Maria:: Migration ISPC to CISPC 08.08.2020 -->
+<?php
+
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/data_tables/datatables.min.css?' . date('Ymd'));
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/data_tables/jquery.dataTables.js?'.date('Ymd'));
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/data_tables/fixedColumns.dataTables.min.css?' . date('Ymd'));
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/data_tables/dataTables.fixedColumns.min.js?'.date('Ymd'));
+
+$allowed_invoice_types = $this->allowed_invoice_types;
+?>
+
+<script>
+	$(document).ready(function() {
+		$(".datepicker").mask("99.99.9999");
+
+		$('.datepicker').datepicker({
+			dateFormat: 'dd.mm.yy',
+			showOn: "both",
+			buttonImage: $('#calImg').attr('src'),
+			buttonImageOnly: true,
+			changeMonth: true,
+			changeYear: true,
+			nextText: '',
+			prevText: ''
+		});
+		
+		$('#item_start_date').attr('disabled', true);
+		$('#item_end_date').attr('disabled', true);
+		
+		
+		
+		$('#only_not_exported').live('change', function(){
+			if(!$(this).is(':checked'))
+			{
+				jConfirm('<? echo $this->translate('areyousure'); ?>', '<? echo $this->translate('atention'); ?>', function(r) {
+					if(r)
+					{	
+						$('#only_not_exported').prop('checked',false);
+						
+					} else{
+						$('#only_not_exported').prop('checked',true);
+					}
+				});
+				
+			}
+		});
+		
+		$('#activate_items_date').bind('click change', function(){
+			if($(this).is(':checked'))
+			{
+				$('#item_start_date').attr('disabled', false);
+				$('#item_end_date').attr('disabled', false);
+				
+				$('#item_date_filter').val('1');
+			}
+			else
+			{
+				$('#item_start_date').attr('disabled', true);
+				$('#item_end_date').attr('disabled', true);
+
+				$('#item_date_filter').val('0');
+				
+			}
+		});
+
+		$('.inv_journal_sort').live('click',function(){
+			$('#sortby').val($(this).attr('rel'));
+			$('#sortdir').val($(this).attr('title'));
+			$('#current_page').val('');
+			getinvoicejournal('1');
+		});
+
+		$('#filter').click(function() {
+			//reset pages and sorting
+			$('#sortby').val('');
+			$('#sortdir').val('');
+			$('#current_page').val('');
+			getinvoicejournal();
+			return false;
+
+		});
+		
+		
+		$('.set_storno, .del_storno').live('click', function(){
+			$('#storno_selected_invoice').val($(this).attr('title'));
+			$('#storno_selected_invoice_id').val($(this).attr('rel'));
+			$('#storno_dialog').dialog('open');
+		});
+
+		$('#storno_dialog').dialog({
+			autoOpen:false,
+			modal:true,
+			draggable: false,
+			resizable: false,
+			buttons: {
+				"<?php echo $this->translate('yesconfirm'); ?>": function() {
+					set_storno($('#storno_selected_invoice_id').val());
+					$( this ).dialog( "close" );
+				},
+				"<?php echo $this->translate('noconfirm'); ?>": function() {
+					$( this ).dialog("close");
+
+				}
+			},
+			open: function(){
+				$( "#storno_dialog" ).dialog( "option", "title", "<?php echo $this->translate('storno_invoice_no'); ?> "+$('#storno_selected_invoice').val());
+			},
+			close: function(){
+				$('#storno_selected_invoice').val('');
+				$('#storno_selected_invoice_id').val('');
+			}
+		});
+
+
+		$('#generate_pdf').live('click', function(){
+			$('#export_type').val('pdf');
+		});
+		
+		//ISPC-2424
+		$('#generate_sh_pdf').live('click', function(){
+			$('#export_type').val('pdf-sh');
+		});
+
+		//TODO-2915 Lore 20.02.2020 
+		$('#generate_sh_excel').live('click', function(){
+			$('#export_type').val('excel-sh');
+		});
+		
+		$('#generate_sap').live('click', function(){
+			$('#export_type').val('sap_txt');
+		});
+		
+		$('#generate_csv').live('click', function(){
+			$('#export_type').val('csv');
+		});
+		
+		$('#generate_csv_nie').live('click', function(){
+			$('#export_type').val('nie_csv');
+		});
+		
+		$('#generate_csv_unna').live('click', function(){
+			$('#export_type').val('unna_csv');
+		});
+		
+		$('#generate_csv_e_s').live('click', function(){		//ISPC-2505 Lore 17.12.2019
+			$('#export_type').val('e_s_csv');
+		});
+		
+		$("#generate_csv_select").change(function(){
+			if (this.value != ''){
+				$('#export_type').val(this.value);
+				$("#journal_filters_form").submit();
+			}
+		});
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+	  	
+	  	
+	  	var datatable_files =	$('.exported_files').DataTable({
+			// ADD language
+			 "language": {
+	                "url": "<?php echo RES_FILE_PATH.'/javascript/data_tables/de_language.json?'.date('Ymd')?>"
+	         },
+	 		sDom: 
+				'tr',
+	 
+			processing: true,
+			
+			info: false,
+			filter: true,
+			paginate: true,
+
+			serverSide: true,
+			"autoWidth": false,
+			"stateSave": false,
+			"scrollX": false,
+			"scrollCollapse": true,
+			"ordering": false,
+			
+
+			columns: [
+			          { data: "export_date", className: ""},//0
+			          { data: "export_type", className: ""},//2
+			          { data: "delete", className: ""},//2
+				],
+				
+			 columnDefs: [ 
+					       	{ "targets": 0, "searchable": false, "orderable": false, "name":"export_date" }, // export_date
+					       	{ "targets": 1, "searchable": false, "orderable": false, "name":"export_type" }, // last_name
+					       	{ "targets": 2, "searchable": false, "orderable": false, "name":"delete" } // last_name
+					],				
+	 		 ajax: {
+				url:'invoice/getexportedfiles',
+				type: 'POST'
+			}
+		});
+	  	
+		$(".delete_file").live('click', function() {
+			$.confirmdeleteid = $(this).attr('rel');
+				jConfirm('<? echo $this->translate('confirmdeleterecord'); ?>', '<? echo $this->translate('confirmdeletetitle'); ?>', function(r) {
+				if(r)
+				{	
+					
+					location.href = "<? echo APP_BASE ?>invoice/deleteexportedfile?file_id="+ $.confirmdeleteid;
+				}
+			});
+		});
+		
+		
+		
+		
+		
+		//ISPC-2272: 
+		$('.invoice_type_select').on("change",function() {
+			getinvoicejournal();
+		});
+		
+		
+	});
+
+	function getinvoicejournal(page) {
+		var url = '<?php echo APP_BASE; ?>invoice/fetchinvoicejournal';
+		var filters = '';
+		var sortby = $('#sortby').val();
+		var sortdir = $('#sortdir').val();
+		$('#j_sortby').val(sortby);
+		$('#j_sortdir').val(sortdir);
+
+		//show a loading gif
+		$('#invoice_journal_list').html('<br/><div class="loadingdiv" align="center"><img src="<?php echo RES_FILE_PATH; ?>/images/ajax-loader.gif"><br /><?php echo $this->translate(loadingpleasewait); ?></div><br/>');
+
+		filters = $('#journal_filters_form').serialize() + '&page=' + page;
+
+		if (sortby) {
+			filters = filters + '&ord=' + sortby;
+		}
+
+		if (sortdir) {
+			filters = filters + '&sort=' + sortdir;
+		}
+		
+		
+		filters = filters + '&type=internal';
+		
+		xhr = $.ajax({
+			url: url + '?' + filters,
+			success: function(response) {
+				$('#invoice_journal_list').html(response);
+				$("#generate_csv_select").val("");
+			}
+		});
+	}
+
+	function set_storno(invoice_id)
+	{
+
+		var url = '<?php echo APP_BASE; ?>invoice/internalinvoicejournal';
+		xhr = $.ajax({
+			url: url + '?' + 'mode=storno&inv_id='+invoice_id,
+
+			success: function(response) {
+				//refresh table
+				getinvoicejournal();
+			}
+		});
+	}
+
+
+	getinvoicejournal(1);
+
+
+</script>
+<div id="showpreview_calendarImg" style="display: none;">
+	<img id="calImg" src="<?php echo RES_FILE_PATH; ?>/images/calendar.png" alt="Popup" class="trigger">
+</div>
+<h1><?php echo $this->translate('invoice_journal_header_title'); ?></h1>
+<br />
+<form id="journal_filters_form" method="POST" action="<?php echo APP_BASE.'invoice/fetchinvoicejournal?type=internal';  ?>">
+	<table class="datatable" >
+		<tr>
+			<td colspan="5" class="journal_filter_header"><strong><?php echo $this->translate('filter');  ?></strong></td>
+		</tr>
+
+		<tr>
+			<td><?php echo $this->translate('date_range'); ?></td>
+			<td><?php echo $this->translate('rfrom'); ?></td>
+			<td><input type="text" name="start_date" id="start_date" class="datepicker" value="<?php echo date('d.m.Y', strtotime($this->period['start']));  ?>" /></td>
+
+			<td><?php echo $this->translate('rtill'); ?></td>
+			<td><input type="text" name="end_date" id="end_date" class="datepicker" value="<?php echo date('d.m.Y', strtotime($this->period['end']));  ?>" /></td>
+		</tr>
+		<tr>
+			<td><?php echo $this->translate('items_date_range'); ?> <input type="checkbox" name="activate_items_date" id="activate_items_date" />
+			<input type="hidden" name="item_date_filter" id="item_date_filter" value="0"/>
+			 </td>
+			<td><?php echo $this->translate('rfrom'); ?></td>
+			<td><input type="text" name="item_start_date" id="item_start_date" class="datepicker" value="<?php echo date('d.m.Y', strtotime($this->period['start']));  ?>" /></td>
+
+			<td><?php echo $this->translate('rtill'); ?></td>
+			<td><input type="text" name="item_end_date" id="item_end_date" class="datepicker" value="<?php echo date('d.m.Y', strtotime($this->period['end']));  ?>" /></td>
+		</tr>
+		<?php if($this->sh_internal_invoice_status == "include_sh_internal" || $this->sh_internal_invoice_status == "only_sh_internal"):?>
+		<tr>
+			<td><?php echo $this->translate('user'); ?></td>
+			<td colspan="4"><input type="text" name="user_name" id="j_user_name" value="" /></td>
+		</tr>
+		<?php endif;?>
+		
+		<?php if($this->sh_internal_invoice_status != "only_sh_internal"):?>
+		<tr>
+			<td><?php echo $this->translate('patient'); ?></td>
+			<td colspan="4"><input type="text" name="patient_name" id="j_patient_name" value="" /></td>
+
+		</tr>
+		<?php endif;?>
+		<tr>
+			<td><?php echo $this->translate('invoice_number'); ?></td>
+			<td colspan="4"><input type="text" name="invoice_number" id="j_invoice_number" value="" /></td>
+		</tr>
+		<tr>
+			<td><?php echo $this->translate('typ'); ?></td>
+			<td colspan="4">
+				<select name="storno" id="j_storno">
+					<option value="" ><?php echo $this->translate('select');  ?></option>
+					<option value="0" ><?php echo $this->translate('non_storno');  ?></option>
+					<option value="1" ><?php echo $this->translate('storno');  ?></option>
+				</select>
+			</td>
+		</tr>
+		<tr>
+			<td><?php echo $this->translate('health_insurance'); ?></td>
+			<td colspan="4"><input type="text" name="health_insurance" id="j_health_insurance" value="" /></td>
+		</tr>
+		<tr>
+			<td><?php echo $this->translate('invoice_type'); ?><sup class="option_required">*</sup></td>
+			<td colspan="4">
+				<?php if(count($allowed_invoice_types) > '1'):  ?>
+				<select name="invoice_type" id="j_invoice_type" class="invoice_type_select">
+					<option value=""><?php echo $this->translate('select');  ?></option>
+					<?php foreach($allowed_invoice_types as $k_inv_type => $v_inv_type):  ?>
+						<option value="<?php echo $v_inv_type;  ?>"><?php echo $this->translate($v_inv_type);  ?></option>
+					<?php endforeach;  ?>
+				</select>
+				<?php elseif(!empty($allowed_invoice_types)):  ?>
+					<p><?php echo $this->translate($allowed_invoice_types[0]);  ?></p>
+				<?php else:  ?>
+					<p><?php echo $this->translate('no_invoice_allowed');  ?></p>
+				<?php endif  ?>
+			</td>
+		</tr>
+		<tr>
+			<td><?php echo $this->translate('amount'); ?></td>
+			<td colspan="4"><input type="text" name="amount" id="j_amount" value=""/></td>
+		</tr>
+		
+		<?php if ( isset($this->client_modules[166]) && $this->client_modules[166] == 1 ) : ?> 	
+		<tr>
+			<td><label for="only_not_exported"><?php echo $this->translate('SAP-only not exported')?></label></td>
+			<td colspan="4"><input type="checkbox" name="only_not_exported" id="only_not_exported" value="1" checked="checked"/> </td>
+		</tr>
+		<?php endif; ?>		
+
+		<tr>
+			<td></td>
+			<td colspan="4">
+				<input type="submit" name="submit_filter" id="filter" value="<?php echo $this->translate('filter'); ?>" />
+			</td>
+		</tr>
+		
+		<tr>
+			<td colspan="5" class="journal_filter_header"><b><?php echo $this->translate('Export options')?></b></td>
+			
+		</tr>
+		<tr>
+			<td>
+				<?php echo $this->translate('ivj_pdf_label')?>
+			</td>
+			<td colspan="4">
+					<input type="submit" value="<?php echo $this->translate('export_button');  ?>" name="generate_pdf" id="generate_pdf" />
+					<!--ISPC-2424 -->
+					<?php if ( isset($this->client_modules[191]) && $this->client_modules[191] == 1 ) : ?> 	
+						<input type="submit" value="<?php echo $this->translate('export_button_sh');  ?>" name="generate_sh_pdf" id="generate_sh_pdf" />
+						<!-- TODO-2915 Lore 20.02.2020 -->
+						<input type="submit" value="<?php echo $this->translate('generate_fibu_excel');  ?>" name="generate_sh_excel" id="generate_sh_excel" />
+					<?php endif; ?>						
+				</td>
+			
+		</tr>
+			
+		<tr>
+			<td>
+				<?php echo $this->translate('ivj_csv_text_label')?>
+			</td>
+			<td colspan="4">
+				<?php echo $this->formSelect('gender', "", array('id'=>'generate_csv_select', 'class' =>'w100'), $this->generate_csv_select) ?>
+			</td>
+		</tr>
+		
+
+	</table>
+	<input type="hidden" name="export_type" id="export_type" value=""  />
+	
+	<br />
+	<p>
+		*)<?php echo $this->translate('Link to access invoice cancelation dialog.'); ?>
+	</p>
+	<div id="invoice_journal_list">
+		<!-- content loaded by AJAX request -->
+	</div>
+	<input type="hidden" id="j_sortby" name="j_sortby" value="" />
+	<input type="hidden" id="j_sortdir" name="j_sortdir" value="" />
+</form>
+<input type="hidden" id="storno_selected_invoice" value="" />
+<input type="hidden" id="storno_selected_invoice_id" value="" />
+
+<div id="storno_dialog">
+	<p>
+		<?php echo $this->translate('storno_dialog_text');  ?>
+	</p>
+
+</div>
+
+
+
+
+<style>
+.exported_files_block{
+	display: block;
+	margin-top:50px;
+	
+}
+.exported_files{
+	width: 50%;
+	margin-top:50px;
+}
+
+.exported_files thead td{
+	background:#E5E5E5;
+	cursor: pointer;
+	padding-left: 5px;
+	border: 1px solid #eee;
+	font-weight: 700;
+}
+</style>
+<?php if ( isset($this->client_modules[166]) && $this->client_modules[166] == 1 ) : ?> 
+	<div class="exported_files_block">
+<? else: ?>
+	<div class="exported_files_block" style="display: none;">
+<? endif; ?>
+<br/>
+<h1><?php echo $this->translate('Exported files')?></h1>
+	<table class="exported_files">
+		<thead>
+			<tr>
+				<td><?php echo $this->translate('export_date');?></td>
+				<td><?php echo $this->translate('export_type');?></td>
+				<td><?php echo $this->translate('actions');?></td>
+			</tr>
+		</thead>
+		<tbody>
+			<!-- content -->
+		</tbody>
+	</table>
+</div>

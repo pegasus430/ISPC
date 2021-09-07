@@ -1,0 +1,927 @@
+<?php
+
+	$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/tinymce3/jscripts/tiny_mce/tiny_mce.js');
+	$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/invoice_sapv.js');
+	$this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/page-css/invoice/invoice_hospiz_style.css');
+
+//IE Freaking hack
+
+$url = APP_BASE . "invoicenew/patienthospizinvoice?" . $_SERVER['QUERY_STRING'];
+if (str_replace("&monthdata=" . $_REQUEST['monthdata'] . "", "", str_replace("&user=" . $_REQUEST['user'] . "", "", $url)))
+{
+	$finalJsUrl = str_replace("&monthdata=" . $_REQUEST['monthdata'] . "", "", str_replace("&user=" . $_REQUEST['user'] . "", "", $url));
+}
+else
+{
+	$finalJsUrl = $url;
+}
+
+
+$patient_details = $this->patient_details;
+$invoice_data = $this->invoice_data;
+$invoice_items = $invoice_data['items'];
+$client_details = $this->client_details;
+
+echo $this->patientinfo;
+echo $this->tabmenus;
+?>
+<script>
+	var hide_patient_tab = 1;
+	var res_file_path = '<?php echo RES_FILE_PATH; ?>';
+
+	var min_number = '0'; //to avoid NaN
+	var privat = "<?php echo $this->privat;?>";
+	
+	function german_format(number) {
+		var postComma, preComma, stringReverse, _ref;
+		stringReverse = function(str) {
+			return str.split('').reverse().join('');
+		};
+
+		_ref = number.toFixed(2).split('.'), preComma = _ref[0], postComma = _ref[1];
+
+		//handle - sign
+		var modified_preComma = String(Number(preComma)*(-1)).length;
+
+		var minus_sign = '';
+		if(preComma.length > modified_preComma) {
+			minus_sign = '-';
+			preComma = String(Number(preComma)*(-1));
+		} else {
+			minus_sign = '';
+		}
+
+		preComma = stringReverse(stringReverse(preComma).match(/.{1,3}/g).join('.'));
+
+		return minus_sign + preComma + "," + postComma;
+	}
+ 
+	
+	function createnewitem()
+	{
+		var itemcount = $('#counter').val();
+		
+			<?php
+				$sel_str = '<option value=""> </option>';
+				foreach($this->hessen_related_dta as $prod_sh=>$prod_name) {
+					$sel_str .= '<option value="'.$prod_sh.'">'.$prod_name.'</option>';
+				}
+			?>
+			
+			var product_custom_dta = '<input type="text" name="custom[custom_dta_id][]" id="custom_dta_id_'+itemcount+'"   value="" style="display: none; margin-left:5px;"/>';
+			
+			var product_select = '<tr><td colspan="6"><select name="custom[related_shortcut][]" id="dta_'+itemcount+'" rel="'+itemcount+'" class="related_prod"   style="width:295px; text-align:left; float:left;" ><?php echo $sel_str;?></select>'+product_custom_dta+'</td><tr>';
+		
+		var trInnerHtml = $('\n\
+		<tr id="row_'+itemcount+'" class="custom_item">\n\
+			<td class="description_column" id="item_description_row_'+itemcount+'"> \n\
+				<input type="text" name="custom[description][]" id="description_row_'+itemcount+'" class="item_description description" value="" />\n\
+			</td>\n\
+			<td class="qty_column" id="item_amount_row_'+itemcount+'"> \n\
+				<input type="text" name="custom[qty][]" id="amount_row_'+itemcount+'" class="item_qty custom_amount" data-product_type="custom" value="" autocomplete="off" />\n\
+			</td>\n\
+			<td class="price_column" id="item_price_row_'+itemcount+'"> \n\
+				<input type="text" name="custom[price][]" id="price_row_'+itemcount+'" class="item_price custom_price"  data-product_type="custom"  value="" autocomplete="off" />\n\
+			</td>\n\
+			<td class="row_total_column" id="item_total_row_'+itemcount+'"> \n\
+				<input type="text" name="custom[total][]" id="total_row_'+itemcount+'" class="item_total custom_total" value="0" />\n\
+			</td>\n\
+			<td class="row_delete">\n\
+				<a href="javascript:void(0)" class="remove_item" id="'+itemcount+'"><img src="<?php echo RES_FILE_PATH; ?>/images/action_delete.png" border="0"></a>\n\
+			</td>\n\
+		</tr>\n\
+			');
+
+		if($('#pseudo_row').length) {
+			$('#pseudo_row').before(trInnerHtml);
+		} else {
+			$('#new_med_row_action').before(trInnerHtml);
+		}
+
+
+		itemcount++;
+		$('#counter').val(itemcount);
+	}
+	
+	
+	
+	$(function() {
+
+		$('form').submit(function() {
+			setTimeout(function () {$('input[type=submit]').attr('disabled', true);}, 150);
+			setTimeout(function () {$('input[type=submit]').attr('disabled', false);}, 11000);
+		});
+		
+// 		update_total();
+
+		//remove custom items
+		$('.remove_item').live('click', function(){
+// 			update_total();
+
+			var row_id = $(this).attr("id");
+			if(row_id)
+			{
+				var curent_custom_total = $('#total_row_'+row_id).val();
+				
+				if(privat == 0 ){
+					
+					var overall_input = $('#overall_invoice_total').val();
+					var overall = parseFloat(parseFloat(overall_input) - parseFloat(curent_custom_total)).toFixed(2);
+					
+					$('#overall_invoice_total').val(overall);
+					$('#overall_total_cell').html(german_format(parseFloat(overall)));
+				} 
+				else
+				{
+					var sys_invoice_total = $('#sys_invoice_total').val();
+					var sys_total = parseFloat(parseFloat(sys_invoice_total) - parseFloat(curent_custom_total)).toFixed(2);
+					$('#sys_invoice_total').val(sys_total);
+					$('#sys_total_cell').html(german_format(parseFloat(sys_total)));
+				}
+			}
+			$(this).parent().parent().hide('slow').remove();
+		});
+
+		
+		$('.sys_total').each(function(){
+			$(this).val(parseFloat($(this).val()).toFixed(2))
+		});
+		
+		$('.pfl_total').each(function(){
+			$(this).val(parseFloat($(this).val()).toFixed(2))
+		});
+		$('.custom_total').each(function(){
+			$(this).val(parseFloat($(this).val()).toFixed(2))
+		});
+		
+
+		
+		
+		//SYSTEM
+		$('.sys_total').live('keyup change ', function(){
+			$(this).val($(this).val().replace(/[^0-9\.-]/g,''));
+
+			if($.isNumeric($(this).val()))
+			{
+				// update sys invoice total
+				var sys_total = 0;
+				$('.sys_total').each(function(){
+// 					$(this).val(parseFloat($(this).val()).toFixed(2));
+					sys_total += parseFloat($(this).val());
+				});
+				
+				if(privat == 1) 
+				{ 
+					var ct = 0 ; 
+					$('.custom_total').each(function(){
+						$(this).val(parseFloat($(this).val()).toFixed(2));
+						ct += parseFloat($(this).val());
+					});					
+					sys_total = parseFloat(sys_total)+parseFloat(ct);
+				}
+
+				var sys_invoice_total = parseFloat(parseFloat(sys_total)+parseFloat(min_number)).toFixed(2);
+				$('#sys_invoice_total').val(sys_invoice_total);
+				$('#sys_total_cell').html(german_format(parseFloat(sys_invoice_total)));
+
+				if(privat == 0) 
+				{ 
+				 	// get pflege 
+				 	if ($(".care_level_balance").length > 0) {
+						var pfle_balance = $(".care_level_balance").val();
+						 
+						// update remaining
+						if(pfle_balance.length != '0' && pfle_balance != '' ){
+							var remianing = parseFloat(parseFloat(sys_invoice_total)-parseFloat(pfle_balance)).toFixed(2);
+							$('.remaining').val(remianing);
+						}
+				 	}
+					
+					var new_custom_total = 0;
+					 // update  bottom  total
+					$('.custom_total').each(function(){
+						$(this).val(parseFloat($(this).val()).toFixed(2))
+						new_custom_total += parseFloat($(this).val());
+					});
+					 
+					var overall = parseFloat(parseFloat(sys_invoice_total)+parseFloat(new_custom_total)).toFixed(2);
+					$('#overall_invoice_total').val(overall);
+					$('#overall_total_cell').html(german_format(parseFloat(overall)));
+				}
+			}
+		});
+		
+		$('.pfl_total').live('keyup change ', function(){
+			$(this).val($(this).val().replace(/[^0-9\.-]/g,''));
+
+			if($.isNumeric($(this).val()))
+			{
+				var sys_total = $('#sys_invoice_total').val();
+				
+				if(privat == 1) 
+				{ 
+					var ct = 0 ; 
+					$('.custom_total').each(function(){
+						$(this).val(parseFloat($(this).val()).toFixed(2));
+						ct += parseFloat($(this).val());
+					});					
+					sys_total = parseFloat(sys_total)+parseFloat(ct);
+				}
+
+				var sys_invoice_total = parseFloat(parseFloat(sys_total)+parseFloat(min_number)).toFixed(2);
+
+				if(privat == 0) 
+				{ 
+				 	// get pflege 
+				 	if ($(".care_level_balance").length > 0) {
+						var pfle_balance = $(".care_level_balance").val();
+						 
+						// update remaining
+						if(pfle_balance.length != '0' && pfle_balance != '' ){
+							var remianing = parseFloat(parseFloat(sys_invoice_total)-parseFloat(pfle_balance)).toFixed(2);
+							$('.remaining').val(remianing);
+						}
+				 	}
+					
+					var new_custom_total = 0;
+					 // update  bottom  total
+					$('.custom_total').each(function(){
+						$(this).val(parseFloat($(this).val()).toFixed(2))
+						new_custom_total += parseFloat($(this).val());
+					});
+					 
+					var overall = parseFloat(parseFloat(sys_invoice_total)+parseFloat(new_custom_total)).toFixed(2);
+					$('#overall_invoice_total').val(overall);
+					$('#overall_total_cell').html(german_format(parseFloat(overall)));
+				}
+			}
+		});
+		
+		
+		$('.custom_total').live('keyup change ', function(){
+			$(this).val($(this).val().replace(/[^0-9\.-]/g,''));
+			var product_type = $(this).data("product_type"); 
+			
+			if($.isNumeric($(this).val()))
+			{
+				if(privat == 0){
+					
+					var custom_total = 0;
+					$('.custom_total').each(function(){
+// 						$(this).val(parseFloat($(this).val()).toFixed(2))
+						custom_total += parseFloat($(this).val());
+					});
+
+					// get sys_invoice_total
+					var sys_invoice_total = $('#sys_invoice_total').val();
+					
+					var overall = parseFloat(parseFloat(sys_invoice_total)+parseFloat(custom_total)).toFixed(2);
+					$('#overall_invoice_total').val(overall);
+					$('#overall_total_cell').html(german_format(parseFloat(overall)));
+				} 
+				else
+				{
+					var sys_total = 0;
+					$('.sys_total').each(function(){
+						$(this).val(parseFloat($(this).val()).toFixed(2))
+						sys_total += parseFloat($(this).val());
+					});
+					
+					var custom_total = 0;
+					$('.custom_total').each(function(){
+						$(this).val(parseFloat($(this).val()).toFixed(2))
+						custom_total += parseFloat($(this).val());
+					});
+
+					var new_total = parseFloat(sys_total)+parseFloat(custom_total);
+					
+					var sys_total = parseFloat(parseFloat(new_total)+parseFloat(min_number)).toFixed(2);
+					$('#sys_invoice_total').val(sys_total);
+					$('#sys_total_cell').html(german_format(parseFloat(sys_total)));
+				}
+			}
+		});
+		
+		$('#sys_invoice_total').live('keyup change ', function(){
+			$(this).val($(this).val().replace(/[^0-9\.-]/g,''));
+			
+			if($.isNumeric($(this).val()))
+			{
+				if(privat == 0){
+					
+					var custom_total = 0;
+					$('.custom_total').each(function(){
+						$(this).val(parseFloat($(this).val()).toFixed(2))
+						custom_total += parseFloat($(this).val());
+					});
+
+					// get sys_invoice_total
+					var sys_invoice_total = $('#sys_invoice_total').val();
+					
+					var overall = parseFloat(parseFloat(sys_invoice_total)+parseFloat(custom_total)).toFixed(2);
+					$('#overall_invoice_total').val(overall);
+					$('#overall_total_cell').html(german_format(parseFloat(overall)));
+					
+					// update ptb + it 
+					
+				 	// get pflege 
+				 	if ($(".care_level_balance").length > 0) {
+						var pfle_balance = $(".care_level_balance").val();
+						 
+						// update remaining
+						if(pfle_balance.length != '0' && pfle_balance != '' ){
+							var remianing = parseFloat(parseFloat(sys_invoice_total)-parseFloat(pfle_balance)).toFixed(2);
+							$('.remaining').val(remianing);
+						}
+				 	}
+					
+					
+				} 
+				else
+				{
+					// change nothing
+				
+				}
+				
+				
+			}
+			
+			
+			
+		});
+		
+		
+		
+		$('.sys_amount').live('keyup change ', function(){
+			$(this).val($(this).val().replace(/[^0-9\.]/g,''));
+			var product_type = $(this).data("product_type"); 
+
+			if($.isNumeric($(this).val()))
+			{
+				var row_id = $(this).attr('id').substr(('amount_row_').length);
+
+				if($('#price_row_'+row_id).val().length != '0' && $('#price_row_'+row_id).val() != '' && $(this).val().length != '0'){
+					$('#total_row_' + row_id).val(parseFloat(parseFloat($(this).val())*parseFloat($('#price_row_'+row_id).val())).toFixed(2));
+					var line_total = parseFloat(parseFloat($(this).val())*parseFloat($('#price_row_'+row_id).val())).toFixed(2);
+				} else if($(this).val().length == '0' || $('#price_row_'+row_id).val().length) {
+					$('#total_row_' + row_id).val('0,00');
+				}
+				
+				// update sys invoice total
+				var sys_total = 0;
+				$('.sys_total').each(function(){
+					$(this).val(parseFloat($(this).val()).toFixed(2));
+					sys_total += parseFloat($(this).val());
+				});
+				
+				if(privat == 1) 
+				{ 
+					var ct = 0 ; 
+					$('.custom_total').each(function(){
+						$(this).val(parseFloat($(this).val()).toFixed(2));
+						ct += parseFloat($(this).val());
+					});					
+					sys_total = parseFloat(sys_total)+parseFloat(ct);
+				}
+
+				var sys_invoice_total = parseFloat(parseFloat(sys_total)+parseFloat(min_number)).toFixed(2);
+				$('#sys_invoice_total').val(sys_invoice_total);
+				$('#sys_total_cell').html(german_format(parseFloat(sys_invoice_total)));
+
+				if(privat == 0) 
+				{ 
+				 	// get pflege 
+				 	if ($(".care_level_balance").length > 0) {
+						var pfle_balance = $(".care_level_balance").val();
+						 
+						// update remaining
+						if(pfle_balance.length != '0' && pfle_balance != '' ){
+							var remianing = parseFloat(parseFloat(sys_invoice_total)-parseFloat(pfle_balance)).toFixed(2);
+							$('.remaining').val(remianing);
+						}
+				 	}
+					
+					var new_custom_total = 0;
+					 // update  bottom  total
+					$('.custom_total').each(function(){
+						$(this).val(parseFloat($(this).val()).toFixed(2))
+						new_custom_total += parseFloat($(this).val());
+					});
+					 
+					var overall = parseFloat(parseFloat(sys_invoice_total)+parseFloat(new_custom_total)).toFixed(2);
+					$('#overall_invoice_total').val(overall);
+					$('#overall_total_cell').html(german_format(parseFloat(overall)));
+				}
+			}
+		});
+		
+		$('.sys_price').live('keyup change ', function(){
+// 			$(this).val($(this).val().replace(/[^0-9\.]/g,''));
+			$(this).val($(this).val().replace(/[^0-9\.-]/g,''));
+			var product_type = $(this).data("product_type"); 
+			
+			if($.isNumeric($(this).val()))
+			{
+				var row_id = $(this).attr('id').substr(('price_row_').length);
+				if ($('#amount_row_' + row_id).val().length != '0' && $('#amount_row_' + row_id).val() != '' && $(this).val().length != '0') {
+					$('#total_row_' + row_id).val(parseFloat(parseFloat($(this).val())*parseFloat($('#amount_row_'+row_id).val())).toFixed(2));
+				} else if($(this).val().length == '0' || $('#amount_row_'+row_id).val().length) {
+					$('#total_row_' + row_id).val('0,00');
+				}
+				
+				// update sys invoice total
+				var sys_total = 0;
+				$('.sys_total').each(function(){
+					$(this).val(parseFloat($(this).val()).toFixed(2))
+					sys_total += parseFloat($(this).val());
+				});
+				
+				if(privat == 1) 
+				{ 
+					var ct = 0 ; 
+					$('.custom_total').each(function(){
+						$(this).val(parseFloat($(this).val()).toFixed(2));
+						ct += parseFloat($(this).val());
+					});					
+					sys_total = parseFloat(sys_total)+parseFloat(ct);
+				}
+
+				var sys_invoice_total = parseFloat(parseFloat(sys_total)+parseFloat(min_number)).toFixed(2);
+				$('#sys_invoice_total').val(sys_invoice_total);
+				$('#sys_total_cell').html(german_format(parseFloat(sys_invoice_total)));
+				
+				
+				
+				if(privat == 0) 
+				{ 
+					if ($(".care_level_balance").length > 0) {
+					 	// get pflege 
+						var pfle_balance = $(".care_level_balance").val();
+						 
+						// update remaining
+						if(pfle_balance.length != '0' && pfle_balance != '' ){
+							var remianing = parseFloat(parseFloat(sys_invoice_total)-parseFloat(pfle_balance)).toFixed(2);
+							$('.remaining').val(remianing);
+						}
+					}
+					var new_custom_total = 0;
+					 // update  bottom  total
+					$('.custom_total').each(function(){
+						$(this).val(parseFloat($(this).val()).toFixed(2))
+						new_custom_total += parseFloat($(this).val());
+					});
+					var overall = parseFloat(parseFloat(sys_invoice_total)+parseFloat(new_custom_total)).toFixed(2);
+					$('#overall_invoice_total').val(overall);
+					$('#overall_total_cell').html(german_format(parseFloat(overall)));
+				}
+			}
+		});
+		
+		
+		
+		//PFLEGE 
+		$('.pfl_amount').live('keyup change ', function(){
+			$(this).val($(this).val().replace(/[^0-9\.]/g,''));
+			var product_type = $(this).data("product_type"); 
+			
+			if($.isNumeric($(this).val()))
+			{
+				var row_id = $(this).attr('id').substr(('amount_row_').length);
+
+				if($('#price_row_'+row_id).val().length != '0' && $('#price_row_'+row_id).val() != '' && $(this).val().length != '0'){
+					$('#total_row_' + row_id).val(parseFloat(parseFloat($(this).val())*parseFloat($('#price_row_'+row_id).val())).toFixed(2));
+					var pfle_balance = parseFloat(parseFloat($(this).val())*parseFloat($('#price_row_'+row_id).val())).toFixed(2);
+				} else if($(this).val().length == '0' || $('#price_row_'+row_id).val().length) {
+					$('#total_row_' + row_id).val('0,00');
+				}
+				
+				// get sys_invoice_total
+				var sys_invoice_total = $('#sys_invoice_total').val();
+				
+				//update remeining
+				if(pfle_balance.length != '0' && pfle_balance != '' &&  sys_invoice_total.lenght !="0"){
+					var remianing = parseFloat(parseFloat(sys_invoice_total)-parseFloat(pfle_balance)).toFixed(2);
+					$('.remaining').val(remianing);
+				}
+				
+				var new_custom_total = 0;
+				 // update  bottom  total
+				$('.custom_total').each(function(){
+					$(this).val(parseFloat($(this).val()).toFixed(2))
+					new_custom_total += parseFloat($(this).val());
+				});
+				var overall = parseFloat(parseFloat(sys_invoice_total)+parseFloat(new_custom_total)).toFixed(2);
+				$('#overall_invoice_total').val(overall);
+				$('#overall_total_cell').html(german_format(parseFloat(overall)));
+			}
+		});
+		
+		$('.pfl_price').live('keyup change ', function(){
+// 			$(this).val($(this).val().replace(/[^0-9\.]/g,''));
+			$(this).val($(this).val().replace(/[^0-9\.-]/g,''));
+			var product_type = $(this).data("product_type"); 
+			
+			if($.isNumeric($(this).val()))
+			{
+				var row_id = $(this).attr('id').substr(('price_row_').length);
+				if ($('#amount_row_' + row_id).val().length != '0' && $('#amount_row_' + row_id).val() != '' && $(this).val().length != '0') {
+					$('#total_row_' + row_id).val(parseFloat(parseFloat($(this).val())*parseFloat($('#amount_row_'+row_id).val())).toFixed(2));
+					var pfle_balance = parseFloat(parseFloat($(this).val())*parseFloat($('#amount_row_'+row_id).val())).toFixed(2);
+				} else if($(this).val().length == '0' || $('#amount_row_'+row_id).val().length) {
+					$('#total_row_' + row_id).val('0,00');
+				}
+				
+				
+				// get sys_invoice_total
+				var sys_invoice_total = $('#sys_invoice_total').val();
+				
+				//update remeining
+				if(pfle_balance.length != '0' && pfle_balance != '' &&  sys_invoice_total.lenght !="0"){
+					var remianing = parseFloat(parseFloat(sys_invoice_total)-parseFloat(pfle_balance)).toFixed(2);
+					$('.remaining').val(remianing);
+				}
+				
+				var new_custom_total = 0;
+				 // update  bottom  total
+				$('.custom_total').each(function(){
+					$(this).val(parseFloat($(this).val()).toFixed(2))
+					new_custom_total += parseFloat($(this).val());
+				});
+				var overall = parseFloat(parseFloat(sys_invoice_total)+parseFloat(new_custom_total)).toFixed(2);
+				$('#overall_invoice_total').val(overall);
+				$('#overall_total_cell').html(german_format(parseFloat(overall)));
+			}
+		});
+		
+		
+		$('.custom_amount').live('keyup change ', function(){
+			$(this).val($(this).val().replace(/[^0-9\.]/g,''));
+			var product_type = $(this).data("product_type"); 
+			
+			if($.isNumeric($(this).val()))
+			{
+				var row_id = $(this).attr('id').substr(('amount_row_').length);
+
+				if($('#price_row_'+row_id).val().length != '0' && $('#price_row_'+row_id).val() != '' && $(this).val().length != '0'){
+					$('#total_row_' + row_id).val(parseFloat(parseFloat($(this).val())*parseFloat($('#price_row_'+row_id).val())).toFixed(2));
+				} else if($(this).val().length == '0' || $('#price_row_'+row_id).val().length) {
+					$('#total_row_' + row_id).val('0,00');
+				}
+ 
+				if(privat == 0){
+					
+					var custom_total = 0;
+					$('.custom_total').each(function(){
+						$(this).val(parseFloat($(this).val()).toFixed(2))
+						custom_total += parseFloat($(this).val());
+					});
+
+					// get sys_invoice_total
+					var sys_invoice_total = $('#sys_invoice_total').val();
+					
+					var overall = parseFloat(parseFloat(sys_invoice_total)+parseFloat(custom_total)).toFixed(2);
+					$('#overall_invoice_total').val(overall);
+					$('#overall_total_cell').html(german_format(parseFloat(overall)));
+				} 
+				else
+				{
+					var sys_total = 0;
+					$('.sys_total').each(function(){
+						$(this).val(parseFloat($(this).val()).toFixed(2))
+						sys_total += parseFloat($(this).val());
+					});
+					
+					var custom_total = 0;
+					$('.custom_total').each(function(){
+						$(this).val(parseFloat($(this).val()).toFixed(2))
+						custom_total += parseFloat($(this).val());
+					});
+
+					var new_total = parseFloat(sys_total)+parseFloat(custom_total);
+					
+					var sys_total = parseFloat(parseFloat(new_total)+parseFloat(min_number)).toFixed(2);
+					$('#sys_invoice_total').val(sys_total);
+					$('#sys_total_cell').html(german_format(parseFloat(sys_total)));
+				}
+			}
+		});
+		
+		$('.custom_price').live('keyup change ', function(){
+// 			$(this).val($(this).val().replace(/[^0-9\.]/g,''));
+			$(this).val($(this).val().replace(/[^0-9\.-]/g,''));
+			var product_type = $(this).data("product_type"); 
+			
+			if($.isNumeric($(this).val()))
+			{
+				var row_id = $(this).attr('id').substr(('price_row_').length);
+				if ($('#amount_row_' + row_id).val().length != '0' && $('#amount_row_' + row_id).val() != '' && $(this).val().length != '0') {
+					$('#total_row_' + row_id).val(parseFloat(parseFloat($(this).val())*parseFloat($('#amount_row_'+row_id).val())).toFixed(2));
+				} else if($(this).val().length == '0' || $('#amount_row_'+row_id).val().length) {
+					$('#total_row_' + row_id).val('0,00');
+				}
+ 
+				if(privat == 0){
+					
+					var custom_total = 0;
+					$('.custom_total').each(function(){
+						$(this).val(parseFloat($(this).val()).toFixed(2))
+						custom_total += parseFloat($(this).val());
+					});
+
+					// get sys_invoice_total
+					var sys_invoice_total = $('#sys_invoice_total').val();
+					
+					var overall = parseFloat(parseFloat(sys_invoice_total)+parseFloat(custom_total)).toFixed(2);
+					$('#overall_invoice_total').val(overall);
+					$('#overall_total_cell').html(german_format(parseFloat(overall)));
+				} 
+				else
+				{
+					var sys_total = 0;
+					$('.sys_total').each(function(){
+						$(this).val(parseFloat($(this).val()).toFixed(2))
+						sys_total += parseFloat($(this).val());
+					});
+					
+					var custom_total = 0;
+					$('.custom_total').each(function(){
+						$(this).val(parseFloat($(this).val()).toFixed(2))
+						custom_total += parseFloat($(this).val());
+					});
+
+					var new_total = parseFloat(sys_total)+parseFloat(custom_total);
+					
+					var sys_total = parseFloat(parseFloat(new_total)+parseFloat(min_number)).toFixed(2);
+					$('#sys_invoice_total').val(sys_total);
+					$('#sys_total_cell').html(german_format(parseFloat(sys_total)));
+				}
+			}
+		});
+	});
+ 
+	function change_period(data){
+		if(data != "-1"){
+			var url = "<?php echo $finalJsUrl; ?>&monthdata="+data; 
+		} 
+		else
+		{
+			var url = "<?php echo $finalJsUrl; ?>"; 
+		}
+		$(location).attr('href',url);
+	}
+	
+	function set_storno(invoice_id) {
+		var url = '<?php echo APP_BASE; ?>invoicenew/invoicesnew';
+		window.location = url + '?' + 'mode=setstorno&inv_id='+invoice_id;
+	}
+</script>
+
+<div style="display: none;"><img id="calImg" src="<?php echo RES_FILE_PATH;  ?>/images/calendar.png" alt="Popup" class="trigger"></div>
+
+<input type="hidden" value="999999999" id="counter" />
+<h1 class="inv_title" style="text-align: center">Rechnung erstellen</h1>
+
+
+<form name="edit_hospiz_invoice" id="edit_hospiz_invoice" method="POST" action="">
+
+<br/>
+	<div class="invoice_options">
+		<label><b><?php echo $this->translate("Select period: ")?></b></label>
+		<select name="admission_period" onChange="change_period(this.value);">
+			<option value="-1"><?php echo $this->translate('overall')?></option>
+			<?php foreach($this->month_select as $month_id=>$month): ?>
+				<option value="<?php echo $month_id;?>" <?php if($_REQUEST["monthdata"] == $month_id):?> selected = "selected" <?php endif;?>> <?php echo $month; ?></option>
+			<?php endforeach;?>
+		</select>
+	</div>
+
+	<div class="invoice_block" style="border: 1px solid #000000; padding: 5px;">
+	<table class="table" id="health_insurance_invoice_table" cellspacing="2" cellpadding="2" width="100%">
+		<tr class="rowa">
+			<td class="col1 cell"></td>
+			<td class="col2 cell"></td>
+			<td class="col3 cell"></td>
+		</tr>
+		<tr class="rowb">
+			<td class="col1 cell" style="width: 635px;height: 50px;">
+				<textarea name="invoice[address]" id="invoice_address" cols="37" rows="7" class="textareawhitehalf"><?php echo $invoice_data['address']; ?></textarea>
+			</td>
+			<td class="col2 cell"></td>
+			<td class="col3 cell"></td>
+		</tr>
+
+		<tr class="rowa">
+			<td class="col2 cell" style="text-align: left;" colspan="2"></td>
+			<td class="col1 cell"></td>
+		</tr>
+
+		<tr class="rowb">
+			<td class="col1 cell" colspan="3">
+				&nbsp;
+			</td>
+		</tr>
+
+
+		<tr class="rowb">
+			<td class="col2 cell" style="text-align: left; font-size:16px;" colspan="2"><b>Rechnung Nr.: &nbsp;<?php echo $invoice_data['prefix'].$invoice_data['invoice_number']; ?></b></td>
+			<td class="col1 cell" style="text-align: right;width:380px;">
+					<?php echo strftime('%A, %d. %B %Y', time());  ?>
+			</td>
+		</tr>
+		<tr class="rowb">
+			<td class="col1 cell" colspan="3"  style="border: 1px solid #000; padding:5px;">
+			<table>
+				<tr>
+					<td style="width:180px;">Abrechnungszeitraum</td>
+					<td style="width:175px;">von: <?php if($invoice_data['start_active'] != "0000-00-00 00:00:00" && date('Y-m-d', strtotime($invoice_data['start_active'])) != '1970-01-01' && strtotime($invoice_data['start_active']) > '0' ): echo date('d.m.Y', strtotime($invoice_data['start_active'])); else: echo ' - '; endif;?></td>
+					<td style="width:175px;">von: <?php if($invoice_data['end_active'] != "0000-00-00 00:00:00" && date('Y-m-d', strtotime($invoice_data['end_active'])) != '1970-01-01' && strtotime($invoice_data['end_active']) > '0' ): echo date('d.m.Y', strtotime($invoice_data['end_active'])); else: echo ' - '; endif;?></td>
+					<!--
+					<td style="width:125px;">nach § 37.2 SGB V</td>
+					<td>IK: <?php echo $this->client_ik; ?></td>
+					-->
+					<td style="width:125px;"></td>
+					<td></td>
+				</tr>
+			</table>
+			</td>
+		</tr>
+		<tr class="rowb">
+			<td class="col1 cell" colspan="3"> &nbsp; </td>
+		</tr>
+
+		<tr class="rowb">
+			<td class="col1 cell" colspan="3" style="border: 1px solid #000; padding:5px;">
+				<table>
+					<tr>
+						<td style="width:180px;"><b>Leistungsempfänger:</b></td>
+						<td style="width:350px;" colspan="2"><?php echo $patient_details['first_name']?> <?php echo $patient_details['last_name']?></td>
+						
+						<td style="width:125px;">Geburtsdatum:</td>
+						<td><?php echo $patient_details['birthd']?></td>
+					</tr>
+					<tr>
+						<td></td>
+						<td colspan="2"><?php echo $patient_details['street1']?></td>
+						
+						<td style="width:125px;"><?php echo $this->translate('pflegestufe2pflegegrade')?>:</td>
+						<td><?php echo $this->patient_pflegestufe; ?></td>
+					</tr>
+					<tr>
+						<td>&nbsp;</td>
+						<td colspan="2"><?php echo $patient_details['zip']?> <?php echo $patient_details['city']?></td>
+						
+						<td style="width:125px;">Vers-Nr.:</td>
+						<td><?php echo $this->insurance_no;  ?></td>
+					</tr>
+				</table>
+			</td>
+		</tr>
+ 
+		<tr class="rowb">
+			<td class="col1 cell" colspan="3">
+				&nbsp;
+			</td>
+		</tr>
+		<tr class="rowb">
+			<td class="col1 cell" colspan="3">
+			
+			<?php if($this->userid == "338" && $_REQUEST['pv_info'] == "1" ){ echo "!!!! privat:".$this->privat." !!!!!"; } ?>
+			
+			
+			<?php if($this->privat == "1"):?>
+				<table class="sapv_invoice_items">
+					<tr class="tr_invoice_th">
+						<th style="text-align: left!important;">Rechnungsposition</th>
+						<th>Anzahl</th>
+						<th> Einzelpreis  &euro;</th>
+						<th> Gesamtpreis &euro;</th>
+						<th></th>
+					</tr>
+					<?php $pv_prod = "0" ;foreach($invoice_data['items'] as $k_shortcut_item => $v_shortcut_values):  ?>
+					<tr id="row_<?php echo $pv_prod;?>">
+						<td align="left"><input type="text"  id="desc_row_<?php echo $pv_prod;?>"   name="invoice[items][<?php echo $k_shortcut_item?>][description]"  value="<?php echo $this->translate('shortcut_name_'.$v_shortcut_values['shortcut']);  ?>" class="item_description" ></td>
+						<td align="right"><input type="text" id="amount_row_<?php echo $pv_prod;?>" name="invoice[items][<?php echo $k_shortcut_item?>][qty]"  value="<?php echo $v_shortcut_values['qty'];  ?>"  class="item_qty sys_amount" ></td>
+						<td align="right"><input type="text" id="price_row_<?php echo $pv_prod;?>"  name="invoice[items][<?php echo $k_shortcut_item?>][price]"  value="<?php echo $v_shortcut_values['price'];  ?>"   class="item_price sys_price"></td>
+						<td align="right"><input type="text" id="total_row_<?php echo $pv_prod;?>"  name="invoice[items][<?php echo $k_shortcut_item?>][total]"  value="<?php echo $v_shortcut_values['total'];  ?>"    class="item_total sys_total"></td>
+						<td class="row_delete"></td>
+					</tr>
+					<?php $pv_prod++; endforeach;  ?>
+					<tr id="new_med_row_action">
+						<td colspan="5">
+							<div class="add_new_medi">
+								<a href="javascript:createnewitem()">
+									<img src="<?php echo RES_FILE_PATH; ?>/images/edit_add.png" width="20" height="20" />
+									<?php echo $this->translate('add_new_item'); ?>
+								</a>
+							</div>
+						</td>
+					</tr>
+					<tr class="tr_invoice_tr_total">
+						<td colspan="3" style="text-align: left;"><b>Zu zahlender Betrag in EUR:</b></td>
+						<td><input type="text"   id="sys_invoice_total" name="invoice[invoice_total]" value="<?php echo Pms_CommonData::str2num($invoice_data['invoice_total']);  ?>" class="item_total sys_invoice_total"></td>
+						<td id="sys_total_cell" style="display: none;">
+							<?php echo number_format($invoice_data['invoice_total'], '2', ',', '.');  ?>
+						</td>
+					</tr>
+				</table>
+
+				<?php else: ?>
+				
+				<table class="sapv_invoice_items">
+					<tr class="tr_invoice_th">
+						<th style="text-align: left!important; width: 50%;">Rechnungsposition</th>
+						<th>Anzahl</th>
+						<th> Einzelpreis  &euro;</th>
+						<th> Gesamtpreis &euro;</th>
+						<th></th>
+					</tr>
+					<?php $normal_prod = 0; foreach($invoice_data['items'] as $k_shortcut_item => $v_shortcut_values):  ?>
+					<tr>
+						<td align="left"> <input type="text" id="desc_row_<?php echo $normal_prod;?>"   name="invoice[items][<?php echo $k_shortcut_item?>][description]"  value="<?php echo $this->translate('shortcut_name_'.$v_shortcut_values['shortcut']);  ?>" class="item_description"></td>
+						<td align="right"><input type="text" id="amount_row_<?php echo $normal_prod;?>" name="invoice[items][<?php echo $k_shortcut_item?>][qty]"  value="<?php echo $v_shortcut_values['qty'];  ?>"  class="item_qty sys_amount"></td>
+						<td align="right"><input type="text" id="price_row_<?php echo $normal_prod;?>"  name="invoice[items][<?php echo $k_shortcut_item?>][price]"  value="<?php echo $v_shortcut_values['price'];  ?>"   class="item_price sys_price"></td>
+						<td align="right"><input type="text" id="total_row_<?php echo $normal_prod;?>"  name="invoice[items][<?php echo $k_shortcut_item?>][total]"  value="<?php echo $v_shortcut_values['total'];  ?>"     class="item_total sys_total" ></td>
+						<td></td>
+					</tr>
+					<?php $normal_prod++; endforeach;  ?>
+
+					<tr class="tr_invoice_tr_total">
+						<td colspan="3" style="text-align: left!important"><b>Gesamtkosten</b></td>
+						<td><input type="text"   id="sys_invoice_total" name="invoice[sub_invoice_total]" value="<?php echo Pms_CommonData::str2num($invoice_data['sub_invoice_total']);  ?>" class="item_total sys_invoice_total"></td>
+
+						<td id="sys_total_cell" style="display: none">
+							<?php echo number_format($invoice_data['sub_invoice_total'], '2', ',', '.');  ?>
+						</td>
+						
+					</tr>
+					
+					<?php  $pflege_nr = 5555; foreach($invoice_data['pflegestufe_items'] as $k_shortcut_item => $v_shortcut_values):  ?>
+					<tr>
+						<?php if($k_shortcut_item != "care_level_remaining"):?>
+							<td align="left"  style="vertical-align: top!important"><textarea rows="" cols="" name="invoice[items][<?php echo $k_shortcut_item?>][description]" class="item_description" ><?php echo $v_shortcut_values['description'];  ?></textarea></td>
+							<td align="right" style="vertical-align: top!important"><input type="text"  id="amount_row_<?php echo $pflege_nr;?>"  name="invoice[items][<?php echo $k_shortcut_item?>][qty]"  value="<?php echo $v_shortcut_values['qty'];  ?>"  class="item_qty pfl_amount"></td>
+							<td align="right" style="vertical-align: top!important"><input type="text"  id="price_row_<?php echo $pflege_nr;?>" name="invoice[items][<?php echo $k_shortcut_item?>][price]"  value="<?php echo $v_shortcut_values['price'];  ?>"   class="item_price pfl_price"></td>
+							<td align="right" style="vertical-align: top!important"><input type="text"  id="total_row_<?php echo $pflege_nr;?>" name="invoice[items][<?php echo $k_shortcut_item?>][total]"  value="<?php echo $v_shortcut_values['total'];  ?>" class="item_total care_level_balance pfl_total"></td>
+							<td><input type="hidden" name="invoice[items][<?php echo $k_shortcut_item?>][special]"  value="1"/></td>
+						<?php else: ?>
+							<td style="text-align: left;"><input type="text" name="invoice[items][<?php echo $k_shortcut_item?>][description]"  value="<?php echo $this->translate('shortcut_name_'.$v_shortcut_values['shortcut']);  ?>" class="item_description"></td>
+							<td></td>
+							<td></td>
+							<td align="right" style="vertical-align: top!important"><input type="text" id="care_level_remaining" name="invoice[items][<?php echo $k_shortcut_item?>][total]"  value="<?php echo number_format(($v_shortcut_values['total']), '2', ',', '.');  ?>"   class="item_total remaining"></td>
+							<td><input type="hidden" name="invoice[items][<?php echo $k_shortcut_item?>][special]"  value="1"/></td>
+						<?php endif;?>
+					</tr>
+					<?php $pflege_nr++; endforeach;  ?>
+					
+					<tr id="new_med_row_action">
+						<td colspan="5">
+							<div class="add_new_medi">
+								<a href="javascript:createnewitem()">
+									<img src="<?php echo RES_FILE_PATH; ?>/images/edit_add.png" width="20" height="20" />
+									<?php echo $this->translate('add_new_item'); ?>
+								</a>
+							</div>
+						</td>
+					</tr>
+					
+					<tr class="tr_invoice_tr_total">
+						<td colspan="3" style="text-align: left!important"><b>Zu zahlender Gesamtbetrag in EUR</b></td>
+						
+						<td><input type="text"   id="overall_invoice_total" name="invoice[invoice_total]" value="<?php echo Pms_CommonData::str2num($invoice_data['invoice_total']);  ?>" class="invoice_total"></td>
+
+						<td id="overall_total_cell" style="display: none"> 
+							<?php echo number_format($invoice_data['invoice_total'], '2', ',', '.');  ?>
+						</td>
+						
+					</tr>
+				</table>
+				<?php endif; ?>
+
+
+				
+				
+			</td>
+		</tr>
+		<tr class="rowb">
+			<td class="col1 cell" colspan="3">
+				&nbsp;
+			</td>
+		</tr>
+		<tr class="rowb">
+			<td class="col1 cell" colspan="3">
+				Die abgerechneten Leistungen sind gemäß § 4 Nr. 16 UStG umsatzsteuerbefreit.
+				<br />
+				<textarea name="footer" id="sapv_footer" cols="" rows="10" style="width: 100%;"  ><?php echo $invoice_data['footer']; ?></textarea>
+			</td>
+		</tr>
+		<tr class="rowa">
+			<td class="col1 cell" colspan="3">&nbsp;</td>
+		</tr>
+
+	</table>
+	</div>
+	<div class="buttonsBar">
+		<input type="submit" value="<?php echo $this->translate('Entwurf'); ?>" name="create_invoice" id="btnsubmit" class="bigbutton ui-state-default ui-corner-all submit" />
+<!-- 		<input type="submit" value="<?php echo $this->translate('Pdf'); ?>" name="create_pdf" class="bigbutton ui-state-default ui-corner-all submit" /> -->
+	</div>
+</form>

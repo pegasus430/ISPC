@@ -1,0 +1,141 @@
+<?php
+
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/data_tables/jquery.dataTables.js?'.date('Ymd'));
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/data_tables/dataTables.jqueryui.js?'.date('Ymd'));
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/data_tables/dataTables.jqueryui.css?' . date('Ymd'));
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/page-css/listscommon.css?' . date('Ymd')); //ISPC - 2247
+?>
+ 
+<script type="text/javascript">
+$(document).ready(function() { /*------ Start $(document).ready --------------------*/
+	
+	// DATATABLE
+	$('#table').DataTable({
+		// ADD language
+		 "language": {
+                "url": "<?php echo RES_FILE_PATH.'/javascript/data_tables/de_language.json?'.date('Ymd')?>"
+         },
+ 
+ 
+		
+		"lengthMenu": [[10, 25, 50], [10, 25, 50]],
+			
+		processing: true,
+
+		info: false,
+		filter: true,
+		paginate: true,
+
+		serverSide: true,
+		"autoWidth": false,
+		"stateSave": true,
+		"scrollX": false,
+		"scrollCollapse": true,
+		
+		"stateLoadCallback": function (settings)
+		{
+			o = false;
+			
+			 $.ajax( {
+				 url: appbase+'user/loadtablepref',
+				method: "POST",
+			    "async": false,
+			    data: { page: "medtypelist" },
+			    "dataType": "json",
+			    "success": function (json) {
+			        o = json;
+			    }
+			 });
+			 
+			 return o;
+		},
+		
+		columns: [
+		          { data: "type", className: "","width": "80%"},
+		          { data: "actions", className: " ","width": "20%" }
+			],
+			
+		columnDefs: [ 
+				       	{ "targets": -1, "searchable": false, "orderable": false }
+				],
+ 		order: [[ 0, "asc" ]],
+		
+ 		ajax: {
+			url:'medicationnew/gettypelist',
+			type: 'POST'
+		} 
+	});
+ 
+	
+	// DELETE 
+	$(".delete").live('click', function() {
+		$.confirmdeleteid = $(this).attr('rel');
+			jConfirm('<? echo $this->translate('confirmdeleterecord'); ?>', '<? echo $this->translate('confirmdeletetitle'); ?>', function(r) {
+			if(r)
+			{	
+				location.href = "<? echo APP_BASE ?>medicationnew/deletetype?id="+ $.confirmdeleteid;
+			}
+		});
+	});
+ 
+	
+	 
+	$("select[name='table_length']").live('change', function() {
+			
+		if($(this).val())
+		{
+			$.ajax({
+				url : 'ajax/saveuserpageresults',
+				type : 'POST',
+				data : {
+					page: "medtypelist",
+					results: $(this).val()
+				} 
+			});
+			
+			 $('#setlimit').val( $(this).val());
+		}
+		
+	});
+	
+});/*-- END  $(document).ready ----------- --*/
+
+</script>
+<style type="text/css">
+#table_wrapper{
+	clear: none!important;
+	float: left;
+	width: 100%;
+}
+</style>
+
+<br/>
+ <h1><? echo $this->translate('Medication - type list') ?></h1>
+
+<br/>
+<br/>
+ 
+	<div class="add_link">
+		<a href="medicationnew/addtype"><? echo $this->translate('add') ?></a>
+	</div>
+
+
+
+<form action="" method="post" id="report_list">
+
+<div class="row" id="projects-list">
+	<!-- Table -->
+  
+	  <table id="table" class="display table table-striped table-bordered table-hover table-condensed dataTable no-footer">
+	  	<thead>
+	  		<tr>
+	  			<th><?php echo $this->translate('medication_type');?></th>
+	  			<th><?php echo $this->translate('actions'); ?></th>
+	  		</tr>
+	  	</thead>
+	  </table>
+</div>
+</form>
+
+   <div class="location_assigned"> <span>!</span> ) <?php echo $this->translate('The types marked are used in sets.'); ?></div>
+   

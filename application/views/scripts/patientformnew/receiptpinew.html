@@ -1,0 +1,2244 @@
+<?php
+	$this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/page-css/receipt_form_style.css');
+	$this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/pharmaindex/pharmaindex.css?'.date('Ymd'));
+//	$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/jquery.blockUI.js');
+	$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/jquery.tablesorter.js?'.date('Ymd'));
+	$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/pharmaindex/pharmaindex.js?'.date('Ymd'));
+?>
+
+<?php
+
+	$that = $this->fdata;
+
+	$that_medication_items = $that['ReceiptItems'];
+
+	//$rezept_types = Pms_CommonData::receipt_types();
+	//ISPC-2781 Lore 04.01.2021
+	if($this->show_only_private_recipe == "1") {
+		$rezept_types = array("0" => "kv_blue");
+		$that['type'] = "kv_blue" ;
+	} else {
+		$rezept_types = Pms_CommonData::receipt_types();
+	};
+
+	$receipt_statuses = Pms_CommonData::receipt_statuses();
+	$status2css = $this->receipt_status_colours_arr;
+?><style>
+	/* TODO-4110 Ancuta 07.05.2021 */
+	.lights_colors{
+		z-index: 10;
+	}
+	
+	
+	.limit_overflow{
+		border: 1px solid #EF0307!important;
+		background: #ffffff !important
+	}
+	.maxlength{
+		position: absolute;
+		font-size: 8px;
+	}
+    .receipt_background .rcb_dummy{
+        width:20px;
+        height:20px;
+        border: 0;
+        position:absolute;
+        background:none;
+        background-repeat:no-repeat;
+        cursor: pointer;
+    }
+
+    .receipt_background .rtx{
+        height:20px;
+        border: 1px solid #a3a3a3;
+        position:absolute;
+        background:none;
+        padding:0;
+        font-family: monospace;
+        font-size: 11px;
+        padding-left:2px;
+    }
+
+    .receipt_background .userstamps #stampusers{
+        float:none;
+        display: inline;
+        padding: 2px;
+    }
+
+    .receipt_background .rcbutt{
+        position: absolute;
+        height:22px;
+        padding:2px;
+    }
+    #mediplan_dialog td{
+        padding:2px;
+    }
+
+	#stampusers {
+		max-width: 175px;
+	}
+
+	div.receipt_background img.ui-datepicker-trigger {
+		position: absolute;
+		left: 454px;
+		top:252px;
+	}
+
+	input.datefield {
+		width:80px;
+	}
+
+	table#head_receipt {
+		width:100%;
+	}
+
+	table#head_receipt td {
+		padding: 4px;
+		vertical-align: middle;
+	}
+
+	/*	icon status */
+	div#receipt_icon {
+		width: 84px;
+		height: 31px;
+		background-color: #fff;
+		float: left;
+		border: 1px dashed #444444;
+	}
+
+	div.receipt_icon_cell img {
+		display: block;
+		height: 24px;
+		width: 24px;
+	}
+
+	div#lights {
+		position: relative;
+		display: none;
+		margin: 3px 0 0 3px;
+		height: 28px;
+		background-color: #fff;
+	}
+
+	div#receipt_current_icon {
+		margin: 3px 0 0 3px;
+	}
+
+	div#receipt_status_cell_red {
+		position: absolute;
+		background-color: #fff;
+	}
+
+	div#receipt_status_cell_yellow {
+		position: absolute;
+		margin-left: 27px;
+		background-color: #fff;
+	}
+
+	div#receipt_status_cell_green {
+		position: absolute;
+		margin-left: 54px;
+		background-color: #fff;
+	}
+	.ui-accordion .ui-accordion-header a { display: block; font-size: .9em; padding: .3em .3em .3em 2em; }
+	.ui-accordion .ui-accordion-content { padding: 0.4em 0.4em; }
+
+	table.datatable#receipt_log_table {
+		width:100%;
+	}
+
+	
+	
+	td.receipt_type_label_col {
+		width:30px;
+	}
+	
+	td.receipt_type_col {
+		width: 120px;
+	}
+	
+	td.receipt_status_label_col {
+		width:50px;
+	}
+	
+	td.receipt_status_col {
+		width: 100px;
+	}
+	
+	td.receipt_date_label_col {
+		width: 85px;
+	}
+/*	td.receipt_date_col {
+		
+	}*/
+	
+	input#list_receipts {
+		font-size: 18px;
+		color: #555;
+		padding: 5px;
+	}
+	
+	
+	/*receipt status new  */
+	/* icons */
+	div.receipt_icon {
+		width: 84px;
+		height: 31px;
+		background-color: #fff;
+		float: left;
+		border: 1px dashed #444444;
+	}
+
+	div.receipt_icon_cell{
+		-webkit-border-radius: 5px;
+		-moz-border-radius: 5px;
+		border-radius: 5px;
+	}
+	div.receipt_icon_cell img {
+		display: block;
+		height: 24px;
+		width: 24px;
+	}
+	div.lights {
+		position: relative;
+		/*display: none;*/ 
+		margin: 3px 0 0 3px;
+		height: 28px;
+		background-color: #fff;
+	}
+	div.lights_colors {
+		position: relative;
+		display: none; 
+		margin: 3px 0 0 3px;
+		height: 28px;
+		background-color: transparent;
+		
+	}
+	
+	div.receipt_status_color_cell_red {
+		background-color: red;
+	}
+	
+	div.receipt_status_color_cell_yellow {
+		background-color: yellow;
+	}
+	
+	div.receipt_status_color_cell_white {
+		background-color: white;
+	}
+	
+	div.receipt_status_color_cell_green {
+		background-color: #5bff73;
+	}
+	
+	div.receipt_icon_cell_color {
+		display: block;
+		height: 24px;
+		width: 24px;
+		float: left;
+		margin: 2px 0 0 2px;
+		-webkit-border-radius: 5px;
+		-moz-border-radius: 5px;
+		border-radius: 5px;
+	}
+	
+	div.receipt_icon_cell_color:hover {
+		height: 22px;
+		width: 22px;
+		border-collapse: collapse;
+		border:1px solid #000;
+	}
+	
+	div.receipt_status_cell_file {
+		position: absolute;
+	}
+
+	div.receipt_status_cell_print {
+		position: absolute;
+		margin-left: 27px;
+		background-color:auto;
+	}
+
+	div.receipt_status_cell_fax {
+		position: absolute;
+		margin-left: 54px;
+		background-color:auto;
+	}
+	
+		.new_background input[name="kassenno"]
+	{
+		left: 48px !important;
+		top:205px !important;
+		width:144px !important;
+	}
+	
+	.new_background input[name="insuranceno"]
+	{
+		left: 203px !important;
+		top:205px !important;
+		width:177px !important;
+	}
+	
+	.new_background input[name="status"]
+	{
+		left: 392px !important;
+		top:205px !important;
+		width:92px !important;
+	}
+	
+</style>
+
+<script>
+
+var RES_FILE_PATH_js = "<?php echo RES_FILE_PATH; ?>";
+var pi = new pharmaindex();
+var show_pi_js = "<?php echo $this->show_pi; ?>";
+var recipe_type_js = "<?php echo $that['type']; ?>";
+var show_mmi_js = "<?php echo $this->show_mmi; ?>";
+var oldlanr = "<?php echo $that['lanr']; ?>";
+var emptyform = "<?php echo $this->emptyform; ?>"
+var rezeptgebuhrenbefreiung = "<?php echo $this->rezeptgebuhrenbefreiung; ?>";
+
+//ISPC-2306 for GKV and Hilfsmittel receipt
+var kassenno = "<?php echo $this->kassenno; ?>";
+var ik = "<?php echo $this->ik; ?>";
+
+//ISPC-2711 Ancuta 08.03.2021 
+var user_dosage_option = "<?php echo $this->user_dosage_action; ?>";
+var user_use_btm_text = "<?php echo $this->user_use_btm_text; ?>";
+var user_btm_default_text = "<?php echo $this->translate('user_btm_default_text'); ?>";
+//-- 
+
+if(!emptyform)
+{
+	var getiuval = <?php echo json_encode($that['getiuval']); ?>;
+	var bvg = "<?php echo $that['bvg']; ?>";
+	var aid = "<?php echo $that['aid']; ?>";
+	var vaccine = "<?php echo $that['vaccine']; ?>";
+	var bedarf = "<?php echo $that['bedarf']; ?>";
+	var price = "<?php echo $that['price']; ?>";
+}
+
+    $(document).ready(function(){
+    
+		// ISPC-2711 Ancuta 06.04.2021
+	    $(document).on('click','#add_dj_button',function(event){
+			event.preventDefault();
+			$('.med_sec_lines').each(function(){
+				var line_value = $(this).val();
+				
+				if (line_value.indexOf(">>Dj<<") >= 0){
+
+				} else{
+				    if(line_value){
+			        	var new_line =$(this).val() + ' >>Dj<<';  
+						$(this).val(new_line);
+				    }
+				}
+			});
+	 	});
+ 	//-- 
+ 	
+    
+		var previous_status = '';
+		var status_colours = jQuery.parseJSON('<?php echo $this->receipt_status_colours; ?>');
+		
+		$(window).keydown(function(event){
+		    if( (event.keyCode == 13)) {
+		      event.preventDefault();
+		      return false;
+		   }
+		  });
+		
+		
+// 		$('form').submit(function() {
+// 			setTimeout(function () {$('input[type=submit]').attr('disabled', true);}, 150);
+// 			setTimeout(function () {$('input[type=submit]').attr('disabled', false);}, 4000);
+// 		});	 				
+		
+		
+		 $('#save_receipt').bind('click',function(event) {
+	 
+			var disable_submit_check = check_inputs_limit();
+			
+			if(disable_submit_check > 0 ){
+				alert("<?php echo $this->translate('please check inputs');?>");
+				event.preventDefault();
+			}	
+			else
+			{
+				setTimeout(function () {$('input[type=submit]').attr('disabled', true);}, 150);
+				setTimeout(function () {$('#save_receipt, #print_receipt, #print_save_receipt, #print_save_receipt_btm_a').attr('disabled', false);}, 22000);
+			}
+		});
+		
+		
+		
+		$('#print_receipt').bind('click',function(event) {
+	 
+			var disable_submit_check = check_inputs_limit();
+			
+			if(disable_submit_check > 0 ){
+				alert("<?php echo $this->translate('please check inputs');?>");
+				event.preventDefault();
+			}	
+			else
+			{
+			
+				event.preventDefault();
+				
+				setTimeout(function () {$('input[type=submit]').attr('disabled', true);}, 150);
+				setTimeout(function () {$('#save_receipt, #print_receipt, #print_save_receipt,#print_save_receipt_btm_a').attr('disabled', false);}, 4000);
+
+				var url = appbase+'patientformnew/getprintprofiles';
+				
+				xhr = $.ajax({
+					url : url,
+					//dataType: 'string',
+					success : function(response) {
+						//alert(response);
+						if(response != "" && isNaN(response))
+						{
+							$('.print_profiles').html(response);
+							$('.print_profiles').dialog('open');
+						}
+						else if(response != "" && !isNaN(response))
+						{
+							$('#print_profile').val(response);
+							if ($('input[value="print_save_receipt"]').length) {
+								$("#CreTtemFurthFrm").attr('target', "_blank").submit();
+								setTimeout(function(){$('#list_receipts').click();}, 500);
+								}
+								else
+								{
+									$('#CreTtemFurthFrm').submit();
+								}
+						}
+						else
+						{
+							if ($('input[value="print_save_receipt"]').length) {
+									$("#CreTtemFurthFrm").attr('target', "_blank").submit();
+									setTimeout(function(){$('#list_receipts').click();}, 500);
+								}
+								else
+								{
+									$('#CreTtemFurthFrm').submit();
+								}
+						}
+					}
+				});
+				
+			}
+		});
+		
+		$('#print_save_receipt').bind('click',function(event) {
+	 
+			var disable_submit_check = check_inputs_limit();
+			
+			if(disable_submit_check > 0 ){
+				alert("<?php echo $this->translate('please check inputs');?>");
+				event.preventDefault();
+			}	
+			else
+			{
+				
+				event.preventDefault();
+				setTimeout(function () {$('input[type=submit]').attr('disabled', true);}, 150);
+				setTimeout(function () {$('#save_receipt, #print_receipt, #print_save_receipt').attr('disabled', false);}, 4000);
+				
+				$('<input />').attr('type', 'hidden')
+		          .attr('name', "print_save_receipt")
+		          .attr('value', "print_save_receipt")
+		          .appendTo('#CreTtemFurthFrm');
+				
+				
+				var url = appbase+'patientformnew/getprintprofiles';
+				
+				xhr = $.ajax({
+					url : url,
+					//dataType: 'string',
+					success : function(response) {
+						//alert(response);
+						if(response != "" && isNaN(response))
+						{
+							$('.print_profiles').html(response);
+							$('.print_profiles').dialog('open');
+						}
+						else if(response != "" && !isNaN(response))
+						{
+							$('#print_profile').val(response);
+							if ($('input[value="print_save_receipt"]').length) {
+								$("#CreTtemFurthFrm").attr('target', "_blank").submit();
+								setTimeout(function(){$('#list_receipts').click();}, 500);
+								}
+								else
+								{
+									$('#CreTtemFurthFrm').submit();
+								}
+						}
+						else
+						{
+							if ($('input[value="print_save_receipt"]').length) {
+									$("#CreTtemFurthFrm").attr('target', "_blank").submit();
+									setTimeout(function(){$('#list_receipts').click();}, 500);
+								}
+								else
+								{
+									$('#CreTtemFurthFrm').submit();
+								}
+						}
+					}
+				});
+			}
+		});
+		
+		$('#print_save_receipt_btm_a').bind('click',function(event) {
+	 
+			var disable_submit_check = check_inputs_limit();
+			
+			if(disable_submit_check > 0 ){
+				alert("<?php echo $this->translate('please check inputs');?>");
+				event.preventDefault();
+			}	
+			else
+			{
+				
+				event.preventDefault();
+				setTimeout(function () {$('input[type=submit]').attr('disabled', true);}, 150);
+				setTimeout(function () {$('#save_receipt, #print_receipt, #print_save_receipt,#print_save_receipt_btm_a').attr('disabled', false);}, 4000);
+				
+				$('<input />').attr('type', 'hidden')
+		          .attr('name', "print_save_receipt_btm_a")
+		          .attr('value', "print_save_receipt_btm_a")
+		          .appendTo('#CreTtemFurthFrm');
+				
+				
+				var url = appbase+'patientformnew/getprintprofiles';
+				
+				xhr = $.ajax({
+					url : url,
+					//dataType: 'string',
+					success : function(response) {
+						//alert(response);
+						if(response != "" && isNaN(response))
+						{
+							$('.print_profiles').html(response);
+							$('.print_profiles').dialog('open');
+						}
+						else if(response != "" && !isNaN(response))
+						{
+							$('#print_profile').val(response);
+							if ($('input[value="print_save_receipt_btm_a"]').length) {
+								$("#CreTtemFurthFrm").attr('target', "_blank").submit();
+								setTimeout(function(){$('#list_receipts').click();}, 500);
+								}
+								else
+								{
+									$('#CreTtemFurthFrm').submit();
+								}
+						}
+						else
+						{
+							if ($('input[value="print_save_receipt_btm_a"]').length) {
+									$("#CreTtemFurthFrm").attr('target', "_blank").submit();
+									setTimeout(function(){$('#list_receipts').click();}, 500);
+								}
+								else
+								{
+									$('#CreTtemFurthFrm').submit();
+								}
+						}
+					}
+				});
+			}
+		});
+		
+		
+		
+		/*
+		$('input[type=submit]').bind('click',function(event) {
+	
+			var disable_submit_check = check_inputs_limit();
+			
+			if(disable_submit_check > 0 ){
+				alert("<?php echo $this->translate('please check inputs');?>");
+				event.preventDefault();
+			}	
+			else
+			{
+				//ISPC - 2162
+				if($(this).attr('id') != "save_receipt"){
+					event.preventDefault();
+				}
+				setTimeout(function () {$('input[type=submit]').attr('disabled', true);}, 150);
+				if($(this).attr('id') == "save_receipt"){
+					setTimeout(function () {$('#save_receipt, #print_receipt, #print_save_receipt').attr('disabled', false);}, 22000);
+					$('#save_receipt').val("<?php echo $this->translate('save_receipt'); ?>");
+				} else{
+					setTimeout(function () {$('#save_receipt, #print_receipt, #print_save_receipt').attr('disabled', false);}, 4000);
+				}
+				
+				if($(this).attr('id') == "print_save_receipt") {
+					$('<input />').attr('type', 'hidden')
+			          .attr('name', "print_save_receipt")
+			          .attr('value', "print_save_receipt")
+			          .appendTo('#CreTtemFurthFrm');			
+					//$("#CreTtemFurthFrm").attr('target', "_blank").submit();
+					//setTimeout(function(){$('#list_receipts').click();}, 500);
+				}
+				
+				if($(this).attr('id') == "print_save_receipt" || $(this).attr('id') == "print_receipt") {
+					var url = appbase+'patientformnew/getprintprofiles';
+					
+					xhr = $.ajax({
+						url : url,
+						//dataType: 'string',
+						success : function(response) {
+							//alert(response);
+							if(response != "" && isNaN(response))
+							{
+								$('.print_profiles').html(response);
+								$('.print_profiles').dialog('open');
+							}
+							else if(response != "" && !isNaN(response))
+							{
+								$('#print_profile').val(response);
+								if ($('input[value="print_save_receipt"]').length) {
+									$("#CreTtemFurthFrm").attr('target', "_blank").submit();
+									setTimeout(function(){$('#list_receipts').click();}, 500);
+									}
+									else
+									{
+										$('#CreTtemFurthFrm').submit();
+									}
+							}
+							else
+							{
+								if ($('input[value="print_save_receipt"]').length) {
+										$("#CreTtemFurthFrm").attr('target', "_blank").submit();
+										setTimeout(function(){$('#list_receipts').click();}, 500);
+									}
+									else
+									{
+										$('#CreTtemFurthFrm').submit();
+									}
+							}
+						}
+					});
+				}
+				else
+				{
+					$('#CreTtemFurthFrm').submit();
+				}
+			}
+		});
+		*/
+		
+		$('div.receipt_icon:not(.disabled_status_icon) img').live('click', function() {
+			var receipt_id = $(this).data('receiptId');
+			var current_status = $(this).data('receiptStatus');
+			
+			if($(this).parent().hasClass('receipt_status_cell_file') != true)
+			{
+				if(current_status == previous_status && previous_status !== "")
+				{
+					if($('#lights_colors_'+receipt_id).is(':visible'))
+					{
+						$('#lights_colors_'+receipt_id).hide( "drop", { direction: "down" }, "fast" );
+					}
+					else
+					{
+						$('#lights_colors_'+receipt_id).show( "drop", { direction: "down" }, "fast" );
+					}
+				}
+				else
+				{
+					if($('#lights_colors_'+receipt_id).is(':visible'))
+					{
+						//hide and then open again
+						$('#lights_colors_'+receipt_id).hide( "drop", { direction: "down" }, "fast" ).show( "drop", { direction: "down" }, "fast" );
+					}
+					else
+					{
+						//just show it
+						$('#lights_colors_'+receipt_id).show( "drop", { direction: "down" }, "fast" );
+					}
+				}
+				
+				$('#lights_colors_'+receipt_id+' .receipt_icon_cell_color').each(function() {
+					$(this).data('receipt-status', current_status);
+				});
+
+				previous_status = current_status;
+			}
+		});
+
+		$('.receipt_icon_cell_color').live('click', function() {
+			var selected_status = $(this).data('receiptStatus');
+			var selected_color = $(this).data('receiptColor');
+			var receipt_id = $(this).data('receiptId');
+			
+			var initial_status = $('#current_receipt_status').val();
+			var selected_status_arr = [];
+			
+			var new_status = [];
+					
+			//set new data
+			$('#icon_'+selected_status+'_'+receipt_id+' img' ).data('statusCurrentcolour', selected_color);
+			
+			//verify new data
+//			console.log($('#icon_'+selected_status+'_'+receipt_id+' img' ).data('statusCurrentcolour'));
+			
+			//remove all colour classes
+			$('#icon_'+selected_status+'_'+receipt_id).removeClass('receipt_status_color_cell_red receipt_status_color_cell_green receipt_status_color_cell_white');
+			
+			//add coresponding class
+			$('#icon_'+selected_status+'_'+receipt_id).addClass(status_colours.status2css[selected_color]);
+			
+//			console.log("selected_status");
+//			console.log(selected_status);
+//			console.log("selected_Color");
+//			console.log(selected_color);
+			
+			$('#lights_'+receipt_id+' div img').each(function() {
+				selected_status_arr.push($(this).data('statusCurrentcolour'));
+			});
+			new_status = selected_status_arr.join('');
+//			console.log("initial status");
+//			console.log(initial_status);
+//			console.log("new status arr");
+//			console.log(selected_status_arr);
+//			console.log(new_status);
+				
+			if(initial_status != new_status) {
+				save_receipt_status(new_status, $(this), receipt_id);
+			}
+			
+			$('#current_receipt_status').val(new_status);
+			$('#lights_colors_'+receipt_id).hide( "drop", { direction: "down" }, "fast" );
+		});
+		
+//		$('div#receipt_icon:not(.disabled_status_icon)').click(function() {
+//			$('#lights').toggle();
+//			$('#receipt_current_icon').toggle();
+//		});
+//
+//		$('div#lights .receipt_icon_cell').live('click', function() {
+//			var initial_status = $('#current_receipt_status').val();
+//			var selected_status = $(this).find('img').attr('rel');
+//
+//			if(initial_status != selected_status) {
+//				save_receipt_status(selected_status, $(this));
+//			}
+//
+//			$('#current_receipt_status').val(selected_status);
+//		});
+		
+		$('#date, #rceipt_form_VkGutBisinpt').datepicker({
+			dateFormat: 'dd.mm.yy',
+			showOn: "both",
+			buttonImage: $('#calImg').attr('src'),
+			buttonImageOnly: true,
+			changeMonth: true,
+			changeYear: true,
+			nextText: '',
+			prevText: ''
+		}).mask('99.99.9999');
+		
+		
+		
+		$('#rceipt_form_GebInpt').datepicker({
+			dateFormat: 'dd.mm.yy',
+			showOn: "both",
+			buttonImage: $('#calImg').attr('src'),
+			buttonImageOnly: true,
+			changeMonth: true,
+			changeYear: true,
+			nextText: '',
+			prevText: '',
+			yearRange: '1900:2040'
+		}).mask('99.99.9999');
+		
+		
+		
+		
+		$('#list_receipts').live('click',function() {
+			var url = '<?php echo APP_BASE; ?>patientformnew/listreceipts?id=<?php echo $_REQUEST['id']; ?>';
+			window.location.href = url;
+		});
+
+        var markx_img = $('<img src="<?php echo RES_FILE_PATH; ?>/images/pharmaindex/checkboxmark.png">');
+        $('.receipt_background .rcb').each(function(){
+            var css=$(this).attr('style');
+            $(this).hide();
+            var that=this;
+            var newel=$("<span></span>");
+            newel.attr('style',css);
+            newel.addClass('rcb_dummy');
+            $(this).parent().append(newel);
+
+            if($(this).attr('checked') == 'checked'){
+                $(newel).css('background','url(<?php echo RES_FILE_PATH; ?>/images/pharmaindex/checkboxmark.png) no-repeat');
+            }
+
+            $(newel).click(function(){
+                if($(that).attr('checked')){
+                    $(that).removeAttr('checked');
+                    $(this).css('background','none');
+                } else{
+                    $(that).attr('checked','checked');
+                    $(this).css('background','url(<?php echo RES_FILE_PATH; ?>/images/pharmaindex/checkboxmark.png) no-repeat');
+                }
+            });
+        });
+        
+		<?php if($this->show_mmi == "1"): ?>
+			var healthinsuranceik = $('input[name=\"kassenno\"]').val();
+			var client = '<?php echo $this->clientid ?>';
+			$('.livesearchmedinp').live('change', function() {
+				var input_row = parseInt($(this).attr('id').substr(('medication').length));
+			}).liveSearch({
+				url: 'pharmaindex/getproductsmedils?ik_no='+healthinsuranceik+'&sm=0&source=receipt&client='+client+'&searchtext=',
+				id: 'livesearch_admission_medications',
+				aditionalWidth: '300',
+				noResultsDelay: '900',
+				typeDelay: '900',
+				returnRowId: function (input) {return parseInt($(input).attr('id').substr(('medication').length));}
+			 });
+		<?php else: ?>
+			$('.livesearchmedinp').live('change', function() {
+				var input_row = parseInt($(this).attr('id').substr(('medication').length));
+				reset_medications(input_row);
+			}).liveSearch({
+				url: 'ajax/medications?q=',
+				id: 'livesearch_admission_medications',
+				aditionalWidth: '300',
+				noResultsDelay: '900',
+				typeDelay: '900',
+				returnRowId: function (input) {return parseInt($(input).attr('id').substr(('medication').length));}
+			});
+		<?php endif; ?>
+       
+
+        //INSTALL MEDIINDEX-WIDGET
+        <?php if($this->show_pi):?>
+       // var pi = new pharmaindex();
+		/*pi.default_type = "<?php echo $that['type']; ?>";
+        pi.input_medname = ".medication";
+        pi.input_rowparent = "tr";
+        pi.input_receipe_butt = "#mediplan_dialog .takeover_butt";
+        pi.input_select_medi_butt = "#mediplan_dialog .select_medi";
+        pi.input_to_recipe = ".to_recipe";
+        pi.mode="recipe";
+        pi.ikno="input[name=\"kassenno\"]";
+		pi.use_suggestions = '0';
+		pi.otcWarningSw = '0';
+
+        //PATH FOR THE AJAX SCRIPTS
+        pi.ajaxPath = "pharmaindex";
+
+        //PATH FOR THE IMAGE FOLDER
+        pi.imagePath="images/pharmaindex";*/
+        pi.callback = function(recipe , _item , extra_object) {     	
+        	
+        	var pzn = 0;
+    		var dbf_id = 0;
+    		var source = 'custom';
+    		
+        	//extra_object for the pzn
+			if (arguments.length == 3 && typeof arguments[2] == 'object') {
+				
+				if (typeof arguments[2]['source'] == 'string' &&  arguments[2]['source'] == "mmi_dialog_price") {
+					//this is a medication selected from the mmi pricelist
+					var PRICE_ITEM = arguments[2]['ITEM'];
+					pzn = PRICE_ITEM.PZN;
+					dbf_id = PRICE_ITEM.ID;
+					source = arguments[2]['source'];
+					
+				} else  {
+					//at this moment only mmi_dialog_price is returned from the mmi dialog... so else error
+					pzn = 0;
+					dbf_id = 0;
+					source = 'custom';
+				}
+			}
+			var parent_div; // use this cleaner parent_div approache... and leave IF id's alone !
+	        if (parent_div = $(active_recipe_row).closest("div.one_medication_line")) {
+	        	$('.medication_pzn', parent_div).val(pzn.toString().escapeValue());
+	    	   	$('.medication_source', parent_div).val(source.toString().escapeValue());
+	    	   	$('.medication_dbf_id', parent_div).val(dbf_id.toString().escapeValue());
+	    	   	$('.medication_medication', parent_div).val(recipe.toString().escapeValue());
+	    	   	$('.medication_custom_line', parent_div).val('');
+	        }
+        	
+        	
+	        var _lineFormat = format_first_and_second_line(recipe, pzn);
+	        var first_line = _lineFormat.first_line;
+	        var second_line = _lineFormat.second_line;
+        	
+        	if($(active_recipe_row).attr('id') == "medication1"){
+	            if (second_line != "") {
+	            	
+		            $(active_recipe_row).val(first_line);
+	            	$('#line1').val(second_line);	
+	            	$('#medication1line1').val("1");	
+	            	$('#line1').removeClass('lsearch');	
+	            	$('#line1').unbind(".liveSearch");
+	            	$('#line1').unbind("click");
+	            	$('#line1').unbind("keyup");
+	            	$('#line1').unbind("blur");
+        		} else {
+		            $(active_recipe_row).val(first_line);
+	            	$('#medication1line1').val("0");
+	            }
+	            
+	            
+	            
+	            var med_nr = "1";
+	            maxlength( "maxlength_med"+med_nr , $('input[name=med'+med_nr+']').val().length,$('input[name=med'+med_nr+']') );
+	        	maxlength( "maxlength_line1" , $('input[name=line1]').val().length,$('input[name=line1]') );
+	        	$('input[name=line1]').keyup(function(){
+	        		maxlength( "maxlength_line1" , $('input[name=line1]').val().length,$('input[name=line1]') );
+	        	});
+	            
+	            
+            } else if($(active_recipe_row).attr('id') == "medication4"){
+            	if (second_line != "") {
+
+		            $(active_recipe_row).val(first_line);
+	            	$('#line2').val(second_line);	
+	            	$('#medication4line2').val("1");	
+	            	$('#line2').removeClass('lsearch');	
+	            	$('#line2').unbind(".liveSearch");
+	            	$('#line2').unbind("click");
+	            	$('#line2').unbind("keyup");
+	            	$('#line2').unbind("blur");
+        		} else {
+		            $(active_recipe_row).val(first_line);
+	            	$('#medication4line2').val("0");
+	            }
+	            
+	            var med_nr = "4";
+	            maxlength( "maxlength_med"+med_nr , $('input[name=med'+med_nr+']').val().length,$('input[name=med'+med_nr+']') );
+	        	maxlength( "maxlength_line2" , $('input[name=line2]').val().length,$('input[name=line2]') );
+	        	$('input[name=line2]').keyup(function(){
+	        		maxlength( "maxlength_line2" , $('input[name=line2]').val().length,$('input[name=line2]') );
+	        	});
+	            
+	            
+            } else if($(active_recipe_row).attr('id') == "medication7"){
+            	if (second_line != "") {
+
+		            $(active_recipe_row).val(first_line);
+	            	$('#line3').val(second_line);	
+	            	$('#medication7line3').val("1");	
+	            	$('#line3').removeClass('lsearch');	
+	            	$('#line3').unbind(".liveSearch");
+	            	$('#line3').unbind("click");
+	            	$('#line3').unbind("keyup");
+	            	$('#line3').unbind("blur");
+        		} else {
+		            $(active_recipe_row).val(first_line);
+	            	$('#medication7line3').val("0");
+	            }
+	            
+	            
+	            var med_nr = "7";
+	            maxlength( "maxlength_med"+med_nr , $('input[name=med'+med_nr+']').val().length,$('input[name=med'+med_nr+']') );
+	        	maxlength( "maxlength_line3" , $('input[name=line3]').val().length,$('input[name=line3]') );
+	        	$('input[name=line3]').keyup(function(){
+	        		maxlength( "maxlength_line3" , $('input[name=line3]').val().length,$('input[name=line3]') );
+	        	});
+	        	
+	            
+            } else {
+	            $(active_recipe_row).val(recipe);
+            	$('#medication1line1').val("0");
+            	$('#medication4line2').val("0");
+            	$('#medication7line3').val("0");
+            }
+        };
+
+        pi.install();
+        <?php else:?>
+		//load pharmaindex minimal only for switches
+		//var pi = new pharmaindex();
+		/*pi.default_type = "<?php echo $that['type']; ?>";
+        pi.mode="recipe_switch_only";
+        
+        //PATH FOR THE IMAGE FOLDER
+        pi.imagePath="images/pharmaindex";*/
+        pi.install();
+        <?php endif;?>
+
+        <?php if(!$this->show_pi):?>
+	        $(document).on('click','.takeover_butt',function(){
+	        	
+	            var v = $(($(this).parents('tr').find('input'))).val();
+	            
+	        	if($(active_recipe_row).attr('id') == "medication1"){
+		            if (v.length > 46){
+		            	var first_line = v.substring(0, 46);
+		            	var second_line = v.substring(46,92);
+	            	
+			            $(active_recipe_row).val(first_line);
+		            	$('#line1').val(second_line);	
+		            	$('#medication1line1').val("1");	
+		            	$('#line1').removeClass('lsearch');	
+		            	$('#line1').unbind(".liveSearch");
+		            	$('#line1').unbind("click");
+		            	$('#line1').unbind("keyup");
+		            	$('#line1').unbind("blur");
+	        		} else {
+			            $(active_recipe_row).val(v);
+		            	$('#medication1line1').val("0");
+		            }
+		            
+		            var med_nr = "1";
+		            maxlength( "maxlength_med"+med_nr , $('input[name=med'+med_nr+']').val().length,$('input[name=med'+med_nr+']') );
+		        	maxlength( "maxlength_line1" , $('input[name=line1]').val().length,$('input[name=line1]') );
+		        	$('input[name=line1]').keyup(function(){
+		        		maxlength( "maxlength_line1" , $('input[name=line1]').val().length,$('input[name=line1]') );
+		        	});
+		            
+		            
+	            } else if($(active_recipe_row).attr('id') == "medication4"){
+		            if (v.length > 46){
+		            	var first_line = v.substring(0, 46);
+		            	var second_line = v.substring(46,92);
+	            	
+			            $(active_recipe_row).val(first_line);
+		            	$('#line2').val(second_line);	
+		            	$('#medication4line2').val("1");	
+		            	$('#line2').removeClass('lsearch');	
+		            	$('#line2').unbind(".liveSearch");
+		            	$('#line2').unbind("click");
+		            	$('#line2').unbind("keyup");
+		            	$('#line2').unbind("blur");
+	        		} else {
+			            $(active_recipe_row).val(v);
+		            	$('#medication4line2').val("0");
+		            }
+		            
+		            var med_nr = "4";
+		            maxlength( "maxlength_med"+med_nr , $('input[name=med'+med_nr+']').val().length,$('input[name=med'+med_nr+']') );
+		        	maxlength( "maxlength_line2" , $('input[name=line2]').val().length,$('input[name=line2]') );
+		        	$('input[name=line2]').keyup(function(){
+		        		maxlength( "maxlength_line2" , $('input[name=line2]').val().length,$('input[name=line2]') );
+		        	});
+		            
+	            } else if($(active_recipe_row).attr('id') == "medication7"){
+		            if (v.length > 46){
+		            	var first_line = v.substring(0, 46);
+		            	var second_line = v.substring(46,92);
+	            	
+			            $(active_recipe_row).val(first_line);
+		            	$('#line3').val(second_line);	
+		            	$('#medication7line3').val("1");	
+		            	$('#line3').removeClass('lsearch');	
+		            	$('#line3').unbind(".liveSearch");
+		            	$('#line3').unbind("click");
+		            	$('#line3').unbind("keyup");
+		            	$('#line3').unbind("blur");
+	        		} else {
+			            $(active_recipe_row).val(v);
+		            	$('#medication7line3').val("0");
+		            }
+		            
+		            var med_nr = "7";
+		            maxlength( "maxlength_med"+med_nr , $('input[name=med'+med_nr+']').val().length,$('input[name=med'+med_nr+']') );
+		        	maxlength( "maxlength_line3" , $('input[name=line3]').val().length,$('input[name=line3]') );
+		        	$('input[name=line3]').keyup(function(){
+		        		maxlength( "maxlength_line3" , $('input[name=line3]').val().length,$('input[name=line3]') );
+		        	});
+		        	
+	            } else {
+		            $(active_recipe_row).val(v);
+	            	$('#medication1line1').val("0");
+	            	$('#medication4line2').val("0");
+	            	$('#medication7line3').val("0");
+	            }
+	            
+	        	
+	        	
+	            $('#mediplan_dialog').dialog('close');
+	        });
+	        
+	        
+			$(document).on('click','.select_medi',function(){
+	            var v = $(($(this).parents('tr').find('input'))).val();
+ 
+ 
+				//ISPC-2711 Ancuta 12.03.2021
+ 				var parents_tr = $(this).parents('tr');
+				var dosage_option="";
+				var dosage_opt_dj_input = parents_tr.find('input.dosage_opt_dj'); 
+				var dosage_opt_dosage_input = parents_tr.find('input.dosage_opt_dosage'); 
+				if( $(dosage_opt_dj_input).attr('checked') == 'checked' ){
+	             	dosage_option = "add_dj_text";
+				} 
+				else if( $(dosage_opt_dosage_input).attr('checked') == 'checked' ){
+	             	dosage_option = "add_dosage";
+				}
+
+	            var dosage_text =  "";
+	            if(dosage_option == 'add_dosage'){
+		            dosage_text = $(($(this).parents('tr').find('input.dosage_to_receip'))).val();
+	            }else if(dosage_option == 'add_dj_text'){
+	            	dosage_text = ">>Dj<<";
+	            }
+	            v = v + ' '+dosage_text;
+	            //-- 
+	            
+	            if($(active_recipe_row).attr('id') == "medication1"){
+		            if (v.length > 46){
+		            	var first_line = v.substring(0, 46);
+		            	var second_line = v.substring(46,92);
+	            	
+			            $(active_recipe_row).val(first_line);
+		            	$('#line1').val(second_line);	
+		            	$('#medication1line1').val("1");	
+		            	$('#line1').removeClass('lsearch');	
+		            	$('#line1').unbind(".liveSearch");
+		            	$('#line1').unbind("click");
+		            	$('#line1').unbind("keyup");
+		            	$('#line1').unbind("blur");
+	        		} else {
+			            $(active_recipe_row).val(v);
+		            	$('#medication1line1').val("0");
+		            }
+		            
+		            
+		            var med_nr = "1";
+		            maxlength( "maxlength_med"+med_nr , $('input[name=med'+med_nr+']').val().length,$('input[name=med'+med_nr+']') );
+		        	maxlength( "maxlength_line1" , $('input[name=line1]').val().length,$('input[name=line1]') );
+		        	$('input[name=line1]').keyup(function(){
+		        		maxlength( "maxlength_line1" , $('input[name=line1]').val().length,$('input[name=line1]') );
+		        	});
+		            
+		            
+	            } else if($(active_recipe_row).attr('id') == "medication4"){
+		            if (v.length > 46){
+		            	var first_line = v.substring(0, 46);
+		            	var second_line = v.substring(46,92);
+	            	
+			            $(active_recipe_row).val(first_line);
+		            	$('#line2').val(second_line);	
+		            	$('#medication4line2').val("1");	
+		            	$('#line2').removeClass('lsearch');	
+		            	$('#line2').unbind(".liveSearch");
+		            	$('#line2').unbind("click");
+		            	$('#line2').unbind("keyup");
+		            	$('#line2').unbind("blur");
+	        		} else {
+			            $(active_recipe_row).val(v);
+		            	$('#medication4line2').val("0");
+		            }
+		            
+		            var med_nr = "4";
+		            maxlength( "maxlength_med"+med_nr , $('input[name=med'+med_nr+']').val().length,$('input[name=med'+med_nr+']') );
+		        	maxlength( "maxlength_line2" , $('input[name=line2]').val().length,$('input[name=line2]') );
+		        	$('input[name=line2]').keyup(function(){
+		        		maxlength( "maxlength_line2" , $('input[name=line2]').val().length,$('input[name=line2]') );
+		        	});
+		            
+		            
+	            } else if($(active_recipe_row).attr('id') == "medication7"){
+		            if (v.length > 46){
+		            	var first_line = v.substring(0, 46);
+		            	var second_line = v.substring(46,92);
+	            	
+			            $(active_recipe_row).val(first_line);
+		            	$('#line3').val(second_line);	
+		            	$('#medication7line3').val("1");	
+		            	$('#line3').removeClass('lsearch');	
+		            	$('#line3').unbind(".liveSearch");
+		            	$('#line3').unbind("click");
+		            	$('#line3').unbind("keyup");
+		            	$('#line3').unbind("blur");
+	        		} else {
+			            $(active_recipe_row).val(v);
+		            	$('#medication7line3').val("0");
+		            }
+		            
+		            var med_nr = "7";
+		            maxlength( "maxlength_med"+med_nr , $('input[name=med'+med_nr+']').val().length,$('input[name=med'+med_nr+']') );
+		        	maxlength( "maxlength_line3" , $('input[name=line3]').val().length,$('input[name=line3]') );
+		        	$('input[name=line3]').keyup(function(){
+		        		maxlength( "maxlength_line3" , $('input[name=line3]').val().length,$('input[name=line3]') );
+		        	});
+	            } else {
+		            $(active_recipe_row).val(v);
+	            	$('#medication1line1').val("0");
+	            	$('#medication4line2').val("0");
+	            	$('#medication7line3').val("0");
+	            }
+	            
+	            $('#mediplan_dialog').dialog('close');
+	        });
+		
+        <?php else: ?>
+	        
+			$(document).on('click','.select_medi',function(){
+				
+				var parents_tr = $(this).parents('tr');
+	            var v = parents_tr.find('input.medication').val();
+	           
+	            var pzn = parents_tr.find('input.medication_pzn').val();
+	            var source = parents_tr.find('input.medication_source').val();
+	            var dbf_id = parents_tr.find('input.medication_dbf_id').val();
+	            var parent_div;
+	            if (parent_div = $(active_recipe_row).closest("div.one_medication_line")) {
+	            	 $('.medication_pzn', parent_div).val(pzn.toString().escapeValue());
+	    	   	     $('.medication_source', parent_div).val(source.toString().escapeValue());
+	    	   	     $('.medication_dbf_id', parent_div).val(dbf_id.toString().escapeValue());
+	    	   	     $('.medication_medication', parent_div).val(v.toString().escapeValue());
+	    	   	   	 $('.medication_custom_line', parent_div).val('');
+	            }
+	   	     
+	   	    
+	            
+	            
+	        	if($(active_recipe_row).attr('id') == "medication1"){
+		            if (v.length > 46){
+		            	var first_line = v.substring(0, 46);
+		            	var second_line = v.substring(46,92);
+	            	
+			            $(active_recipe_row).val(first_line);
+		            	$('#line1').val(second_line);	
+		            	$('#medication1line1').val("1");	
+		            	$('#line1').removeClass('lsearch');	
+		            	$('#line1').unbind(".liveSearch");
+		            	$('#line1').unbind("click");
+		            	$('#line1').unbind("keyup");
+		            	$('#line1').unbind("blur");
+	        		} else {
+			            $(active_recipe_row).val(v);
+		            	$('#medication1line1').val("0");
+		            }
+		            
+		            var med_nr = "1";
+		            maxlength( "maxlength_med"+med_nr , $('input[name=med'+med_nr+']').val().length,$('input[name=med'+med_nr+']') );
+		        	maxlength( "maxlength_line1" , $('input[name=line1]').val().length,$('input[name=line1]') );
+		        	$('input[name=line1]').keyup(function(){
+		        		maxlength( "maxlength_line1" , $('input[name=line1]').val().length,$('input[name=line1]') );
+		        	});
+		            
+	            } else if($(active_recipe_row).attr('id') == "medication4"){
+		            if (v.length > 46){
+		            	var first_line = v.substring(0, 46);
+		            	var second_line = v.substring(46,92);
+	            	
+			            $(active_recipe_row).val(first_line);
+		            	$('#line2').val(second_line);	
+		            	$('#medication4line2').val("1");	
+		            	$('#line2').removeClass('lsearch');	
+		            	$('#line2').unbind(".liveSearch");
+		            	$('#line2').unbind("click");
+		            	$('#line2').unbind("keyup");
+		            	$('#line2').unbind("blur");
+	        		} else {
+			            $(active_recipe_row).val(v);
+		            	$('#medication4line2').val("0");
+		            }
+		            
+		            var med_nr = "4";
+		            maxlength( "maxlength_med"+med_nr , $('input[name=med'+med_nr+']').val().length,$('input[name=med'+med_nr+']') );
+		        	maxlength( "maxlength_line2" , $('input[name=line2]').val().length,$('input[name=line2]') );
+		        	$('input[name=line2]').keyup(function(){
+		        		maxlength( "maxlength_line2" , $('input[name=line2]').val().length,$('input[name=line2]') );
+		        	});
+		        	
+	            } else if($(active_recipe_row).attr('id') == "medication7"){
+		            if (v.length > 46){
+		            	var first_line = v.substring(0, 46);
+		            	var second_line = v.substring(46,92);
+	            	
+			            $(active_recipe_row).val(first_line);
+		            	$('#line3').val(second_line);	
+		            	$('#medication7line3').val("1");	
+		            	$('#line3').removeClass('lsearch');	
+		            	$('#line3').unbind(".liveSearch");
+		            	$('#line3').unbind("click");
+		            	$('#line3').unbind("keyup");
+		            	$('#line3').unbind("blur");
+	        		} else {
+			            $(active_recipe_row).val(v);
+		            	$('#medication7line3').val("0");
+		            }
+		            
+		            var med_nr = "7";
+		            maxlength( "maxlength_med"+med_nr , $('input[name=med'+med_nr+']').val().length,$('input[name=med'+med_nr+']') );
+		        	maxlength( "maxlength_line3" , $('input[name=line3]').val().length,$('input[name=line3]') );
+		        	$('input[name=line3]').keyup(function(){
+		        		maxlength( "maxlength_line3" , $('input[name=line3]').val().length,$('input[name=line3]') );
+		        	});
+		            
+	            } else {
+		            $(active_recipe_row).val(v);
+	            	$('#medication1line1').val("0");
+	            	$('#medication4line2').val("0");
+	            	$('#medication7line3').val("0");
+	            }
+	            
+	            $('#mediplan_dialog').dialog('close');
+	        });
+	        
+	        
+	        //ISPC-2711 Ancuta 08.03.2021
+			$(document).on('click','.pkg_button',function(){
+				
+				var parents_tr = $(this).parents('tr');
+	            var v = parents_tr.find('input.medication').val();
+	            
+	            //TODO-4049 Ancuta 19.04.2021
+	            //var pzn = parents_tr.find('input.medication_pzn').val();
+	            if($(this).data('pkg_pzn')){
+		            var pzn = $(this).data('pkg_pzn');
+	            } else{
+		            var pzn = parents_tr.find('input.medication_pzn').val();
+	            }
+	            //
+	            var source = parents_tr.find('input.medication_source').val();
+	            var dbf_id = parents_tr.find('input.medication_dbf_id').val();
+	            var parent_div;
+	            if (parent_div = $(active_recipe_row).closest("div.one_medication_line")) {
+	            	 $('.medication_pzn', parent_div).val(pzn.toString().escapeValue());
+	    	   	     $('.medication_source', parent_div).val(source.toString().escapeValue());
+	    	   	     $('.medication_dbf_id', parent_div).val(dbf_id.toString().escapeValue());
+	    	   	     $('.medication_medication', parent_div).val(v.toString().escapeValue());
+	    	   	   	 $('.medication_custom_line', parent_div).val('');
+	            }
+	   	     
+	   	    
+	   	     	
+	   	    	            
+	            var pkg_size = $(this).data('pkg_size');
+				v = v + ' '+ pkg_size;
+				
+				v = v + ' '+pzn;
+
+				var dosage_option="";
+				var dosage_opt_dj_input = parents_tr.find('input.dosage_opt_dj'); 
+				var dosage_opt_dosage_input = parents_tr.find('input.dosage_opt_dosage'); 
+				if( $(dosage_opt_dj_input).attr('checked') == 'checked' ){
+	             	dosage_option = "add_dj_text";
+				} 
+				else if( $(dosage_opt_dosage_input).attr('checked') == 'checked' ){
+	             	dosage_option = "add_dosage";
+				}
+
+	            var dosage_text =  "";
+	            if(dosage_option == 'add_dosage'){
+		            dosage_text = $(($(this).parents('tr').find('input.dosage_to_receip'))).val();
+	            }else if(dosage_option == 'add_dj_text'){
+	            	dosage_text = ">>Dj<<";
+	            }
+	            v = v + ' '+dosage_text;
+	            
+	            
+	        	if($(active_recipe_row).attr('id') == "medication1"){
+		            if (v.length > 46){
+		            	var first_line = v.substring(0, 46);
+		            	var second_line = v.substring(46,92);
+	            	
+			            $(active_recipe_row).val(first_line);
+		            	$('#line1').val(second_line);	
+		            	$('#medication1line1').val("1");	
+		            	$('#line1').removeClass('lsearch');	
+		            	$('#line1').unbind(".liveSearch");
+		            	$('#line1').unbind("click");
+		            	$('#line1').unbind("keyup");
+		            	$('#line1').unbind("blur");
+	        		} else {
+			            $(active_recipe_row).val(v);
+		            	$('#medication1line1').val("0");
+		            }
+		            
+		            var med_nr = "1";
+		            maxlength( "maxlength_med"+med_nr , $('input[name=med'+med_nr+']').val().length,$('input[name=med'+med_nr+']') );
+		        	maxlength( "maxlength_line1" , $('input[name=line1]').val().length,$('input[name=line1]') );
+		        	$('input[name=line1]').keyup(function(){
+		        		maxlength( "maxlength_line1" , $('input[name=line1]').val().length,$('input[name=line1]') );
+		        	});
+		            
+	            } else if($(active_recipe_row).attr('id') == "medication4"){
+		            if (v.length > 46){
+		            	var first_line = v.substring(0, 46);
+		            	var second_line = v.substring(46,92);
+	            	
+			            $(active_recipe_row).val(first_line);
+		            	$('#line2').val(second_line);	
+		            	$('#medication4line2').val("1");	
+		            	$('#line2').removeClass('lsearch');	
+		            	$('#line2').unbind(".liveSearch");
+		            	$('#line2').unbind("click");
+		            	$('#line2').unbind("keyup");
+		            	$('#line2').unbind("blur");
+	        		} else {
+			            $(active_recipe_row).val(v);
+		            	$('#medication4line2').val("0");
+		            }
+		            
+		            var med_nr = "4";
+		            maxlength( "maxlength_med"+med_nr , $('input[name=med'+med_nr+']').val().length,$('input[name=med'+med_nr+']') );
+		        	maxlength( "maxlength_line2" , $('input[name=line2]').val().length,$('input[name=line2]') );
+		        	$('input[name=line2]').keyup(function(){
+		        		maxlength( "maxlength_line2" , $('input[name=line2]').val().length,$('input[name=line2]') );
+		        	});
+		        	
+	            } else if($(active_recipe_row).attr('id') == "medication7"){
+		            if (v.length > 46){
+		            	var first_line = v.substring(0, 46);
+		            	var second_line = v.substring(46,92);
+	            	
+			            $(active_recipe_row).val(first_line);
+		            	$('#line3').val(second_line);	
+		            	$('#medication7line3').val("1");	
+		            	$('#line3').removeClass('lsearch');	
+		            	$('#line3').unbind(".liveSearch");
+		            	$('#line3').unbind("click");
+		            	$('#line3').unbind("keyup");
+		            	$('#line3').unbind("blur");
+	        		} else {
+			            $(active_recipe_row).val(v);
+		            	$('#medication7line3').val("0");
+		            }
+		            
+		            var med_nr = "7";
+		            maxlength( "maxlength_med"+med_nr , $('input[name=med'+med_nr+']').val().length,$('input[name=med'+med_nr+']') );
+		        	maxlength( "maxlength_line3" , $('input[name=line3]').val().length,$('input[name=line3]') );
+		        	$('input[name=line3]').keyup(function(){
+		        		maxlength( "maxlength_line3" , $('input[name=line3]').val().length,$('input[name=line3]') );
+		        	});
+		            
+	            } else {
+		            $(active_recipe_row).val(v);
+	            	$('#medication1line1').val("0");
+	            	$('#medication4line2').val("0");
+	            	$('#medication7line3').val("0");
+	            }
+	            
+	            $('#mediplan_dialog').dialog('close');
+	        });
+        <?php endif;?>
+
+        //preload patients medics 
+        //ISPC-2711 Ancuta 12.03.2021 - changed from ajax/getpatientmedics to  pharmaindex/getpatientmedics
+        $.get("pharmaindex/getpatientmedics?id=<?php echo $this->encid;?>", function(data){
+            actual_mediplan = jQuery.parseJSON(data);
+            //TODO-4184 Ancuta 07.06.2021
+            if(actual_mediplan === null){
+            	var actual_mediplan = []; 
+            }
+            //-- 
+            actual_mediplan.push({'medication':"", 'empty_dummytype':1});
+            mediplan_dialog=$("<div id='mediplan_dialog'>");
+            mediplan_dialog.hide();
+            $('body').append(mediplan_dialog);
+            var meditable=$("<table class='datatable'>");
+
+            var row=$("<tr>");
+            $(meditable).append(row);
+            <?php if(!$this->show_pi):?>
+            	$(row).append('<th></th>');
+				$(row).append('<th>Medikament</th>');
+				$(row).append('<th>Dosierung</th>');
+				$(row).append('<th width="20%">Zusatzangaben</th>');
+            <?php else: ?>
+            	$(row).append('<th></th>');
+            	$(row).append('<th>Packungsgrößen</th>');
+            	$(row).append('<th></th>');
+            	$(row).append('<th>Medikament</th>');
+            	$(row).append('<th>Dosierung</th>');
+            	$(row).append('<th width="20%">Zusatzangaben</th>');
+			<?php endif; ?>
+
+            $(mediplan_dialog).append(meditable);
+
+            for (var i=0; i<actual_mediplan.length; i++){
+                var row=$("<tr>");
+
+                var medname=actual_mediplan[i]['medication'];
+                if (medname=="") medname=actual_mediplan[i]['beispiel'];
+
+                if (medname!="" || actual_mediplan[i]['empty_dummytype']==1){
+                    $(meditable).append(row);
+                    
+               		<?php if($this->show_pi): ?>
+               			if(actual_mediplan[i].mmi_packages != undefined){
+               			
+               				el0x=$('<td>').append(' ');
+                    		$(row).append(el0x);
+                    		
+							var pkg  = "";
+							for (var x = 0, l = actual_mediplan[i].mmi_packages.length; x < l; x++) {
+								 pkg += '<button class="pkg_button" data-pkg_size="'+actual_mediplan[i].mmi_packages[x].pkg_code+'" data-pkg_pzn="'+actual_mediplan[i].mmi_packages[x].pkg_pzn+'">'+actual_mediplan[i].mmi_packages[x].pkg_code+'</button>';
+							}
+							var el0=$(pkg);
+							el0=$('<td>').append(el0);
+                    		$(row).append(el0);
+						} else{
+							var el0=$('<button class="select_medi"><?php echo $this->translate("select_medication"); ?></button>');
+							el0=$('<td>').append(el0);
+                    		$(row).append(el0);
+                    		
+							el0x=$('<td>').append(' ');
+                    		$(row).append(el0x);
+                    		
+						}
+               		  
+
+
+					var el01=$('<button class="takeover_butt">MMI</button>');
+               		  el01=$('<td>').append(el01);
+                    	$(row).append(el01);
+               		
+                    <?php else: ?>
+						var el0=$('<button class="select_medi"><?php echo $this->translate("select_medication"); ?></button>');
+						el0=$('<td>').append(el0);
+                    	$(row).append(el0);
+					<?php endif; ?>
+                    
+                    
+                    
+	 
+
+					$( ".select_medi" ).button({
+						text: false,
+						icons: {
+							primary: "ui-icon-circle-arrow-w"
+						}
+					});
+					$( ".takeover_butt" ).button({
+						text: true,
+						label: "MMI",
+					});
+					$( ".pkg_button" ).button({
+						icons: {
+							primary: "ui-icon-circle-arrow-w"
+						}
+					});
+
+                    var el1=$('<input style="width:310px;  padding: 5px;">');
+                    $(el1).val(medname).attr('disabled','disabled').addClass('medication');
+                    el1=$('<td>').append(el1);
+                    $(row).append(el1);
+                    
+                    var el1=$('<input type="hidden" class="to_recipe">');
+                    $(row).append(el1);
+                    
+                    var el2=$('<input style="width:80px;  padding: 5px;" class="dosage_to_receip">');
+                    $(el2).val(actual_mediplan[i]['dosage']).attr('disabled','disabled');;
+                    el2=$('<td>').append(el2);
+                    $(row).append(el2);
+
+  
+                    var el4a= '';
+                    if(user_dosage_option == 'add_dosage'){
+	                    var el4a= '<input type="radio" class="dosage_opt_dj" name="dosage_option['+i+']" value="add_dj_text">Dj ';
+	                    el4a += '<input type="radio"  class="dosage_opt_dosage" name="dosage_option['+i+']" value="add_dosage" checked="checked">Dosierung';
+                    } else if(user_dosage_option == 'add_dj_text') {
+	                    var el4a= '<input type="radio"  class="dosage_opt_dj" name="dosage_option['+i+']" value="add_dj_text"  checked="checked">Dj ';
+	                    el4a += '<input type="radio"  class="dosage_opt_dosage" name="dosage_option['+i+']"  value="add_dosage">Dosierung';
+                    } else {
+	                    var el4a= '<input type="radio"  class="dosage_opt_dj" name="dosage_option['+i+']" value="add_dj_text">Dj ';
+	                    el4a += '<input type="radio"  class="dosage_opt_dosage" name="dosage_option['+i+']"  value="add_dosage">Dosierung';
+                    }
+                    
+                   
+                   /* 
+                    el4a += '<input type="checkbox"  class="dosage_opt_dosage" name="dosage_option['+i+']"  value="add_dosage">Dosierung';
+                    */
+                    el4a=$('<td>').append(el4a);
+                    $(row).append(el4a);
+
+                                       
+                    if ($.isPlainObject( actual_mediplan[i]['MedicationMaster'] )) 
+                    {
+                    	if(actual_mediplan[i]['MedicationMaster']['pzn']){
+	                    	var pzn = actual_mediplan[i]['MedicationMaster']['pzn'].toString().escapeValue();
+                    	}
+                    	
+                    	var el1 = $('<input type="hidden" class="medication_pzn" value="'+pzn+'">');
+                    	$(row).append(el1);
+                    	
+                    	if(actual_mediplan[i]['MedicationMaster']['source']){
+	                    	var source = actual_mediplan[i]['MedicationMaster']['source'].toString().escapeValue();
+                    	}
+                    	var el1 = $('<input type="hidden" class="medication_source" value="'+source+'">');
+                    	$(row).append(el1);
+                    	
+                    	if(actual_mediplan[i]['MedicationMaster']['dbf_id']){
+	                    	var dbf_id = actual_mediplan[i]['MedicationMaster']['dbf_id'].toString().escapeValue();
+                    	}
+                    	var el1 = $('<input type="hidden" class="medication_dbf_id" value="'+dbf_id+'">');
+                    	$(row).append(el1);
+                    }
+                    
+                    
+                }
+            }
+        });
+
+
+		var mediplan_dialog = null;
+		var active_recipe_row = null;
+
+		$(document).on('click', '.receipt_background .rcbutt', function(){
+			var receipt_field = $(this).prev();
+			active_recipe_row = receipt_field;
+			$(mediplan_dialog).dialog({'width':'auto','height':'auto', 'title':'Aktuelle Medikamente des Patienten'});
+		});
+
+		$('.lsearch').liveSearch({
+			url: 'ajax/mmitext?q=',
+			id: 'livesearch_receipt_mmi',
+//			aditionalWidth: '300',
+			allowSameValue: true,
+			noResultsDelay: '700',
+			typeDelay: '900',
+			returnRowId: function (input) {return parseInt($(input).attr('id').substr(('line').length));}
+		});
+
+		/*----------------------------------------------------------------------------------------------------------*/
+		/*---------------------------------------- Stamp Info ------------------------------------------------------*/
+		/*----------------------------------------------------------------------------------------------------------*/
+		$('#stampusers').live('change',function(){
+			$.get(appbase+ 'ajax/userstampinfo?stamp-info=' + $(this).val(), function(result) {
+				if (result != 0){
+					var resultx = jQuery.parseJSON(result);
+
+					var user_lanr = resultx.lanr;
+					var user_bsnr = resultx.bsnr;
+					
+					if($("#receipt_type").val() != 'kv_blue' && $("#receipt_type").val() != 'kv_green')
+					{
+						$('#rceipt_form_VertagsNrinpt').val(user_bsnr);
+						$('#rceipt_form_VkgulbisInpt').val(user_lanr);
+					}
+				} else{
+
+				}
+
+			});
+			return false;
+		});
+		
+		//on manual edit of the medication name, we ignore the pzn
+		$('.onchange_reset_pzn').on('keyup', function() {
+			var parent_div = $(this).closest("div.one_medication_line");
+			$(".medication_pzn, .medication_dbf_id", parent_div). val("");
+			$(".medication_source", parent_div). val("custom");
+		});
+		
+		//ISPC - 2162
+		$( ".print_profiles" ).dialog({
+			autoOpen: false,
+			resizable: false,
+			title: "<?php echo $this->translate('2162 - print profiles ')?>",
+			height: 380,
+			width: 450,
+			modal: true,
+			open: function() {
+				$(this).dialog( "option", "buttons", 
+						[ 
+							{
+								text: "<?php echo $this->translate('save')?>", 
+								"class": 'cancelButtonClass',
+								click: function() {
+//	 								$( this ).dialog( "close" );
+									$('#print_profile').val($('#select_option').val());
+									$( this ).dialog( "close" );
+									if ($('input[value="print_save_receipt"]').length) {
+									$("#CreTtemFurthFrm").attr('target', "_blank").submit();
+									setTimeout(function(){$('#list_receipts').click();}, 500);
+									}
+									else
+									{
+									$('#CreTtemFurthFrm').submit();
+									}
+									//console.log("save changes");
+								}
+							},
+							{
+								text: "<?php echo $this->translate('cancel')?>", 
+								"class": 'cancelButtonClass',
+								click: function() {
+									$( this ).dialog( "close" );
+								}
+							}
+					]
+				);
+			},
+			close: function() {
+				
+			}
+
+		});
+		
+		
+    }); //end document ready
+
+	function selectText(did, row)
+	{
+		$('#line'+row).val($('#text_'+did).val());
+		
+		maxlength( "maxlength_line"+row , $('input[name=line'+row+']').val().length,$('input[name=line'+row+']') );
+	}
+
+    var active_recipe_row=null;
+
+    $(document).on('click', '.receipt_background .rcbutt', function(){
+        var receipt_field = $(this).prev();
+        active_recipe_row = receipt_field;
+    });
+
+    $(".form_btnsubmit").click(function() {
+        var status = $(this).attr('rel');
+        $('#post_status').val(status);
+
+        if(status == 'save_receipt'){
+            $(this).attr('disabled', true);
+            $('#CreTtemFurthFrm').submit();
+        } else {
+            $(this).attr('disabled', true);
+            var self = this;
+        }
+    });
+
+    
+    
+    function jconfirm_change2BTM()
+    {
+    	/*
+    	var match = $('.receipt_background').css('backgroundImage').match(/.*\/kv_blank_btm\.png(.*)$/);
+    	if ( match ) return; //allready btm bg
+    	*/
+    	
+    	if ($('#receipt_type').val() == "kv_btm")  {
+    		return; //allready btm
+    	}
+    	
+    	jConfirm(translate('Dieses Präparat ist ein BTM Produkt. Möchten Sie es trotzdem verordnen?'), 'BTM Warnung', function(r) {
+            if (r) {
+                //logic from javascript/pharmaindex/pharmaindex.js                
+                $('#receipt_type').val("kv_btm").trigger('change');
+                /*
+                $('.receipt_background').css({
+                    backgroundImage: 'url(images/pharmaindex/kv_blank_btm.png)'
+                });
+                */              
+                $('#rceipt_form_NameGebInpt').css({
+                top: '38px'
+                });
+                
+                
+                //ISPC-2711 Ancuta 08.03.2021
+                if(user_use_btm_text){
+                	$('#line3').val(user_btm_default_text);	
+                }
+                //--
+                
+            }
+        });
+    }
+    
+    function format_first_and_second_line(v , pzn) 
+    {
+        var max_line_length = 46;
+         var first_line = '';
+         var second_line = '';
+         
+         if (pzn != '') {
+        	 pzn = " " + pzn.trim();
+         }
+         
+         var match = v.match(/\s(N\d{1})\s?(.*)$/);
+         
+         if ( match && match.index <= max_line_length) {
+             
+             first_line = v.substring(0, match.index).trim();
+             second_line = v.substring(match.index , max_line_length + match.index - pzn.length ).trim() + pzn;
+             
+         } else {
+             
+             if (v.length > max_line_length){
+                 
+                 var first_line_end_Index = v.substring(0, max_line_length).lastIndexOf(' ');
+                 
+                 if (first_line_end_Index) {
+                     first_line = v.substring(0, first_line_end_Index).trim();
+                     second_line = v.substring(first_line_end_Index , max_line_length + first_line_end_Index - pzn.length).trim() + pzn;
+                 } else {
+                     first_line = v.substring(0, max_line_length).trim();
+                     second_line = v.substring(max_line_length , max_line_length * 2 - pzn.length).trim() + pzn;
+                 }
+             } else {
+                 first_line = v.trim();
+                 //TODO-3893 Ancuta 24.02.2021
+                 second_line = v.substring(max_line_length , max_line_length * 2 - pzn.length).trim() + pzn;
+                 //--
+             }
+         }
+         
+         return { "first_line" : first_line, "second_line" : second_line };
+    }
+    
+	function selectMedications(mid, row)
+	{
+
+		
+		var isBTM = $('#medi_ISBTM_'+mid).val() || 0;
+		if (isBTM == '1') {
+            jconfirm_change2BTM();
+        }
+
+	      
+		//$('#medication'+row).val();
+		
+	     var v = $('#medi_me_'+mid).val();
+	     
+	     var pzn = $('#medi_PZN_'+mid).val() || "";
+	     var type = $('#medi_TYPE_'+mid).val() || "custom";
+	     var dbf_id = $('#medi_DBF_ID_'+mid).val() || "";
+	     var row_pzn = row;
+	     
+	    var _lineFormat = format_first_and_second_line(v, pzn);
+        var first_line = _lineFormat.first_line;
+        var second_line = _lineFormat.second_line;
+
+	     switch(row) {
+	    	 case "1":
+	    		 row_pzn="0";
+	    	 break;
+	    	 case "4":
+	    		 row_pzn="1";
+	    	 break;
+	    	 case "7":
+	    		 row_pzn="2";
+	    	 break;
+	     }
+	     
+	     $('#medication_pzn-'+row_pzn).val(pzn.toString().escapeValue());
+	     $('#medication_source-'+row_pzn).val(type.toString().escapeValue());
+	     $('#medication_dbf_id-'+row_pzn).val(dbf_id.toString().escapeValue());
+	     $('#medication_medication-'+row_pzn).val(v.toString().escapeValue());
+	   	 $('#medication_custom_line-'+row_pzn).val('');
+	     
+     	if(row == "1"){
+     		if (second_line != "") {
+     			
+	            $('#medication'+row).val(first_line);
+            	$('#line1').val(second_line);	
+            	$('#medication1line1').val("1");	
+            	$('#line1').removeClass('lsearch');	
+            	$('#line1').unbind(".liveSearch");
+            	$('#line1').unbind("click");
+            	$('#line1').unbind("keyup");
+            	$('#line1').unbind("blur");
+    		} else {
+    			$('#medication'+row).val(first_line);
+            	$('#medication1line1').val("0");
+            }            
+            
+        	maxlength( "maxlength_line1" , $('input[name=line1]').val().length,$('input[name=line1]') );
+        	$('input[name=line1]').keyup(function(){
+        		maxlength( "maxlength_line1" , $('input[name=line1]').val().length,$('input[name=line1]') );
+        	});
+            
+        } else if(row == "4"){
+        	if (second_line != "") {
+
+            	$('#medication'+row).val(first_line);
+            	$('#line2').val(second_line);	
+            	$('#medication4line2').val("1");	
+            	$('#line2').removeClass('lsearch');	
+            	$('#line2').unbind(".liveSearch");
+            	$('#line2').unbind("click");
+            	$('#line2').unbind("keyup");
+            	$('#line2').unbind("blur");
+    		} else {
+    			$('#medication'+row).val(first_line);
+            	$('#medication4line2').val("0");
+            }
+            
+        	maxlength( "maxlength_line2" , $('input[name=line2]').val().length,$('input[name=line2]') );
+        	$('input[name=line2]').keyup(function(){
+        		maxlength( "maxlength_line2" , $('input[name=line2]').val().length,$('input[name=line2]') );
+        	});
+            
+        } else if(row == "7"){
+        	if (second_line != "") {
+
+            	$('#medication'+row).val(first_line);
+            	$('#line3').val(second_line);	
+            	$('#medication7line3').val("1");	
+            	$('#line3').removeClass('lsearch');	
+            	$('#line3').unbind(".liveSearch");
+            	$('#line3').unbind("click");
+            	$('#line3').unbind("keyup");
+            	$('#line3').unbind("blur");
+    		} else {
+    			$('#medication'+row).val(first_line);
+            	$('#medication7line3').val("0");
+            }
+            
+        	maxlength( "maxlength_line3" , $('input[name=line3]').val().length,$('input[name=line3]') );
+        	$('input[name=line3]').keyup(function(){
+        		maxlength( "maxlength_line3" , $('input[name=line3]').val().length,$('input[name=line3]') );
+        	});
+        	
+        } else {
+        	$('#medication'+row).val(v);
+        	$('#medication1line1').val("0");
+        	$('#medication4line2').val("0");
+        	$('#medication7line3').val("0");
+        }
+     	
+		var med_nr = row; 
+   		//calulate NEW lenght - for med lines
+		maxlength( "maxlength_med"+med_nr , $('input[name=med'+med_nr+']').val().length,$('input[name=med'+med_nr+']') );
+	}
+
+	function selectReceiptMedi(mid, row)
+    {
+        $('#med'+row).val($('#medi_me_'+mid).val());
+    }
+	
+	
+	function save_receipt_status(new_status, replacement)
+	{
+		if(new_status){
+			<?php if(!empty($_REQUEST['rpid'])): ?>
+				ajaxCallserver({url: appbase + 'ajax/changereceiptstatus?id=<?php echo $_REQUEST['id']; ?>&rpid=<?php echo $_REQUEST['rpid']; ?>&status=' + new_status, callLoading: status_loading});
+			<?php endif; ?>
+
+			$('div#receipt_current_icon img').replaceWith($(replacement).html());
+			$('div#receipt_current_icon img').show();
+		}
+	}
+	
+	
+	var status_loading = function () {
+	    var dlist = '<div class="loadingdiv" id="loading_div" align="center"><img src="images/pageloading.gif" width="24"></div>';
+		//hide curent status icon
+		$('#lights_current').toggle();
+		//append loading icon
+		$('#receipt_icon').append(dlist);
+	}
+	
+	var statuscallback = function (params)
+	{
+		$('#loading_div').remove();
+		$('#lights_current').toggle();
+	}
+	
+	function reset_medications(input_row)
+	{
+		if($('#hidd_medication'+input_row).val()){
+			$('#hidd_medication'+input_row).val('');
+		}
+	}
+	
+</script>
+<?php echo $this->patientinfo; ?>
+<?php echo $this->tabmenus; ?>
+<div id="showform_calendarImg" style="display: none;">
+	<img id="calImg" src="<?php echo RES_FILE_PATH; ?>/images/calendar.png" alt="Popup" class="trigger">
+</div>
+<input type="button" name="list_receipts" id="list_receipts" value="<?php echo $this->translate('list_receipts_button'); ?>" />
+<form id="CreTtemFurthFrm" action="" method="POST">
+    <div class="tab_container" style="width: 815px;">
+		<table id="head_receipt">
+			<tr>
+				<td class="receipt_type_label_col"><?php echo $this->translate('receipt_type'); ?></td>
+				<td class="receipt_type_col">
+					<select name="receipt_type" id="receipt_type">
+						<?php foreach($rezept_types  as $k_rez_type => $v_rez_name): ?>
+						<option value="<?php echo $v_rez_name; ?>" <?php if($v_rez_name == $that['type']): ?>selected="selected"<?php endif; ?>><?php echo $this->translate($v_rez_name."_label"); ?></option>
+						<?php endforeach; ?>
+					</select>
+					
+					<input type="hidden" id="main_diagnosis" value="<?php echo $that['main_diagnosis']; ?>" />
+					<input type="hidden" id="custom_line_3" value="<?php echo $that['custom_line_3']; ?>" />
+				</td>
+				<td  class="receipt_status_label_col"><?php echo $this->translate('receipt_status'); ?></td>
+				<td class="receipt_status_col">
+					<?php if(empty($that['receipt_status']) && strlen($that['receipt_status']) == "0"): $that['receipt_status'] = "gww"; endif; ?>
+					<input type="hidden" value="<?php echo $that['receipt_status']; ?>" name="receipt_status" id="current_receipt_status" />
+					<div class="receipt_icon <?php echo $this->disable_status_icon; ?>" id="receipt_icon_<?php echo $that['id']; ?>" rel="<?php echo $that['id']; ?>">
+						<!-- status icons -->
+						<div class="lights" id="lights_<?php echo $that['id']; ?>">
+							<div class="receipt_icon_cell receipt_status_cell_file <?php echo $status2css['status2css'][substr($that['receipt_status'], '0','1')]; ?>" id="icon_1_<?php echo $that['id']; ?>">
+								<!--created - file icon-->
+								<img src="<?php echo $receipt_statuses['images']['1']; ?>" data-receipt-status="1" data-status-currentcolour="<?php echo substr($that['receipt_status'], '0','1'); ?>" data-receipt-id="<?php echo $that['id']; ?>">
+							</div>
+							<div class="receipt_icon_cell receipt_status_cell_print <?php echo $status2css['status2css'][substr($that['receipt_status'], '1','1')]; ?>" id="icon_2_<?php echo $that['id']; ?>">
+								<!--printed - print icon-->
+								<img src="<?php echo $receipt_statuses['images']['2']; ?>" data-receipt-status="2" data-status-currentcolour="<?php echo substr($that['receipt_status'], '1','1'); ?>" data-receipt-id="<?php echo $that['id']; ?>">
+							</div>
+							<div class="receipt_icon_cell receipt_status_cell_fax <?php echo $status2css['status2css'][substr($that['receipt_status'], '2','1')]; ?>" id="icon_3_<?php echo $that['id']; ?>">
+								<!--faxed - fax icon-->
+								<img src="<?php echo $receipt_statuses['images']['3']; ?>" data-receipt-status="3" data-status-currentcolour="<?php echo substr($that['receipt_status'], '2','1'); ?>" data-receipt-id="<?php echo $that['id']; ?>">
+							</div>
+						</div>
+
+						<!--sub icons colors-->
+						<div class="lights_colors" id="lights_colors_<?php echo $that['id']; ?>" >
+							<div class="receipt_icon_cell_color receipt_status_color_cell_white" id="color_icon_<?php echo $that['id']; ?>" data-receipt-color="w" data-receipt-id="<?php echo $that['id']; ?>">
+								<!-- black-neutral -->
+							</div>
+							<div class="receipt_icon_cell_color receipt_status_color_cell_red" id="color_icon_<?php echo $that['id']; ?>" data-receipt-color="r" data-receipt-id="<?php echo $that['id']; ?>">
+								<!--red-->
+							</div>
+							<div class="receipt_icon_cell_color receipt_status_color_cell_green" id="color_icon_<?php echo $that['id']; ?>" data-receipt-color="g" data-receipt-id="<?php echo $that['id']; ?>">
+								<!--green-->
+							</div>
+						</div>
+					</div>
+				</td>
+				<td class="receipt_date_label_col">
+					<?php echo $this->translate('receipt_date_todos'); ?>
+				</td>
+				<td class="receipt_date_col">
+					<input type="text" name="date" id="date" value="<?php echo $that['date']; ?>" class="datefield" />
+				</td>
+			</tr>
+		</table>
+
+        <div class="receipt_background new_background" >
+            <!-- topright-->
+            <input type="checkbox" class="rcb" name="bvg" value="6" style=" left:512px; top:48px;" <?php if ($that['bvg'] == "6"): echo "checked='checked'"; endif; ?> />
+            <input type="checkbox" class="rcb" name="mttel" value="7" style=" left:540px; top:48px;" <?php if ($that['aid'] == "7"): echo "checked='checked'"; endif; ?> />
+            <input type="checkbox" class="rcb" name="soff" value="8" style=" left:568px; top:48px;" <?php if ($that['vaccine'] == "8"): echo "checked='checked'"; endif; ?> />
+            <input type="checkbox" class="rcb" name="bedaf" value="9" style=" left:596px; top:48px;" <?php if ($that['bedarf'] == "9"): echo "checked='checked'"; endif; ?> />
+            <input type="checkbox" class="rcb" name="pricht" value="10" style=" left:636px; top:48px;" <?php if ($that['price'] == "10"): echo "checked='checked'"; endif; ?> />
+
+            <!-- leftcol-->
+            <input type="checkbox" class="rcb" style="left:11px; top: 42px; background: none repeat scroll 0% 0% transparent;" name="getiuhrfrei[]" value="1" id="rceipt_form_chek1" <?php if (in_array('1', $that['getiuval'])): echo "checked='checked'"; endif; ?> />
+            <input type="checkbox" class="rcb" style="left:11px; top: 78px; background: none repeat scroll 0% 0% transparent;" name="getiuhrfrei[]" value="2" id="rceipt_form_chek2" <?php if (in_array('2', $that['getiuval'])): echo "checked='checked'"; endif; ?> />
+            <input type="checkbox" class="rcb" style="left:11px; top:115px; background: none repeat scroll 0% 0% transparent;" name="getiuhrfrei[]" value="3" id="rceipt_form_chek3" <?php if (in_array('3', $that['getiuval'])): echo "checked='checked'"; endif; ?> />
+            <input type="checkbox" class="rcb" style="left:11px; top:163px; background: none repeat scroll 0% 0% transparent;" name="getiuhrfrei[]" value="4" id="rceipt_form_chek4" <?php if (in_array('4', $that['getiuval'])): echo "checked='checked'"; endif; ?> />
+            <input type="checkbox" class="rcb" style="left:11px; top:212px; background: none repeat scroll 0% 0% transparent;" name="getiuhrfrei[]" value="5" id="rceipt_form_chek5" <?php if (in_array('5', $that['getiuval'])): echo "checked='checked'"; endif; ?> />
+            <input type="checkbox" class="rcb" style="left:11px; top:260px; background: none repeat scroll 0% 0% transparent;" name="getiuhrfrei[]" value="6" id="rceipt_form_chek6" <?php if (in_array('6', $that['getiuval'])): echo "checked='checked'"; endif; ?> />
+            <!-- insu-->
+            <input type="text" class="rtx" style=" left:48px; top:38px; width:435px;" name="insurancecomname" id="rceipt_form_NameGebInpt" value="<?php echo $that['insurance_com_name'] ?>" autocomplete="off" />
+            <!-- name-->
+            <input type="text" class="rtx" style=" left: 48px; top:86px; width:300px;" name="patientlastname"  value="<?php echo $that['patientlastname']; ?>"/>
+            <input type="text" class="rtx" style=" left: 48px; top:110px; width:300px;" name="patientfirstname" value="<?php echo $that['patientfirstname']; ?>" />
+            <input type="text" class="rtx" style=" left: 48px; top:134px; width:300px;" name="street" value="<?php echo $that['street']; ?>"/>
+            <input type="text" class="rtx" style=" left: 48px; top:158px; width: 60px;" name="zipcode" value="<?php echo $that['zip']; ?>"/>
+            <input type="text" class="rtx" style=" left:114px; top:158px; width:234px;" name="city" value="<?php echo $that['city']; ?>"/>
+
+            <!-- bdate-->
+            <input type="text" class="rtx" style=" left:380px; top:120px; width:103px; text-align:center;" name="birthdate" id="rceipt_form_GebInpt"  value="<?php echo $that['bdate'] ?>" />
+            <!-- kassennr, versnr, status-->
+            <input type="text" class="rtx" style=" left: 48px; top:205px; width:110px;" name="kassenno" id="rceipt_form_NameKassennrinpt"  value="<?php echo $that['kassen_no']; ?>" />
+            <input type="text" class="rtx" style=" left:169px; top:205px; width:181px;" name="insuranceno" id="Pallnet_VersichenInpt" value="<?php echo $that['insurance_no']; ?>" />
+            <input type="text" class="rtx" style=" left:364px; top:205px; width:119px;" name="status" id="rceipt_form_StatusInpt" value="<?php echo $that['insurance_status']; ?>" />
+            <!-- bsnr, arztnr, datum-->
+            <input type="text" class="rtx" style=" left: 48px; top:252px; width:144px;" name="betriebsstatten_nr" id="rceipt_form_VertagsNrinpt"   value="<?php echo $that['betriebsstatten_nr']; ?>"/>
+            <input type="text" class="rtx" style=" left:203px; top:252px; width:147px;" name="lanr" id="rceipt_form_VkgulbisInpt" value="<?php echo $that['lanr']; ?>"/>
+            <input type="text" class="rtx datefield" style=" left:364px; top:252px;" name="datum" id="rceipt_form_VkGutBisinpt" value="<?php echo $that['datum']; ?>"/>
+			<div class="userstamps" style="position:absolute; left:610px; top:310px; text-align:right; width:190px;">
+				<input type="hidden" name="userstamp1" id="userstamp1" value="<?php echo $this->userstamp1 ?>" />
+				<input type="hidden" name="userstamp2" id="userstamp2" value="<?php echo $this->userstamp2 ?>" />
+				<input type="hidden" name="userstamp3" id="userstamp3" value="<?php echo $this->userstamp3 ?>" />
+				<input type="hidden" name="userstamp4" id="userstamp4" value="<?php echo $this->userstamp4 ?>" />
+				<input type="hidden" name="userstamp5" id="userstamp5" value="<?php echo $this->userstamp5 ?>" />
+				<input type="hidden" name="userstamp6" id="userstamp6" value="<?php echo $this->userstamp6 ?>" />
+				<input type="hidden" name="userstamp7" id="userstamp7" value="<?php echo $this->userstamp7 ?>" />
+				<div class="ClrBoth"></div>
+				<?php if ($this->showselect == 1): ?>
+					<?php if($this->multiplestamps_option === true): ?>
+						<div class="userstamps">
+							<label>Stempeldaten</label>
+							<select id="stampusers" name="stampusers" width="200px;">
+								<option value=""><?php echo $this->translate('selectuserstamp')?></option>
+								<?php foreach($this->users_mstamps as $user=>$stamp):?>
+									<optgroup label="<?php echo $stamp['user_name'];?>" value="<?php echo $stamp['user_id'];?>">
+										<?php foreach( $stamp['user_stamps'] as  $stamp_id => $stamp_name):?>
+										<?php $stemp= $stamp['user_id'].'-'.$stamp_id?>
+										<option value="<?php echo $stemp ?>" <?php if($stemp == $this->stampusers): ?>selected="selected"<?php endif;  ?>> <?php echo $stamp_name;?></option> 
+										<?php endforeach;?>
+									</optgroup>
+								<?php endforeach;?>
+							</select>
+						</div>
+					<?php else: ?>
+						<div class="userstamps">
+							<label>Stempeldaten</label>
+							<?php echo $this->formSelect('stampusers', $this->stampusers, null, $this->users); ?>
+						</div>
+					<?php endif; ?>
+				<?php endif; ?>
+			</div>
+			<!-- ISPC-2711 Ancuta 06.04.2021 -->
+			<div class="dj_button" style="position:absolute; left: 440px; top:426px; text-align:right; width:190px;">
+  			<button id="add_dj_button"> &raquo; Dj &laquo; </button>
+			</div>
+			<!-- //-- -->
+			
+            <?php
+				$rcbuttval="MMI Suche";
+				if(!$this->show_pi):
+					$rcbuttval="Medplan";
+				endif;
+            ?>
+		<div class="one_medication_line">
+            <?php $medication_row = 0; ?>
+            <?php
+				$field_name = "medication_items[{$medication_row}][pzn]";
+				$field_value = ! empty($that_medication_items[ $medication_row ]['pzn']) ? $that_medication_items[ $medication_row ]['pzn'] : "";
+				$attr = array("id" => "medication_pzn-{$medication_row}", "class" => "medication_pzn");
+				echo $this->formHidden($field_name, $field_value, $attr); 
+			?>
+			<?php
+				$field_name = "medication_items[{$medication_row}][source]";
+				$field_value = ! empty($that_medication_items[ $medication_row ]['source']) ? $that_medication_items[ $medication_row ]['source'] : "custom" ;
+				$attr = array("id" => "medication_source-{$medication_row}", "class" => "medication_source");
+				echo $this->formHidden($field_name, $field_value, $attr); 
+			?>
+			<?php
+				$field_name = "medication_items[{$medication_row}][dbf_id]";
+				$field_value = ! empty($that_medication_items[ $medication_row ]['dbf_id']) ? $that_medication_items[ $medication_row ]['dbf_id'] : "" ;
+				$attr = array("id" => "medication_dbf_id-{$medication_row}", "class" => "medication_dbf_id");
+				echo $this->formHidden($field_name, $field_value, $attr); 
+			?>
+			<?php
+				$field_name = "medication_items[{$medication_row}][medication]";
+				$field_value = $that_medication_items[ $medication_row ]['medication'];
+				$attr = array("id" => "medication_medication-{$medication_row}", "class" => "medication_medication");
+				echo $this->formHidden($field_name, $field_value, $attr); 
+			?>
+			<?php
+				$field_name = "medication_items[{$medication_row}][custom_line]";
+				$field_value = $that_medication_items[ $medication_row ]['custom_line'];
+				$attr = array("id" => "medication_custom_line-{$medication_row}", "class" => "medication_custom_line");
+				echo $this->formHidden($field_name, $field_value, $attr); 
+			?>
+		
+			
+            <input type="checkbox" class="rcb" style="left:11px; top:332px; background: none repeat scroll 0% 0% transparent;" name="getiuhrfrei[]" value="8"  id="rceipt_form_chek8" <?php if (in_array('8', $that['getiuval'])): echo "checked='checked'"; endif; ?>  />
+            <input type="text" class="rtx livesearchmedinp limit_content  onchange_reset_pzn" style="left:48px; top:307px; width:440px;" name="med1" id="medication1" maxlength="92" autocomplete="off" value="<?php echo $that['medication_1']; ?>"/>
+            <input type="button" class="rcbutt" style=" left:500px; top:307px;" value="<?php echo $rcbuttval;?>" />
+			<div  id="maxlength_med1" class="maxlength" style="left:401px; top:323px;"></div>
+			
+<!-- 			ISPC-2711 added class med_sec_lines-->
+            <input type="text" class="rtx lsearch limit_content med_sec_lines" style=" left:48px; top:331px; width:515px;" name="line1" id="line1" maxlength="92" value="<?php echo $that['custom_line_1']; ?>" />
+            <input type="hidden" name="medication1line1" id="medication1line1" value="<?php echo $that['medication1line1']; ?>"/>
+            <div  id="maxlength_line1" class="maxlength" style="left: 473px; top:345px;"></div>
+		</div>
+		
+		<div class="one_medication_line">
+			<?php $medication_row = 1; ?>
+			<?php
+				$field_name = "medication_items[{$medication_row}][pzn]";
+				$field_value = ! empty($that_medication_items[ $medication_row ]['pzn']) ? $that_medication_items[ $medication_row ]['pzn'] : "";
+				$attr = array("id" => "medication_pzn-{$medication_row}", "class" => "medication_pzn");
+				echo $this->formHidden($field_name, $field_value, $attr); 
+			?>
+			<?php
+				$field_name = "medication_items[{$medication_row}][source]";
+				$field_value = ! empty($that_medication_items[ $medication_row ]['source']) ? $that_medication_items[ $medication_row ]['source'] : "custom" ;
+				$attr = array("id" => "medication_source-{$medication_row}", "class" => "medication_source");
+				echo $this->formHidden($field_name, $field_value, $attr); 
+			?>
+			<?php
+				$field_name = "medication_items[{$medication_row}][dbf_id]";
+				$field_value = ! empty($that_medication_items[ $medication_row ]['dbf_id']) ? $that_medication_items[ $medication_row ]['dbf_id'] : "" ;
+				$attr = array("id" => "medication_dbf_id-{$medication_row}", "class" => "medication_dbf_id");
+				echo $this->formHidden($field_name, $field_value, $attr); 
+			?>
+			<?php
+				$field_name = "medication_items[{$medication_row}][medication]";
+				$field_value = $that_medication_items[ $medication_row ]['medication'];
+				$attr = array("id" => "medication_medication-{$medication_row}", "class" => "medication_medication");
+				echo $this->formHidden($field_name, $field_value, $attr); 
+			?>
+			<?php
+				$field_name = "medication_items[{$medication_row}][custom_line]";
+				$field_value = $that_medication_items[ $medication_row ]['custom_line'];
+				$attr = array("id" => "medication_custom_line-{$medication_row}", "class" => "medication_custom_line");
+				echo $this->formHidden($field_name, $field_value, $attr); 
+			?>
+			
+            <input type="checkbox" class="rcb" style="left:11px; top:381px; background: none repeat scroll 0% 0% transparent;" name="getiuhrfrei[]" value="9"  id="rceipt_form_chek9" <?php if (in_array('9', $that['getiuval'])): echo "checked='checked'"; endif; ?> />
+            <input type="text" class="rtx livesearchmedinp limit_content  onchange_reset_pzn" style=" left:48px; top:356px; width:440px;" name="med4" id="medication4" maxlength="92" autocomplete="off"  value="<?php echo $that['medication_2']; ?>"  />
+            <input type="button" class="rcbutt" style=" left:500px; top:356px;" value="<?php echo $rcbuttval;?>" />
+            <div  id="maxlength_med4" class="maxlength" style="left:385px; top:373px;"></div>
+
+<!-- 			ISPC-2711 added class med_sec_lines-->
+			<input type="text" class="rtx lsearch limit_content med_sec_lines" style=" left:48px; top:379px; width:515px;" name="line2" id="line2" maxlength="92"  value="<?php echo $that['custom_line_2']; ?>"/>
+            <input type="hidden" name="medication4line2" id="medication4line2" value="<?php echo $that['medication2line2']; ?>"/>
+            <div  id="maxlength_line2" class="maxlength" style="left: 463px; top:393px;"></div>
+		</div>
+		
+		<div class="one_medication_line">
+ 			<?php $medication_row = 2; ?>
+ 			<?php
+				$field_name = "medication_items[{$medication_row}][pzn]";
+				$field_value = ! empty($that_medication_items[ $medication_row ]['pzn']) ? $that_medication_items[ $medication_row ]['pzn'] : "";
+				$attr = array("id" => "medication_pzn-{$medication_row}", "class" => "medication_pzn");
+				echo $this->formHidden($field_name, $field_value, $attr); 
+			?>
+			<?php
+				$field_name = "medication_items[{$medication_row}][source]";
+				$field_value = ! empty($that_medication_items[ $medication_row ]['source']) ? $that_medication_items[ $medication_row ]['source'] : "custom" ;
+				$attr = array("id" => "medication_source-{$medication_row}", "class" => "medication_source");
+				echo $this->formHidden($field_name, $field_value, $attr); 
+			?>
+			<?php
+				$field_name = "medication_items[{$medication_row}][dbf_id]";
+				$field_value = ! empty($that_medication_items[ $medication_row ]['dbf_id']) ? $that_medication_items[ $medication_row ]['dbf_id'] : "" ;
+				$attr = array("id" => "medication_dbf_id-{$medication_row}", "class" => "medication_dbf_id");
+				echo $this->formHidden($field_name, $field_value, $attr); 
+			?>
+			<?php
+				$field_name = "medication_items[{$medication_row}][medication]";
+				$field_value = $that_medication_items[ $medication_row ]['medication'];
+				$attr = array("id" => "medication_medication-{$medication_row}", "class" => "medication_medication");
+				echo $this->formHidden($field_name, $field_value, $attr); 
+			?>
+			<?php
+				$field_name = "medication_items[{$medication_row}][custom_line]";
+				$field_value = $that_medication_items[ $medication_row ]['custom_line'];
+				$attr = array("id" => "medication_custom_line-{$medication_row}", "class" => "medication_custom_line");
+				echo $this->formHidden($field_name, $field_value, $attr); 
+			?>
+
+			
+
+            <input type="checkbox" class="rcb" style="left:11px; top:430px; background: none repeat scroll 0% 0% transparent;" name="getiuhrfrei[]" value="10" id="rceipt_form_chek10" <?php if (in_array('10', $that['getiuval'])): echo "checked='checked'"; endif; ?>  />
+            <input type="text" class="rtx livesearchmedinp limit_content  onchange_reset_pzn" style=" left:48px; top:405px; width:440px;" name="med7" id="medication7" maxlength="92" autocomplete="off"  value="<?php echo $that['medication_3']; ?>" />
+            <input type="button" class="rcbutt" style=" left:500px; top:405px;" value="<?php echo $rcbuttval;?>" />
+            <div  id="maxlength_med7" class="maxlength" style="left:389px; top:419px;"></div>
+
+<!-- 			ISPC-2711 added class med_sec_lines-->
+			<input type="text" class="rtx lsearch limit_content med_sec_lines" style=" left:48px; top:428px; width:515px;" name="line3" id="line3" value="<?php echo $that['custom_line_3']; ?>"/>
+            <input type="hidden" name="medication7line3" id="medication7line3" value="<?php echo $that['medication3line3']; ?>"/>
+            <div  id="maxlength_line3" class="maxlength" style="left: 461px; top:443px;"></div>
+            
+          
+		</div>          
+           
+					
+        </div>
+        <div align="center">
+            <input class="form_btnsubmit" id="save_receipt" name="savereceipt" type="submit" value="<?php echo $this->translate('save_receipt'); ?>"/>&nbsp;&nbsp;&nbsp;&nbsp;
+            <input class="form_btnsubmit" id="print_receipt" name="btnsubmit" type="submit" value="<?php echo $this->translate('print_receipt'); ?>"" rel="print_receipt"/>&nbsp;&nbsp;&nbsp;&nbsp;
+            <input class="form_btnsubmit" id="print_save_receipt" name="print_save_receipt" type="submit" value="<?php echo $this->translate('save AND Print'); ?>"/>&nbsp;&nbsp;&nbsp;&nbsp;
+<!-- 			//ISPC-2711 Ancuta 12.03.2021   -->
+             <input class="form_btnsubmit" id="print_save_receipt_btm_a" name="print_save_receipt_btm_a" type="submit" value="<?php echo $this->translate('save AND Print BTM A'); ?>"/>&nbsp;&nbsp;&nbsp;&nbsp;
+<!--             // -- -->
+            <input type="hidden" id="print_profile" name="print_profile" value="" />
+            <!--<input class="form_btnsubmit" name="btnsavepdf" type="submit" value="speichern und in Dokumente ablegen" rel="save_receipt"/>&nbsp;&nbsp;&nbsp;&nbsp;-->
+        </div>
+	</div>
+</form>
+
+<div class="print_profiles">
+
+</div>
+

@@ -1,0 +1,147 @@
+<?php
+$patientdetails = $this->patientdetails;
+$period_days = $this->period_days;
+$shortcuts = $this->shortcuts;
+$master_data = $this->master_data;
+	$weekend = 'bgcolor="#DEDEDE"';
+	$flatrate_backgrond = 'bgcolor="#999999"';
+?>
+<h1><?php echo $this->translate('performance_record')  ?></h1>
+<table width="100%" style="font-size: 11pt;">
+	<tr>
+		<td style="text-align: left;"><?php echo $this->translate('period_of_time');  ?>: <? echo $this->first_sapv_day;?><? echo $this->last_sapv_day;?> </td>
+	</tr>
+	<tr>
+		<td style="text-align: left;"><?php echo $this->translate('page_no');  ?>: 1</td>
+	</tr>
+</table>
+
+<table bgcolor="#DEDEDE" width="100%" border="1" style="font-size: 10pt;">
+	<tr>
+		<td width="30%">&nbsp;</td>
+		<td width="25%">&nbsp;<b><? echo $this->translate('krankenkasse_details')?></b></td>
+		<td colspan="2" width="45%">&nbsp;</td>
+	</tr>
+	<tr>
+		<td width="30%">
+			&nbsp;<?php echo $patientdetails['first_name'].', '.$patientdetails['last_name'];  ?><br />
+			&nbsp;<?php echo $patientdetails['street1'].'<br/>&nbsp;'.$patientdetails['zip'].'  '.$patientdetails['city']; ?>
+		</td>
+		<td width="25%">
+			&nbsp;<?php echo $this->health_insurance;  ?>
+			<br />
+			&nbsp;<?php echo $this->hi_subdiv_address;  ?>
+		</td>
+		<td  width="45%" colspan="2"></td>
+	</tr>
+	<tr>
+		<td  width="30%">
+			&nbsp;<?php echo $this->translate('shtbirthd')?>: <?php echo $patientdetails['birthd'] ?><br/>
+			&nbsp;<?php echo $this->translate('pflegestufe')?>:<?php echo  $this->patient_pflegestufe ?>
+		</td>
+		<td  width="25%">
+			&nbsp;<?php echo $this->translate('krankenkasse_ik')?>: <?php echo $this->health_insurance_ik ?><br/>
+			&nbsp;<?php echo $this->translate('krankenkasse_nr')?>: <?php echo $this->health_insurance_kassenr; ?>
+		</td>
+		<td width="20%">&nbsp;Grundlage:<?php echo  $action; ?> § 37b SGB V</td>
+		<td width="25%">
+			&nbsp;<?php echo $this->translate('sapv_approve_date')?>: <?php echo $this->sapv_approve_date;  ?><br/>
+ 			&nbsp;<?php echo $this->translate('sapv_approve_nr')?>: <?php echo $this->sapv_approve_nr;  ?>
+		</td>
+	</tr>
+</table>
+
+
+<table  class="datatable_new"  width="100%" border="1"  style="font-size: 8pt;">
+	<tr>
+		<th style="text-align:left;" width="21%" >&nbsp;<br/>&nbsp;<b>Leistungen</b> <br/><br />&nbsp;</th>
+		<td rowspan="8" id="container" width="75%">
+			<table width="100%" border="1"  style="font-size: 8pt;">
+
+				<tr>
+					<?php foreach($period_days as $day): $day_type = date('w', strtotime($day)); ?>
+					<th align="center"  style="vertical-align: middle;" <?php if($day_type == 0 || $day_type == 6): echo $weekend; endif; ?>>
+						&nbsp;<br/>
+						<b><?php echo date('d', strtotime($day));  ?></b>
+						<br/>
+						<b><?php echo strftime('%a', strtotime($day));  ?></b>
+						<br/>
+					</th>
+					<?php endforeach;  ?>
+				</tr>
+				<tr>
+					<td colspan="<?php echo count($period_days)?>" border="0"  height="5"></td>
+				</tr>
+				<?php foreach($shortcuts as $k_shortcut => $v_shortcut):  ?>
+				<tr>
+					<?php foreach($master_data as $k_date => $v_shortcut_details):  $day_type = date('w', strtotime($k_date)); ?>
+				<td <?php if($v_shortcut == '37b1' && $v_shortcut_details[$v_shortcut]['qty'] == '1'):  echo $flatrate_backgrond; elseif($day_type == 0 || $day_type == 6): echo $weekend; endif;?> align="center">
+					&nbsp;<br/>
+						<?php if($v_shortcut == '37b1'): ?>
+						<?php if($v_shortcut_details[$v_shortcut]['qty'] && !in_array($v_shortcut, $only_one_start)):  ?>
+							<?php
+								//echo $v_shortcut_details[$v_shortcut]['qty'];
+								$only_one_start[] = $v_shortcut;
+								$sums[$v_shortcut] += $v_shortcut_details[$v_shortcut]['qty'];
+							?>
+						<?php endif;  ?>
+						<?php else:  ?>
+							<?php
+								echo $v_shortcut_details[$v_shortcut]['qty'];
+								$sums[$v_shortcut] += $v_shortcut_details[$v_shortcut]['qty'];
+							?>
+						<?php endif;  ?>
+					<br/>&nbsp;
+					</td>
+					<?php endforeach;  ?>
+				</tr>
+
+				<?php endforeach;  ?>
+			</table>
+		</td>
+		<th width="4%" align="center" style="border:1px solid #000;">&nbsp;<br/><b>Anzahl</b><br/>&nbsp;</th>
+	</tr>
+	<tr>
+		<td border="0" style="border-left: 1px solid #fff; border-right: 1px solid #fff;" height="5"></td>
+		<td border="0" style="border-left: 1px solid #fff; border-right: 1px solid #fff;"  height="5"></td>
+	</tr>
+
+	<?php foreach($shortcuts as $k_shortcut => $v_shortcut):  ?>
+	<tr>
+         <!-- ISPC-2747 Lore 25.11.2020 -->
+         <?php if($v_shortcut['custom'] == '1'):  ?>
+			<td height="30" valign="middle" style="font-size:8pt;">&nbsp;<br/>&nbsp;<?php echo $v_shortcut;   ?> <?php echo $v_shortcut;   ?><br/>&nbsp;</td>
+         <?php else :  ?>
+			<td height="30" valign="middle" style="font-size:8pt;">&nbsp;<br/>&nbsp;<?php echo $this->translate('shortcut_name_'.$v_shortcut);   ?> <?php echo $this->translate('shortcut_description_'.$v_shortcut);   ?><br/>&nbsp;</td>
+         <?php endif;  ?>
+		<td  height="30" valign="middle" align="right">&nbsp;<br/><?php if($sums[$v_shortcut]): echo $sums[$v_shortcut]; else: echo '0'; endif;?>&nbsp;<br/>&nbsp;</td>
+	</tr>
+	<?php endforeach;  ?>
+
+</table>
+
+<table>
+	<tr>
+		<td height="80" colspan="3"></td>
+	</tr>
+	<tr>
+		<td width="40%" style="font-size: 8;">
+			Ich bestätige die Durchführung der oben	angegebenen Hausbesuche.<br/>
+			Datum, Unterschrift	Versicherter/Bezugsperson
+		</td>
+		<td width="20%"></td>
+		<td width="40%"  style="font-size: 8;">
+			Ich bestätige die vertragsgemäße Ausführung der oben angegebenen Leistungen.<br/>
+			Datum, Unterschrift	Leistungserbringer/Verantwortlicher Leistungserbringer PCT</td>
+	</tr>
+
+	<tr>
+		<td colspan="3"></td>
+	</tr>
+	<tr>
+		<td width="40%" style="border-top: 1px solid #000;"></td>
+		<td width="20%"></td>
+		<td width="40%" style="border-top: 1px solid #000;"></td>
+	</tr>
+
+</table>

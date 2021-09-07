@@ -1,0 +1,353 @@
+<script>
+// ISPC-2654 Ancuta 07.10.2020
+var langurl = appbase + 'javascript/data_tables/de_language.json';
+var tablesource_mre = <?php echo json_encode($this->mredata); ?>;
+var res_file_path = '<?php echo RES_FILE_PATH; ?>';
+var callback_history = function (params)
+{
+	$('#history_log_content_'+params.mreid).html(params.historylog);
+}
+
+$(document).off('click',"#add_single_mre").on('click', '#add_single_mre', function(){
+	/* if($(this).data('entry_id')){
+		$('#mre_modal').data('recid', $(this).data('entry_id')).dialog('open');
+
+	} else{ */
+		$('#mre_modal').data('recid', '').data('subaction', 'edit').dialog('open');
+	//}
+});
+
+$(document).ready(function(){
+	$(document).on('change', '#pathogen', function() {
+		$('#pathogen_error').hide();
+	});
+	
+	$(document).off('click',".delete_mre").on('click', '.delete_mre', function(){
+		
+		if($(this).data('entry_id')){
+			$('#mre_modal').data('recid', $(this).data('entry_id')).data('subaction', 'delete').dialog('open');
+
+		} else{
+			//$('#ops_modal').dialog('open');
+		}
+	});
+	
+	$(document).off('click',".edit_mre").on('click', '.edit_mre', function(){
+	
+	if($(this).data('entry_id')){
+		$('#mre_modal').data('recid', $(this).data('entry_id')).data('subaction', 'edit').dialog('open');
+
+	} else{
+		$('#mre_modal').dialog('open');
+	}
+});
+
+$('#mre_modal').dialog({
+    autoOpen: false,
+    modal: true,
+    width: 620,
+   	height: 650,
+   	title:  translate('add_new_mre'),
+   	dialogClass: "charts_modal",
+   	
+   	open: function(){
+
+   		if($(this).data('recid'))
+   		{
+   			var url = 'patientdiagnosis/tabsevents?id='+pid+'&action=show_form&form=mre_add&recid='+$(this).data('recid');
+   		}
+   		else
+   		{
+   			var url = 'patientdiagnosis/tabsevents?id='+pid+'&action=show_form&form=mre_add';
+   		}
+
+   		if($(this).data('subaction') == 'delete')
+   		{ 
+   			var buttons = $('#mre_modal').dialog('option', 'buttons');
+   			buttons[0].click.apply($('#mre_modal'));
+   			$('#mre_modal').dialog('close');
+   		}
+   		else
+   		{   		
+   		
+	   		$.ajax({
+				type: 'POST',
+				url: url,
+	
+				success:function(data){
+	
+					$('#mre_modal').html(data);
+	 
+					$('.time')
+	        		.timepicker({
+	        			minutes: {
+	        				interval: 5
+	        			},
+	        			showPeriodLabels: false,
+	        			rows: 4,
+	        			//ISPC-2661 Carmen
+	        			timeOnlyTitle: translate('Choose Time'),
+	        			timeText: 'Zeit',
+	        			closeText: 'Ende',
+	        			//--
+	        			hourText: 'Stunde',
+	        			minuteText: 'Minute'
+	        		})
+	        		.mask("99:99");
+			   		
+			   		$( ".date" ).datepicker({
+						dateFormat: 'dd.mm.yy',
+						showOn: "button",
+						buttonImage: $('#calImg').attr('src'),
+						buttonImageOnly: true,
+						changeMonth: true,
+						changeYear: true,
+						nextText: '',
+						prevText: '',
+						maxDate: '0',
+					}).mask("99.99.9999");
+				},
+				error:function(){
+					
+				}
+			});
+   		}
+   	},
+    buttons:[
+		
+	{
+		click: function(){
+			
+			if($("#pathogen").val() == "")
+			{
+				$('#pathogen_error').show();
+			}
+			else
+			{
+				if($(this).data('subaction') == 'delete')
+				{
+					var url = 'patientdiagnosis/tabsevents?id='+pid+'&action=save_form&form=mresave&subaction='+$(this).data('subaction')+'&patid='+pid+'&recid='+$(this).data('recid');
+				}
+				else
+				{
+					var url = 'patientdiagnosis/tabsevents?id='+pid+'&action=save_form&form=mresave&subaction='+$(this).data('subaction')+'&patid='+pid;
+				}
+				
+				 $.ajax({
+					 type: 'POST',
+					 url: url,
+					 data: $('.mre_from_add').serialize(),
+					 success:function(data){
+						 $('#tabs-3').empty();
+						 $('#tabs-3').html(data);
+						 $('#mre_modal').dialog("close");
+						 $('.modal_success_msg').show();
+							setTimeout(function () {
+								$('.modal_success_msg').hide();
+								},1000);
+					 }
+				 });	
+			}
+			
+		},
+		text: translate('save')
+	},
+	
+	{
+		click: function(){
+	
+			$('#mre_modal').dialog('close');
+		},
+		text: translate('cancel'),
+	}
+    ]
+});
+
+$('#table_mre').DataTable({
+	// ADD language
+	 "language": {
+           "url": langurl
+    },
+
+	"sDom"://'<"fg-toolbar ui-toolbar ui-widget-header ui-helper-clearfix ui-corner-tl ui-corner-tr"lfr>'+
+		't',//+
+		//'<"fg-toolbar ui-toolbar ui-widget-header ui-helper-clearfix ui-corner-bl ui-corner-br"<"#bottom_export">ip>',
+	// la sDom - este sa zic - declarat tablelu(t) - cu header - search, paginare(p)
+
+		
+	//"lengthMenu": [[15, 25, 50, 100], [15, 25, 50, 100]],
+		
+	"processing": true,
+
+	"info": false,
+	"filter": false,
+	"paginate": false,
+	"destroy": true,
+
+	//"serverSide": true,
+	"autoWidth": false,
+	"stateSave": false,
+	"scrollX": false,
+	"scrollCollapse": true,
+	
+	//"sAjaxSource" : window.location.href,
+	"data": tablesource_mre,
+	
+	/* "fnServerData" : function(sSource, aoData, fnCallback, oSettings) {
+
+		if (oSettings.jqXHR) {
+			oSettings.jqXHR.abort();
+		}
+		
+		var _sorting = oSettings.aaSorting[0];		
+		
+		aoData.push({
+			"name" : "length",
+			"value" : oSettings._iDisplayLength
+		});
+		aoData.push({
+			"name" : "start",
+			"value" : oSettings._iDisplayStart
+		});
+
+		oSettings.jqXHR = $.ajax({
+			"dataType" : 'json',
+			"type" : "POST",
+			"url" : sSource,
+			"data" : aoData,
+			"success" : fnCallback
+		});
+	}, */
+	
+	"columns": [
+			   {
+				  data: "id",
+			 	  className: "",
+			 	 "visible": false,
+			  },
+	          {
+	        	  title: translate('pathogen'),
+	        	  data: "pathogen",
+	        	  className: "",
+	        	  "width": "75px"
+	          },
+	          {
+	        	  title: translate('first_pathogen_date'),
+	        	  data: "first_pathogen_date",
+	        	  className: "",
+	        	  "width": "60px"
+	          },
+	          {
+	        	  title: translate('rehabilitation'),
+	        	  data: "rehabilitation",
+	        	  className: "",
+	        	  "width": "65px"
+	          },	          
+	          {
+	        	  title: translate('rehabilitation_status'),
+	        	  data: "rehabilitation_status",
+	        	  className: "",
+	        	  "width": "65px"
+	          },
+	          {
+	        	  title: translate('last_pathogen_date'),
+	        	  data: "last_pathogen_date",
+	        	  className: "",
+	        	  "width": "100px"
+	          },
+	          {
+	        	  title: translate('localization'),
+	        	  data: "localization",
+	        	  className: "",
+	        	  "width": "65px"
+	          },
+	          {
+	        	  title: translate('carrier_status'),
+	        	  data: "carrier_status",
+	        	  className: "",
+	        	  "width": "65px"
+	          },
+	          {
+	        	  title: translate('negative_evidence_date'),
+	        	  data: "negative_evidence_date",
+	        	  className: "",
+	        	  "width": "65px"
+	          },	          
+	          {
+	        	  title: translate('actions'),
+	        	  data: "actions",
+	        	  className: "",
+	        	  "width": "52px"
+	          }
+		],
+		
+	"columnDefs": [
+	          { "targets": -1, "searchable": false, "orderable": false},
+			],
+	"order": [[0, "asc"]],
+
+	"drawCallback": function () {			
+        var api = this.api();
+
+        api.rows({ page: "current" }).every(function () {
+     	   var rowData = this.data();
+     	   
+            this
+              .child($(
+                '<tr><td colspan="9">'+
+               '<div class="history_log" data-mre-id="'+rowData['id']+'">'+
+               '<h3><a href="javascript:void(0);">MRE Verlauf</a></h3>'+
+					'<div id="history_log_content_'+rowData['id']+'" class="history_log_content"></div></div></td></tr>'
+              ))	                     
+              
+              .show();
+        });
+        
+        $( ".history_log" ).accordion({
+    		collapsible: true,
+    		active: false,
+    		autoHeight: false,
+    		heightStyle: "fill",
+    		change: function(event, ui) {
+    			var mreid = $(this).data('mreId');
+    			var element = $('#history_log_content_'+mreid);
+    			var loader = function()
+    			{
+    				var dlist = '<br /><div class="loadingdiv" align="center" style="width: 720px;float: left; height:100%; vertical-align:middle;margin-top: 50px;"><img src="'+res_file_path+'/images/loader_transparent.gif" width="32"><br />	Loading... please wait</div>';
+    				document.getElementById('history_log_content_'+mreid).innerHTML = dlist;
+    			}
+    			
+    			if(ui.newContent.length == "1")
+    			{
+    				ajaxCallserver({url: appbase + 'ajax/loadmrelog?patid='+pid+'&mreid='+mreid+'', callLoading: loader(element)});
+    			}
+    			else
+    			{
+    				$('#history_log_content_'+mreid).html('');
+//    				$('#history_log_content').html('');
+    			}
+    		}
+    	});
+    },
+	
+});
+
+});
+
+</script>
+<br/>
+<h4>MRE-Status</h4>
+<br/>
+<span>Hier bitte multiresistente Erreger eintragen, die aufgetreten sind.</span>
+
+<table id="table_mre"></table>
+
+<button id="add_single_mre" class="new_entry_button"> 
+<img src="<?php echo RES_FILE_PATH ?>/images/btttt_plus.png" style="display: block; float: left; margin-right: 5px;"/>
+<span><?php echo $this->translate('add_mre'); ?></span>
+</button>
+
+<div id="mre_modal" class=" ">
+	<div class=" "></div>
+	<!-- load form -->
+</div>

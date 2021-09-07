@@ -1,0 +1,311 @@
+<?php
+	$this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/page-css/shpatientlist.css?'.date('Ymd'));
+	
+	//IE Freaking hack
+	$url = APP_BASE . "invoicenew/shinvoicepatientlist?" . $_SERVER['QUERY_STRING'];
+	if(str_replace("&list=" . $_REQUEST['list'] . "", "", $url))
+	{
+		$finalJsUrl = str_replace("&list=" . $_REQUEST['list'] . "", "", $url);
+	}
+	else
+	{
+		$finalJsUrl = $url;
+	}
+?>
+
+<script type="text/javascript" >
+	function changeMonth(data) {
+	    var url = "<?php echo $finalJsUrl; ?>&list=" + data;
+	    $(location).attr('href', url);
+	}
+	
+	var pl_loading = function(){
+		var dlist = '<div class="loadingdiv" align="center"><img src="images/pageloading.gif"><br /><?php echo $this->translate('loading_tables_data'); ?></div>';
+		document.getElementById('content').innerHTML = dlist;
+	}
+	
+	function loadpage(ord,clm)
+	{
+		if($('#hdnlastpage').val() >= parseInt($('#pageno').val())) {
+			if((parseInt($('#pageno').val())) > 0) {
+				pgno = (parseInt($('#pageno').val() - 1));
+			} else {
+				pgno = 0;
+			}
+
+			ajaxCallserver({url: 'invoicenew/fetchshpatientlist?clm=' + clm + '&ord=' + ord + '&pgno=' + pgno + '&list=<?php echo $_REQUEST['list']; ?>', callLoading: pl_loading});
+		} else {
+			jAlert("<? echo $this->translate('invalidpageno'); ?>");
+		}
+	}
+	function searchData(val)
+	{
+		ajaxCallserver({
+			url:'invoicenew/fetchshpatientlist',
+			method:'POST',
+			data:{
+				clm:'ln',
+				ord:'ASC',
+				pgno:0,
+				val:val.value, 
+				list:'<?php echo $_REQUEST['list'];?>'
+			},
+			callLoading: pl_loading
+		});
+	}
+
+	var callBack = function(params)
+	{
+		document.getElementById('content').innerHTML = params.shpatientlist; 
+	}
+
+	jQuery.download = function(url, data, method) {
+		//url and data options required
+		if (url && data) {
+			//data can be string of parameters or array/object
+			data = typeof data == 'string' ? data : jQuery.param(data);
+			//split params into form inputs
+			var inputs = '';
+			jQuery.each(data.split('&'), function() {
+				var pair = this.split('=');
+				inputs += '<input type="hidden" name="' + pair[0] +
+					'" value="' + pair[1] + '" />';
+			});
+			//send request
+			jQuery('<form action="' + url + '" method="' + (method || 'post') + '">' + inputs + '</form>')
+				.appendTo('body').submit().remove();
+		};
+	};
+
+	$(function () {
+	
+	//disable enter key 
+	$(window).keydown(function(event){
+		if(event.keyCode == 13) {
+			event.preventDefault();
+			return false;
+		}
+	});
+		$('li.sapv_flow_element, li.current_month_flow_element').live('click', function() {
+			if(!verify_patient_selected($(this).find('input[type="radio"]').data('patientid'))) {
+				var patientid = $(this).data('patientid');
+				
+				var check_array = [];
+				check_array.patient_epid = patientid;
+				check_array.invoice_type = $(this).data('check_invoice_type');
+				check_array.period_type = $(this).data('check_period_type');
+				check_array.period_start = $(this).data('check_period_start');
+				check_array.period_end = $(this).data('check_period_end');
+				check_array.period_id = $(this).data('check_period_id');
+				check_array.period_completed = $(this).data('check_period_completed');
+
+				var element_id = $(this).attr('id');
+				
+				
+				var sapvid = $(this).data('sapvid');
+				var list = $(this).data('list');
+				var admission = $(this).data('admission');
+				//redirect vars
+				var sort_vars = $(this).data('sortvars').split('|');
+				var clm = sort_vars[0];
+				var ord = sort_vars[1];
+				var pgno = sort_vars[2];
+				
+				
+				var url = appbase+'invoicenew/shanlage14invoice';
+				if(sapvid){ //sapv period click
+					var params = 'patient=' + patientid + '&sapvid=' + sapvid+'&type=pdf';
+				} else if(list) {//curent month period click
+					var params = 'patient=' + patientid + '&list=' + list+'&type=pdf';
+				} else if(admission) {// admission period click
+					var params = 'patient=' + patientid + '&admission=' + admission+'&type=pdf';
+				}
+				
+				$.ajax({
+				  	url:'ajax/checkgenerateinvoices',
+				    type: 'POST',
+					data:{
+						'patient': check_array.patient_epid,
+						'invoice_type': check_array.invoice_type,
+						'period_type': check_array.period_type,
+						'period_id': check_array.period_id,
+						'period_start': check_array.period_start,
+						'period_end': check_array.period_end
+					}, 
+				    success: function(result) {
+				    	var result_data = jQuery.parseJSON(result);
+				    	if(result_data.skip_modal == "1"){
+				    		
+			 				$.download(url, params);
+			 				$('#'+element_id).addClass('generated_flow_element');
+			 				
+				    	} else{
+				    		
+				    		if(result_data.completed_invoices){
+				    			alert('<?php echo $this->translate("The relevant invoice is already completed and or paid. Please Storno it before you proceed.")?>');
+				    		} else if(result_data.invoices){
+				    			
+					    		// open modal 
+					    		$('#already_generated_invoices')
+					    		.data('url' , url)
+					    		.data('params' , params)
+					    		.data('invoices' , result_data.invoices)
+					    		.data('patient' ,  check_array.patient_epid)
+					    		.data('invoice_type' ,  check_array.invoice_type)
+					    		.data('element_id' ,  element_id)
+					    		.dialog('open');
+					    		
+				    		} else{
+
+				 				$.download(url, params);
+				 				$('#'+element_id).addClass('generated_flow_element');
+				 					
+				    		}
+				    	}
+				    },
+				    error: function(){
+				      alert("Unable to check period");
+				    }
+				  });
+				
+				
+				
+				
+			}
+			else
+			{
+				$(this).find('input[type="radio"]').attr('checked', true).trigger('change');
+			}
+		});
+		
+		$('.sapv_radio').live('change', function() {
+			if(!verify_patient_selected($(this).data('patientid'))) {
+				return false;
+				//open dialog?
+			}
+		});
+		
+		$('.selected_patient_chk').live('click, change',function(){
+			$('input.selected_patient_'+$(this).data('patientid')+'_period').attr('checked', false);
+			$(this).parent().parent().next('tr').children().find('.sapv_flow').find('li:last').children().attr('checked', $(this).is(':checked')).trigger('change');
+		})
+		
+				
+		
+		$('#already_generated_invoices').dialog({
+			autoOpen:false,
+			resize:false,
+			draggable:false,
+			width:800,
+			height:200,
+			title: '<?php echo $this->translate('confirmdeletetitle'); ?>',
+			buttons: {
+			/* //ISPC-2480 Lore 29.11.2019
+			"<?php echo $this->translate('delete existing draft and generate'); ?>": function() {
+		   		var inv_url = $(this).data('url');
+				var inv_params = $(this).data('params');
+				var element_id = $(this).data('element_id');
+				$.ajax({
+					  	url:'ajax/deletedraftinvoices',
+					    type: 'POST',
+						data:{
+							'patient': $(this).data('patient'),
+							'invoice_type': $(this).data('invoice_type'),
+							'invoices': $(this).data('invoices')
+						}, 
+					    success: function(result) {
+					    	var result_data = jQuery.parseJSON(result);
+					    	console.log(result_data.invoice_deleted);
+					    	if(result_data.invoice_deleted == "1"){
+					    		
+					 
+								$.download(inv_url, inv_params);
+								$('#'+element_id).addClass('generated_flow_element');
+								$('#already_generated_invoices').dialog( "close" );
+					    		
+					    	} else{
+					    		alert("Old invoice was not DELETED");
+					    	}
+					    },
+					    error: function(){
+					      alert("Unable to check period");
+					    }
+					  });
+				
+			}, */
+	/* 		"<?php echo $this->translate('continue generating the invoice'); ?>": function(){
+				 	
+			 		var element_id = $(this).data('element_id');		
+					var url = $(this).data('url');
+					var params = $(this).data('params');
+					$.download(url, params);
+					$('#'+element_id).addClass('generated_flow_element');
+					
+					$('#already_generated_invoices').dialog( "close" );
+			}, */
+			"<?php echo $this->translate('cancel'); ?>": function(){
+				//ISPC-2480 Lore 29.11.2019
+			 	var element_id = $(this).data('element_id');		
+				$('#'+element_id).find('input[type="radio"]').attr('checked', false).trigger('change');
+				//.
+				
+				$('#already_generated_invoices').dialog( "close" );
+			}
+		},
+		close: function(){
+			$('input[name=deletemore]').val("");
+		}
+	});
+		
+		
+		
+		
+		
+		
+		
+		
+	});
+	
+	function verify_patient_selected(patientid)
+	{
+		if($('#selected_patient_'+patientid).is(':checked')) {
+			return true;	
+		} else {
+			return false;
+		}
+	}
+</script>
+<h1><?php echo $this->translate('rechnung active patients'); ?></h1>
+<form name="generate_sh_invoices" id="generate_sh_invoices" action="" method="POST">
+
+<br />
+<?php echo $this->translate('select_month'); ?> : <?php echo $this->months_selector; ?>
+<br />
+<br />
+<?php
+	if($_REQUEST['list'])
+	{
+		$list_url = '&list=' . $_REQUEST['list'];
+	}
+	else
+	{
+		$list_url = '';
+	}
+?>
+<div>
+	<label for="search"><?php echo $this->translate('quicksearch')?></label>&nbsp;&nbsp;
+	<input name="search" id="search" type="text" onkeyup="searchData(this);" />
+</div>
+	<div id="content">
+		<!--ajax loaded content here-->
+	</div>
+	<input type="submit" name="submit" value="<?php echo $this->translate('generate_multiple_invoices'); ?>" />
+</form>
+<script type="text/javascript">
+	ajaxCallserver({url: appbase+'invoicenew/fetchshpatientlist?clm=ln&ord=ASC&pgno=0&list=<?php echo $_REQUEST['list']; ?>', callLoading: pl_loading});
+</script>
+
+
+<div id="already_generated_invoices">
+	<?php echo $this->translate('invoices are already generated or this period');?>
+</div>

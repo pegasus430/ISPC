@@ -1,0 +1,424 @@
+<?php
+	$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/page-css/xbdtactions.css?' . date('Ymd'));
+	echo $this->patientinfo;
+	echo $this->tabmenus;
+?>
+<script>
+	var res_file_path = '<?php echo RES_FILE_PATH; ?>';
+	var min_number = '0'; //to avoid NaN
+	var form_items = '<?php echo json_encode($this->form_items); ?>';
+
+	var jsusers = <?php echo $this->jsusers ?>;
+	
+	
+	$(document).ready(function(){
+		var items = jQuery.parseJSON(form_items);
+		//console.log(items);
+		if(items)
+		{
+			$.each(items, function(item, index) {
+				//restore items after a failed submit validation
+				createnewitem(items[item]);
+			});
+		}
+		else
+		{
+			//add new empty item row
+			createnewitem();
+		}
+ 
+		//remove system normal items
+		$('.remove_item_normal').live('click', function(){
+			var removed_elem_id = $(this).parent().parent().attr('id');
+
+			var row_id =  $(this).data('row_id'); 
+			//console.log(row_id);
+			
+ 			$('#edited'+row_id).val('1');
+ 			$('#deleted'+row_id).val('1');
+ 			$(this).parent().parent().hide('slow');
+ 			
+/* 			$(this).parent().parent().hide('slow').remove();
+
+			if($('.'+removed_elem_id))
+			{
+				$('.'+removed_elem_id + '_data').hide('slow').remove();
+			} */
+ 
+		});
+		
+		
+		//remove system custom items
+		$('.remove_item_custom').live('click', function(){
+			var removed_elem_id = $(this).parent().parent().attr('id');
+
+			var row_id =  $(this).data('row_id'); 
+			//console.log(row_id);
+			
+			$(this).parent().parent().hide('slow').remove();
+
+			if($('.'+removed_elem_id))
+			{
+				$('.'+removed_elem_id + '_data').hide('slow').remove();
+			} 
+ 
+		});
+		
+		$('.referral').live('change', function() {
+			if ($(this).hasClass('referral')) 
+			{
+				var input_row = $(this).data('row_id'); 			
+			}
+			$('#edited'+input_row).val('1');
+			
+			if($('#hidd_actionid'+input_row).val() == ""){
+				$('#row_'+input_row).addClass("custom")	
+			} else{
+				$('#row_'+input_row).removeClass("custom")	
+			}
+			
+		});
+		
+		$('.new_referral').live('change', function() {
+			if ($(this).hasClass('new_referral')) 
+			{
+				var input_row = $(this).data('row_id'); 			
+			}
+			//console.log(input_row);
+			//$('#edited'+input_row).val('1');
+			
+			if($('#hidd_actionid'+input_row).val() == ""){
+				$('#row_'+input_row).addClass("custom")	
+			} else{
+				$('#row_'+input_row).removeClass("custom")	
+			}
+			
+		});
+
+
+		$('.billed').live('change', function() {
+			if ($(this).hasClass('billed')) 
+			{
+				var input_row = $(this).data('row_id'); 			
+			}
+			$('#edited'+input_row).val('1');
+		});
+
+
+		$('.new_billed').live('change', function() {
+			if ($(this).hasClass('billed')) 
+			{
+				var input_row = $(this).data('row_id'); 			
+			}
+			$('#edited'+input_row).val('1');
+		});
+
+	});
+	
+	function createnewitem(item_data)
+	{		
+		var itemcount = $('#counter').val();
+	  	
+		if(item_data)
+		{
+			
+			var usrstr = "";
+			var select_status = "";
+			for(var i in jsusers)
+			{
+				if(item_data['action_user'] == i){
+					 select_status ='selected="selected"';
+				} else{
+					 select_status ='';
+				}
+				usrstr +='<option value="'+i+'" '+select_status+' >'+jsusers[i]+'</option>';
+			}
+
+			var le_users_select = '<select name="item['+itemcount+'][action_user]" id="actionuser'+itemcount+'"   data-row_id="'+itemcount+'"  class="referral"  >'+usrstr+'</select>';
+			
+			var class_custom = "";
+			if(item_data['master_action_id'] == ""){
+				 class_custom = "custom";
+			} else {
+				 class_custom = "";
+			}
+
+			var billed_checked;
+
+			if(item_data['action_billed'] != "0"){
+				billed_checked = 'checked = "checked"';
+				billed_value = item_data['action_billed'];
+			} else {
+				billed_checked = "";
+				billed_value = "-1";
+			}
+			
+			var row_html = '';
+			row_html = '<tr id="row_'+itemcount+'" class="'+class_custom+'">';
+			
+			row_html += '<td style="text-align: left;" class="date_td">';
+			row_html += '<input type="hidden" id="row" name="row[]" value="'+itemcount+'" />';
+			row_html += '<input type="text" name="item['+itemcount+'][date]" value="'+item_data['date']+'" id="date'+itemcount+'" data-row_id="'+itemcount+'" class="date referral" autocomplete="off"/>';
+			row_html += '</td>';
+			
+			row_html += '<td style="text-align: left;" class="time_td">';
+			row_html += '<input type="text" name="item['+itemcount+'][time]" value="'+item_data['time']+'" id="time'+itemcount+'"  data-row_id="'+itemcount+'"  class="time referral" autocomplete="off"/>';
+			row_html += '</td>';
+			
+			row_html += '<td align="right" class="action_id_td">';
+			row_html += '<input type="text" name="item['+itemcount+'][action_id]" value="'+item_data['action_id']+'" id="actionid'+itemcount+'"  data-row_id="'+itemcount+'"  class="live_search_action_id referral referral" autocomplete="off"/>';
+			row_html += '<input type="hidden" name="item['+itemcount+'][db_row_id]" value="'+item_data['db_row_id']+'" />';
+			row_html += '<input type="hidden" name="item['+itemcount+'][master_action_id]" value="'+item_data['master_action_id']+'" id="hidd_actionid'+itemcount+'"  autocomplete="off"/>';
+			row_html += '<input type="hidden" name="item['+itemcount+'][new]" value="'+item_data['new']+'"/>';
+			row_html += '<input type="hidden" name="item['+itemcount+'][edited]" value="" id="edited'+itemcount+'" />';
+			row_html += '<input type="hidden" name="item['+itemcount+'][deleted]" value="" id="deleted'+itemcount+'" />';
+			row_html += '</td>';
+			
+			row_html += '<td align="right" class="action_name_td">';
+			row_html += '<input type="text" name="item['+itemcount+'][action_name]" value="'+item_data['action_name']+'" id="actionname'+itemcount+'"  data-row_id="'+itemcount+'"  class="description live_search_action_name referral" autocomplete="off"/>';
+			row_html += '<input type="hidden" name="item['+itemcount+'][name]" value="'+item_data['action_name']+'" id="hidd_actionname'+itemcount+'"  autocomplete="off"/>';
+			row_html += '</td>';
+			
+			row_html += '<td align="right"  class="action_user_td">';
+			row_html += le_users_select
+			row_html += '</td>';
+
+			row_html += '<td align="right"  class="action_billed_td">';
+			row_html += '<input class="billed" type="checkbox" name="item['+itemcount+'][action_billed]" value="'+billed_value+'" id="actionbilled'+itemcount+'"  data-row_id="'+itemcount+'" '+billed_checked+' />';
+			row_html += '</td>';
+			
+			row_html += '<td class="delete_td">';
+			row_html += '<a href="javascript:void(0)" class="remove_item_normal"   data-row_id="'+itemcount+'"  id="del_'+itemcount+'"><img src="<?php echo RES_FILE_PATH; ?>/images/action_delete.png" border="0"></a>';
+			row_html += '</td>';
+			
+			row_html += '</tr>';
+			
+			var trInnerHtml = $(' '+row_html+' ');
+			
+		}
+		else
+		{
+			
+			<?php
+					foreach($this->users_le as $sel_user_id=>$sel_user) {
+						if($this->userid == $sel_user_id)
+						{
+							$u_selected = 'selected="selected"';						
+						}
+						else
+						{
+							$u_selected = "";						
+						}
+						
+						$le_sel_str .= '<option value="'.$sel_user_id.'" '.$u_selected.' >'.$sel_user.'</option>';
+					}
+			
+			
+				?>
+			var date_now = "<?php echo date('d.m.Y',time());?>";
+			var time_now = "<?php echo date('H:i',time());?>";
+
+			var le_users_select = '<select name="item['+itemcount+'][action_user]" id="actionuser'+itemcount+'"    ><?php echo $le_sel_str;?></select>';
+			
+			var class_custom = "";
+
+			
+			
+			var row_html = '';
+			row_html = '<tr id="row_'+itemcount+'"  class="'+class_custom+'">';
+			
+			row_html += '<td style="text-align: left;"  class="date_td">';
+			row_html += '<input type="hidden" id="row" name="row[]" value="'+itemcount+'" />';
+			row_html += '<input type="text" name="item['+itemcount+'][date]" value="'+date_now+'" id="date'+itemcount+'" class="date" autocomplete="off"/>';
+			row_html += '</td>';
+			
+			row_html += '<td style="text-align: left;" class="time_td">';
+			row_html += '<input type="text" name="item['+itemcount+'][time]" value="'+time_now+'" id="time'+itemcount+'" class="time" autocomplete="off"/>';
+			row_html += '</td>';
+			
+			row_html += '<td align="right" class="action_id_td">';
+			row_html += '<input type="text" name="item['+itemcount+'][action_id]" value="" id="actionid'+itemcount+'" data-row_id="'+itemcount+'" class="live_search_action_id new_referral" autocomplete="off"/>';
+			row_html += '<input type="hidden" name="item['+itemcount+'][master_action_id]" value="" id="hidd_actionid'+itemcount+'"  autocomplete="off"/>';
+			row_html += '<input type="hidden" name="item['+itemcount+'][new]" value="1"  autocomplete="off"/>';
+			row_html += '</td>';
+			
+			row_html += '<td align="right" class="action_name_td">';
+			row_html += '<input type="text" name="item['+itemcount+'][action_name]" value="" id="actionname'+itemcount+'"  data-row_id="'+itemcount+'" class="description live_search_action_name new_referral" autocomplete="off"/>';
+			row_html += '<input type="hidden" name="item['+itemcount+'][name]" value="" id="hidd_actionname'+itemcount+'"  autocomplete="off"/>';
+			row_html += '</td>';
+			
+			row_html += '<td align="right" class="action_user_td">';
+			row_html += le_users_select
+			row_html += '</td>';
+
+			row_html += '<td align="right"  class="action_billed_td">';
+			row_html += '<input class="new_billed" type="checkbox" name="item['+itemcount+'][action_billed]" value="-1" id="actionbilled'+itemcount+'"  data-row_id="'+itemcount+'" />';
+			row_html += '</td>';
+			
+			row_html += '<td class="delete_td">';
+			row_html += '<a href="javascript:void(0)" class="remove_item_custom"   data-row_id="'+itemcount+'" id="del_'+itemcount+'"><img src="<?php echo RES_FILE_PATH; ?>/images/action_delete.png" border="0"></a>';
+			row_html += '</td>';
+			
+			row_html += '</tr>';
+			
+			
+			var trInnerHtml = $(' '+row_html+' ');
+		}
+
+		if($('#pseudo_row').length) {			
+			$('#pseudo_row').before(trInnerHtml);
+		} else {			
+			$('#new_med_row_action').before(trInnerHtml);
+		}
+		
+		
+		$('.live_search_action_id').live('change', function() {
+			var input_row = parseInt($(this).attr('id').substr(('actionid').length));
+			reset_actions(input_row);
+		}).liveSearch({
+			url : 'ajax/xbdtactions?mode=action_id&q=',
+			id : 'livesearch_admission_diagnosis',
+			aditionalWidth : '560',
+			noResultsDelay : '900',
+			typeDelay : '900',
+			returnRowId : function(input) {
+				return parseInt($(input).attr('id').substr(('actionid').length));
+			}
+		});
+
+		$('.live_search_action_name').live('change', function() {
+			var input_row = parseInt($(this).attr('id').substr(('actionname').length));
+			reset_actions(input_row);
+		}).liveSearch({
+			url : 'ajax/xbdtactions?q=',
+			id : 'livesearch_admission_diagnosis',
+			aditionalWidth : '0',
+			noResultsDelay : '900',
+			typeDelay : '900',
+			returnRowId : function(input) {
+				return parseInt($(input).attr('id').substr(('actionname').length));
+			}
+		});
+		
+		
+		$('#time' + itemcount).mask("99:99"); //add hours and minute mask
+		$('#time' + itemcount).timepicker({
+			onSelect : function(time_value) {
+				$(this).focus();
+				return false;
+			},
+			minutes : {
+				interval : 5
+			},
+			showPeriodLabels : false,
+			rows : 4,
+			hourText : 'Stunde',
+			minuteText : 'Minute',
+			onSelect: function(){
+				$('#edited' + itemcount).val('1');
+			}
+		});
+		
+		
+		$('#date' + itemcount).mask("99.99.9999");
+		$('#date' + itemcount).datepicker({
+			dateFormat: 'dd.mm.yy',
+			showOn: "both",
+			buttonImage: $('#calImg').attr('src'),
+			buttonImageOnly: true,
+			changeMonth: true,
+			changeYear: true,
+			nextText: '',
+			prevText: '',
+			onSelect: function(){
+				var input_row = parseInt($(this).data('row_id')); //DE EDITAT  EDIAT
+				$('#edited' + input_row).val('1');
+			}
+		
+		});
+		itemcount++;
+		$('#counter').val(itemcount);
+	}
+	
+	
+	function reset_actions(input_row) {
+			$('#hidd_actionid' + input_row).val('');
+			$('#hidd_actionname' + input_row).val('');
+		}
+	function select_actions(did, row) {
+		$('#actionid' + row).val($('#action_id_' + did).val());
+		$('#actionname' + row).val($('#action_name_' + did).val());
+		$('#hidd_actionid' + row).val($('#action_row_id_' + did).val());
+		$('#hidd_actionname' + row).val($('#action_row_id_' + did).val());
+		$('#actionid' + row).blur(); //why you no lost focus?
+		$('#actionname' + row).focus();
+		
+		$('#row_'+row).removeClass("custom")	
+	}
+	
+</script>
+
+<div style="display: none;"><img id="calImg" src="<?php echo RES_FILE_PATH;  ?>/images/calendar.png" alt="Popup" class="trigger"></div>
+<input type="hidden" value="10000" id="counter" />
+<form name="day_structure"  id="day_structure" method="POST" action="">
+<?php if(strlen($this->error_actions) > 0 || strlen($this->error_date) > 0):?>
+<div class="err">
+<?php echo $this->error_actions?>
+<br/>
+<?php echo $this->error_date;?>
+</div>
+<?php endif;?>
+	<table class="table" id="day_structure_table" cellspacing="2" cellpadding="2" width="100%">
+ 
+		<tr class="rowb">
+			<td class="col1 cell">
+				<table class="day_structure">
+					<tr class="tr_th">
+						<th><?php echo $this->translate('xbdt action date'); ?></th>
+						<th><?php echo $this->translate('xbdt action time'); ?></th>
+						<th class="desc_col"><?php echo $this->translate('xbdt action id'); ?></th>
+						<th class="desc_col"><?php echo $this->translate('xbdt action name'); ?></th>
+						<th><?php echo $this->translate('xbdt action user'); ?></th>
+						<th><?php echo $this->translate('billed'); ?></th>
+						<th class="act_col"></th>
+					</tr>
+					<tr id="pseudo_row"></tr>					
+				</table>
+			</td>
+		</tr>
+
+
+		<tr id="new_med_row_action">
+			<td  >
+				<div class="add_new_medi">
+					<a href="javascript:createnewitem()">
+						<img src="<?php echo RES_FILE_PATH; ?>/images/edit_add.png" width="20" height="20" />
+						<span style="line-height: 22px;"><?php echo $this->translate('add_new_item'); ?></span>
+					</a>
+				</div>
+			</td>
+		</tr>
+		
+		<tr class="rowb">
+			<td class="col1 cell">&nbsp;</td>
+		</tr>
+	
+		
+		<tr class="rowb">
+			<td class="col1 cell">&nbsp;</td>
+		</tr>
+	
+		<tr>
+			<td >
+				<input type="hidden" name="preview"  id="preview" value="0" />
+				<input type="hidden" name="form_id" value="<? echo $this->form_id; ?>" />
+				<input type="hidden" value="" id="submit_status" name="submit_status" />
+				<input type="submit" value="<?php echo $this->translate('save'); ?>" id="btnsubmitx" name="save" rel="save"  class="btnsubmit_usersessions"/>
+				<!--<input type="submit" value="<?php echo $this->translate('PDF_generation'); ?>"  name="pdf" rel="pdf" /> -->
+			</td>
+		</tr>
+		
+		
+	</table>
+</form>
+ 

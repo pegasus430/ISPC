@@ -1,0 +1,605 @@
+<?php
+//ISPC-2804,Elena,18.02.2021
+$allowed_medication_types = $this->medication_blocks;
+?>
+<div class="medipreparing">
+    <div><h4>Datum: <?php echo $this->stellliste_date; ?></h4></div>
+    <?php if(intval($this->pdf) != 1) : ?>
+    <input type="button" id="back_to_choice" value="Zurück zur Auswahl" />
+    <?php endif; ?>
+
+<div class="chosen_rooms">
+    <?php if(intval($this->pdf) != 1) : ?>
+    <ul>
+<?php foreach($this->chosenBeds as $bed): ?>
+        <li>
+            <span class="room_nav" data-goto="room_<?php echo $bed['id'] ?>"><?php echo $bed['bed_name'] ?></span>
+        </li>
+<?php endforeach; ?>
+    </ul>
+    <?php endif; ?>
+</div>
+    <div class="chosen_patients">
+        <?php $excludedPatients = 0; ?>
+        <?php foreach($this->patientsData as $ipid => $patdata): ?>
+        <?php if(isset($patdata['patientname'])) : ?>
+        <?php if($patdata['exclude']){$excludedPatients++;continue;} ?>
+        <div class="patdata" >
+            <div class="patdata_title"><span id="room_<?php echo $patdata['bed_id'];?>"><?php echo $patdata['bed_name'] ?></span> <?php echo $patdata['patientname'] ?></div>
+            <?php foreach($patdata['mediplan'] as $medication_type => $mediarray) :?>
+            <?php if(($medication_type != 'actual') && ($medication_type != 'isivmed')){
+                    continue;
+             }
+
+             if($patdata[$medication_type]['exclude']){
+             //echo 'exclude ' . $medication_type . ' ' .$ipid;
+
+             continue;
+             }
+
+             ?>
+            <?php if(intval($this->pdf) != 1) : ?>
+            <span class="gototop" >Nach oben</span>
+            <?php endif; ?>
+            <table class="medikation <?php echo $medication_type; ?>  <?php echo $ipid; ?>" cellspacing="0" cellpadding="0" border="0">
+                <thead>
+                <?php if($medication_type == "isbedarfs" || $medication_type == "actual") { ?><!-- TODO-3247 Carmen 03.07.2020 -->
+                <tr>
+                    <th rowspan="2" colspan="2" class="name">NAME / <span>WIRKSTOFF</span></th>
+                    <th colspan="<?php echo count($patdata['dosage_interval'][$medication_type])?>" class="dosierung">DOSIERUNG</th>
+
+                    <!--<th rowspan="2">INDIKATION / KOMMENTAR</th>
+                    <th rowspan="2">ESKALATION</th>
+                    <th rowspan="2" colspan="2">LETZTE ÄNDERUNG</th>-->
+                </tr>
+                <?php } else { ?>
+                <tr>
+                    <th rowspan="2" colspan="2" class="name">NAME / <span>WIRKSTOFF</span></th>
+                    <th colspan="<?php echo count($patdata['dosage_interval'][$medication_type])?>" class="dosierung">DOSIERUNG</th>
+
+                    <!--<th rowspan="2">INDIKATION / KOMMENTAR</th>
+                    <th rowspan="2" colspan="2">LETZTE ÄNDERUNG</th>-->
+                </tr>
+                <?php } ?>
+                <tr class="time">
+                    <!--  DOSAGE TABLE HEADER KIDS-->
+                    <?php foreach($patdata['dosage_interval'][$medication_type] as $k => $di):?>
+                    <th><?php echo $di;?></th>
+                    <?php endforeach;?>
+                </tr>
+                </thead>
+                <tbody>
+                <?php
+		foreach($patdata['mediplan'][$medication_type] as $k =>$med):?>
+                <?php if($med['exclude']){continue;} ?>
+                <?php
+		    $has_ack_class="";
+
+		    if(($this->acknowledge  == "1" && !empty($med['on_hold_changes'][$med['id']])) || ($this->ModulePrivileges[155] == true && !empty($med['on_hold_changes_offline'][$med['id']]))) :
+                $has_ack_class = "has_ack";
+                endif;
+                ?>
+                <?php
+		    $data_medid= "";
+			if(($this->acknowledge  == "1" && !empty($med['on_hold_changes'][$med['id']])) || ($this->ModulePrivileges[155] == true && !empty($med['on_hold_changes_offline'][$med['id']]))) :
+                $data_medid ='data-medid="'. $med['id'].'"' ;
+                endif;
+                ?>
+
+
+
+                <!--  Check if the medication line - needs multiple rows  -->
+                <?php $row_type = "double";?>
+                <?php $row_span = ' rowspan="2"';?>
+
+                <?php
+        		 $dosage_concentration_line = array();
+        		 foreach($patdata['dosage_intervals'][$medication_type] as $k => $dosage_time):?>
+                <!-- TODO-3624 Ancuta 23.11.2020 -->
+                <?php if (isset($med['dosage'][$dosage_time]) && strlen(trim($med['dosage'][$dosage_time])) > 0 && !empty($med['dosage_concentration'][$dosage_time]) ):?>
+                <?php  $dosage_concentration_line[] =  $med['dosage_concentration'][$dosage_time];?>
+                <?php endif;?>
+                <?php endforeach;?>
+
+                <?php if(empty($med['drug']) && empty($dosage_concentration_line)):?>
+                <?php $row_type = " single";?>
+                <?php $row_span = '';?>
+                <?php endif;?>
+                <!-- end check -->
+
+
+
+
+                <tr  class="<?php echo $row_type; ?> <?php if($row_type =="double"): ?>first <?php endif;?> medication_row_<?php echo $med['id']?> <?php echo $has_ack_class;?>" <?php echo $data_medid?>>
+                <!--TD: Sort/Importance  -->
+                <td class="sortnum" <?php echo $row_span?> ><span> <?php echo $med['importance']; ?></span></td>
+
+                <!--TD: Name  -->
+                <td class="name"><?php echo $med['medication'];?></td>
+
+                <!--TD: Time dosage  -->
+                <?php foreach($patdata['dosage_interval'][$medication_type] as $k => $dosage_time):?>
+                <td class="dosierung"><?php echo $med['dosage'][$dosage_time];?> <?php if (strlen($med['dosage'][$dosage_time]) > 0):?><?php echo $med['unit'];?><?php endif;?></td>
+                <?php endforeach;?>
+
+                <!--TD: Indication + Comment  -->
+               <!-- <td class="ind-comm" <?php echo $row_span?> >
+                <?php if(!empty($med['indication'])):?>
+                <?php if(strlen($med['indication_color']) > 0 ):?>
+                <div class="indikation" style="color:#<?php echo $med['indication_color'];?>"><span class="circle" style="background:#<?php echo $med['indication_color'];?>"></span><?php echo $med['indication'];?></div>
+                <?php else:?>
+                <div class="indikation" style="color:#000000"><span class="circle" style="background:#000000"></span><?php echo $med['indication'];?></div>
+                <?php endif;?>
+                <?php endif;?>
+                <div class="comment extra_padding_left"  id="<?php echo $med['id'];?>_medi_comment" > <?php echo $med['comments'];?> </div>
+                </td>-->
+
+                <!--TD: Escalation  -->
+                <!--<?php if($medication_type == "isbedarfs" || $medication_type == "actual"):?>--><!-- TODO-3247 Carmen 03.07.2020 -->
+                <!--<td class="escalation" <?php echo $row_span; ?>>
+                <div><?php echo $med['escalation']; ?></div>
+                </td>
+                <?php endif;?>-->
+
+                <!--TD: Date+ History  -->
+                <!--<td class="date" <?php echo $row_span?>>
+                <input type="button" name="history" class="btnHistory show_medication_info"   data-medication_type="<?php echo $medication_type; ?>" data-drugplan_id="<?php echo $med['id']; ?>">
+                <div class="date-cont"><?php echo date('d.m.Y',strtotime($med['medication_change']));?></div>
+                </td>-->
+
+                <!--TD: Details-->
+                <!-- 				<td class="details expand_details" <?php echo $row_span?> data-expand_details_id="<?php echo $med['id']?>"></td>
+                ISPC-2329 Lore 16.06.2020    -->
+                <td class="details expand_details" <?php echo $row_span?> data-expand_details_id="<?php echo $med['id']?>" ><button class="expand_details_float" name="btn123" ></button></td>
+                </tr>
+
+
+                <?php if($row_type =="double"): ?>
+                <tr class="<?php echo $row_type; ?> last  last_med_row_<?php echo $med['id']?>  <?php if(($this->acknowledge  == "1" && !empty($med['on_hold_changes'][$med['id']])) || ($this->ModulePrivileges[155] == true && !empty($med['on_hold_changes_offline'][$med['id']]))) :?> has_ack <?php endif; ?>">
+
+                <!--TD: Drug-->
+                <td class="name wirkstoff"><?php echo $med['drug'];?></td>
+
+
+                <?php foreach($patdata['dosage_interval'][$medication_type] as $k => $dosage_time):?>
+                <!--TD: Dosage interval <?php echo $dosage_time;?>-->
+                <td class="dosierung"><?php echo $k; //print_r($dosage_time); ?>
+                    <!-- TODO-3624 Ancuta 23.11.2020 -->
+                    <?php if (strlen($med['dosage'][$dosage_time]) > 0):?>
+                    <?php echo $med['dosage_concentration'][$dosage_time];?>
+                    <?php endif;?>
+                </td>
+                <?php endforeach;?>
+
+                </tr>
+                <?php endif;?>
+
+
+                <tr class="medication_details_row_<?php echo $med['id']?> hide_details expandedItem <?php if(($this->acknowledge  == "1" && !empty($med['on_hold_changes'][$med['id']])) || ($this->ModulePrivileges[155] == true && !empty($med['on_hold_changes_offline'][$med['id']]))) :?> has_ack <?php endif; ?>"  >
+
+                <td colspan="<?php echo $colspan_table; ?>">
+
+                    <h3>APPLIKATIONSWEG, DARREICHUNGSFORM, EINHEIT, ETC</h3>
+
+                    <div class="ei-content">
+
+                        <ul class="item">
+                            <li><span>Konzentration: </span><?php echo $med['concentration_full'];?></li>
+                            <li><span>Einheit: </span><?php echo $med['unit'];?></li>
+                        </ul>
+
+                        <ul class="item">
+                            <li><span>Darreichungsform: </span><?php echo $med['dosage_form'];?></li>
+                            <li><span>Applikationsweg: </span><?php echo $med['type'];?></li>
+                        </ul>
+
+                        <?php if(($medication_type=="actual" || $medication_type=="isivmed" ) && $allow_normal_scheduled == "1"):?>
+                        <?php if($med['has_interval'] == "1"):?>
+                        <ul class="item">
+                            <li><span>Interval(Tage): </span><?php echo $med['days_interval'];?></li>
+                            <?php  if( $med['administration_date'] != "0000-00-00 00:00:00"):?>
+                            <li><span>Intervall zuletzt gestartet: </span>
+                                <?php echo date("d.m.Y",strtotime($med['administration_date']));?>
+                            </li>
+                            <?php if($med['allow_restart'] == "1"):?>
+                            <li><button type="button" class="btnBlue interval_restart interval_settings" data-drug_id="<?php echo $med['id'];?>"  data-medication_type = "<?php echo $medication_type;?>" id="<?php echo $medication_type;?>_<?php echo $med['id'];?>_interval_restart" ><?php echo $this->translate("give medication- Restart start interval")?></button></li>
+                            <?php endif; ?>
+                            <?php else: ?>
+                            <li>
+                                <button type="button" class="btnBlue interval_start interval_settings"  data-drug_id="<?php echo $med['id'];?>"  data-medication_type = "<?php echo $medication_type;?>"  id="<?php echo $medication_type;?>_<?php echo $med['id'];?>_interval_start" ><?php echo $this->translate("give medication- start interval")?></button>
+                            </li>
+                            <?php endif; ?>
+                        </ul>
+                        <?php endif;?>
+                        <?php endif;?>
+
+                        <?php if($medication_type=="isintubated" ):?>
+                        <ul class="item">
+                            <li><span>Kcal: </span><?php echo $med['kcal'];?></li>
+                            <li><span>Volumen: </span><?php echo $med['volume'];?></li>
+                            <li><span>Kammerbeutel Info: </span><?php echo $med['packaging_name'];?></li>
+                        </ul>
+                        <?php endif;?>
+
+                        <?php if(!empty($med['prescribed_by'])):?>
+                        <ul class="item">
+                            <li>
+                                <span><?php echo $this->translate('medication_prescribed_by');?></span> <?php echo $med['prescribed_by'];?>
+                            </li>
+                        </ul>
+                        <?php endif;?>
+
+                    </div>
+                </td>
+                </tr>
+
+                <!--  ##############- Online -########################## -->
+                <?php if( $this->acknowledge  == "1" && ! empty($med['on_hold_changes'][$med['id']] )) : ?>
+                <?php
+			    $online_on_hold_changes = array();
+			    $online_on_hold_changes = $med['on_hold_changes'][$med['id']];
+				$ack_referance_txt = array();
+                $ack_referance_del = array();
+                $ack_referance_txt[$med['id']]="";
+				$ack_referance_del[$med['id']] = "";
+
+				  if($med['on_hold_changes'][$med['id']]['status'] == "delete")
+				  {
+					 $ack_referance_txt[$med['id']] = '<span class="blue_text">'.$this->translate("Unapproved changes: ").'</span>';
+                $ack_referance_del[$med['id']] = '<span class="red_text">'.$this->translate("Delete medication: ").'</span>';
+                }
+                else if($med['on_hold_changes'][$med['id']]['status'] == "new")
+                {
+                $ack_referance_txt[$med['id']] = '<span class="green_text">'.$this->translate("Unapproved newly added medication: ").'</span>';
+                $ack_referance_del[$med['id']] = '';
+                }
+                else
+                {
+                $ack_referance_txt[$med['id']] = '<span class="blue_text">'.$this->translate("Unapproved changes: ").'</span>';
+                $ack_referance_del[$med['id']] = '';
+                }
+
+
+                if($this->approval_rights == "1")
+                {
+                $app_rights = '<button class="med_approve_rights approvem" data-action="approve" data-recordid="'.$med['id'].'" data-alt_id="'.$med['on_hold_changes'][$med['id']]['alt_id'].'">'.$this->translate("Approve").'</button><button class="med_approve_rights denym"   data-action="decline" data-recordid="'.$med['id'].'" data-alt_id="'.$med['on_hold_changes'][$med['id']]['alt_id'].'">'.$this->translate("Decline").'</button>';
+                $approve = '<button class="med_approve_rights approvem" data-action="approve" data-recordid="'.$med['id'].'" data-alt_id="'.$med['on_hold_changes'][$med['id']]['alt_id'].'">'.$this->translate("Approve").'</button>';
+                $deny = '<button class="med_approve_rights denym"   data-action="decline" data-recordid="'.$med['id'].'" data-alt_id="'.$med['on_hold_changes'][$med['id']]['alt_id'].'">'.$this->translate("Decline").'</button>';
+                }
+                else
+                {
+                $app_rights = '';
+                $approve = '';
+                $deny = '';
+                }
+                ?>
+
+                <tr class="double extedned_ack  ack_medication_row_<?php echo $med['id']?> " >
+
+                    <!-- TD: Sort -->
+                    <td class="sortnum" rowspan="2"> </td>
+
+
+                    <!-- TD: Name +  Ack Referance -->
+                    <td class="name">
+                        <?php echo $ack_referance_txt[$med['id']];?><br/><br/>
+                        <?php echo $online_on_hold_changes['name'];?>
+                    </td>
+
+
+                    <?php foreach($patdata['dosage_interval'][$medication_type] as $k => $dosage_time):?>
+                    <!-- TD: Dosage- timeintervals -->
+                    <td class="dosierung"><?php echo $online_on_hold_changes['dosage'][$dosage_time];?>
+                        <?php if ($this->show_new_fileds == "1" && strlen($online_on_hold_changes['dosage'][$dosage_time]) > 0):?><?php echo $online_on_hold_changes['unit'];?><?php endif;?></td>
+                    <?php endforeach;?>
+
+
+                    <!-- TD: Indication and Comment -->
+                    <td class="ind-comm" rowspan="2">
+                        <?php if(!empty($online_on_hold_changes['indication'])):?>
+                        <?php if(strlen( $online_on_hold_changes['indication_color']) > 0):?>
+                        <div class="indikation" style="color:#<?php echo $online_on_hold_changes['indication_color'];?>"><span class="circle" style="background:#<?php echo $online_on_hold_changes['indication_color'];?>"></span><?php echo $online_on_hold_changes['indication'];?> </div>
+                        <?php else:?>
+                        <div class="indikation" style="color:#000000"><span class="circle" style="background:#000000"></span><?php echo  $online_on_hold_changes['indication'];?></div>
+                        <?php endif;?>
+                        <?php endif;?>
+                        <div class="comment extra_padding_left"  id="<?php echo $med['id'];?>_medi_comment">
+                            <?php echo $online_on_hold_changes['comments'];?>
+                        </div>
+                    </td>
+
+                    <!--TD: Escalation  -->
+                    <?php if($medication_type == "isbedarfs" || $medication_type == "actual"):?><!-- TODO-3247 Carmen 03.07.2020 -->
+                    <td class="escalation" rowspan="2">
+                        <div><?php echo $online_on_hold_changes['escalation']; ?></div>
+                    </td>
+                    <?php endif;?>
+
+                    <!-- TD: Date -->
+                    <td class="date" rowspan="2">
+                        <div class="date-cont"><?php echo date('d.m.Y',strtotime($online_on_hold_changes['medication_change_date']));?></div>
+                    </td>
+
+                    <!-- TD: Details -->
+                    <td class="details ack_expand_details" rowspan="2" data-expand_details_id="<?php echo $med['id']?>"></td>
+                </tr>
+
+                <tr class="double last extedned_ack">
+
+                    <!-- TD: Drug-->
+                    <td class="name wirkstoff"><?php echo $online_on_hold_changes['drug'];?></td>
+
+                    <?php foreach($patdata['dosage_interval'][$medication_type] as $k => $dosage_time):?>
+                    <!-- TD: Doseiges value per interval: -->
+                    <td class="dosierung">
+                        <!-- TODO-3624 Ancuta 23.11.2020 -->
+                        <?php if ($this->show_new_fileds == "1" && strlen($online_on_hold_changes['dosage'][$dosage_time]) > 0):?>
+                        <?php echo $online_on_hold_changes['dosage_concentration'][$dosage_time];?>
+                        <?php endif;?>
+                    </td>
+                    <?php endforeach;?>
+                </tr>
+
+
+                <tr class="ack_medication_details_row_<?php echo $med['id']?> hide_details expandedItem extedned_ack" >
+
+                    <td colspan="11"><!-- TODO 3247 Carmen 03.07.2020 -->
+
+                        <h3>APPLIKATIONSWEG, DARREICHUNGSFORM, EINHEIT, ETC</h3>
+
+                        <div class="ei-content">
+
+                            <ul class="item">
+                                <li><span>Konzentration: </span><?php echo $online_on_hold_changes['concentration'];?></li>
+                                <li><span>Einheit: </span><?php echo $online_on_hold_changes['unit'];?></li>
+                            </ul>
+
+                            <ul class="item">
+                                <li><span>Darreichungsform: </span><?php echo $online_on_hold_changes['dosage_form'];?></li>
+                                <li><span>Applikationsweg: </span><?php echo $online_on_hold_changes['type'];?></li>
+                            </ul>
+
+                            <?php if( ($medication_type=="actual" || $medication_type=="isivmed") && $allow_normal_scheduled == "1"):?>
+                            <?php if($online_on_hold_changes['has_interval'] == "1"):?>
+                            <ul class="item">
+                                <li><span>Interval(Tage): </span><?php echo $online_on_hold_changes['days_interval'];?></li>
+                                <?php  if( $online_on_hold_changes['administration_date'] != "0000-00-00 00:00:00"):?>
+                                <li><span>Intervall zuletzt gestartet: </span>
+                                    <?php echo date("d.m.Y",strtotime($online_on_hold_changes['administration_date']));?>
+                                </li>
+                                <?php endif; ?>
+                            </ul>
+                            <?php endif;?>
+                            <?php endif;?>
+
+                            <?php if($medication_type=="isintubated" ):?>
+                            <ul class="item">
+                                <li><span>Kcal: </span><?php echo $online_on_hold_changes['kcal'];?></li>
+                                <li><span>Volumen: </span><?php echo $online_on_hold_changes['volume'];?></li>
+                                <li><span>Kammerbeutel Info: </span><?php echo $online_on_hold_changes['packaging_name'];?></li>
+                            </ul>
+                            <?php endif;?>
+
+
+                            <?php if( !empty($online_on_hold_changes['prescribed_by'])):?>
+                            <ul class="item">
+                                <li><span><?php echo $this->translate('medication_prescribed_by');?>: </span><?php echo $online_on_hold_changes['prescribed_by'];?></li>
+                            </ul>
+                            <?php endif;?>
+
+
+
+                            <ul class="item">
+                                <li><?php echo $approve; ?></li>
+                                <li><?php echo $deny; ?></li>
+                            </ul>
+
+                        </div>
+
+                    </td>
+
+                </tr>
+
+                <?php  endif;?>
+                <!--  ##############- Online END-########################## -->
+
+
+                <!--  ##############- Offline-########################## -->
+                <?php if($this->ModulePrivileges[155] == true && ! empty($med['on_hold_changes_offline'][$med['id']])) : ?>
+                <!-- offline changes moderate -->
+                <?php
+                    foreach ($med['on_hold_changes_offline'][$med['id']] as $on_hold_changes ) :
+
+                        $ack_referance_txt = "";
+                        $ack_referance_del = "";
+                        switch($on_hold_changes['status']) {
+                            case 'delete' :
+                                $ack_referance_txt = '<span class="blue_text">'.$this->translate("Offline Unapproved changes: ").'</span>';
+                $ack_referance_del = '<span class="red_text">'.$this->translate("Offline Delete medication: ").'</span>';
+                break;
+
+                case 'new' :
+                $ack_referance_txt = '<span class="green_text">'.$this->translate("Offline Unapproved newly added medication: ").'</span>';
+                $ack_referance_del = '';
+                break;
+
+                case 'edit' :
+                $ack_referance_txt = '<span class="blue_text">'.$this->translate("Offline Unapproved Edit changes: ").'</span>';
+                $ack_referance_del = '';
+                break;
+
+                default :
+                $ack_referance_txt = '<span class="blue_text">'.$this->translate("Offline Unapproved changes: ").'</span>';
+                $ack_referance_del = '';
+                break;
+                }
+
+
+
+                if($this->approval_rights == "1")
+                {
+                $app_rights = '<button class="med_approve_rights approvem" data-action="approve" data-recordid="'.$med['id'].'" data-alt_id="'.$on_hold_changes['alt_id'].'">'.$this->translate("Offline Approve").'</button><button class="med_approve_rights denym"   data-action="decline" data-recordid="'.$med['id'].'" data-alt_id="'.$on_hold_changes['alt_id'].'">'.$this->translate("Offline Decline").'</button>';
+                $approve = '<button class="med_approve_rights approvem" data-action="approve" data-recordid="'.$med['id'].'" data-alt_id="'.$on_hold_changes['alt_id'].'">'.$this->translate("Offline Approve").'</button>';
+                $deny = '<button class="med_approve_rights denym"   data-action="decline" data-recordid="'.$med['id'].'" data-alt_id="'.$on_hold_changes['alt_id'].'">'.$this->translate("Offline Decline").'</button>';
+                }
+                else
+                {
+                $app_rights = '';
+                $approve = '';
+                $deny = '';
+                }
+                ?>
+
+                <tr class="double extedned_ack  offline_ack_medication_row_<?php echo $med['id']?> " >
+
+                    <!-- TD: Sort  -->
+                    <td class="sortnum" rowspan="2"> </td>
+
+                    <!-- TD: Name  -->
+                    <td class="name">
+                        <?php echo $ack_referance_txt;?><br/><br/>
+                        <?php echo $on_hold_changes['name'];?>
+                    </td>
+
+                    <?php foreach($patdata['dosage_interval'][$medication_type] as $k => $dosage_time):?>
+                    <!-- TD:Dosage per intervals  -->
+                    <td class="dosierung"><?php echo $on_hold_changes['dosage'][$dosage_time];?>
+                        <?php if ($this->show_new_fileds == "1" && strlen($on_hold_changes['dosage'][$dosage_time]) > 0):?><?php echo $on_hold_changes['unit'];?><?php endif;?></td>
+                    <?php endforeach;?>
+
+
+                    <!-- TD:Indication comment  -->
+                    <td class="ind-comm" rowspan="2">
+                        <?php if(!empty($on_hold_changes['indication'])):?>
+                        <?php if(strlen( $on_hold_changes['indication_color']) > 0):?>
+                        <div class="indikation" style="color:#<?php echo $on_hold_changes['indication_color'];?>"><span class="circle" style="background:#<?php echo $on_hold_changes['indication_color'];?>"></span><?php echo $on_hold_changes['indication'];?> </div>
+                        <?php else:?>
+                        <div class="indikation" style="color:#000000"><span class="circle" style="background:#000000"></span><?php echo  $on_hold_changes['indication'];?></div>
+                        <?php endif;?>
+                        <?php endif;?>
+                        <div class="comment extra_padding_left"  id="<?php echo $med['id'];?>_medi_comment">
+                            <?php echo $on_hold_changes['comments'];?>
+                        </div>
+                    </td>
+
+                    <!--TD: Escalation  -->
+                    <?php if($medication_type == "isbedarfs" || $medication_type == "actual"):?><!-- TODO-3247 Carmen 03.07.2020 -->
+                    <!--<td class="escalation" rowspan="2">
+                        <div><?php echo $on_hold_changes['escalation']; ?></div>
+                    </td>-->
+                    <?php endif;?>
+
+                    <!-- TD: Date  -->
+                    <td class="date" rowspan="2">
+                        <div class="date-cont"><?php echo date('d.m.Y',strtotime($on_hold_changes['medication_change_date']));?></div>
+                    </td>
+
+                    <!-- TD: Details-->
+                    <td class="details offline_ack_expand_details" rowspan="2" data-expand_details_id="<?php echo $med['id']?>"></td>
+                </tr>
+
+                <tr class="double last extedned_ack">
+
+                    <!-- TD: Drug-->
+                    <td class="name wirkstoff"><?php echo $on_hold_changes['drug'];?></td>
+
+
+                    <?php foreach($patdata['dosage_interval'][$medication_type] as $k => $dosage_time):?>
+
+                    <!-- TD: Dosage-->
+                    <td class="dosierung">
+                        <!-- TODO-3624 Ancuta 23.11.2020 -->
+                        <?php if ($this->show_new_fileds == "1" && strlen($on_hold_changes['dosage_concentration'][$dosage_time]) > 0):?>
+                        <?php echo $on_hold_changes['dosage_concentration'][$dosage_time];?>
+                        <?php endif;?>
+                    </td>
+                    <?php endforeach;?>
+                </tr>
+
+                <tr class="offline_ack_medication_details_row_<?php echo $med['id']?> hide_details expandedItem extedned_ack" >
+
+                    <td colspan="11"><!-- TODO-3247 Carmen 03.07.2020 -->
+
+                        <h3>APPLIKATIONSWEG, DARREICHUNGSFORM, EINHEIT, ETC</h3>
+
+                        <div class="ei-content">
+
+                            <ul class="item">
+                                <li><span>Konzentration: </span><?php echo $on_hold_changes['concentration'];?></li>
+                                <li><span>Einheit: </span><?php echo $on_hold_changes['unit'];?></li>
+                            </ul>
+
+                            <ul class="item">
+                                <li><span>Darreichungsform: </span><?php echo $on_hold_changes['dosage_form'];?></li>
+                                <li><span>Applikationsweg: </span><?php echo $on_hold_changes['type'];?></li>
+                            </ul>
+
+                            <?php if( ($medication_type=="actual" || $medication_type=="isivmed") && $allow_normal_scheduled == "1"):?>
+                            <?php if($on_hold_changes['has_interval'] == "1"):?>
+                            <ul class="item">
+                                <li><span>Interval(Tage): </span><?php echo $on_hold_changes['days_interval'];?></li>
+                                <?php  if( $on_hold_changes['administration_date'] != "0000-00-00 00:00:00"):?>
+                                <li><span>Intervall zuletzt gestartet: </span>
+                                    <?php echo date("d.m.Y",strtotime($on_hold_changes['administration_date']));?>
+                                </li>
+                                <?php if($med['allow_restart'] == "1"):?>
+                                <li><button type="button" class="btnBlue interval_restart interval_settings" data-drug_id="<?php echo $med['id'];?>"  data-medication_type = "<?php echo $medication_type;?>" id="<?php echo $medication_type;?>_<?php echo $med['id'];?>_interval_restart" ><?php echo $this->translate("give medication- Restart start interval")?></button></li>
+                                <?php endif; ?>
+                                <?php else: ?>
+                                <li>
+                                    <button type="button" class="btnBlue interval_start interval_settings"  data-drug_id="<?php echo $med['id'];?>"  data-medication_type = "<?php echo $medication_type;?>"  id="<?php echo $medication_type;?>_<?php echo $med['id'];?>_interval_start" ><?php echo $this->translate("give medication- start interval")?></button>
+                                </li>
+                                <?php endif; ?>
+                            </ul>
+                            <?php endif;?>
+                            <?php endif;?>
+
+
+                            <?php if($medication_type=="isintubated" ):?>
+                            <ul class="item">
+                                <li><span>Kcal: </span><?php echo $on_hold_changes['kcal'];?></li>
+                                <li><span>Volumen: </span><?php echo $on_hold_changes['volume'];?></li>
+                                <li><span>Kammerbeutel Info: </span><?php echo $on_hold_changes['packaging_name'];?></li>
+                            </ul>
+                            <?php endif;?>
+
+                            <ul class="item">
+                                <li><?php echo $approve; ?></li>
+                                <li><?php echo $deny; ?></li>
+                            </ul>
+
+                        </div>
+
+                    </td>
+
+                </tr>
+
+                <?php endforeach; ?>
+                <?php endif;?>
+                <!--  ##############- Offline END -########################## -->
+
+                <tr class="separator">
+                    <td colspan="<?php echo $colspan_table?>"> </td>
+                </tr>
+                <?php endforeach;?>
+
+                </tbody>
+            </table>
+
+
+            <?php endforeach; ?>
+
+
+        </div>
+        <?php endif; ?>
+        <?php endforeach; ?>
+        <?php if($excludedPatients == (count($this->patientsData))) : ?>
+        Zu Ihrer Auswahl sind keine Daten vorhanden
+        <?php endif; ?>
+    </div>
+</div>
+<div class="tools_bottom">
+<input type="button" class="btnBlue btn_tool" data-value="pdf" value="PDF erstellen">
+
+<input type="button" class="btnBlue btn_tool" data-value="prepare" value="Als gestellt markieren">
+</div>

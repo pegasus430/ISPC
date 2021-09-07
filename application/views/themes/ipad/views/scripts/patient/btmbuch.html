@@ -1,0 +1,387 @@
+<script type="text/javascript">
+var jsmedcount = 1;
+var medcount = 1;
+var jsusers = 1;
+var medblur = Array();
+
+	function isNumeric(value) {
+		if (value != null && !value.toString().match(/^[0-9]*$/)) return false;
+		return true;
+	}
+
+	$(function() {
+		$(".plus").live('click', function(){ //open plus modal
+			$("#operation").val(1);
+			//set medicationid
+			$("#medicationId").val($(this).parent().parent().attr('id'));
+
+			//set userid
+
+			//show plus method and disable+hide minus methods
+			$('#methodSelectPlus').show();
+			$('#methodSelectPlus').attr('disabled', false);
+
+			$('#methodSelectMinus').hide();
+			$('#methodSelectMinus').attr('disabled', true);
+
+
+			$("#operationmodal").dialog( "open" );
+		});
+
+
+		$(".minus").live('click', function(){ //open plus modal
+			$("#operation").val(2);
+			//set medicationid
+			$("#medicationId").val($(this).parent().parent().attr('id'));
+
+
+			//set userid
+			//show minus methods and disable+hide plus methods
+			$('#methodSelectPlus').hide();
+			$('#methodSelectPlus').attr('disabled', true);
+
+			$('#methodSelectMinus').show();
+			$('#methodSelectMinus').attr('disabled', false);
+
+			$("#operationmodal").dialog( "open" );
+		});
+
+		$('#addnewtrakingmed').live("click", function(){
+			$("#addnewmodal").dialog("open");
+			$('#ui-dialog-title-addnewmodal').html("Neues BTM hinzufügen");
+		});
+
+		$( "#operationmodal" ).dialog({
+			autoOpen: false,
+			resizable: false,
+			height: 255,
+			width: 400,
+			modal: true,
+			buttons: {
+				"Speichern": function(){
+					var submit_btm = '0';
+					
+					switch($('#operation').val()){
+						case "1": //+
+							if($('#methodSelectPlus').val() != '10'){
+								//dont perform this check on method 10 Lieferung (there is no user slect)
+								var amount	=	parseInt($('#amount').val());
+								var medId		=	parseInt($('#medicationId').val());
+								var userId	=	parseInt($('#selectUser').val());
+
+								var amountUser = parseInt($('#user-amount-'+userId+'-'+medId).html());
+
+								if(amount <= 0 || isNaN(amount)){
+									$('#ErrorPlacement').html("Die Menge muss größer Null sein");
+								} else if(amount > amountUser){
+									$('#ErrorPlacement').html("Die hinzugefügte Menge muss kleiner gleich der verfügbaren Menge sein ("+amountUser+")");
+								} else {
+									$('#ErrorPlacement').html("");
+// 									$('#performoperation').submit();
+									var submit_btm = '1';
+								}
+							} else {
+								var amount	=	parseInt($('#amount').val());
+								
+								if(amount <= 0 || isNaN(amount)){
+									$('#ErrorPlacement').html("Die Menge muss größer Null sein");
+								} else {
+								$('#ErrorPlacement').html("");
+// 									$('#performoperation').submit();
+									var submit_btm = '1';
+							}
+							}
+
+							var method = $('#methodSelectPlus').val();
+						
+						
+							break;
+
+						case "2":
+							var amount	=	parseInt($('#amount').val());
+							var medId		=	parseInt($('#medicationId').val());
+							var userId	=	parseInt($('#selectUser').val());
+
+							var amountPatient = parseInt($('#patient-amount-'+medId).html());
+							if(amount <= 0 || isNaN(amount)){
+								$('#ErrorPlacement').html("Die Menge muss größer Null sein");
+							} else if(amount > amountPatient){
+								$('#ErrorPlacement').html("Die hinzugefügte Menge muss kleiner gleich der verfügbaren Menge sein.("+amountPatient+")");
+							} else {
+								$('#ErrorPlacement').html("");
+// 								$('#performoperation').submit();
+								var submit_btm = '1';
+							}
+							
+							var method = $('#methodSelectMinus').val();
+							
+							break;
+					}
+					
+					if(submit_btm == "1")						
+					{
+						
+						//verify if BTM medis amount if greater than 1
+						if (Math.abs(parseInt($('#amount').val())) > 1){
+							jConfirm('<?php echo $this->translate('btm_over_1_alert_message'); ?>', '<?php echo $this->translate('btm_over_1_alert_title'); ?>', function(r) {
+								if(r) {
+									ajax_clientbtmbuchcheck(method);
+								}
+							});
+						}
+						else{
+						
+							ajax_clientbtmbuchcheck(method);
+							
+						}	
+						
+						
+						
+					}
+					
+				}
+			},
+			open: function() {
+				$('#methodSelectPlus').val('');
+				$('#methodSelectMinus').val('');
+				$('#amount').val('');
+				$('#ErrorPlacement').html(' ');
+
+				$(".selectUserDiv").each(function(){$(this).hide();});
+				$("#sonstigeMore").hide();
+
+				if($("#methodSelectPlus").val() == 7){
+					$(".selectUserDiv").each(function(){$(this).show();});
+					$("#selectUser").attr('disabled', false);
+				} else {
+					$(".selectUserDiv").each(function(){$(this).hide();});
+				}
+
+				if($("#methodSelectMinus").val() == 9){
+					$(".selectUserDiv").each(function(){$(this).show();});
+					$("#selectUser").attr('disabled', false);
+				} else {
+					$(".selectUserDiv").each(function(){$(this).hide();});
+				}
+
+				$("#methodSelectPlus").live('change', function(){
+					if($(this).val() == 7){
+						$(".selectUserDiv").each(function(){$(this).show("slow");});
+						$("#selectUser").attr('disabled', false);
+					} else {
+						$(".selectUserDiv").each(function(){$(this).hide("slow");});
+					}
+				});
+
+				$("#methodSelectMinus").live('change', function(){
+					if($(this).val() == 9){
+						$(".selectUserDiv").each(function(){$(this).show("slow");});
+						$("#selectUser").attr('disabled', false);
+					} else {
+						$(".selectUserDiv").each(function(){$(this).hide("slow");});
+					}
+					
+					if($(this).val() == 11){
+						$("#sonstigeMore").show("slow");
+					} else {
+						$("#sonstigeMore").hide("slow");
+					}
+				});
+
+				//append to user the amount of medication
+//				var medId		=	parseInt($('#medicationId').val());
+//				$('#selectUser option').each(function(){
+//					var label = $(this).attr('label').split('-');
+//					var text  = $(this).text().split('-');
+//					var exists = 0; //if exists=1 then we have already numbers inserted
+//					for(var i=text.length;i--;){
+//						if(text[i] == parseInt($('#user-amount-'+$(this).val()+'-'+medId).html()) ){
+//							var exists = 1;
+//						}
+//					}
+//					if(exists == "0"){
+//						$(this).attr('label', ''+$(this).text() + ' - ' +$('#user-amount-'+$(this).val()+'-'+medId).html()+'');
+//						$(this).text(''+$(this).text() + ' - ' +$('#user-amount-'+$(this).val()+'-'+medId).html()+'');
+//					}
+//				});
+						}
+				});
+		
+		
+		function  ajax_clientbtmbuchcheck(method)
+		{
+				$.ajax({
+							type: 'POST',
+							url: 'ajax/btmbuchcheck?id=<?php echo $_REQUEST["id"]; ?>',
+							data: {
+								date: "<?php echo date('d.m.Y',time()); ?>",
+								time:  "<?php echo date('H:i',time()); ?>",
+								method: method,
+								medicationid: $('#medicationId').val(),
+								selectUser: $('#selectUser').val(),
+								amount: Math.abs(parseInt($('#amount').val())),
+								amount_source: "p"// this can be from patient, as in btm page te consumption is taken only from pateint
+							},
+							success:function(jdata){
+								var data = jQuery.parseJSON(jdata);
+								
+								
+								
+								if(data.date_error == "")
+								{
+									if(data.allow_operation == "1")
+									{
+										$('#performoperation').submit();
+										$(":button:contains('Speichern')").attr("disabled","disabled").addClass("ui-state-disabled");
+									} 
+									else 
+									{
+										alert("<?php echo $this->translate('Please check the medication stock - it was recently modified');?>")
+									}
+								}
+								else
+								{
+									if(data.allow_operation == "0")
+									{
+										alert("<?php echo $this->translate('Please check the medication stock - it was recently modified');?>")
+									} 
+									else
+									{
+										
+										alert(data.date_error)
+									}
+								}
+							}
+						});
+		}
+		
+		$( "#addnewmodal" ).dialog({
+			autoOpen: false,
+			resizable: false,
+			height: 355,
+			width: 450,
+			modal: true,
+			buttons: {
+				"Speichern": function(){
+					$('#addnewform').submit();
+				}
+			},
+			open: function() {
+				$(".livesearchmedinp").bind('keyup',function(e){livemedicationsearchkeupBtm(e,$(this))});
+
+				$(".livesearchmedinp").blur(function(){
+
+					var id = $(this).attr('id').substr(('medication').length);
+					var t = setTimeout(function(){
+						$('#medidropdown'+id).hide();
+					},5);
+
+
+				});
+				$(".livesearchdropdown").bind('mousedown',function(){
+
+					var self = this;
+					var id = $(this).attr('id').substr(('medidropdown').length);
+
+					var t = setTimeout(function(){
+						$(self).show();$("#medication"+id).focus();
+					},50);
+				});
+			}
+		});
+	});
+</script>
+<script type="text/javascript" src="<? echo RES_FILE_PATH;  ?>/javascript/livesearch/medication.js"></script>
+
+<?php echo $this->patientinfo ?>
+<?php echo $this->tabmenus ?>
+
+<div class="tab_container">
+	<a href="javascript:void(0);" id="addnewtrakingmed" >Neues BTM hinzufügen</a>
+	<?php echo $this->btmpatientgrid; ?>
+	<br /><br />
+	<?php echo $this->btmverlaufgrid; ?>
+</div>
+
+<div id="operationmodal" >
+	<div id="contactArea" >
+		<form action="" id="performoperation" method="POST" onsubmit="return checkclientchanged();" >
+		<table border="0" cellspacing="2" cellpadding="2" style="width:100%">
+			<tbody>
+				<tr>
+					<td><label for="amount"><? echo $this->translate('amount');?></label></td>
+					<td><input type="text" value="" name="amount" id="amount" /></td>
+					<td>
+						<input type="hidden" id="operation" value="" name="operation" />
+						<input type="hidden" id="medicationId" value="" name="medicationid" />
+						<input type="hidden" id="amount_source" value="p" name="amount_source" />
+					</td>
+				</tr>
+				<tr>
+					<td><label for="method"><? echo $this->translate('method');?></label></td>
+					<td>
+						<select name="method" id="methodSelectPlus" >
+							<option value=""><? echo $this->translate('selectmethod');?></option>
+							<option value="7"><?php echo $this->translate('btm_patient_7'); ?></option>
+							<?php if($this->lieferung_method): ?>
+							<option value="10"><?php echo $this->translate('btm_patient_10'); ?></option>
+							<?php endif; ?>
+						</select>
+						<select name="method" id="methodSelectMinus">
+							<option value=""><? echo $this->translate('selectmethod');?></option>
+							<option value="8"><?php echo $this->translate('btm_patient_8'); ?></option>
+							<option value="9"><?php echo $this->translate('btm_patient_9'); ?></option>
+							<option value="11"><?php echo $this->translate('btm_patient_11'); ?></option>
+						</select>
+					</td>
+					<td></td>
+				</tr>
+				<tr id="sonstigeMore">
+					<td>
+						<label><? echo $this->translate('sonstige_more_field');?></label>
+					</td>
+					<td>
+						<input type="text" name="sonstige_more" id="sonstige_more" value="" />
+					</td>
+					<td></td>
+				</tr>
+				<tr id="selectUserRow">
+					<td>
+						<div class="selectUserDiv"><label><? echo $this->translate('selectuser');?></label></div>
+					</td>
+					<td>
+						<div class="selectUserDiv"><?php echo $this->usersSelect[$this->userid]; ?></div>
+						<div class="" style="display:none"><?php echo $this->formSelect('selectUser', $this->userid, null, $this->usersSelect); ?></div></td>
+					<td></td>
+				</tr>
+				<tr>
+					<td colspan="3" id="ErrorPlacement">
+
+					</td>
+				</tr>
+				<tr>
+					<td></td>
+					<td></td>
+					<td></td>
+				</tr>
+			</tbody>
+		</table>
+	</form>
+	</div>
+</div>
+
+
+<div id="addnewmodal" >
+	<div id="contactArea" >
+		<form action="" id="addnewform" method="POST" >
+		<?php if($this->medicationSelector): ?>
+			<?php echo $this->formSelect('add[hidd_medication][1]', '', array("style"=>"width:100%;height:30px;"), $this->medicationSelector); ?>
+		<?php else: ?>
+			<?php echo $this->translate('btm_user_no_medication'); ?>
+		<?php endif; ?>
+
+		<div id="medidropdown1" style="display:none;" class="listPatMedEd livesearchdropdown"></div>
+		<input type="hidden" name="addnew" value="" id="addnew" />
+		</form>
+	</div>
+</div>

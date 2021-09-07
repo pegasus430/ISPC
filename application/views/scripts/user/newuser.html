@@ -1,0 +1,194 @@
+<!--  ISPC-2578, elena, 15.09.2020 -->
+<style>
+   #newuserrequest .error{
+        color: red;
+        margin: 5px;
+       width: 80%;
+    }
+   #newuserrequest label{
+       display: inline-block;
+       min-width: 150px;
+       margin-right: 10px;
+   }
+   #newuserrequest input[type='text']{
+       width: 100%;
+   }
+
+   #address, #note{
+       width: 100%;
+   }
+   #suc{
+       color: green;
+       display:block;
+   }
+   .desc{font-weight:bold;}
+
+</style>
+<script>
+    //ISPC-2913,Elena,11.05.2021
+    //@see https://www.tutorialspoint.com/How-to-validate-email-using-jQuery
+    function isEmail(email) {
+        var regex = /^([a-zA-Z0-9_\.\-\+])+\@(([a-zA-Z0-9\-])+\.)+([a-zA-Z0-9]{2,4})+$/;
+        if (!regex.test(email)) {
+            return false;
+        } else {
+            return true;
+        }
+    }
+    $(document).ready(function(){
+
+        validateInput = function(){
+            var isValidate = true;
+            var groupValue = $("input[name='usergroup']:checked").val();
+            if(groupValue === undefined || groupValue === '') {
+                isValidate = false;
+                console.log('gruppe fehlt');
+                $('#usergroup_error').html('Bitte wählen Sie eine Benutzergruppe aus');
+            }
+            var authValue = $("input[name='auth_variant']:checked").val();
+            if(authValue === undefined || authValue === '') {
+                isValidate = false;
+                console.log('auth fehlt');
+                $('#auth_error').html('Bitte wählen Sie eine Authentifizierungsmethode aus');
+            }
+            var lastnameValue = $('#lastname').val();
+            if(lastnameValue === '') {
+                isValidate = false;
+                console.log('last fehlt');
+                $('#lastname_error').html('Bitte tragen sie den Nachnamen ein');
+            }
+            var firstnameValue = $('#firstname').val();
+            if(firstnameValue === '') {
+                isValidate = false;
+                console.log('last fehlt');
+                $('#firstname_error').html('Bitte tragen sie den Vornamen ein');
+            }
+            var addrValue = $('#address').val();
+            if(addrValue === '') {
+                isValidate = false;
+                console.log('addr fehlt');
+                $('#address_error').html('Bitte tragen sie die Versandadresse ein');
+            }
+            //ISPC-2913,Elena,11.05.2021
+            var emailValue = $('#email_feedback').val();
+            if(!isEmail(emailValue)){
+                isValidate = false;
+                console.log('addr fehlt');
+                $('#email_feedback_error').html('Bitte tragen sie eine gültige E-Mail-Addresse ein');
+            }
+
+            return isValidate;
+        }
+
+        $('#address, #lastname, #firstname,#email_feedback, #address, input[name=\'usergroup\'], input[name=\'auth_variant\']').on('change', function(){ //ISPC-2913,Elena,11.05.2021
+            $('.error').html('');
+            $('#suc').html('');
+        })
+
+        $('#sendreq').on('click', function(e){
+            e.preventDefault();
+            $('.error').html('');
+            var retValidate = validateInput();
+            if(retValidate){
+                console.log('to submit');
+                $('#newuserrequest').submit();
+            }
+
+        })
+    });
+</script>
+<div>
+<?php if($_REQUEST['flg'] == 'suc'): ?>
+    <span id="suc">Ihre Anfrage wurde verschickt</span>
+<?php endif; ?>
+    <h2>Anfrage: neuen Benutzer anlegen</h2>
+<form method="post" id="newuserrequest">
+
+    <fieldset>
+        <p class="desc">Bitte geben Sie die gewünschte Benutzergruppe an: *</p>
+        <span class="error" id="usergroup_error"></span>
+        <?php foreach($this->client_usergroups_array as $usergroup ) : ?>
+        <p>
+            <!-- TODO-3578, elena, 09.11.2020 -->
+            <?php if($usergroup['isdelete'] == 0 ): ?>
+            <input type="radio" id="gr_<?php echo $usergroup['id'] ?>" name="usergroup" value="<?php echo $usergroup['groupname']  ?>">
+        <label for="gr_<?php echo $usergroup['id'] ?>"> <?php echo $usergroup['groupname'];  ?></label>
+        </p>
+
+        <?php endif; ?>
+        <?php endforeach; ?>
+    </fieldset>
+
+    <fieldset>
+        <label for="titel" class="desc">Titel</label>
+        <input type="text" name="titel" id="titel">
+
+    </fieldset>
+
+    <fieldset>
+        <span class="error" id="firstname_error"></span>
+        <label for="firstname" class="desc">Vorname *</label>
+       <input type="text" name="firstname" id="firstname">
+
+    </fieldset>
+
+    <fieldset>
+        <span class="error" id="lastname_error"></span>
+        <label for="lastname" class="desc">Nachname *</label>
+       <input type="text" name="lastname" id="lastname">
+
+    </fieldset>
+
+    <fieldset>
+        <span class="error" id="email_error"></span><!--  //ISPC-2913,Elena,11.05.2021-->
+        <label for="email" class="desc">E-Mail</label>
+       <input type="text" name="email" id="email">
+
+    </fieldset>
+    <!--//ISPC-2913,Elena,11.05.2021-->
+    <fieldset>
+        <span class="error" id="email_feedback_error"></span>
+        <label for="email_feedback" class="desc">E-Mail für Feedback *</label>
+       <input type="text" id="email_feedback" name="email_feedback" >
+
+    </fieldset>
+    <fieldset>
+        <p>
+            <span style="font-weight:bold;">Benötigen Sie für den Zugang zum ISPC einen (Soft-)Token oder eine Grid-Card? *</span>
+            <br>
+
+            (Sollten Sie zu den Authentifizierungsmöglichkeiten Rückfragen haben, rufen Sie uns gern an unter: 0234/60 600 760)
+        </p>
+        <span class="error" id="auth_error"></span>
+        <table class="matrix-answer ma_Authentifikation" cellspacing="0"><tbody><tr class=" tr_Authentifikation_1"><td class="td_Authentifikation_1_1 special_radChkbtn">
+            <span class="radio" style="background-position: 0px 0px;"></span><input class="styled qt_matrix_sradio qid_16488 cell_1_1 req_16488 rr_16488" id="ans_16488_1_1" type="radio" name="auth_variant" value="Soft-Token">
+        </td><th class="cell  th_row_Authentifikation_1 special_radChkbtn">
+            <label class="label_radio" for="ans_16488_1_1">Soft-Token</label></th></tr><tr class=" tr_Authentifikation_2"><td class="td_Authentifikation_2_1 special_radChkbtn">
+            <span class="radio" style="background-position: 0px 0px;"></span><input class="styled qt_matrix_sradio qid_16488 cell_2_1 req_16488 rr_16488" id="ans_16488_2_1" type="radio" name="auth_variant" value="Token">
+        </td><th class="cell  th_row_Authentifikation_2 special_radChkbtn">
+            <label class="label_radio" for="ans_16488_2_1">Token</label></th></tr><tr class=" tr_Authentifikation_3"><td class="td_Authentifikation_3_1 special_radChkbtn">
+            <span class="radio" style="background-position: 0px 0px;"></span><input class="styled qt_matrix_sradio qid_16488 cell_3_1 req_16488 rr_16488" id="ans_16488_3_1" type="radio" name="auth_variant" value="Grid-Card">
+        </td><th class="cell  th_row_Authentifikation_3 special_radChkbtn">
+            <label class="label_radio" for="ans_16488_3_1">Grid-Card</label></th></tr><tr class=" tr_Authentifikation_4"><td class="td_Authentifikation_4_1 special_radChkbtn">
+            <span class="radio" style="background-position: 0px 0px;"></span><input class="styled qt_matrix_sradio qid_16488 cell_4_1 req_16488 rr_16488" id="ans_16488_4_1" type="radio" name="auth_variant" value="Ersatz-Token">
+        </td><th class="cell  th_row_Authentifikation_4 special_radChkbtn">
+            <label class="label_radio" for="ans_16488_4_1">Ersatz-Token (kostenpflichtig)</label></th></tr></tbody></table>
+    </fieldset>
+    <fieldset>
+        <label for="address" class="desc" style="vertical-align:top;">Bitte geben Sie uns die vollständige Versandadresse für die benötigten Unterlagen an: </label>
+        <span class="error" id="adress_error"></span>
+        <textarea class=" req_16489" id="address" name="address" autocomplete="off"></textarea>
+
+    </fieldset>
+    <fieldset>
+        <label for="note" class="desc" style="vertical-align:top;">Zusätzliche Bemerkung:</label>
+
+           <textarea id="note" name="note" autocomplete="off"></textarea>
+    </fieldset>
+
+    <input type="button" value="Abschicken" id="sendreq" >
+
+
+
+</form>
+</div>

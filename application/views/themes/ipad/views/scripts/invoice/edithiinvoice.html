@@ -1,0 +1,780 @@
+<?php
+$patient_details = $this->patient_details;
+$health_insurance = $this->health_insurance;
+$invoice_data = $this->invoice_data;
+$invoice_items = $invoice_data['items'];
+$client_details = $this->client_details;
+?>
+<script>
+	var hide_patient_tab = 1;
+	var res_file_path = '<?php echo RES_FILE_PATH; ?>';
+$(document).ready(function() {
+	$('#storno').click(function(event){					
+		$('#storno_dialog').dialog('open');
+	});
+
+	$('#storno_dialog').dialog({
+		autoOpen:false,
+		modal:true,
+		draggable: false,
+		resizable: false,
+		buttons: {
+			"<?php echo $this->translate('yesconfirm'); ?>": function() {
+				set_storno('<?php echo $_REQUEST['invoiceid']; ?>');
+				$( this ).dialog( "close" );
+			},
+			"<?php echo $this->translate('noconfirm'); ?>": function() {
+				$( this ).dialog("close");
+			}
+		},
+		open: function(){
+			$( "#storno_dialog" ).dialog( "option", "title", "<?php echo $this->translate('storno_invoice_no'); ?> "+$('input[name="invoice[prefix]"]').val()+$('input[name="invoice[invoice_number]"]').val());
+		}			
+	});
+	
+	
+	$('#completed_date').datepicker({
+		dateFormat: 'dd.mm.yy',
+		showOn: "both",
+		buttonImage: $('#calImg').attr('src'),
+		buttonImageOnly: true,
+		changeMonth: true,
+		changeYear: true,
+		nextText: '',
+		prevText: ''
+	});
+	
+	
+	
+	$('#confirmDelete').dialog({
+		autoOpen:false,
+		resize:false,
+		draggable:false,
+		width:300,
+		height:200,
+		title: '<?php echo $this->translate('confirmdeletetitle'); ?>',
+		buttons: {
+		<?php echo $this->translate('delete'); ?>: function() {
+				
+				$('#edit_hi_invoice').submit();
+		},
+		<?php echo $this->translate('cancelModalRechnung'); ?>: function(){
+					$('input[name=deletemore]').val("");
+					$( this ).dialog( "close" );
+		}
+	}});
+	
+	$('.delete').live('click',function(event){
+		event.preventDefault();
+		$('#deletemore').val("1");
+		$('#confirmDelete').dialog('open');
+	});
+	
+});
+function set_storno(invoice_id) {
+	var url = '<?php echo APP_BASE; ?>invoice/healthinsuranceinvoices';
+	window.location = url + '?' + 'mode=setstorno&inv_id='+invoice_id;
+
+}
+</script>
+<script type="text/javascript" src="<?php echo RES_FILE_PATH;  ?>/javascript/tinymce3/jscripts/tiny_mce/tiny_mce.js"></script>
+<script type="text/javascript" src="<?php echo RES_FILE_PATH;  ?>/javascript/hi_invoice_edit.js"></script>
+<link rel='stylesheet' type='text/css' href='<?php echo RES_FILE_PATH;  ?>/css/page-css/invoice/invoice_style.css' />
+<link href="<? echo RES_FILE_PATH; ?>/css/addressbook_modal.css?<?php echo date('Ymd');?>" rel="stylesheet" type="text/css">
+<div style="display: none;"><img id="calImg" src="<?php echo RES_FILE_PATH;  ?>/images/calendar.png" alt="Popup" class="trigger"></div>
+<form name="edit_hi_invoice" id="edit_hi_invoice" method="POST" action="">
+	<table class="table" id="health_insurance_invoice_table" cellspacing="2" cellpadding="2" width="100%">
+		<tr class="rowa">
+			<td class="col1 cell"></td>
+			<td class="col2 cell"></td>
+			<td class="col3 cell"></td>
+		</tr>
+		<tr class="rowb">
+			<td class="col1 cell" style="width: 635px;height: 50px;">
+				<textarea name="invoice[address]" id="invoice_address" cols="37" rows="7" class="textareawhitehalf"><?php echo $invoice_data['address']; ?></textarea>
+				<a href="javascript:void(0);" id="abook"><img src="<?php echo RES_FILE_PATH; ?>/images/ab_add.png" width="28"></a>
+			</td>
+			<td class="col2 cell"></td>
+			<td class="col3 cell"></td>
+		</tr>
+		<tr class="rowa">
+			<td class="col2 cell" colspan="3" style="text-align: right; width: 800px;">
+				<div>
+					<?php echo $client_details['lbg_city']  ?>, den <?php echo date('d.m.Y', strtotime($invoice_data['completed_date_sort']));  ?>
+					<br />
+					<?php if($invoice_data['status'] > '1'):  ?>
+						<?php echo $this->translate('complete_date'); ?>
+						<input type="text" id="completed_date" value="<?php if($invoice_data['completed_date'] == '0000-00-00 00:00:00'): echo date('d.m.Y', strtotime($invoice_data['create_date'])); else: echo date('d.m.Y', strtotime($invoice_data['completed_date'])); endif;  ?>" name="completed_date" />
+					<?php else:  ?>
+						<input type="hidden" value="<?php echo date('d.m.Y', time()); ?>" name="completed_date" />
+					<?php endif;  ?>
+				</div>
+			</td>
+		</tr>
+		<tr class="rowb">
+			<td class="col1 cell" colspan="3">
+				&nbsp;
+			</td>
+		</tr>
+		<tr class="rowb">
+			<td class="col1 cell" colspan="3">
+				<table style="width:100%">
+					<tr>
+						<td style="width:200px">
+							<b>Betreff:</b>
+						</td>
+						<td style="width:500px;">
+								<b><?php echo $patient_details['first_name'] . ' ' . $patient_details['last_name']; ?>, geb. <?php echo $patient_details['birthd']; ?><br />
+								Versichertennummer: <?php echo $health_insurance['insurance_no']; ?><br />
+							Rechnungsnummer: <input type="text" value="<?php echo $invoice_data['prefix']; ?>" name="invoice[prefix]"class="textfieldwhitesmall" /> &nbsp;&nbsp; <input type="text" value="<?php echo $invoice_data['invoice_number']; ?>" name="invoice[invoice_number]"class="textfieldwhitesmall" /> (bitte bei Überweisung angeben)</b>
+						</td>
+					</tr>
+				</table>
+			</td>
+		</tr>
+		<tr>
+			<td class="col1 cell" colspan="3">
+				<textarea name="header" id="header" cols="" rows="10" style="width: 80%">
+				<?php echo $invoice_data['header']; ?>
+				</textarea>
+			</td>
+		</tr>
+
+		<tr>
+			<td colspan="3">
+				<table border="0">
+					<tr>
+						<td style="width:170px;"></td>
+						<td style="width:500px;">
+							<table cellpadding="2">
+								<tr>
+									<td>
+										<b>Pauschale</b>
+									</td>
+									<td style="width:80px;">
+										<b>Anzahl</b>
+									</td>
+									<td>
+										<b>x Vergütung</b>
+									</td>
+									<td style="width: 140px;">
+										<b>= Rechnungssumme</b>
+									</td>
+								</tr>
+								<?php foreach ($invoice_items as $k_item => $v_item): ?>
+									<?php if(($v_item['shortcut'] == 'E' && $v_item['qty'] > 0) || ($v_item['shortcut'] == 'EH' && $v_item['qty'] > 0) || ($v_item['shortcut'] != 'E' && $v_item['shortcut'] != 'EH')):  ?>
+
+									<tr>
+										<td>
+											<?php echo $v_item['shortcut'] ?>
+											<input type="hidden" value="<?php echo $v_item['shortcut'] ?>" name="invoice_items[shortcuts][]" id="invoice_item_shortcut_<?php echo $v_item['id']; ?>" />
+										</td>
+
+										<td style="text-align: right; padding-right: 10px;">
+											<input type="text" value="<?php echo $v_item['qty']; ?>" name="invoice_items[qty][]" id="invoice_item_qty_<?php echo $v_item['id']; ?>" style="width: 40px;" class="textfieldwhitesmall" />
+										</td>
+										<td style="text-align: right; padding-right: 10px;">
+											<!--<input type="text" value="<?php echo number_format($v_item['price'], '2'); ?>"  name="invoice_items[price][]" id="invoice_item_price_<?php echo $v_item['id']; ?>" style='width: 100px;' class="textfieldwhitesmall" autocomplete="off"/>&nbsp;&euro;-->
+											<input type="text" value="<?php echo number_format(Pms_CommonData::str2num($v_item['price']), 2, ',', '.'); ?>"  name="invoice_items[price][]" id="invoice_item_price_<?php echo $v_item['id']; ?>" style='width: 100px;' class="textfieldwhitesmall" autocomplete="off"/>&nbsp;&euro;
+										</td>
+										<td style="text-align: right; margin-right: 5px;">
+											<?php
+												$total = ($v_item['price'] * $v_item['qty']);
+												echo number_format(Pms_CommonData::str2num($total), 2, ',', '.');
+												$general_total += $total;
+											?>&nbsp;&euro;
+										</td>
+									</tr>
+									<?php endif;  ?>
+								<?php endforeach; ?>
+
+								<tr>
+									<td colspan="3" style="text-align: right; margin-right: 5px;">
+										<b>Insgesamt =</b>
+									</td>
+									<td style="text-align: right;">
+										<b><?php echo number_format(Pms_CommonData::str2num($general_total), 2, ',', '.'); ?>&nbsp;&euro;</b>
+									</td>
+								</tr>
+							</table>
+						</td>
+						<td style="width:130px;"></td>
+					</tr>
+				</table>
+
+			</td>
+		</tr>
+		<tr class="rowa">
+			<td class="cell" colspan="3">
+				&nbsp;
+			</td>
+		</tr>
+		<tr>
+			<td class="col1 cell" colspan="3">
+				<textarea name="footer" id="footer" cols="" rows="10" style="width: 80%">
+					<?php echo $invoice_data['footer']; ?>
+				</textarea>
+			</td>
+		</tr>
+		<tr class="rowa">
+			<td class="cell" colspan="3" style="text-align: left;">
+				<?php echo $invoice_data->footer; ?>
+			</td>
+		</tr>
+	</table>
+
+	<div class="buttonsBar">
+		<input type="hidden" name="deletemore" value="" id="deletemore"/>
+		<?php if($invoice_data['status'] >= '2'):  ?>
+			<!--Save when completed-->
+			<input type="submit" value="<?php echo $this->translate('save'); ?>" name="completed" class="bigbutton ui-state-default ui-corner-all submit" />
+		<?php endif;  ?>
+		
+		<?php if($invoice_data['status'] == '1'):  ?>			
+			<!--Save when in draft-->
+			<input type="submit" value="<?php echo $this->translate('save'); ?>" name="edit_invoice"  class="bigbutton ui-state-default ui-corner-all submit" />
+		<?php endif;  ?>
+		
+		<?php if($invoice_data['status'] == '1'):  ?>
+			<!--Complete when in draft-->
+		<input type="submit" value="<?php echo $this->translate('Fertigstellen'); ?>" name="completed" class="bigbutton ui-state-default ui-corner-all submit" />
+		<?php endif;  ?>
+		&nbsp;&nbsp;&nbsp;
+			
+		<?php if($invoice_data['status'] == '1' || $invoice_data['status'] == '2'  ): ?>
+			<input type="submit" value="<?php echo $this->translate('Löschen'); ?>" name="deleted" class="bigbutton ui-state-default ui-corner-all submit delete" />
+		<?php endif; ?>
+		<input type="submit" value="<?php echo $this->translate('Pdf'); ?>" name="pdf" class="bigbutton ui-state-default ui-corner-all submit" />
+		<?php if($invoice_data['status'] == '3'):  ?>
+		<input type="submit" value="<?php echo $this->translate('generate_users_invoice'); ?>" name="users_invoice" class="bigbutton ui-state-default ui-corner-all submit" />
+		<?php endif; ?>
+		<?php if($invoice_data['status'] > '1' && $this->has_storno == '0'): ?>
+		<input type="button"  id="storno"  value="<?php echo $this->translate('storno_button'); ?>" name="storno" class="bigbutton ui-state-default ui-corner-all submit" />
+		<?php endif; ?>
+	</div>
+
+</form>
+
+
+
+<!--Address book-->
+<div id="dialog_addressbook" style="overflow-y: none;">
+	<table style="width: 680px">
+		<tr>
+			<td colspan="2">
+
+			</td>
+		</tr>
+		<tr>
+			<td style="width: 800px">
+				<div style="width: 800px; padding: 5px">
+					<!--XXXXXX-->
+					<input type="hidden" id="type_c" />
+					<ul class="tabs addressb">
+						<?php if (!$this->hide_patient_tab): ?>
+							<li>
+								<a href="#" id="patienttab">Patient</a>
+							</li>
+						<?php endif; ?>
+						<li>
+							<a href="#" id="All" class="tabf">Alle</a>
+						</li>
+						<li>
+							<a href="#" id="H" class="tabf">Hausarzt</a>
+						</li>
+						<li>
+							<a href="#" id="F" class="tabf">Facharzt</a>
+						</li>
+						<li>
+							<a href="#" id="P" class="tabf">Pflegedienst</a>
+						</li>
+						<li>
+							<a href="#" id="A" class="tabf">Apotheke</a>
+						</li>
+						<li>
+							<a href="#" id="L" class="tabl">Aufenthaltsorte</a>
+						</li>
+						<li>
+							<a href="#" id="S" class="tabs">Sonstiges</a>
+						</li>
+						<li>
+							<a href="#" id="I" class="tabf"><?php echo $this->translate('clienthealthinsurancetab')  ?></a>
+						</li>
+						<li>
+							<a href="#" id="SH" class="tabf"><?php echo $this->translate('supplies');  ?></a>
+						</li>
+					</ul>
+					<div id="content_dialog"><?php echo $this->patientgrid ?></div>
+
+					<?php if (!$this->hide_patient_tab): ?>
+
+
+						<div id="pat" style="">
+							<br /> <br /> <br />
+							<div class="clear"></div>
+							<!-- HAUSARTZ -->
+							<div class="addr-details">
+								<?php if ($this->fam_doctor > 0): ?>
+									<table class="addr-moredetails first-page">
+										<tbody>
+											<tr>
+												<th colspan="2" style="line-height: 26px;">
+													<label for="recipient-H-<?php echo $this->fam_doctor_id; ?>"><b>Hausarzt</b></label>
+													<input type="radio" name="recipient" id="recipient-H-<?php echo $this->fam_doctor_id; ?>" value="H-<?php echo $this->fam_doctor_id; ?>"/>
+												</th>
+											</tr>
+											<tr>
+												<th>Name</th>
+												<td>
+													<?php echo $this->first_name . ' ' . $this->last_name; ?>
+												</td>
+											</tr>
+											<tr>
+												<th>Straße</th>
+												<td>
+													<?php echo $this->street1; ?>
+												</td>
+											</tr>
+											<tr>
+												<th>PLZ</th>
+												<td>
+													<?php echo $this->zip; ?>
+												</td>
+											</tr>
+											<tr>
+												<th>Stadt</th>
+												<td>
+													<?php echo $this->city; ?>
+												</td>
+											</tr>
+											<tr>
+												<th>Telefon Praxis</th>
+												<td>
+													<?php echo $this->phone_practice; ?>
+												</td>
+											</tr>
+											<tr>
+												<th>Handy Nummer</th>
+												<td>
+													<?php echo $this->phone_cell; ?>
+												</td>
+											</tr>
+											<tr>
+												<th>Fax</th>
+												<td>
+													<?php echo $this->fax; ?>
+												</td>
+											</tr>
+
+										</tbody>
+									</table>
+								<?php else : ?>
+				<!--					<span>keine Hausärzte</span>-->
+								<?php endif; ?>
+							</div>
+							<!-- HEALTH INSURANCE				 -->
+							<div class="addr-details">
+								<?php if (!empty($this->patient_healthinsurance)) : ?>
+									<?php $i = 1;
+									foreach ($this->patient_healthinsurance as $value) : ?>
+										<table class="addr-moredetails first-page">
+											<tr>
+												<th colspan="2" style="line-height: 26px;" >
+													<label for="recipient-PI-<?php echo $value['id']; ?>" ><b><?php echo $this->translate('clienthealthinsurancetab')  ?> </b></label>
+													<input type="radio" name="recipient" id="recipient-PI-<?php echo $value['id']; ?>" value="PI-<?php echo $value['id']; ?>"/>
+												</th>
+											</tr>
+											<tr>
+												<th>Krankenversicherung</th>
+												<td>
+			<?php echo $value['company_name']; ?>
+												</td>
+											</tr>
+											<tr>
+												<th>Ansprechpartner</th>
+												<td>
+			<?php echo $value['ins_contactperson']; ?>
+												</td>
+											</tr>
+											<tr>
+												<th><?php echo $this->translate('street');  ?></th>
+												<td>
+			<?php echo $value['ins_street']; ?>
+												</td>
+											</tr>
+											<tr>
+												<th><?php echo $this->translate('zip');  ?></th>
+												<td>
+			<?php echo $value['ins_zip']; ?>
+												</td>
+											</tr>
+											<tr>
+												<th><?php echo $this->translate('city');  ?></th>
+												<td>
+			<?php echo $value['ins_city']; ?>
+												</td>
+											</tr>
+											<tr>
+												<th>Kassennummer</th>
+												<td>
+			<?php echo $value['kvk_no']; ?>
+												</td>
+											</tr>
+											<tr>
+												<th>Institutskennzeichen (IK)</th>
+												<td>
+			<?php echo $value['institutskennzeichen']; ?>
+												</td>
+											</tr>
+											<tr>
+												<th>Versichertennummer</th>
+												<td>
+			<?php echo $value['insurance_no']; ?>
+												</td>
+											</tr>
+											<tr>
+												<th>Versicherungsstatus</th>
+												<td>
+			<?php echo $value['insurance_status']; ?>
+												</td>
+											</tr>
+										</table>
+										<?php $i++;
+									endforeach; ?>
+								<?php else : ?>
+				<!--					<span>keine Pflegedienste</span>-->
+	<?php endif; ?>
+							</div>
+							<!-- PFLEGE				 -->
+							<div class="addr-details">
+								<?php if (!empty($this->pat_pfleg)) : ?>
+									<?php $i = 1;
+									foreach ($this->pat_pfleg as $value) : ?>
+										<table class="addr-moredetails first-page">
+											<tr>
+												<th colspan="2" style="line-height: 26px;" >
+													<label for="recipient-P-<?php echo $value['id']; ?>" ><b><?php echo $i; ?>. Pflegedienst </b></label>
+													<input type="radio" name="recipient" id="recipient-P-<?php echo $value['id']; ?>" value="P-<?php echo $value['id']; ?>" />
+												</th>
+											</tr>
+											<tr>
+												<th>Pflegedienst</th>
+												<td>
+			<?php echo $value['nursing']; ?>
+												</td>
+											</tr>
+											<tr>
+												<th>Vorname</th>
+												<td>
+			<?php echo $value['first_name']; ?>
+												</td>
+											</tr>
+											<tr>
+												<th>Nachname</th>
+												<td>
+			<?php echo $value['last_name']; ?>
+												</td>
+											</tr>
+											<tr>
+												<th>Straße</th>
+												<td>
+			<?php echo $value['street1']; ?>
+												</td>
+											</tr>
+											<tr>
+												<th>PLZ</th>
+												<td>
+			<?php echo $value['zip']; ?>
+												</td>
+											</tr>
+											<tr>
+												<th>Stadt</th>
+												<td>
+			<?php echo $value['city']; ?>
+												</td>
+											</tr>
+											<tr>
+												<th>Telefon</th>
+												<td>
+			<?php echo $value['phone_practice']; ?>
+												</td>
+											</tr>
+											<tr>
+												<th>Telefon privat</th>
+												<td>
+			<?php echo $value['private_phone']; ?>
+												</td>
+											</tr>
+											<tr>
+												<th>Notruf telefon</th>
+												<td>
+			<?php echo $value['phone_emergency']; ?>
+												</td>
+											</tr>
+											<tr>
+												<th>Doctor number</th>
+												<td>
+			<?php echo $value['doctornumber']; ?>
+												</td>
+											</tr>
+											<tr>
+												<th>Fax</th>
+												<td>
+			<?php echo $value['fax']; ?>
+												</td>
+											</tr>
+										</table>
+										<?php $i++;
+									endforeach; ?>
+								<?php else : ?>
+				<!--					<span>keine Pflegedienste</span>-->
+	<?php endif; ?>
+							</div>
+<!-- FACHARZT -->
+							<div class="addr-details">
+								<?php if (!empty($this->patient_specialists)) : ?>
+									<?php $i = 1;
+									foreach ($this->patient_specialists as $value) : ?>
+										<table class="addr-moredetails" id="fulltable">
+											<tr>
+												<th colspan="2" style="background: #b3bed7; color: #000; line-height: 26px;" >
+												    <div style="height: 16px; vertical-align: middle; width: auto;">
+													<input type="radio" name="recipient" id="recipient-F-<?php echo $value['master']['id']; ?>" value="F-<?php echo $value['master']['id']; ?>" style="width:auto;" />
+													<label for="recipient-F-<?php echo $value['master']['id']; ?>" ><b><?php echo $i; ?>. Facharzt</b></label>
+												    </div>
+												</th>
+											</tr>
+											<tr>
+												<th>Praxis</th>
+												<td>
+													<?php echo $value['master']['practice']; ?>
+												</td>
+											</tr>
+											<tr>
+												<th>Vorname</th>
+												<td>
+													<?php echo $value['master']['first_name']; ?>
+												</td>
+											</tr>
+											<tr>
+												<th>Nachname</th>
+												<td>
+													<?php echo $value['master']['last_name']; ?>
+												</td>
+											</tr>
+											<tr>
+												<th>Straße</th>
+												<td>
+													<?php echo $value['master']['street1']; ?>
+												</td>
+											</tr>
+											<tr>
+												<th>PLZ</th>
+												<td>
+													<?php echo $value['master']['zip']; ?>
+												</td>
+											</tr>
+											<tr>
+												<th>Stadt</th>
+												<td>
+													<?php echo $value['master']['city']; ?>
+												</td>
+											</tr>
+											<tr>
+												<th>Telefon</th>
+												<td>
+													<?php echo $value['master']['phone_practice']; ?>
+												</td>
+											</tr>
+											<tr>
+												<th>Telefon privat</th>
+												<td>
+													<?php echo $value['master']['phone_private']; ?>
+												</td>
+											</tr>
+											<tr>
+												<th>Doctor number</th>
+												<td>
+													<?php echo $value['master']['doctornumber']; ?>
+												</td>
+											</tr>
+											<tr>
+												<th>Fax</th>
+												<td>
+													<?php echo $value['master']['fax']; ?>
+												</td>
+											</tr>
+										</table>
+										<?php $i++;
+									endforeach; ?>
+								<?php else : ?>
+								<?php endif; ?>
+							</div>
+							<!-- PHARMACY				 -->
+							<div class="addr-details">
+	<?php if (!empty($this->pat_pharmacy)) : ?>
+		<?php $i = 1;
+		foreach ($this->pat_pharmacy as $value) : ?>
+										<table class="addr-moredetails first-page">
+											<tr>
+												<th colspan="2">
+													<label for="recipient-A-<?php echo $value['id']; ?>" ><b>	<?php echo $i; ?>. Apotheke</b></label>
+													<input type="radio" name="recipient" id="recipient-A-<?php echo $value['id']; ?>" value="A-<?php echo $value['id']; ?>"/>
+												</th>
+											</tr>
+											<tr>
+												<th>Apotheke</th>
+												<td>
+			<?php echo $value['pharmacy']; ?>
+												</td>
+											</tr>
+											<tr>
+												<th>Vorname</th>
+												<td>
+			<?php echo $value['first_name']; ?>
+												</td>
+											</tr>
+											<tr>
+												<th>Nachname</th>
+												<td>
+			<?php echo $value['last_name']; ?>
+												</td>
+											</tr>
+											<tr>
+												<th>Straße</th>
+												<td>
+			<?php echo $value['street1']; ?>
+												</td>
+											</tr>
+											<tr>
+												<th>PLZ</th>
+												<td>
+			<?php echo $value['zip']; ?>
+												</td>
+											</tr>
+											<tr>
+												<th>Stadt</th>
+												<td>
+			<?php echo $value['street1']; ?>
+												</td>
+											</tr>
+											<tr>
+												<th>Telefon</th>
+												<td>
+			<?php echo $value['phone']; ?>
+												</td>
+											</tr>
+											<tr>
+												<th>Fax</th>
+												<td>
+										<?php echo $value['fax']; ?>
+												</td>
+											</tr>
+										</table>
+										<?php $i++;
+									endforeach; ?>
+							<?php else : ?>
+				<!--					<span>keine Apotheke</span>-->
+								<?php endif; ?>
+							</div>
+							<!-- PATIENT CONTACTS -->
+
+							<div class="addr-details">
+											<?php $degree = $this->degree; ?>
+												<?php if (!empty($this->patient_contacts)) : ?>
+													<?php $i = 1;
+													foreach ($this->patient_contacts as $value) : ?>
+										<table class="addr-moredetails first-page">
+											<tr>
+												<th colspan="2">
+													<label for="recipient-C-<?php echo $value['id']; ?>" ><b><?php echo $i; ?>. Ansprechpartner</b></label>
+													<input type="radio" name="recipient" id="recipient-C-<?php echo $value['id']; ?>" value="C-<?php echo $value['id']; ?>"/>
+												</th>
+											</tr>
+											<tr>
+												<th>Vorname</th>
+												<td>
+													<?php echo $value['cnt_first_name']; ?>
+												</td>
+											</tr>
+											<tr>
+												<th>Nachname</th>
+												<td>
+													<?php echo $value['cnt_last_name']; ?>
+												</td>
+											</tr>
+											<tr>
+												<th>Straße</th>
+												<td>
+													<?php echo $value['cnt_street1']; ?>
+												</td>
+											</tr>
+											<tr>
+												<th>Stadt</th>
+												<td>
+													<?php echo $value['cnt_city']; ?>
+												</td>
+											</tr>
+											<tr>
+												<th>Telefon</th>
+												<td>
+													<?php echo $value['cnt_phone']; ?>
+												</td>
+											</tr>
+											<tr>
+												<th>Mobil</th>
+												<td>
+													<?php echo $value['cnt_mobile']; ?>
+												</td>
+											</tr>
+											<tr>
+												<th>Beziehung zum Pat.</th>
+												<td>
+										<?php echo $degree[$value['cnt_familydegree_id']]; ?>
+												</td>
+											</tr>
+										</table>
+										<?php $i++;
+									endforeach; ?>
+								<?php else: ?>
+				<!--					<span>keine Ansprechpartner</span>-->
+							<?php endif; ?>
+							<?php if (empty($this->pat_pfleg) && empty($this->patient_contacts) && empty($this->pat_pharmacy) && empty($this->fam_doctor) && empty($this->patient_healthinsurance)): ?>
+									<div style="text-align:center; font-size:1.2em; padding-top:5px;" ><span>keine Patient Details</span></div>
+						<?php endif; ?>
+
+
+							</div>
+
+
+						</div>
+
+							<?php endif; ?>
+
+					<div id="addressbook-tabs">
+						<table>
+							<tr><td><a href="#" id="default-all">Alle</a></td></tr>
+							<tr><td><a href="#" id="fav-filter"></a></td></tr>
+							<?php
+							$alphabet = array ("A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z");
+							foreach ($alphabet as $letter)
+							{
+								echo '<tr><td><a href="#" class="addr-letter" rel="' . $letter . '">' . $letter . '</a></td></tr>';
+							}
+							?>
+						</table>
+					</div>
+					<br style="clear: both" />
+				</div>
+			</td>
+		</tr>
+	</table>
+</div>
+<div id="storno_dialog">
+	<p>
+		<?php echo $this->translate('storno_dialog_text');  ?>
+	</p>
+
+</div>
+
+<div id="confirmDelete"><?php echo $this->translate('confirm_invoice_delete'); ?></div>

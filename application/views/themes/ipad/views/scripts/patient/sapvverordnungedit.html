@@ -1,0 +1,357 @@
+<?php
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/page-css/sapvverordnungedit.css?' . date('Ymd'));
+?>
+<script type="text/javascript">
+var verblur = true;
+var period_start = '<?php echo $this->period_start ?>';
+var period_end = '<?php echo $this->period_end ?>';
+var isdischarged = '<?php echo $this->isdischarged ?>';
+
+$(function() {
+
+	//sapv ls
+		$('#verordnet_von').live('change', function() {
+		$('#hidd_verordnet_von').val('');
+	}).liveSearch({
+		url: 'ajax/sgetsapvverordnung?q=',
+		id: 'livesearch_stammdaten_sapv',
+			noResultsDelay: '900',
+			typeDelay: '900'
+	});
+
+
+	$('#verorddisabledate').datepicker({
+		dateFormat: 'dd.mm.yy',
+		showOn: "both",
+		buttonImage: $('#calImg').attr('src'),
+		buttonImageOnly: true,
+		changeMonth: true,
+		changeYear: true,
+		nextText: '',
+		prevText: ''
+	});
+	$('#sapv_approved_date').datepicker({
+		dateFormat: 'dd.mm.yy',
+		showOn: "both",
+		buttonImage: $('#calImg').attr('src'),
+		buttonImageOnly: true,
+		changeMonth: true,
+		changeYear: true,
+		nextText: '',
+		prevText: ''
+	});
+
+
+	$('input[name=status]').click(function(){
+
+		if ($(this).val() == 1) {
+				$('.disabled-date').show('fast');
+				$('.approved_block').hide();
+		} else if ($(this).val() == 2) {
+				$('.approved_block').show('fast');
+				$('.disabled-date').hide();
+		} else {
+				$('.disabled-date').hide();
+				$('.approved_block').hide();
+
+		}
+	})
+
+
+	if($('input[name=status]:checked').val() == 1){
+		$('.disabled-date').show();
+		$('.approved_block').hide();
+	} else if($('input[name=status]:checked').val() == 2){
+		$('.approved_block').show();
+		$('.disabled-date').hide();
+	} else {
+		$('.disabled-date').hide();
+		$('.approved_block').hide();
+	}
+
+
+	$("#verordnungam").mask("99.99.9999");
+	$("#verordnungbis").mask("99.99.9999");
+	$("#sapv_approved_date").mask("99.99.9999");
+
+	$('#verordnungam').datepicker({
+		dateFormat: 'dd.mm.yy',
+		showOn: "both",
+		buttonImage: $('#calImg').attr('src'),
+		buttonImageOnly: true,
+		changeMonth: true,
+		changeYear: true,
+		nextText: '',
+		prevText: '',
+		onClose:function(){
+			var fromdate = $('#verordnungam').val();
+			if ($('#regulation_start').val() == '') {
+				$('#regulation_start').val(fromdate);
+			}
+			fromdate = fromdate.split(".");
+			var from_year = fromdate[2];
+			if (from_year < period_start || from_year > period_end) {
+				alert('<?php echo $this->translate('noticebeginyearperiode'); ?> '+from_year+'. <?php echo $this->translate('areyousure'); ?>  ');
+			}
+		}
+	});
+	$('#regulation_start').datepicker({
+		dateFormat: 'dd.mm.yy',
+		showOn: "both",
+		buttonImage: $('#calImg').attr('src'),
+		buttonImageOnly: true,
+		changeMonth: true,
+		changeYear: true,
+		nextText: '',
+		prevText: '',
+		onClose:function(){
+			var fromdate = $('#regulation_start').val();
+			if ($('#verordnungam').val() == '') {
+				$('#verordnungam').val(fromdate);
+			}
+			fromdate = fromdate.split(".");
+			var from_year = fromdate[2];
+			if (from_year < period_start || from_year > period_end) {
+				alert('<?php echo $this->translate('noticebeginyearperiode'); ?> '+from_year+'. <?php echo $this->translate('areyousure'); ?>  ');
+			}
+		}
+	});
+	$('#verordnungbis').datepicker({
+		dateFormat: 'dd.mm.yy',
+		showOn: "both",
+		buttonImage: $('#calImg').attr('src'),
+		buttonImageOnly: true,
+		changeMonth: true,
+		changeYear: true,
+		nextText: '',
+		prevText: '',
+		onClose:function(){
+			var tilldate = $('#verordnungbis').val();
+			if ($('#regulation_end').val() == '') {
+				$('#regulation_end').val(tilldate);
+			}
+			tilldate = tilldate.split(".");
+			var till_year = tilldate[2];
+			if (till_year > period_end || till_year < period_start ) {
+				alert('<?php echo $this->translate('noticeendyearperiode'); ?> '+till_year+'. <?php echo $this->translate('areyousure'); ?>  ');
+			}
+		}
+	});
+	$('#regulation_end').datepicker({
+		dateFormat: 'dd.mm.yy',
+		showOn: "both",
+		buttonImage: $('#calImg').attr('src'),
+		buttonImageOnly: true,
+		changeMonth: true,
+		changeYear: true,
+		nextText: '',
+		prevText: '',
+		onClose:function(){
+			var tilldate = $('#regulation_end').val();
+			if ($('#verordnungbis').val() == '') {
+				$('#verordnungbis').val(tilldate);
+			}
+			tilldate = tilldate.split(".");
+			var till_year = tilldate[2];
+			if (till_year > period_end || till_year < period_start ) {
+				alert('<?php echo $this->translate('noticeendyearperiode'); ?> '+till_year+'. <?php echo $this->translate('areyousure'); ?>  ');
+			}
+		}
+	});
+//ISPC - 2084	
+	$('#delete_sapv').live('click', function() {
+		jConfirm('<?php echo $this->translate('confirmdeleterecord'); ?>', '<?php echo $this->translate('confirmdeletetitle'); ?>', function (r) {
+			if(r)
+			{
+				ajaxCallserver({url: '<?php echo APP_BASE ?>patient/sapvverordnungedit?decid=<?php echo $_GET['vid']?>&id=<?php echo $this->pid?>'});
+				setTimeout(function ()
+				{
+				    window.location.href = '<?php echo APP_BASE ?>patientnew/patientdetails?flg=succ&id=<?php echo $this->pid?>&msg=<?php echo $this->translate("recorddeletedsucessfully"); ?>';
+				}, 500);
+				return checkclientchanged();
+			}
+		});
+	});
+});
+
+function selectSapvDoctor(doc_id, doc_type)
+{
+	if(doc_type == 'locations')
+	{
+		if($('#sapv_ln_'+doc_id).length > 0) {
+			var input_text = $('#sapv_ln_'+doc_id).html();
+		}		
+	}
+	else 
+	{
+		if($('#sapv_fn_'+doc_id).html().length > 0 &&  $('#sapv_ln_'+doc_id).html().length > 0){
+			var input_text = $('#sapv_ln_'+doc_id).html() +', '+ $('#sapv_fn_'+doc_id).html()
+		} else if($('#sapv_ln_'+doc_id).length > 0) {
+			var input_text = $('#sapv_ln_'+doc_id).html();
+	//	} else if($('#sapv_dn_'+doc_id).length > 0) {
+		} else if($('#sapv_fn_'+doc_id).length > 0) {
+			var input_text = $('#sapv_fn_'+doc_id).html();
+		}
+	}
+
+	$('#verordnet_von').val(input_text);
+	$('#hidd_verordnet_von').val($('#sapv_id_'+doc_id).val());
+	$('#hidd_verordnet_von_type').val($('#sapv_'+doc_type+'_'+doc_id).val());
+
+}
+</script>
+
+<form action="<?php echo $this->act ?>" method="post" name="frmuser" id="frmuser" autocomplete="off" >
+<div style="display: none;">
+	<img id="calImg" src="<?php echo RES_FILE_PATH;  ?>/images/calendar.png" alt="Popup" class="trigger">
+</div>
+<?php echo $this->patientinfo ?>
+<?php echo $this->tabmenus ?>
+<div id="family_dr_edit" class="tab_container" style="width:100%;">
+<br />
+<fieldset>
+
+<legend><?php echo $this->translate('editsapvverordung') ?></legend><br /><br />
+
+	<label for="sapv_order" class="sapvverordnung_new"><?php echo $this->translate('sapv_order') ?></label>
+	<select name="sapv_order" id="sapv_order">
+		<option value="1" <?php if($this->sapv_order==1){ echo 'selected="selected"';} ?>>Erstverordnung</option>
+		<option value="2" <?php if($this->sapv_order==2){ echo 'selected="selected"';} ?>>Folgeverordnung</option>
+	</select>
+	<div class="clearer"></div>
+	<br />
+
+	<label for="sapvverordnung" class="sapvverordnung_new"><?php echo $this->translate('sapvverordnung_new') ?></label>
+	<input type="text" name="verordnet_von" id="verordnet_von" value="<?php echo $this->verordnet_von ?>" >
+	<input type="hidden" name="hidd_verordnet_von" id="hidd_verordnet_von" value="<?php echo $this->hidd_verordnet_von ?>"  />
+	<input type="hidden" name="hidd_verordnet_von_type" id="hidd_verordnet_von_type" value="<?php echo $this->hidd_verordnet_von_type ?>"  />
+    <div id="sapvverordnungdropdown" style="height:175px; orverflow:auto; position:absolute; display:none;"></div>
+    <div class="error"> <?php echo $this->error_verordnet_von ?></div><div id="s_loading"></div>
+    <div class="clearer"></div>
+    
+  
+   <label class="sapvverordnung_new"><?php echo $this->translate('regulation_period') ?></label>
+   <label for="regulation_start" id="lbl_from">von: </label>
+   <input type="text" name="regulation_start" id="regulation_start"  style="width:177px; display:block; float: left;" value="<?php echo $this->regulation_start ?>" >
+   <label for="regulation_end" id="lbl_till">bis: </label>
+   <input type="text" name="regulation_end" id="regulation_end"  style="width:177px; display:block; float: left;" value="<?php echo $this->regulation_end ?>" >
+   <div class="clearer"></div>
+   <div class="error"><?php echo $this->error_regulation_start ?></div>
+   <div class="error"><?php echo $this->error_regulation_end ?></div>
+   <div class="clearer"></div>
+   
+
+   <label class="sapvverordnung_new"><?php echo $this->translate('approval_period') ?></label>
+   <label for="verordnungam" id="lbl_from">von: </label>
+   <input type="text" name="verordnungam" id="verordnungam"  style="width:177px; display:block; float: left;" value="<?php echo $this->verordnungam ?>" >
+   <label for="verordnungbis" id="lbl_till">bis: </label>
+   <input type="text" name="verordnungbis" id="verordnungbis"  style="width:177px; display:block; float: left;" value="<?php echo $this->verordnungbis ?>" >
+   <div class="clearer"></div>
+   <div class="error"><?php echo $this->error_verordnungam ?></div>
+   <div class="error"><?php echo $this->error_verordnungbis ?></div>
+   <div class="clearer"></div>
+   <br />
+
+
+   <label class="sapvverordnung_new" for="verordnet" ><?php echo $this->translate('verordnet') ?></label>
+	<div id="editionid" class="Tableradiobox">
+   		<?php echo $this->formMultiCheckbox('verordnet[]', $this->verordnet, array('class'=>'inptMrgn'), $this->verordnetarray,"&nbsp;"); ?>
+		<span class="error"><?php echo $this->error_verordnet ?></span>
+	</div>
+	<div class="clearer"></div>
+	<br />
+
+	<label class="sapvverordnung_new" for="status" ><?php echo $this->translate('status') ?></label>
+	<div id="editionid" class="Tableradiobox">
+		<div class="sapv_status_set">
+			<?php echo $this->formRadio('status', $this->status, array("class"=>"inptMrgn"), $this->radioarr,"&nbsp;"); ?>
+			<span class="error"><?php echo $this->error_status ?></span>
+			<label id="after_opposition">
+			<input type="checkbox" name="after_opposition" id="after_opposition" <?php if($this->after_opposition==1){ echo 'checked="checked"';} ?> value="1" />
+			nach Widerspruch
+			</label>
+		</div>
+	</div>
+
+<div class="clearer"></div>
+
+<div class="disabled-date" style="display: none;">
+   <label for="verorddisabledate" class="sapvverordnung_new" style="margin-right: 10px;"><?php echo $this->translate('disableddate') ?></label>
+   <input type="text" name="verorddisabledate" id="verorddisabledate"  style="width:177px; display:block; float:left;" value="<?php echo $this->verorddisabledate ?>" />
+</div>
+
+<div class="approved_block" style="display: none;">
+   <label for="sapv_approved_date" class="sapvverordnung_new" style="margin-right: 10px;"><?php echo $this->translate('sapv_approved_date') ?></label>
+   <input type="text" name="approved_date" id="sapv_approved_date"  style="width:177px; display:block; float:left;" value="<?php echo $this->approved_date ?>" /><br/><br/>
+   <div class="clearer"></div>
+   <label for="sapv_approved_number" class="sapvverordnung_new" style="margin-right: 10px;"><?php echo $this->translate('sapv_approved_number') ?></label>
+   <input type="text" name="approved_number" id="sapv_approved_number"  style="width:177px;" value="<?php echo $this->approved_number ?>" />
+</div>
+<div class="clearer">&nbsp;</div>
+<?php if($this->sapv_extra): ?>
+<label class="sapvverordnung_new" for="status" style="margin: 0 10px 0 0;"><?php echo $this->translate('') ?></label>
+<div class="sapv_extra_set">
+	<?php echo $this->formRadio('extra_set', $this->extra_set, array("class"=>"extra_set"), $this->extraradioarr_old, "&nbsp;"); ?>
+</div>
+<?php endif; ?>
+<div class="clearer">&nbsp;</div>
+<?php if($this->sapv_primary_status): ?>
+<table border="0">
+	<tr>
+		<td width="174px"><?php echo $this->translate('Primary Status') ?></td>
+		<td class="status_set">
+		<?php //echo $this->formRadio('primary_set', $this->primary_set, array("class"=>"primary_set"), $this->extraradioarr, "&nbsp;"); ?>
+		<? echo $this->formSelect('primary_set', $this->primary_set, null, $this->extraradioarr); ?>
+		</td>
+	</tr>
+	<tr>
+		<td></td>
+		<td><div class="error" style="margin-left:0px!important;"><?php echo $this->error_primary_set ?></div></td>
+	</tr>			
+</table>
+<?php endif; ?>
+<?php if($this->sapv_secondary_status): ?>
+<table border="0">
+	<tr>
+		<td width="174px"><?php echo $this->translate('2nd Page') ?></td>
+		<td class="status_set">
+		<?php //echo $this->formRadio('secondary_set', $this->secondary_set, array("class"=>"secondary_set"), $this->extraradioarr, "&nbsp;"); ?>
+		<? echo $this->formSelect('secondary_set', $this->secondary_set, null, $this->extraradioarr); ?>
+		</td>
+	</tr>
+	<tr>
+		<td></td>
+		<td><div class="error" style="margin-left:0px!important;"><?php echo $this->error_secondary_set ?></div></td>
+	</tr>	
+</table>
+<?php endif; ?>
+
+		<?php if($this->sapv_bra_options): ?>
+			<label class="sapvverordnung_new"><?php echo $this->translate('Sapv bra options') ?></label>
+			<div class="sapv_bra_options">
+				<?php echo $this->formMultiCheckbox('bra_options[]', $this->bra_options, array('class'=>'inptMrgn'), $this->bra_options_array,"&nbsp;"); ?>
+			</div>
+		<?php endif; ?>
+		
+		<?php if( $this->case_number !== false) : ?>
+		<label class="sapvverordnung_new""><?php echo $this->translate('health_insurance_number') ?></label>
+			<div class="sapv_bra_options">
+				<?php echo $this->formText('case_number', $this->case_number, array('style'=>'width:177px;')); ?>
+			</div>
+			<div class="clearer"></div>
+		<?php endif; ?>
+
+<div class="clearer">&nbsp;</div><div class="clearer">&nbsp;</div>
+	<input type="button" name="btnsubmit" id="btnsubmit-save" value="<?php echo $this->translate('submit') ?>" class="button" onclick="checkdischargednew('frmuser')">
+</div>
+
+
+<br/><br/>
+<?php if (!empty($_GET['vid'])){?>
+<!--  <span style="float: right;  "><a href="patient/sapvverordnungedit?decid=<?php echo $_GET['vid']?>&id=<?php echo $this->pid?>"   style="line-height: 30px; text-decoration: none;"  onclick="return checkclientchanged();"><b  style="float: right;">Entfernen SAPV Verordnung</b><img src="<?php echo RES_FILE_PATH;  ?>/images/action_delete.png" border="0" /></a></span> -->
+<span style="float: right;  "><a id="delete_sapv" href="javascript:void(0)" style="line-height:16px; text-decoration: none;"><b  style="float: right;">Entfernen SAPV Verordnung</b><img src="<?php echo RES_FILE_PATH;  ?>/images/action_delete.png" border="0" /></a></span>
+<?php  }?>
+</fieldset>
+</div>
+</form>
+

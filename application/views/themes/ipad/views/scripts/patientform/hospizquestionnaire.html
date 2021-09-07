@@ -1,0 +1,459 @@
+<!-- Maria:: Migration ISPC to CISPC 08.08.2020 -->
+<?
+$this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/page-css/hospiz_questionnaire_style.css');
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/autogrow/jquery.elastic.js');
+?>
+<?php 
+	$patient = $this->patient_details;
+	$hopq = $this->hospiz_questionnaire_details;
+	$hq_users = $this->users_details;
+	$client_details = $this->client_details;
+?>
+
+
+<script type="text/javascript">
+var isdischarged = '<?php echo $this->isdischarged ?>';
+
+var carediv = function(params)
+{
+	document.getElementById('listcarelevel').innerHTML=params.carelist;
+}
+
+
+var chks;
+var formid;
+
+function updatePatientInformation(modname,fldname,formid,chk,patid,drp){
+	if(chk.checked == true){
+		chks = 1;
+	} else {
+		chks = 0;
+	}
+	if(drp=='drop')
+	{
+		chks = chk.value;
+	}
+	ajaxcall(modname,fldname,chks,patid,formid);
+}
+
+function ajaxcall(modname,fldname,chks,patid,formid){
+
+	if(isdischarged==1){
+		jConfirm('<?php echo $this->translate('dischargealert'); ?>', '', function(r) {
+			if(r){
+				ajaxCallserver({url:appbase+'patient/updatepatientinfo?modname='+modname+'&fldname='+fldname+'&chkval='+encodeURIComponent(chks)+'&patid='+patid+'&formid='+formid});
+			}
+		});
+
+		return false;
+	} else {
+		ajaxCallserver({url:appbase+'patient/updatepatientinfo?modname='+modname+'&fldname='+fldname+'&chkval='+encodeURIComponent(chks)+'&patid='+patid+'&formid='+formid});
+	}
+}
+
+  /*-------------------------------------------------------------------------------------*/
+  /*-------------------------------------- OTHER ----------------------------------------*/
+  /*-------------------------------------------------------------------------------------*/
+
+$(document).ready(function(){
+	$('form').submit(function() {
+		setTimeout(function () {$('input[type=submit]').attr('disabled', true);}, 150);
+		setTimeout(function () {$('input[type=submit]').attr('disabled', false);}, 11000);
+	});
+	$( ".datepick" ).datepicker({
+		dateFormat: 'dd.mm.yy',
+		showOn: "both",
+		buttonImage: $('#calImg').attr('src'),
+		buttonImageOnly: true,
+		changeMonth: true,
+		changeYear: true,
+		nextText: '',
+		prevText: ''
+	});
+
+    
+	/*-------------------------------*/
+	if($('#operativ_ja:checked').val() == 1){
+	    $('.operativ_details').show();
+	}
+	$(".operativ_option").bind('click',function() {
+	    if($(this).val() == 1){
+			$('.operativ_details').show();
+	    } else {
+			$('#operativ_details').val("");
+			$('.operativ_details').hide();
+	    }
+	});
+
+
+	if($('#chemo_ja:checked').val() == 1){
+	    $('.chemo_details').show();
+	}
+	$(".chemo_option").bind('click',function() {
+	    if($(this).val() == 1){
+			$('.chemo_details').show();
+	    } else {
+			$('#chemo_details').val("");
+			$('.chemo_details').hide();
+	    }
+	});
+
+	if($('#radiatio_ja:checked').val() == 1){
+	    $('.radiatio_details').show();
+	}
+	$(".radiatio_option").bind('click',function() {
+	    if($(this).val() == 1){
+			$('.radiatio_details').show();
+	    } else {
+			$('#radiatio_details').val("");
+			$('.radiatio_details').hide();
+	    }
+	});
+	/*-------------------------------*/
+}); // end of $(document).ready()
+
+
+   
+
+</script>
+
+
+<div style="display: none;"><img id="calImg" src="<?php echo RES_FILE_PATH;  ?>/images/calendar.png" class="trigger"></div>
+<?php echo $this->patientinfo ?>
+<?php echo $this->tabmenus ?>
+<div class="tab_container">
+	<form action="" name="hospizq" method="post">
+		<div class="hospiz_questionnaire">
+				
+			<div class="hospizq_title">
+				<h2>Fragebogen zur Feststellung der stationären Hospizpflegebedürftigkeit</h2> 
+				<!-- <img src="<?php echo APP_BASE; ?>/images/forms_images/mdk/header.jpg" height="75"/> --><!-- ISPC-2647 Carmen 28.07.2020 -->
+			</div>
+			<!-- // -->	
+					
+			<!-- ################################################## -->
+			<div class="hospizq_appdetails hospizq">
+				<table>
+					<tr>
+						<td colspan="2">&nbsp;</td>
+					</tr>
+					<tr>
+						<td width="5%"><input type="checkbox" name="hospiz_q_insert[initial_application]" value="1"  <?php if( $hopq['initial_application'] == '1'){?> checked="checked"  <?}?>/></td>
+						<td><b>Erstantrag</b></td>
+					</tr>
+					<tr>
+						<td colspan="2">&nbsp;</td>
+					</tr>
+					<tr>
+						<td><input type="checkbox" name="hospiz_q_insert[renew_application]" id="renew_application" value="1" <?php if($hopq['renew_application'] == '1'){?> checked="checked"  <?}?> /></td>
+						<!-- <td><b>Verlängerungsantrag </b> - Aufnahme am:<?php if( $hopq['admission_date'] !='0000-00-00 00:00:00' && !empty($hopq['admission_date'])){ echo  date('d.m.Y',strtotime($hopq['admission_date'])); } else  { echo "";} ?> </td>-->
+						<!--<td><b>Verlängerungsantrag </b> &nbsp; - Aufnahme am: <?php echo $patient['admission_date'] ?> </td>-->
+						<td>
+							<table style="width:100%;">
+								<tr>
+									<td style="width:230px;line-height: 140%;">
+										<b>Verlängerungsantrag </b> &nbsp; - Aufnahme am:
+									</td>
+									<td>
+										<input type="text" name="hospiz_q_insert[admission_date]" id="date" class="datepick" value="<?php echo $patient['admission_date'] ?>" />
+									</td>
+								</tr>
+							</table>
+						</td>
+					</tr>
+				</table>
+			</div>
+			
+			
+			<!-- ################################################## -->
+			<div class="hospizq_healthinsurance hospizq">
+				<table>
+					<tr>
+						<td width="15%"><b>Krankenkasse:</b></td>
+						<td align="left" colspan="2"><?php echo $patient['health_insurance'];?></td>
+					</tr>
+					<tr><td colspan="3">&nbsp;</td></tr>
+					<tr>
+						<td width="15%"><b>Name, Vorname:</b></td>
+						<td width="70%"><?php echo $patient['last_name'] ?>, <?php echo $patient['first_name'] ?></td>
+						<td width="15%"><b>geb.:</b> <?php echo $patient['birthd']; ?></td>
+					</tr>
+				</table>
+			</div>
+
+
+			<!-- ################################################## -->			
+			<div class="hospizq_sympt_block hospizq">
+				<table>
+					<tr><td><b>Diagnose mit Erstdiagnose und Stadium:</b></td></tr>
+					<tr><td><textarea rows="" cols="" name="hospiz_q_insert[diagnostic_details]"><?php echo $hopq['diagnostic_details']; ?></textarea></td></tr>
+				</table>
+			</div>
+
+
+
+			<!-- ################################################## -->
+			<div class="hospizq_metastasen_block hospizq">
+				<table>
+					<tr>
+						<td width="10%"><b>Metastasen:</b></td>
+						<td width="90%">
+							<table>
+								<tr>
+									<td  width="15%"><input type="radio" name="hospiz_q_insert[metastasen_options]" value="1" <?	if($hopq['metastasen_options'] == '1') {?> checked="checked"<?php } ?> /> <label>ja</label></td>
+									<td  width="15%"><input type="radio" name="hospiz_q_insert[metastasen_options]" value="0" <?php  if($hopq['metastasen_options'] == '0') {?> checked="checked"<?php } ?> /> <label>nein</label></td>
+									<td  width="70%">welche:</td>
+								</tr>
+							</table>
+						</td>
+					</tr>
+					
+					<tr>
+						<td colspan="2" >
+							<textarea rows="" cols="" name="hospiz_q_insert[metastasen_details]"><?php echo $hopq['metastasen_details']; ?></textarea>
+						</td>
+					</tr>
+				</table>
+			</div>
+			
+
+			
+			<!-- ################################################## -->
+			<div class="hospizq">
+
+			<div class="hospizq_findings_block">
+				<table>
+					<tr>
+						<td><h3>Allgemeine Befunde:</h3></td>
+					</tr>
+					<tr>
+						<td>
+							<table>
+								<tr>
+									<td width="3%"><span> 1.</span></td>
+									<td><label> AZ: </label> <input type="text" name="hospiz_q_insert[findings_ez]" value="<?php echo $hopq['findings_ez']; ?>" /></td>
+									<td><label> EZ: </label> <input type="text" name="hospiz_q_insert[findings_az]" value="<?php echo $hopq['findings_az']; ?>" /></td>
+									<td><label> Gewicht/Größe: </label> <input type="text" name="hospiz_q_insert[findings_height_weight]" value="<?php echo $hopq['findings_height_weight']; ?>" /></td>
+									<td><label> Hautzustand: </label> <input type="text" name="hospiz_q_insert[findings_skin_condition]" value="<?php echo $hopq['findings_skin_condition']; ?>" /></td>
+								</tr>
+							</table>
+						</td>
+					</tr>
+				</table>
+			</div>
+
+			<div class="hospizq_findings_block">
+				<table>
+					<tr>
+						<td  width="3%"><span> 2. </span></td>
+						<td><b>Psychische Auffälligkeiten:</b></td>
+					</tr>
+					<tr>
+						<td colspan="2">
+							<textarea rows="" cols="" name="hospiz_q_insert[mental_disorders]"><?php echo $hopq['mental_disorders']; ?></textarea>
+						</td>
+					</tr>
+				</table>
+			</div>
+				<table>
+					<tr>
+						<td width="25%"> <label><b>Bisherige Therapien:</b></label></td>
+						<td width="10%"><label>operativ</label></td>
+						<td width="15%"><input type="radio" class="operativ_option" id="operativ_ja" name="hospiz_q_insert[operativ]" value="1" <?php if($hopq['operativ'] == '1'){?>  checked="checked" <?php }?> /><label>ja</label></td>
+						<td width="15%"><input type="radio" class="operativ_option" id="operativ_nein" name="hospiz_q_insert[operativ]" value="0" <?php if($hopq['operativ'] == '0'){?>  checked="checked" <?php }?>  /><label>nein</label></td>
+						<td width="35%"><div class="operativ_details" style="display: none;"><label>wann:</label> &nbsp;<input type="text" name="hospiz_q_insert[operativ_details]" value="<?php echo $hopq['operativ_details']; ?>" id="operativ_details"  /></div></td>
+					</tr>
+					<tr>
+						<td> <b></b></td>
+						<td><label>chemo</label></td>
+						<td><input type="radio" class="chemo_option"  name="hospiz_q_insert[chemo]" id="chemo_ja" value="1"  <?php if($hopq['chemo'] == '1') {?>  checked="checked" <?php }?>  /><label>ja</label></td>
+						<td><input type="radio" class="chemo_option"  name="hospiz_q_insert[chemo]" id="chemo_nein" value="0"  <?php if($hopq['chemo'] == '0') {?>  checked="checked" <?php }?> /><label>nein</label></td>
+						<td><div class="chemo_details"  style="display: none;"><label>wann:</label> &nbsp;<input type="text" name="hospiz_q_insert[chemo_details]"  value="<?php echo $hopq['chemo_details']  ?>" id="chemo_details"  /></div></td>
+					</tr>
+					<tr>
+						<td> <b></b></td>
+						<td><label>Radiatio</label></td>
+						<td><input type="radio" class="radiatio_option" name="hospiz_q_insert[radiatio]" id="radiatio_ja" value="1"  <?php if($hopq['radiatio'] == '1')  {?>  checked="checked" <?php }?> /><label>ja</label></td>
+						<td><input type="radio" class="radiatio_option" name="hospiz_q_insert[radiatio]" id="radiatio_nein" value="0" <?php if($hopq['radiatio'] == '0')  {?>  checked="checked" <?php }?>  /><label>nein</label></td>
+						<td><div class="radiatio_details"  style="display: none;"><label>wann:</label> &nbsp;<input type="text" name="hospiz_q_insert[radiatio_details]" value="<?php echo $hopq['radiatio_details']; ?>"  id="radiatio_details"  /></div></td>
+					</tr>
+				</table>
+			</div>
+
+
+
+
+		<!-- ################################################## -->
+			<div class="hospizq_therapy_block hospizq">
+				<table>
+					<tr>
+						<td colspan="6"><b> <h2>I Derzeit erforderliche palliative Therapie</h2></b></td>
+					</tr>
+				</table>
+					<br/>
+				<table>
+					<tr>
+						<td  colspan="2"><b>1. Symptomkontrolle</b></td>
+						<td><input type="checkbox"  name="hospiz_q_insert[symptom_schmerzen]"	value="1"	<?php if($hopq['symptom_schmerzen'] == '1'){?>  checked="checked"<?php } ?> /><label>Schmerzen</label></td>
+						<td><input type="checkbox"  name="hospiz_q_insert[symptom_dyspnoe]"		value="1"	<?php if($hopq['symptom_dyspnoe'] == '1'){?>  checked="checked"<?php } ?> /><label>Dyspnoe</label></td>
+						<td><input type="checkbox"  name="hospiz_q_insert[symptom_erbrechen]"	value="1"	<?php if($hopq['symptom_erbrechen'] == '1'){?>  checked="checked"<?php } ?>  /><label>Erbrechen</label></td>
+						<td></td>
+					</tr>
+					<tr>
+						<td colspan="6">&nbsp;</td>
+					</tr>
+					<tr>
+						<td><input type="checkbox"  name="hospiz_q_insert[symptom_ubelkeit]"	value="1"	<?php if($hopq['symptom_ubelkeit'] == '1'){?>  checked="checked"<?php } ?> /><label>Übelkeit</label></td>
+						<td><input type="checkbox"  name="hospiz_q_insert[symptom_obstipation]"	value="1"	<?php if($hopq['symptom_obstipation'] == '1'){?>  checked="checked"<?php } ?>  /><label>Obstipation</label></td>
+						<td><input type="checkbox"  name="hospiz_q_insert[symptom_durchfalle]"	value="1"	<?php if($hopq['symptom_durchfalle'] == '1'){?>  checked="checked"<?php } ?>  /><label>Durchfälle</label></td>
+						<td><input type="checkbox"  name="hospiz_q_insert[symptom_depression]"	value="1"	<?php if($hopq['symptom_depression'] == '1'){?>  checked="checked"<?php } ?>  /><label>Depression</label></td>
+						<td><input type="checkbox"  name="hospiz_q_insert[symptom_angste]"		value="1"	<?php if($hopq['symptom_angste'] == '1'){?>  checked="checked"<?php } ?>  /><label>Ängste</label></td>
+						<td><input type="checkbox"  name="hospiz_q_insert[symptom_haut]"		value="1"	<?php if($hopq['symptom_haut'] == '1'){?>  checked="checked"<?php } ?>  /><label>Haut</label></td>
+					</tr>
+				</table>
+				
+				<table>
+					<tr><td><textarea rows="" cols="" name="hospiz_q_insert[symptom_control]"><?php echo $hopq['symptom_control']; ?></textarea></td></tr>
+				</table>				
+				<br/>
+				<table>
+					<tr>
+						<td><b>2. Medikamente: </b></td>
+						<td><input type="checkbox"  name="hospiz_q_insert[med_oral]"		value="1"	<?php if($hopq['med_oral'] == '1'){?>  checked="checked"<?php } ?> /><label>oral</label></td>
+						<td><input type="checkbox"  name="hospiz_q_insert[med_iv]"			value="1"	<?php if($hopq['med_iv'] == '1'){?>  checked="checked"<?php } ?> /><label>i.v.</label></td>
+						<td><input type="checkbox"  name="hospiz_q_insert[med_im]"			value="1"	<?php if($hopq['med_im'] == '1'){?>  checked="checked"<?php } ?>  /><label>i.m.</label></td>
+						<td><input type="checkbox"  name="hospiz_q_insert[med_sc]"			value="1"	<?php if($hopq['med_sc'] == '1'){?>  checked="checked"<?php } ?> /><label>s.c.</label></td>
+						<td><input type="checkbox"  name="hospiz_q_insert[med_infusion]"	value="1"	<?php if($hopq['med_infusion'] == '1'){?>  checked="checked"<?php } ?>  /><label>Infusion</label></td>
+						<td><input type="checkbox"  name="hospiz_q_insert[med_nebuliser]"	value="1"	<?php if($hopq['med_nebuliser'] == '1'){?>  checked="checked"<?php } ?>  /><label>Verneblung</label></td>
+						<td><input type="checkbox"  name="hospiz_q_insert[med_inhalation]"	value="1"	<?php if($hopq['med_inhalation'] == '1'){?>  checked="checked"<?php } ?>  /><label>Inhalation</label></td>
+					</tr>
+					
+					<tr>
+						<td colspan="8">&nbsp;</td>
+					</tr>
+					<tr>
+						<td colspan="8"><label>Welche: </label><textarea name="hospiz_q_insert[med_details]" ><?php echo $hopq['med_details']; ?> </textarea></td>
+					</tr>
+				</table>
+
+			
+				<br/>
+				<table>
+					<tr>
+						<td  cplspan="5"><b>3. Andere Therapien:</b></td>
+					</tr>
+					<tr>
+						<td colspan="5">&nbsp;</td>
+					</tr>
+					<tr>
+						<td><input type="checkbox"  name="hospiz_q_insert[chemotherapie]"	value="1"	<?php if($hopq['chemotherapie'] == '1'){ ?> checked="checked" <?php }?> /><label>Chemotherapie</label></td>
+						<td><input type="checkbox"  name="hospiz_q_insert[radiatio_needed]"	value="1"	<?php if($hopq['radiatio_needed'] == '1'){ ?> checked="checked" <?php }?> /><label>Radiatio</label></td>
+						<td><input type="checkbox"  name="hospiz_q_insert[kg]"				value="1"	<?php if($hopq['kg'] == '1'){ ?> checked="checked" <?php }?>  /><label>KG</label></td>
+						<td><input type="checkbox"  name="hospiz_q_insert[lymphdrainage]"	value="1"	<?php if($hopq['lymphdrainage'] == '1'){ ?> checked="checked" <?php }?> /><label>Lymphdrainage</label></td>
+						<td><input type="checkbox"  name="hospiz_q_insert[atemtherapie]"	value="1"	<?php if($hopq['atemtherapie'] == '1'){ ?> checked="checked" <?php }?> /><label>Atemtherapie</label></td>
+					</tr>
+				</table>
+				<br/>
+				<table>
+					<tr>
+						<td colspan="5"><b>4. Besonderheiten:</b></td>
+					</tr>
+					<tr>
+						<td colspan="5">&nbsp;</td>
+					</tr>
+					
+					<tr>
+						<td><input type="checkbox"  name="port" value="1" onclick="updatePatientInformation('MoreInfo','port','grow20',this,'<?php echo $this->enc_patid; ?>')" /><label>Port</label></td>
+						<td><input type="checkbox"  name="peg" value="1"  onclick="updatePatientInformation('MoreInfo','peg','grow20',this,'<?php echo $this->enc_patid; ?>')"   /><label>PEG/Magensonde</label></td>
+						<td><input type="checkbox"  name="hospiz_q_insert[sauerstoffgabe]" value="1" <?php if($hopq['sauerstoffgabe'] == 1){ ?> checked="checked" <?php }?>/><label>Sauerstoffgabe</label></td>
+						<td><input type="checkbox"  name="hospiz_q_insert[bzrr_control]" value="1" <?php if($hopq['bzrr_control'] == 1){ ?> checked="checked" <?php }?>/><label>BZ/RR-Kontrolle</label></td>
+						<td><input type="checkbox"  name="dk" value="1" onclick="updatePatientInformation('MoreInfo','dk','grow21',this,'<?php echo $this->enc_patid; ?>')"  /><label>DK/Zysto-Fix</label></td>
+					</tr>
+					<tr>
+						<td colspan="5">&nbsp;</td>
+					</tr>
+					<tr>
+						<td><input type="checkbox"  name="hospiz_q_insert[anuspraeter]" value="1" <?php if($hopq['anuspraeter'] == 1){ ?> checked="checked" <?php }?>/><label>Anus pr.</label></td>
+						<td><input type="checkbox"  name="hospiz_q_insert[urostoma]" value="1" <?php if($hopq['urostoma'] == 1){ ?> checked="checked" <?php }?> /><label>Urostoma</label></td>
+						<td><input type="checkbox"  name="hospiz_q_insert[tracheostoma]" value="1" <?php if($hopq['tracheostoma'] == 1){ ?> checked="checked" <?php }?>/><label>Tracheostoma</label></td>
+						<td colspan="2"><input type="checkbox"  name="hospiz_q_insert[wound_treatment]" id="wound_treatment" value="1" <?php if($hopq['wound_treatment'] == 1){ ?> checked="checked" <?php }?>  /><label>Wundbehandlung</label></td>
+					</tr>
+				</table>
+			</div>
+
+
+
+			<!-- ################################################## -->
+			<div class="hospizq_Psychosoziale_block hospizq">
+				<table>
+					<tr>
+						<td colspan="6"><b> <h2>II Psychosoziale Betreuung:</h2></b></td>
+					</tr>
+				</table>
+				<br/>
+				<table>
+					<tr>
+						<td><b>familiäre Situation/soziales Umfeld:</b> </td>
+					</tr>
+					<tr>
+						<td><textarea rows="" cols="" name="hospiz_q_insert[family_social_environment]"><?php echo $hopq['family_social_environment']; ?></textarea></td>
+					</tr>
+				</table>
+				<br/>
+				<table>
+					<tr>
+						<td><b>erforderliche psychosoziale Begleitung:</b></td>
+					</tr>
+					<tr>
+						<td><textarea rows="" cols="" name="hospiz_q_insert[required_psychosocial_support]"><?php echo $hopq['required_psychosocial_support']; ?></textarea></td>
+					</tr>
+				</table>
+			</div>
+
+			<!-- ################################################## -->
+			<div class="hospizq_user_block hospizq">
+				<table border="1" style="border:1px solid #000;">
+				<tr>
+					<td width="50%">&nbsp;<?php echo $client_details['city']; ?>,  <?php echo date('d.m.Y'); ?></td>
+					<td width="50%" align="right"> 
+						<select name="hospiz_q_insert[user]">
+						<option value=""> <?php echo $this->translate('selectuser')?></option>
+							<?php foreach($hq_users['client_users'] as $group => $users):?>
+							<optgroup  label="<?php echo $group ?>"><?php echo $group ?></optgroup>
+							<?php foreach($users as $u_id => $u_name):?>
+							
+							<option value="<?php echo $u_id;?>" <?php if($hopq['user'] == $u_id):?> selected="selected" <?php endif; ?> ><?php echo $u_name;?></option>
+							<?php endforeach;?>
+							
+							<?php endforeach;?>
+						</select>
+					</td>
+				</tr>
+				</table>
+			</div>
+		</div>
+
+
+		<input name="btnsubmit" id="btnsubmit" type="submit" value="<?php echo $this->translate('submit') ?>" />
+		<input name="pdf_export" id="pdf_export" type="submit" value="<?php echo $this->translate('generatepdf') ?>" class="btnsubmit_usersessions"/>
+	</form>
+</div>
+<script type="text/javascript" >
+
+	//stammdaten checkboxes
+	getSelected('<?php echo $this->dk; ?>', 'dk');
+	getSelected('<?php echo $this->peg; ?>', 'peg');
+	getSelected('<?php echo $this->port; ?>', 'port');
+
+	
+	function getSelected(dbvalue,fieldname){
+		var fieldarray = document.getElementsByName(fieldname);
+		for(i=0; i<fieldarray.length;i++){
+			if(fieldarray[i].value==dbvalue){
+				fieldarray[i].checked = true;
+			}
+		}
+	}
+</script>
+
+

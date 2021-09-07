@@ -1,0 +1,608 @@
+<?php
+/*
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/data_tables/datatables.min.css');
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/data_tables/jquery.dataTables.js');
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/data_tables/fixedColumns.dataTables.min.css');
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/data_tables/dataTables.fixedColumns.min.js');
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/medicationnew.css');
+*/
+// allowed medication types
+$allowed_medication_types = $this->medication_blocks; 
+$medication_type = $this->medication_type;
+
+$timed_scheduled_medications = $this->timed_scheduled_medications;
+
+  //Changes for ISPC-1848 F
+
+// for ISPC-2247 changes were made to this page (Ancuta 06.11.2018)
+
+//$this->ModulePrivileges was added.. so no need to add one by one
+?>
+
+<script type="text/javascript">
+$(document).ready(function() { /*------ Start $(document).ready --------------------*/
+	
+	// DATATABLE
+	var table_actual =
+	$('.medication_history_table').DataTable({
+		"lengthMenu": [[10, 25, 50], [10, 25, 50]],
+
+        "dom": 't',
+		
+		processing: true,
+
+		info: false,
+		
+		filter: true,
+		
+		paginate: false,
+
+		 "orderCellsTop": true,
+		
+		serverSide: false,
+		
+		"autoWidth": false,
+		
+		
+		"scrollX": false,
+		
+		"scrollCollapse":true,
+
+		<?php if( $medication_type != "treatment_care" && $medication_type != "isintubated"):?>
+		columnDefs: [ 
+				       	{
+				       		"bVisible": false,
+				       		"targets": 0,
+				       		"searchable": true,
+				       		"orderable": true,
+				       		"class": "medication_change_full",
+				       		"sType" : "date"
+				       	},  // medication_last_update_full-HIDDEN
+				       	
+				       	{ "bVisible": false, "targets": 1, "searchable": true, "orderable": true },  // medication_create_full-HIDDEN
+				       	{ "iDataSort": 1, "targets": 2, "searchable": true, "orderable": true }, // medication_create_date
+			       		{ "targets": 3, "searchable": true, "orderable": true }, // medication_name
+				       	
+			       		{ "targets": 4, "searchable": true, "orderable": true, "bVisible": false , "name":"medication_drug_hidden"}, // medication_drug
+				       	
+				       	
+				       	<?php if ($this->show_new_fileds == "1"):?>
+				       	{ "targets": 5, "searchable": true, "orderable": true, <?php if( ! in_array($medication_type , array("isschmerzpumpe", "treatment_care")) ) : ?> "bVisible": false, <?php endif; ?> "data": "medication_unit" }, // medication_unit
+				       	{ "targets": 6, "searchable": true, "orderable": true, <?php if( ! in_array($medication_type , array("isschmerzpumpe", "treatment_care")) ) : ?> "bVisible": false, <?php endif; ?> "data": "medication_type" }, // medication_type
+				       	
+				       	{ "targets": 7, "searchable": true, "orderable": true, "bVisible": false, "data": "medication_dosage_form" }, // medication_dosage_form
+				       	{ "targets": 8, "searchable": true, "orderable": true, <?php if( ! in_array($medication_type , array("isschmerzpumpe", "treatment_care")) ) : ?> "bVisible": false, <?php endif; ?> "data": "medication_concentration" }, // medication_concentration
+				       	
+				       		<?php $column  = 9; ?>
+				       	<?php else:?>
+				       		<?php $column  = 5; ?>
+				       	<?php endif;?>
+
+				       	
+				    	<?php if(!in_array($medication_type,$timed_scheduled_medications ) ):?>
+				       		{ "targets": <?php echo $column;?>, "searchable": true, "orderable": false }, // medication_dosage				       	
+					    	<?php $column++; ?>
+					    
+					    <?php else:?>
+					       	<?php foreach($this->dosage_intervals[$medication_type] as $k => $di):?>
+					       		{ "targets": <?php echo $column;?>, "searchable": true, "orderable": false }, // medication_dosage
+					       	<?php $column++; endforeach; ?>
+				       	<?php endif;?>
+				       	
+				       	<?php $new_cloumn_number = $column;?>
+				       	
+				       	{ "targets": <?php echo $new_cloumn_number;?>, "searchable": true, "orderable": true }, // medication_indication
+				       	{ "targets": <?php echo $new_cloumn_number+1;?>, "searchable": true, "orderable": true , "bVisible": false }, // medication_commets
+				       	
+				       	{
+				       		"iDataSort": 0, 
+				       		"targets": <?php echo $new_cloumn_number + 2;?>,
+				       		"searchable": true,
+				       		"orderable": true,
+				       		"class" : "medication_change"
+				       	}, // medication_last_update
+				    
+				       	{ "targets":  <?php echo $new_cloumn_number+3;?>, "searchable": true, "orderable": true }, // medication_sort
+				       	
+				       	{ "targets":  <?php echo $new_cloumn_number+4;?>, "searchable": true, "orderable": true }, // prescrived by
+				       	
+				       	{ "targets":  <?php echo $new_cloumn_number+5;?>, "searchable": true, "orderable": true }, // created by
+				       	{ "targets":  <?php echo $new_cloumn_number+6;?>, "searchable": true, "orderable": true }, // changed by
+				       	
+				       	{ "targets": <?php echo $new_cloumn_number+7;?>, "searchable": true, "orderable": true, <?php if( ! in_array($medication_type , array("isbedarfs", "iscrisis")) ) : ?> "bVisible": false, <?php endif; ?> "data": "medication_escalation" }, // medication_escalation
+				],
+		
+				
+				
+		<?php elseif( $medication_type == "isintubated"):?>
+		columnDefs: [ 
+				       	{
+				       		"bVisible": false,
+				       		"targets": 0,
+				       		"searchable": true,
+				       		"orderable": true,
+				       		"class": "medication_change_full",
+				       		"sType" : "date"
+				       	},  // medication_last_update_full-HIDDEN
+				       	
+				       	{ "bVisible": false, "targets": 1, "searchable": true, "orderable": true },  // medication_create_full-HIDDEN
+				       	{ "iDataSort": 1, "targets": 2, "searchable": true, "orderable": true }, // medication_create_date
+			       		{ "targets": 3, "searchable": true, "orderable": true }, // medication_name
+				       	
+			       		{ "targets": 4, "searchable": true, "orderable": true, "bVisible": false , "name":"medication_drug_hidden"}, // medication_drug
+			       		{ "targets": 5, "searchable": true, "orderable": true, "bVisible": true , "name":"medication_packaging_hidden"}, // medication_packaging ISPC-2176
+				       	
+				       	
+				       	<?php if ($this->show_new_fileds == "1"):?>
+				       	{ "targets": 6, "searchable": true, "orderable": true, <?php if( ! in_array($medication_type , array("isschmerzpumpe", "treatment_care")) ) : ?> "bVisible": false, <?php endif; ?> "data": "medication_unit" }, // medication_unit
+				       	{ "targets": 7, "searchable": true, "orderable": true, <?php if( ! in_array($medication_type , array("isschmerzpumpe", "treatment_care")) ) : ?> "bVisible": false, <?php endif; ?> "data": "medication_type" }, // medication_type
+				       
+				       	{ "targets": 8, "searchable": true, "orderable": true, "bVisible": false, "data": "medication_dosage_form" }, // medication_dosage_form
+				       	{ "targets": 9, "searchable": true, "orderable": true, <?php if( ! in_array($medication_type , array("isschmerzpumpe", "treatment_care")) ) : ?> "bVisible": false, <?php endif; ?> "data": "medication_concentration" }, // medication_concentration
+				       	
+				       		<?php $column  = 10; ?>
+				       	<?php else:?>
+				       		<?php $column  = 6; ?>
+				       	<?php endif;?>
+
+				       	
+				    	<?php if(!in_array($medication_type,$timed_scheduled_medications ) ):?>
+				       		{ "targets": <?php echo $column;?>, "searchable": true, "orderable": false }, // medication_dosage				       	
+					    	<?php $column++; ?>
+					    
+					    <?php else:?>
+					       	<?php foreach($this->dosage_intervals[$medication_type] as $k => $di):?>
+					       		{ "targets": <?php echo $column;?>, "searchable": true, "orderable": false }, // medication_dosage
+					       	<?php $column++; endforeach; ?>
+				       	<?php endif;?>
+				       	
+				       	<?php $new_cloumn_number = $column;?>
+				       	
+				       	{ "targets": <?php echo $new_cloumn_number;?>, "searchable": true, "orderable": true }, // medication_indication
+				       	
+				       	<?php $new_cloumn_number++;?>
+				       	{ "targets": <?php echo $new_cloumn_number;?>, "searchable": true, "orderable": true , "bVisible": true }, // medication_kcal ISPC-2176
+				       	
+				       	<?php $new_cloumn_number++;?>
+				       	{ "targets": <?php echo $new_cloumn_number;?>, "searchable": true, "orderable": true , "bVisible": true }, // medication_volume ISPC-2176
+				       	
+				       	<?php $new_cloumn_number++;?>
+				       	{ "targets": <?php echo $new_cloumn_number;?>, "searchable": true, "orderable": true , "bVisible": false }, // medication_commets
+				       	
+				       	<?php $new_cloumn_number++;?>
+				       	{ "iDataSort": 0,"targets": <?php echo $new_cloumn_number;?>,"searchable": true, "orderable": true, "class" : "medication_change"}, // medication_last_update
+				    
+				       	<?php $new_cloumn_number++;?>
+				       	{ "targets":  <?php echo $new_cloumn_number;?>, "searchable": true, "orderable": true }, // medication_sort
+				       	
+				       	<?php $new_cloumn_number++;?>
+				       	{ "targets":  <?php echo $new_cloumn_number;?>, "searchable": true, "orderable": true }, // prescrived by
+				       	
+				       	<?php $new_cloumn_number++;?>
+				       	{ "targets":  <?php echo $new_cloumn_number;?>, "searchable": true, "orderable": true }, // created by
+				       	
+				       	<?php $new_cloumn_number++;?>
+				       	{ "targets":  <?php echo $new_cloumn_number;?>, "searchable": true, "orderable": true }, // changed by
+				       	
+				       	<?php $new_cloumn_number++;?>
+				    	{ "targets":  <?php echo $new_cloumn_number;?>, "searchable": true, "orderable": true, <?php if( ! in_array($medication_type , array("isbedarfs", "iscrisis")) ) : ?> "bVisible": false, <?php endif; ?> "data": "medication_escalation" }, // medication_escalation
+				       	
+				],
+		
+				
+				
+		<?php else: /*this is treatment_care*/ ?>
+		columnDefs: [ 
+				       	{ "bVisible": false, "targets": 0, "searchable": true, "orderable": true },  // medication_last_update_full
+				       	{ "bVisible": false, "targets": 1, "searchable": true, "orderable": true },  // medication_create_full-HIDDEN
+				       	{ "iDataSort": 1, "targets": 2, "searchable": true, "orderable": true }, // medication_create_date
+			       		{ "targets": 3, "searchable": true, "orderable": true }, // medication_name
+				       	{ "targets": 4, "searchable": true, "orderable": true }, // medication_commets
+				       	{ "iDataSort": 0, "targets": 5, "searchable": true, "orderable": true }, // medication_last_update
+				       	{ "targets":  6, "searchable": true, "orderable": true }, // medication_sort
+				       	{ "targets":  7, "searchable": true, "orderable": true }, // prescrived by
+				       	{ "targets":  8, "searchable": true, "orderable": true }, // created by
+				       	{ "targets":  9, "searchable": true, "orderable": true } // changed by
+				],
+		<?php endif;?>
+ 		order: [[ 0, "desc" ]],
+ 		
+ 			
+		initComplete: function()
+		{ 
+			this.api().order.listener( $('#drug_medication_history_table_sorter'), this.api().column('medication_drug_hidden:name').index()  );
+		},	
+		
+		<?php if( ! in_array($medication_type , array("isschmerzpumpe", "treatment_care")) ):?>
+		
+		 "drawCallback": function ( settings ) {
+	            var api = this.api();
+	            var rows = api.rows( {page:'current'} ).nodes();
+
+	            api.rows( {page:'current'} ).every(function(){
+				
+		            var classnow="odd";
+		            if ($(this.node()).hasClass('even')){
+		            	classnow = 'even';
+		            }
+		            	
+		        	if( 1 ) {  
+	
+		        		var data = this.data();
+		        		var content = "";
+		        		
+		        		if (data.medication_unit != undefined){
+		        			content += data.medication_unit;
+		        		}
+		        		
+		        		if (data.medication_type != undefined){
+		        			content += data.medication_type;
+		        		}
+		        		
+		        		if (data.medication_dosage_form != undefined){
+		        			content += data.medication_dosage_form;
+		        		}
+		        		
+		        		if (data.medication_concentration != undefined){
+		        			content += data.medication_concentration;
+		        		}
+		        		
+		        		<?php if(  in_array($medication_type , array("isbedarfs", "iscrisis")) ):?>
+		        		if (data.medication_escalation != undefined){
+		        			content += data.medication_escalation;
+		        		}
+		        		<?php endif; ?>
+		        		/* data.medication_unit
+		        		data.medication_type
+		        		data.medication_dosage_form
+		        		data.medication_concentration */
+
+						this.child( history_datatable_format_child_row(data), classnow ).show();
+		           	} 
+	        	   
+	       		});
+	 	}	
+		<?php endif; ?>
+		
+	});
+	
+	
+	$('.medication_history_table').on("order.dt",function(){
+		
+		var order = table_actual.order();
+		
+		
+		if(order[0][0] == table_actual.column('medication_drug_hidden:name').index() ) { // DRUG
+			$('#drug_medication_history_table_sorter')
+				.removeClass('sorting')
+				.removeClass('sorting_asc')
+				.removeClass('sorting_desc');
+		
+			$('#drug_medication_history_table_sorter').addClass('sorting_'+order[0][1]);
+		} 
+		else
+		{
+			$('#drug_medication_history_table_sorter')
+				.removeClass('sorting_asc')
+				.removeClass('sorting_desc')
+				.addClass('sorting');
+		}
+	});
+	
+	
+});/*-- END  $(document).ready ----------- --*/
+
+
+/* Formatting function for row details - modify as you need */
+function history_datatable_format_child_row ( data ) {
+
+	var background_color = "rgba(0, 0, 0, 0)";
+
+	var content = '<tr style="background-color:' + background_color + '"><td>';
+	
+	if (data.medication_concentration != undefined){
+		content += '<div style="float:left; width:90px; padding:2px;">'
+			+ '<span class="lb"><?php echo $this->translate('medication_concentration'); ?></span>'
+			+ '<span class="vl">'+ data.medication_concentration +'</span>'
+			+ '</div>';
+	}
+	
+	if (data.medication_unit != undefined){
+
+		content += '<div style="float:left; width:90px; padding:2px;">'
+			+ '<span class="lb"><?php echo $this->translate('medication_unit'); ?></span>'
+			+ '<span class="vl">'+ data.medication_unit +'</span>'
+			+ '</div>';
+	}
+	content += '<div style="float:left; width:25px; padding:2px;">'
+		+ '<span class="pro_word">pro:</span>'
+		+ '</div>';
+		
+	if (data.medication_dosage_form != undefined){
+		content += '<div style="float:left; width:90px; padding:2px;">'
+			+ '<span class="lb"><?php echo $this->translate('medication_dosage_form'); ?></span>'
+			+ '<span class="vl">'+ data.medication_dosage_form +'</span>'
+			+ '</div>';
+	}
+	
+	if (data.medication_type != undefined){
+		content += '<div style="float:left; width:90px; padding:2px;">'
+			+ '<span class="lb"><?php echo $this->translate('medication_type'); ?></span>'
+			+ '<span class="vl">'+ data.medication_type +'</span>'
+			+ '</div>';
+	}
+	
+	<?php if(  in_array($medication_type , array("isbedarfs", "iscrisis")) ):?>
+	if (data.medication_escalation != undefined){
+		content += '<div style="float:left; width:90px; padding:2px;">'
+			+ '<span class="lb"><?php echo $this->translate('medication_escalation'); ?></span>'
+			+ '<span class="vl">'+ data.medication_escalation +'</span>'
+			+ '</div>';
+	}
+	<?php endif; ?>
+	
+
+	
+	content +='</td></tr>';
+  
+
+   // `d` is the original data object for the row
+   return '<table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:' + background_color + '">'
+   		+ content 
+		+ '</table>';
+}
+
+</script>
+<style>
+tr.current_line td{
+	font-weight: bold;
+}
+</style>
+
+<? $medication_array = $this->medication_data;?>
+<br/>
+
+<table class="medication_history_table datatable">
+	<?php if( in_array($medication_type, $timed_scheduled_medications) ):?>
+		<thead>
+	 		<tr>
+	 			<th rowspan="2"><?php echo $this->translate('medication_last_update_full'); ?></th><!--  0 -HIDDEN-->
+	 			<th rowspan="2"><?php echo $this->translate('create_date_hidden'); ?></th><!--  0 -HIDDEN-->
+	 			<th rowspan="2"><?php echo $this->translate('create_date'); ?></th><!--  0-->
+	 			<th rowspan="1"><?php echo $this->translate('medication_name');?></th><!--  1 -->
+	 			 
+	 			<th rowspan="2" data-sortname="drug"><?php echo $this->translate('medication_drug'); ?></th>
+	 			<?php if($medication_type == "isintubated"):?>
+	 			<th rowspan="2" data-sortname="packaging"><?php echo $this->translate('medication_packaging'); ?></th> <!-- ISPC-2176 -->
+	 			<?php endif;?>
+	 			
+	 			<?php if ($this->show_new_fileds == "1"):?>
+		 			<th rowspan="2"><?php echo $this->translate('medication_unit'); ?></th><!--  3 -->
+		 			<th rowspan="2"><?php echo $this->translate('medication_type'); ?></th><!--  4 -->
+		 			
+		 			<th rowspan="2"><?php echo $this->translate('medication_dosage_form'); ?></th><!--  3 -->
+		 			<th rowspan="2"><?php echo $this->translate('medication_concentration'); ?></th><!--  4 -->
+	 			<?php endif;?>
+	 			
+	 			<th colspan="<?php echo count($this->dosage_intervals[$medication_type]);?>"><?php echo $this->translate('medication_dosage'); ?></th> <!--  5 -->
+	 			
+	 			<th rowspan="2"><?php echo $this->translate('medication_indication'); ?></th><!--  0 -->
+				
+				<?php if($medication_type == "isintubated"):?>
+	 				<th rowspan="2"><?php echo $this->translate('medication_kcal'); ?></th><!--  0 --> <!-- ISPC-2176 -->
+	 				<th rowspan="2"><?php echo $this->translate('medication_volume'); ?></th><!--  0 --> <!-- ISPC-2176 -->
+				<?php endif;?>
+
+	 			<th rowspan="2"><?php echo $this->translate('medication_comments'); ?></th><!--  0 -->
+	 			
+	 			<th rowspan="2"><?php echo $this->translate('medication_last_update'); ?></th><!--  0 -->
+	 			<th rowspan="2"><?php echo $this->translate('medication_importance'); ?></th><!--  0 -->
+	 			
+	 			<th rowspan="2"><?php echo $this->translate('prescribedby'); ?></th><!--  0 -->
+	 			<th rowspan="2"><?php echo $this->translate('medication_created_by'); ?></th><!--  0 -->
+	 			<th rowspan="2"><?php echo $this->translate('medication_changed_by'); ?></th><!--  0 -->
+	 			
+	 			<th rowspan="2"><?php echo $this->translate('medication_escalation'); ?></th><!--  4 -->
+	 		</tr>
+	 		
+	 		<tr>
+	 			<th class="sorting" id="drug_medication_history_table_sorter"><?php echo $this->translate('medication_drug'); ?></th>
+	 			<?php foreach($this->dosage_intervals[$medication_type] as $k => $di):?>
+		 			<th><?php echo $di;?></th>
+	 			<?php endforeach;?>
+	 		</tr>
+	 		
+	 	</thead>
+	<?php elseif($medication_type == "treatment_care"):?>
+		<thead>
+	 		<tr>
+	 			<th ><?php echo $this->translate('medication_last_update_full'); ?></th><!--  0 -->
+	 			<th ><?php echo $this->translate('create_date_hidden'); ?></th><!--  0 -HIDDEN-->
+	 			<th ><?php echo $this->translate('create_date'); ?></th><!--  0-->
+	 			
+	 			<th ><?php echo $this->translate('medication_name');?></th><!--  1 -->
+	 			
+	 			<th ><?php echo $this->translate('medication_comments'); ?></th><!--  7 -->
+	 			
+	 			<th ><?php echo $this->translate('medication_last_update'); ?></th><!-- 8 -->
+	 			
+	 			<th ><?php echo $this->translate('medication_importance'); ?></th><!--  9 -->
+	 			
+	 			<th ><?php echo $this->translate('prescribedby'); ?></th><!--  10 -->
+	 			<th ><?php echo $this->translate('medication_created_by'); ?></th><!--  11 -->
+	 			<th ><?php echo $this->translate('medication_changed_by'); ?></th><!--  12 -->
+	 		</tr>
+	 	</thead>
+	<?php else:?>
+		<thead>
+	 		<tr>
+	 			<th ><?php echo $this->translate('medication_last_update_full'); ?></th><!--  0 -->
+	 			<th ><?php echo $this->translate('create_date_hidden'); ?></th><!--  0 -HIDDEN-->
+	 			<th ><?php echo $this->translate('create_date'); ?></th><!--  0-->
+	 			
+	 			<th >
+	 				<?php echo $this->translate('medication_name');?> /	<?php echo $this->translate('medication_drug'); ?>
+	 			</th><!--  1 -->
+	 			<th ><?php echo $this->translate('medication_drug'); ?></th><!--  2 -->
+	 			
+	 			<?php if($medication_type == "isintubated"):?>
+	 				<th><?php echo $this->translate('medication_packaging'); ?></th> <!-- ISPC-2176 -->
+	 			<?php endif;?>
+	 			
+	 			<?php if ($this->show_new_fileds == "1"):?>
+	 				<th ><?php echo $this->translate('medication_unit'); ?></th><!--  3 -->
+		 			<th ><?php echo $this->translate('medication_type'); ?></th><!--  4 -->
+		 			
+		 			<th ><?php echo $this->translate('medication_dosage_form'); ?></th><!--  3 -->
+		 			<th ><?php echo $this->translate('medication_concentration'); ?></th><!--  4 -->
+	 			<?php endif;?>
+	 			
+	 			<th ><?php echo $this->translate('medication_dosage'); ?><?=($medication_type == "isbedarfs" || $medication_type == "iscrisis") ? ' / '. $this->translate('Interval for dosage') : '';?></th> <!--  5 -->
+	 			<th ><?php echo $this->translate('medication_indication'); ?></th><!--  6 -->
+	 			
+	 			<?php if($medication_type == "isintubated"):?>
+	 				<th><?php echo $this->translate('medication_kcal'); ?></th><!--  0 --> <!-- ISPC-2176 -->
+	 				<th><?php echo $this->translate('medication_volume'); ?></th><!--  0 --> <!-- ISPC-2176 -->
+				<?php endif;?>
+	 			
+	 			<th ><?php echo $this->translate('medication_comments'); ?></th><!--  7 -->
+	 			
+	 			<th ><?php echo $this->translate('medication_last_update'); ?></th><!-- 8 -->
+		 		
+	 			<th ><?php echo $this->translate('medication_importance'); ?></th><!--  9 -->
+	 			<th ><?php echo $this->translate('prescribedby'); ?></th><!--  10 -->
+	 			<th ><?php echo $this->translate('medication_created_by'); ?></th><!--  11 -->
+	 			<th ><?php echo $this->translate('medication_changed_by'); ?></th><!--  12 -->
+
+			 	<th><?php echo $this->translate('medication_escalation'); ?></th><!--  4 -->
+                
+                <?php if ($medication_type == "scheduled" && $this->ModulePrivileges[182]): ?>
+                    <th ><?= $this->translate("Dosage according to the product information"); ?></th>
+                    <th ><?= $this->translate("Interval according to technical information"); ?></th>
+                <?php endif; ?>
+                
+                
+	 		</tr>
+	 	</thead>
+	<?php endif; ?>
+	<!--  LIST MEDICATION -->
+ 	<tbody>
+ 		<?php foreach($medication_array as $k =>$med):?>
+ 		
+			<tr <?php if($k == 0):?> class="current_line" <?php endif;?>>
+				<!--  MEDICATION CHANGE IN FULL :: HIDDEN -->
+				<td><?php echo $med['medication_change_full'];?></td><!-- 0 --> 
+
+				<!--  MEDICATION CREATE DATE :: HIDDEN-->
+				<td><?php echo $med['create_date_full'];?></td><!-- 1 -->
+				 
+				<!--  MEDICATION CREATE DATE -->
+				<td><?php echo $med['create_date_dmy'];?></td><!-- 2 -->
+				 
+				
+				<!--  MEDICATION NAME -->
+				<td>
+					<?php echo $med['medication'];?>
+					<?php if($medication_type != "treatment_care" && trim($med['drug']) != '') : ?>
+						<br/>
+						<?php echo $med['drug'];?>
+					<?php endif; ?>
+				</td><!-- 3 -->
+				
+				<? if($medication_type != "treatment_care"):?>
+				
+					<!--  MEDICATION DRUG -->
+					<td><?php echo $med['drug'];?></td><!-- 4 -->
+					
+					<? if($medication_type == "isintubated"):?>
+						<!--  MEDICATION Packaging -->
+						<td><?php echo $med['packaging_name'];?></td><!-- 4 -->
+					<?php endif;?>
+					
+					<?php if ($this->show_new_fileds == "1"):?>
+						<!--  MEDICATION UNIT -->
+						<td><?php echo $med['unit'];?></td><!-- 5 -->
+						
+						<!--  MEDICATION TYPE -->
+						<td><?php echo $med['type'];?></td><!-- 6 -->
+						
+						<!--  MEDICATION DOSAGE FORM -->
+						<td><?php echo $med['dosage_form'];?></td><!-- 5 -->
+						
+						
+						<!--  MEDICATION CONCENTRATION -->
+						<td><?php echo $med['concentration'];?></td><!-- 6 -->
+						
+					<?php endif;?>
+					
+					<!--  MEDICATION DOSAGE INPUTS-->
+					<?php if( in_array($medication_type,$timed_scheduled_medications)):?>
+						<?php foreach($this->dosage_intervals[$medication_type] as $k => $dosage_time):?>
+							<td><?php echo $med['dosage'][$dosage_time];?><?php if ($this->show_new_fileds == "1" && strlen($med['dosage'][$dosage_time]) > 0 ):?><?php echo $med['unit'];?><?php endif;?>
+							<?php if ($this->show_new_fileds == "1" && strlen($med['dosage_concentration'][$dosage_time]) > 0 ):?>
+							<br/>
+							<?php echo $med['dosage_concentration'][$dosage_time];?>
+							<?php endif; ?>
+							</td> <!-- 4 + dosage interval count -->
+		 				<?php endforeach;?>
+					<?php else: ?>
+					
+						<td><?php echo $med['dosage'];?>
+                            <?=($medication_type == "isbedarfs" || $medication_type == "iscrisis") ? ' / ' . $med['pd_dosage_interval'] : '';?>
+                        </td><!-- 5 -->
+						
+					<?php endif; ?>
+					
+					
+					<!--  MEDICATION INDICATION -->
+					<td>
+	 				<?php if(strlen($med['indication_color']) > 0):?>
+						<span class="indication_span" style="background: #<?php echo $med['indication_color'];?>"><?php echo $med['indication'];?></span>
+					<?php else:?>
+						<?php echo $med['indication'];?> 
+					<?php endif;?>
+					</td> <!-- 6 or  -->
+				
+				<?php endif;?>
+				
+				<? if($medication_type == "isintubated"):?>
+				<!--  MEDICATION kcal  ISPC-2176-->
+				<td><?php echo $med['kcal'];?></td><!-- 7 -->
+				
+				<!--  MEDICATION volume ISPC-2176 -->
+				<td><?php echo $med['volume'];?></td><!-- 7 -->
+				
+				<?php endif;?>
+				 
+				<!--  MEDICATION COMMENTS -->
+				<td><?php echo $med['comments'];?></td><!-- 7 --> 
+				
+				<!--  MEDICATION CHANGE DATE d.m.Y FORMAT -->
+				<td><?php echo $med['medication_change'];?></td><!-- 8 -->
+				
+				
+				
+				<!--  MEDICATION SORT / IMPORTANCE -->
+				<td><?php echo $med['importance'];?> </td><!-- 9 -->
+				
+				<!--  MEDICATION prescribed by -->
+				<td><?php echo $med['verordnetvon'];?> </td><!-- 10 -->
+				
+				<!--  MEDICATION created by -->
+				<td><?php echo $med['created_by'];?> </td><!-- 11 -->
+				
+				<!--  MEDICATION changed by -->
+				<td><?php echo $med['changed_by'];?> </td><!-- 12 -->
+				<!--  MEDICATION ESCALATION ISPC-2247 -->
+		 		<td><?php echo $med['escalation_label'];?></td><!-- 8 -->
+                
+                
+                <?php if ($medication_type == "scheduled" && $this->ModulePrivileges[182]): ?>
+                    <td ><?=($med['pd_dosage_product'] == 'yes' ? Ja : ($med['pd_dosage_product']=='no' ? 'Nein' : '-'))?></td>
+                    <td ><?=($med['pd_days_interval_technical'] == 'yes' ? Ja : ($med['pd_days_interval_technical']=='no' ? 'Nein' : '-'))?></td>
+                <?php endif; ?>
+                
+			</tr> 			
+ 		<?php endforeach;?>
+ 	</tbody>
+ </table>

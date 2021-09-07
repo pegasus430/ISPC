@@ -1,0 +1,1303 @@
+<!-- Maria:: Migration ISPC to CISPC 08.08.2020 -->
+<?php
+	
+$patient_details = $this->patient['details'];
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/page-css/kvno_assessment_style.css');
+?>
+<script type="text/javascript">
+var patid = "<?php echo $this->patid ?>";
+var isdischarged = "<?php echo $this->isdischarged ?>";
+var medcount = '<?php echo $this->mcntr + 1 ?>';
+var jcount = '<?php echo $this->jscount + 1 ?>';
+var jsusers = <?php echo $this->jsusers; ?>;
+var medblur = Array();
+var jscount = '0';
+var jsmedcount = '0';
+
+// Medication options
+
+	function selectMedications(mid, row){
+		$('#medication'+row).val($('#medi_me_'+mid).val());
+		$('#comment'+row).val($('#medi_comment_'+mid).val());
+		$('#hidd_medication'+row).val($('#medi_id_'+mid).val());
+	}
+
+	function reset_medications(input_row){
+		if($('#hidd_medication'+input_row).val()){
+			$('#hidd_medication'+input_row).val('');
+			$('#drid'+input_row).val('');
+		}
+	}
+
+
+	function createnewmedic(){
+		var usrstr = "";
+		for(var i in jsusers)
+		{
+			usrstr +='<option value="'+i+'">'+jsusers[i]+'</option>';
+		}
+
+		var userdrop = '<select name="add[verordnetvon]['+medcount+']">'+usrstr+'</select>';
+		var trInnerHtml = $('<tr id="medadd'+medcount+'"><td align="left" valign="top"><input name="add[medication]['+medcount+']" value="" id="medication'+medcount+'" type="text" class="livesearchmedinp med"><input name="add[hidd_medication]['+medcount+']" value="" id="hidd_medication'+medcount+'" type="hidden"></td><td align="left" valign="top"><input name="add[dosage]['+medcount+']" id="dosage" class="dosage" value="" /></td><td align="left" valign="top"><input name="add[comments]['+medcount+']" value="" id="comment'+medcount+'"  /></td><td align="left" valign="top">'+userdrop+'</td><td width="60" align="left" valign="top"><a href="javascript:void(0)" onclick="removeElem(\'#medadd'+medcount+'\')"><img src="images/action_delete.png" border="0" /></a></td></tr>');
+
+		$('#medaddtable').append(trInnerHtml);
+
+		$('#medication'+medcount).bind('keyup keydown change paste',function(){
+			//livesearch medications ls
+			$(this).live('change', function() {
+				var input_row = parseInt($(this).attr('id').substr(('medication').length));
+				reset_medications(input_row);
+			}).liveSearch({
+				url: 'ajax/medications?q=',
+				id: 'livesearch_admission_medications',
+				aditionalWidth: '300',
+				noResultsDelay: '900',
+				typeDelay: '900',
+				returnRowId: function (input) {return parseInt($(input).attr('id').substr(('medication').length));}
+			});
+		});
+		medcount++;
+	}
+
+	function createnewmedicrowbedarf(){
+
+		var usrstr = "";
+		for(var i in jsusers)
+		{
+			usrstr +='<option value="'+i+'">'+jsusers[i]+'</option>';
+		}
+
+
+
+		var userdrop = '<select name="verordnetvon['+medcount+']">'+usrstr+'</select>';
+
+		var trInnerHtml = $('<tr id="medadd'+medcount+'"><td align="left" valign="top"><input name="addbedarf[medication]['+medcount+']" value="" id="medication'+medcount+'" type="text" class="livesearchmedinp med"><input name="addbedarf[hidd_medication]['+medcount+']" value="" id="hidd_medication'+medcount+'" type="hidden"><div id="medidropdown'+medcount+'" style="position:absolute;display:none;" class="listPatMedEd livesearchdropdown"></div></td><td align="left" valign="top"><input name="addbedarf[dosage]['+medcount+']" id="dosage" class="dosage" value="" /></td><td align="left" valign="top"><input name="addbedarf[comments]['+medcount+']" value="" id="comment'+medcount+'" /></td><td align="left" valign="top">'+userdrop+'</td><td width="60" align="left" valign="top"><a href="javascript:void(0)" onclick="delmedicationRow('+medcount+');removeElem(\'#medadd'+medcount+'\')"><img src="images/action_delete.png" border="0" /></a></td></tr>');
+
+		$('#medbedarfaddtable').append(trInnerHtml);
+
+
+		$('#medication'+medcount).bind('keyup keydown change paste',function(){
+			//livesearch medications ls
+			$(this).live('change', function() {
+				var input_row = parseInt($(this).attr('id').substr(('medication').length));
+				reset_medications(input_row);
+			}).liveSearch({
+				url: 'ajax/medications?q=',
+				id: 'livesearch_admission_medications',
+				aditionalWidth: '300',
+				noResultsDelay: '900',
+				typeDelay: '900',
+				returnRowId: function (input) {return parseInt($(input).attr('id').substr(('medication').length));}
+			});
+		});
+		medcount++;
+	}
+
+	function removeElem(ids){
+		$(ids).remove();
+	}
+
+	function removeMedicationKvno(mid,pid){
+		if(mid>0)
+		{
+			ajaxCallserver({
+				url:'patient/patientmedication?mid='+mid+'&id='+pid+'&act=del&noredir=1'
+			});
+		}
+		$("#line_"+mid).remove();
+	}
+
+
+		function delmedicationRow(did,patidencrypted){
+
+			if(did && $('#hidd_medication'+did).val())
+			{
+
+				ajaxCallserver({
+					url:'patient/patientmedication?id='+patidencrypted+'&delid='+did+'&mid='+did+'&act=del&noredir=1' //mid for trigger when deleteing the row
+				});
+			}
+		}
+
+
+	function renewMedicationKvno(mid,pid){
+		if(mid>0){
+			ajaxCallserver({
+				url:'patient/patientmedication?mid='+mid+'&id='+pid+'&act=rnw&noredir=1'
+			});
+		}
+		$("#line_r_"+mid).remove();
+	}
+
+var chks;
+var formid;
+function updatePatientInformation(modname,fldname,formid,chk,patid,drp)
+{
+	if(chk.checked == true && drp != "kontactnumber"){
+		chks = 1;
+	} else {
+		chks = 0;
+	}
+
+	if(fldname=="living_will"){
+		togglediv(drp,chks);
+		ajaxcall(modname,fldname,chks,patid,formid);
+		$("#living_will_from").val('');
+		$("#living_will_deposited").val('');
+	}
+
+	if(drp=='drop' || drp=='rad' || drp == 'fam' || drp == 'vig' || drp == 'sta' || drp == "kontactnumber")
+	{
+		chks = chk.value;
+
+		if(drp == "kontactnumber" && chk.checked == false){
+			chks = "";
+		}
+	}
+
+
+	if(drp == "ern"){
+		var values = new Array();
+		$.each($("input[name='ernahrung[]']:checked"), function() {
+			values.push($(this).val());
+			chks = values
+		});
+	}
+	if(drp == "kun"){
+		var values = new Array();
+		$.each($("input[name='kunstliche[]']:checked"), function() {
+			values.push($(this).val());
+			chks = values
+		});
+	}
+	if(drp == "ori"){
+		var values = new Array();
+		$.each($("input[name='orientierung[]']:checked"), function() {
+			values.push($(this).val());
+			chks = values
+		});
+	}
+	if(drp == "aus"){
+		var values = new Array();
+		$.each($("input[name='ausscheidung[]']:checked"), function() {
+			values.push($(this).val());
+			chks = values
+		});
+	}
+	//ISPC-2508 Carmen 06.02.2020
+	if(drp == "ausnew"){
+		var values = new Array();
+		$.each($("input[name='ausscheidungnew[]']:checked"), function() {
+			values.push($(this).val());
+			chks = values
+		});
+	}
+	if(drp == "hil"){
+		var values = new Array();
+		$.each($("input[name='hilfsmittel[]']:checked"), function() {
+			values.push($(this).val());
+			chks = values
+		});
+	}
+	if(drp == "wun"){
+		var values = new Array();
+		$.each($("input[name='wunsch[]']:checked"), function() {
+			values.push($(this).val());
+			chks = values;
+		});
+	}
+
+	if(fldname=="peg" || fldname=="port" || fldname=="bed" || fldname=="walker" || fldname=="wheelchair" || fldname=="goable" || fldname=="nachtstuhl" || fldname=="wechseldruckmatraze")
+	{
+
+		var len = $("#"+fldname+'more').val().length;
+
+
+			if(chks==0 && len >0) {
+			jConfirm('<?php echo $this->translate('wantstouncheck'); ?>', '', function(r) {
+				if(r)
+				{
+
+					togglediv(drp,chks);
+					ajaxcall(modname,fldname,chks,patid,formid);
+					$("#"+fldname+'more').val('');
+				}
+				else
+				{
+					chk.checked = true;
+				}
+
+			});
+			return false;
+			} else {
+			togglediv(drp,chks);
+			ajaxcall(modname,fldname,chks,patid,formid);
+		}
+		} else {
+		ajaxcall(modname,fldname,chks,patid,formid);
+	}
+}
+
+function ajaxcall(modname,fldname,chks,patid,formid){
+
+	if(isdischarged==1){
+		jConfirm('<?php echo $this->translate('dischargealert'); ?>', '', function(r) {
+			if(r){
+
+
+				if (fldname =='ishospiz'){
+					if($("#ishospiz").is(":checked")){
+						if(hospiz_users_nr > 0){
+							$( "#assignhospizusers" ).dialog('open');
+						}
+					}else if(!$("#ishospiz").is(":checked")){
+						if(hospiz_assusers > 0){
+							$( "#removehospizusers" ).dialog('open');
+						}
+					}
+
+				}
+				if (fldname =='ishospizverein'){
+					if($("#ishospizverein").is(":checked")){
+						if(hospizverein_users_nr > 0){
+								//						$( "#sethospizverein" ).dialog('open');
+							$( "#assignhospizvereinusers" ).dialog('open');
+						}
+					}else if(!$("#ishospizverein").is(":checked")){
+						if(hospizverein_assusers > 0){
+							$( "#removehospizvereinusers" ).dialog('open');
+						}
+					}
+
+				}
+
+				ajaxCallserver({url:appbase+'patient/updatepatientinfo?modname='+modname+'&fldname='+fldname+'&chkval='+encodeURIComponent(chks)+'&patid='+patid+'&formid='+formid});
+
+			}
+		});
+
+		return false;
+	} else {
+
+		if (fldname =='ishospiz'){
+			if($("#ishospiz").is(":checked")){
+				if(hospiz_users_nr > 0){
+					$( "#assignhospizusers" ).dialog('open');
+				}
+			}else if(!$("#ishospiz").is(":checked")){
+				if(hospiz_assusers > 0){
+					$( "#removehospizusers" ).dialog('open');
+				}
+			}
+
+		}
+		if (fldname =='ishospizverein'){
+			if($("#ishospizverein").is(":checked")){
+				if(hospizverein_users_nr > 0){
+					$( "#assignhospizvereinusers" ).dialog('open');
+				}
+			}else if(!$("#ishospizverein").is(":checked")){
+				if(hospizverein_assusers > 0){
+					$( "#removehospizvereinusers" ).dialog('open');
+				}
+			}
+		}
+		ajaxCallserver({url:appbase+'patient/updatepatientinfo?modname='+modname+'&fldname='+fldname+'&chkval='+encodeURIComponent(chks)+'&patid='+patid+'&formid='+formid});
+	}
+}
+	function togglediv(divname,chks){
+		if(chks==1) {
+		$('#'+divname).show();
+		} else {
+		$('#'+divname).hide();
+	}
+}
+
+$(function() {//MEDICATION - SEARCH, REMOVE, RENEW -----------Start
+	$('form').submit(function() {
+		setTimeout(function () {$('input[type=submit]').attr('disabled', true);}, 150);
+		setTimeout(function () {$('input[type=submit]').attr('disabled', false);}, 22000);
+	});
+	$('input.livesearchmedinp, input.med_date, input.dosage, input.med, input.comment, select.user_selector').live('change keyup', function() {
+		if ($(this).hasClass('livesearchmedinp')) {
+			var input_row = parseInt($(this).attr('id').substr(('medication').length)); //med name
+		} else if ($(this).hasClass('med_date')) {
+			var input_row = parseInt($(this).attr('rel').substr(('med_date').length)); //change date
+		} else if ($(this).hasClass('dosage')) {
+			var input_row = parseInt($(this).attr('id').substr(('dosage').length)); //dosage
+		} else if ($(this).hasClass('med') || $(this).hasClass('comment')) {
+			var input_row = parseInt($(this).attr('id').substr(('comment').length)); //comment
+		} else if ($(this).hasClass('user_selector')) {
+			var input_row = parseInt($(this).attr('id').substr(('verordnetvon-').length)); //doctor
+		}
+
+		$('#edited' + input_row).val('1');
+	});
+	  /*======================= LIVESEARCH MEDICATIONS ======================================*/
+		$('.livesearchmedinp').live('change', function() {
+			var input_row = parseInt($(this).attr('id').substr(('medication').length));
+			reset_medications(input_row);
+		}).liveSearch({
+			url: 'ajax/medications?q=',
+			id: 'livesearch_admission_medications',
+			aditionalWidth: '300',
+			noResultsDelay: '900',
+			typeDelay: '900',
+			returnRowId: function (input) {return parseInt($(input).attr('id').substr(('medication').length));}
+		});
+
+	/*======================= MEDICATIONS DATE PICKER ======================================*/
+	  $('.med_date').datepicker({
+			dateFormat: 'dd.mm.yy',
+			buttonImageOnly: true,
+			changeMonth: true,
+			changeYear: true,
+			nextText: '',
+			prevText: '',
+			onSelect: function(){
+				var input_row = parseInt($(this).attr('rel').substr(('med_date').length));
+				$('#edited' + input_row).val('1');
+
+			}
+	});
+
+		$(".med_date").mask("99.99.9999");
+
+		/*======================= RENEW MEDICATION ======================================*/
+		$(".renew_ajx, .renew_ajx_bedarfs").live('click', function(e){
+			e.preventDefault();
+		//get row id
+		var tridrn = $(this).closest('tr').attr('id');
+		//get medication edit count rows
+		var cntren = Number($('#jsmedadd').val()) +1;
+
+		//split row id and get numeric medis id
+		var id = tridrn.split('_');
+			var that = $(this);
+		$("#"+tridrn).each(function() {
+			var dateren = $(this).find(".datern_"+id[2]).text();
+			var medsren = $(this).find(".medsrn_"+id[2]).text();
+			var pid = "<?php echo $_GET['id']; ?>";
+			var dsgren = $(this).find(".dsgrn_"+id[2]).text();
+			var commren = $(this).find(".commrn_"+id[2]).text();
+			var usrnameren = $(this).find(".usrnamern_"+id[2]).text();
+			var usr_addren = $(this).find(".usr_id_add_"+id[2]).text();
+			var hidd_medisren = $(this).find(".hidd_medicationrn_"+id[2]).text();
+			var usrren = $(this).find(".usrid_"+id[2]).text();
+				var users = <?php echo json_encode($this->users); ?>;
+			var options = '';
+			var i = 1;
+
+			$.each(users, function(key, value){
+				if(key == usrren){
+					options += "<option selected=\"selected\" value=\""+key+"\">"+value+"</option>"
+				} else {
+					options += "<option value=\""+key+"\">"+value+"</option>"
+				}
+			});
+				if($(that).hasClass('renew_ajx')) {
+					var date_now = "<?php echo date('d.m.Y')?>";
+					var trrenewNou = '<tr id="line_'+id[2]+'" alt="'+cntren+'">';
+					 trrenewNou += '<td align="left" valign="top"><input name="medication_change['+cntren+']" value="'+date_now+'" id="renew_change_date_'+cntren+'" type="text" class="med_date date_line_'+id[2]+' " rel="med_date'+cntren+'"><input name="replace_with['+cntren+']" value="change" type="hidden"></td>';
+					 trrenewNou += '<td align="left" valign="top"><input name="medication['+cntren+']" value="'+medsren+'" id="medication'+cntren+'" type="text" class="livesearchmedinp med meds_line_'+id[2]+'"><input name="hidd_medication['+cntren+']" value="'+hidd_medisren+'" id="hidd_medication'+cntren+'" type="hidden"><input type="hidden" id="drid" name="drid['+cntren+']" value="'+id[2]+'"><input type="hidden" id="edited'+cntren+'" name="edited['+cntren+']" value="0" /><div id="medidropdown'+cntren+'" style="position:absolute;display:none;" class="listPatMedEd livesearchdropdown"></div></td>';
+					 trrenewNou += '<td align="left" valign="top"><input name="dosage['+cntren+']" id="dosage'+cntren+'" class="dosage dsg_line_'+id[2]+'" value="'+dsgren+'"></td>';
+					 trrenewNou += '<td align="left" id="line_'+id[2]+'_row" valign="top"><input name="comments['+cntren+']" class="med comm_line_'+id[2]+'" value="'+commren+'" id="comment'+cntren+'"></td>';
+					 trrenewNou += '<td width="120" id="line_'+id[2]+'_row" align="left" valign="top" class="usrname_line_'+id[2]+'">'+usrnameren+'</td>';
+					 trrenewNou += '<td align="left" id="line_'+id[2]+'_row" valign="top"><select name="verordnetvon['+cntren+']" id="verordnetvon-'+cntren+'" class="user_selector">'+options+'</select></td>';
+					 trrenewNou += '<td align="left" valign="top"><a href="javascript:void(0)" class="remove_tr" ><img src="images/action_delete.png" border="0" /></a></td>';
+					 trrenewNou += '</tr>';
+
+			$("#listpatientmedicationedit_medicationtable").append(trrenewNou);
+
+					$('#renew_change_date_'+cntren).datepicker({
+						dateFormat: 'dd.mm.yy',
+						buttonImageOnly: true,
+						changeMonth: true,
+						changeYear: true,
+						nextText: '',
+						prevText: '',
+						onSelect: function(){
+						var input_row = parseInt($(this).attr('rel').substr(('med_date').length));
+							$('#edited' + input_row).val('1');
+
+						}
+					});
+
+
+
+				} else if($(that).hasClass('renew_ajx_bedarfs')) {
+
+					var date_now = "<?php echo date('d.m.Y')?>";
+
+					var trrenewNou = '<tr id="line_'+id[2]+'" alt="'+cntren+'">';
+					trrenewNou += '<td align="left" valign="top"><input name="medication_change['+cntren+']" value="'+date_now+'" id="renew_bedarf_change_date_'+cntren+'" type="text" class="med_date date_line_'+id[2]+' " rel="med_date'+cntren+'" /><input name="replace_with['+cntren+']" value="change" type="hidden"></td>';
+					trrenewNou += '<td align="left" valign="top"><input name="medication['+cntren+']" value="'+medsren+'" id="medication'+cntren+'" type="text" class="livesearchmedinp med meds_line_'+id[2]+'"><input name="hidd_medication['+cntren+']" value="'+hidd_medisren+'" id="hidd_medication'+cntren+'" type="hidden"><input type="hidden" id="drid" name="drid['+cntren+']" value="'+id[2]+'"><input type="hidden" id="edited'+cntren+'" name="edited['+cntren+']" value="0" /><div id="medidropdown'+cntren+'" style="position:absolute;display:none;" class="listPatMedEd livesearchdropdown"></div></td>';
+					trrenewNou += '<td align="left" valign="top"><input name="dosage['+cntren+']" id="dosage'+cntren+'" class="dosage dsg_line_'+id[2]+'" value="'+dsgren+'"></td>';
+					trrenewNou += '<td align="left" id="line_'+id[2]+'_row" valign="top"><input name="comments['+cntren+']" class="med comm_line_'+id[2]+'" value="'+commren+'" id="comment'+cntren+'"></td>';
+					trrenewNou += '<td width="120" id="line_'+id[2]+'_row" align="left" valign="top" class="usrname_line_'+id[2]+'">'+usrnameren+'</td>';
+					trrenewNou += '<td align="left" id="line_'+id[2]+'_row" valign="top"><select name="verordnetvon['+cntren+']" id="verordnetvon-'+cntren+'" class="user_selector">'+options+'</select></td>';
+					trrenewNou += '</tr>';
+
+					$("#listpatientmedicationedit_bedarfsmedicationtable").append(trrenewNou);
+
+					$('#renew_bedarf_change_date_'+cntren).datepicker({
+						dateFormat: 'dd.mm.yy',
+						buttonImageOnly: true,
+						changeMonth: true,
+						changeYear: true,
+						nextText: '',
+						prevText: '',
+						onSelect: function(){
+							var input_row = parseInt($(this).attr('rel').substr(('med_date').length));
+							$('#edited' + input_row).val('1');
+
+						}
+					});
+				}
+
+			$('#jsmedadd').val(cntren);
+			renewMedicationKvno(id[2], pid);
+			var medsren = '';
+
+
+		});
+	});
+
+		/*======================= REMOVE MEDICATION ROW ======================================*/
+	$(".remove_tr").live('click', function(){
+
+		var trid = $(this).closest('tr').attr('id');
+		var cnt = $("#"+trid).attr('alt');
+		var id = trid.split('_');
+		var pid = "<?php echo $_GET['id']; ?>";
+
+		$("#"+trid).each(function() {
+
+			var date = "<?php echo date('d.m.Y'); ?>";
+			var meds = $(this).find(".meds_"+trid).val();
+			var dsg = $(this).find(".dsg_"+trid).val();
+			var comm = $(this).find(".comm_"+trid).val();
+			var hidd_medis = $(this).find("#hidd_medication"+cnt).val();
+			var usr_add = $(this).find(".usrname_"+trid).text();
+			var usr = $(this).find("#verordnetvon-"+cnt+" option:selected").text();
+			var usr_id = $(this).find("#verordnetvon-"+cnt+" option:selected").val();
+
+				var trnou = '<tr class="row" id="line_r_'+id[1]+'">';
+					trnou +='<td height="20" align="left" class="datern_'+id[1]+'" valign="top">'+date+'</td>';
+					trnou +='<td height="20" align="left" valign="top" class="hidd_medicationrn_'+cnt+'" style="display: none;">'+hidd_medis+'</td>';
+					trnou +='<td align="left" valign="top" class="medsrn_'+id[1]+'"><font color="#777777">'+meds+'</font> </td>';
+					trnou +='<td align="left" valign="top" class="dsgrn_'+id[1]+'">'+dsg+'</td><td align="left" valign="top" class="commrn_'+id[1]+'">'+comm+'</td>';
+					trnou +='<td align="left" valign="top"><a href="javascript:void(0)" class="renew_ajx"><img src="<?php echo RES_FILE_PATH; ?>/images/action_renew.png" border="0"></a></td>';
+					trnou +='<td height="20" align="left" valign="top" class="usrnamern_'+id[1]+'">'+usr_add+'</td><td height="20" align="left" valign="top">'+usr+'</td>';
+					trnou +='<td valign="top" height="20" align="left" class="usrid_'+id[1]+'" style="display:none;">'+usr_id+'</td>';
+					trnou +='</tr>';
+
+			$("#listpatientmedication_contenttabel").append(trnou);
+			removeMedicationKvno(id[1],pid);
+		});
+
+	});
+}); //MEDICATION - SEARCH, REMOVE, RENEW -----------End
+
+
+
+	$(document).ready(function(){
+		$('#livind_will_from').datepicker({
+			dateFormat: 'dd.mm.yy',
+			showOn: "both",
+			buttonImage: $('#calImg').attr('src'),
+			buttonImageOnly: true,
+			changeMonth: true,
+			changeYear: true,
+			nextText: '',
+			prevText: ''
+		});
+
+		$('input[type="radio"]').live('change',function(){
+			if(
+			$(this).attr('name')=="depresiv" ||
+				$(this).attr('name')=="angst" ||
+				$(this).attr('name')=="anspannung" ||
+				$(this).attr('name')=="schmerzen" ||
+				$(this).attr('name')=="desorientier" ||
+				$(this).attr('name')=="ubelkeit" ||
+				$(this).attr('name')=="erbrechen" ||
+				$(this).attr('name')=="luftnot" ||
+				$(this).attr('name')=="verstopfung" ||
+				$(this).attr('name')=="swache" ||
+				$(this).attr('name')=="appetitmangel" ||
+				$(this).attr('name')=="sonstiges"
+		) {
+				$('#edit_symptom').val("1")
+
+			}
+		});
+
+		if ($("#wunsch-13").is(":checked")){
+			$("#wmorediv").show("slow");
+		} else {
+			$("#wmorediv").css("display","none");
+		}
+
+		$("#wunsch-13").click(function(){
+			if ($("#wunsch-13").is(":checked")){
+					//show the hidden div
+					$("#wmorediv").show("slow");
+				} else {
+					//otherwise, hide it
+					$("#wmorediv").hide("fast");
+					$("#wmore").val(""); // we set this just for appearence, the magic is in stammdatenerweitert
+
+				}
+			});
+			if ($("#kunstliche-5").is(":checked")){
+				$("#kunstlichemorediv").show("slow");
+			} else {
+				$("#kunstlichemorediv").css("display","none");
+			}
+
+			$("#kunstliche-5").click(function(){
+				if ($("#kunstliche-5").is(":checked")){
+					//show the hidden div
+					$("#kunstlichemorediv").show("slow");
+				} else {
+					//otherwise, hide it
+					$("#kunstlichemorediv").hide("fast");
+					$("#kunstlichemore").val(""); // we set this just for appearence, the magic is in stammdatenerweitert
+
+				}
+			});
+
+		$('#living_will_from').datepicker({
+			dateFormat: 'dd.mm.yy',
+			showOn: "both",
+			buttonImage: $('#calImg').attr('src'),
+			buttonImageOnly: true,
+			changeMonth: true,
+			changeYear: true,
+			nextText: '',
+			prevText: '',
+			onSelect:function(){
+				updatePatientInformation('Master','living_will_from','grow6',this,'<?php echo $this->enc_patid; ?>','drop')
+			}
+		});
+		$("#pegmore").blur(function(){
+
+			updatePatientInformation('MoreInfo','pegmore','grow20',this,'<?php echo $this->enc_patid; ?>','drop');
+});
+		$("#vvfreetext").blur(function(){
+			updatePatientInformation('Therapieplanung','freetext','grow37',this,'<?php echo $this->enc_patid; ?>','drop');
+		});
+		$("#anderefree").blur(function(){
+
+			updatePatientInformation('Stastszugehorigkeit','anderefree','grow17',this,'<?php echo $this->enc_patid; ?>','drop');
+		});
+		$("#portmore").blur(function(){
+
+			updatePatientInformation('MoreInfo','portmore','grow20',this,'<?php echo $this->enc_patid; ?>','drop');
+		});
+		$("#bedmore").blur(function(){
+
+			updatePatientInformation('Mobility','bedmore','grow5',this,'<?php echo $this->enc_patid; ?>','drop');
+		});
+		$("#wmore").blur(function(){
+			updatePatientInformation('Wunsch','wmore','grow25',this,'<?php echo $this->enc_patid; ?>','drop');
+		});
+		$("#walkermore").blur(function(){
+
+			updatePatientInformation('Mobility','walkermore','grow5',this,'<?php echo $this->enc_patid; ?>','drop');
+		});
+
+		$("#wheelchairmore").blur(function(){
+
+			updatePatientInformation('Mobility','wheelchairmore','grow5',this,'<?php echo $this->enc_patid; ?>','drop');
+		});
+
+		$("#goablemore").blur(function(){
+
+			updatePatientInformation('Mobility','goablemore','grow5', this,'<?php echo $this->enc_patid; ?>','drop');
+		});
+
+		$("#nachtstuhlmore").blur(function(){
+
+			updatePatientInformation('Mobility','nachtstuhlmore','grow5',this,'<?php echo $this->enc_patid; ?>','drop');
+		});
+
+		$("#wechseldruckmatrazemore").blur(function(){
+
+			updatePatientInformation('Mobility','wechseldruckmatrazemore','grow5',this,'<?php echo $this->enc_patid; ?>','drop');
+		});
+		$("#living_will_from").blur(function(){
+		});
+		$("#living_will_deposited").blur(function(){
+
+			updatePatientInformation('Master','living_will_deposited','grow6',this,'<?php echo $this->enc_patid; ?>','drop');
+		});
+
+		$("#kunstlichemore").blur(function(){
+
+			updatePatientInformation('Kunstliche','kunstlichemore','grow22',this,'<?php echo $this->enc_patid; ?>','drop');
+		});
+	});
+</script>
+ 
+<form action="" name="kvnoassessment" id="kvnoassessment" method="post">
+	<div style="display: none;"><img id="calImg" src="<?php echo RES_FILE_PATH; ?>/images/calendar.png" alt="Popup" class="trigger"></div>
+	<?php echo $this->patientinfo ?>
+	<?php echo $this->tabmenus ?>
+
+	<div id="Einzel" class="tab_container"> <br />
+		<div class="kvnotitle left_align" ><h1>Aufnahmeassessment:</h1></div>
+		<div class="kvnoheader">
+			<div class="left_side kvnohalf left_align" ><h2>Familien-­und Versorgungssituation:</h2></div>
+		</div>
+	</div>
+	<br />
+		<div class="kvnofull">
+			<table class="kvnofull">
+				<tr>
+					<td class="dotted td_label_bold"><p class="label">Name, Vorname:</p></td>
+					<td class="dotted" colspan="3">
+						<?php echo $patient_details['last_name'] ?><?php if(strlen($patient_details['last_name'])>'0' && strlen($patient_details['first_name'])>'0'): ?><?php echo ','; ?> <?php endif; ?><?php echo $patient_details['first_name'] ?>
+						<input type="hidden" name="last_name" value="<?php echo $patient_details['last_name'] ?>" />
+						<input type="hidden" name="first_name" value="<?php echo $patient_details['first_name'] ?>" />
+					</td>
+				</tr>
+			</table>
+		</div>
+	 	<div class="kvnofull">
+			<table class="kvnofull">
+				<tr>
+					<td class="dotted td_label_bold" colspan="4"><p class="label"><?php echo $this->translate('lives') ?></p></td>
+				</tr>
+				<tr>
+					<td class="td_label_empty"></td>
+					<td class="td_label_big"><?php echo $this->formCheckbox('alone', $this->alone, array('onclick' => 'updatePatientInformation(\'Lives\',\'alone\',\'grow1\',this,\'' . $this->enc_patid . '\')'), array('1')); ?><label for="alone"><label for="lives_1"><?php echo $this->translate('alone') ?></label></td>
+					<td class="td_label"><?php echo $this->formCheckbox('house_of_relatives', $this->house_of_relatives, array('onclick' => 'updatePatientInformation(\'Lives\',\'house_of_relatives\',\'grow1\',this,\'' . $this->enc_patid . '\')'), array('1')); ?><label for="house_of_relatives"><?php echo $this->translate('houseofrelatives') ?></label></td>
+					<td ><?php echo $this->formCheckbox('apartment', $this->apartment, array('onclick' => 'updatePatientInformation(\'Lives\',\'apartment\',\'grow1\',this,\'' . $this->enc_patid . '\')'), array('1')); ?><label for="apartment"><?php echo $this->translate('apartment') ?></label></td>
+				</tr>
+				<tr>
+					<td class="td_label_empty dotted"></td>
+					<td class="dotted"><?php echo $this->formCheckbox('home', $this->home, array('onclick' => 'updatePatientInformation(\'Lives\',\'home\',\'grow1\',this,\'' . $this->enc_patid . '\')'), array('1')); ?><label for="home"><?php echo $this->translate('home') ?></label></td>
+					<td class="dotted"><?php echo $this->formCheckbox('hospiz', $this->hospiz, array('onclick' => 'updatePatientInformation(\'Lives\',\'hospiz\',\'grow1\',this,\'' . $this->enc_patid . '\')'), array('1')); ?><label for="hospiz">Hospiz</label></td>
+					<td class="dotted"><?php echo $this->formCheckbox('sonstiges', $this->sonstiges, array('onclick' => 'updatePatientInformation(\'Lives\',\'sonstiges\',\'grow1\',this,\'' . $this->enc_patid . '\')'), array('1')); ?><label for="sonstiges">Sonstiges</label></td>
+				</tr>
+
+			</table>
+		</div>
+	 	<div class="kvnofull">
+			<table class="kvnofull">
+				<tr>
+					<td class="dotted td_label_bold" colspan="5"><p class="label">Familienstand</p></td>
+				</tr>
+				<tr>
+					<td class="dotted td_label_empty"></td>
+					<td class="dotted" >
+						<?php echo $this->formRadio('familienstand', $this->familienstand, array ('onclick' => 'updatePatientInformation(\'Familienstand\',\'familienstand\',\'grow16\',this,\'' . $this->enc_patid . '\',\'fam\')'), $this->familienstands, '</td><td class="dotted">'); ?>
+					</td>
+
+				</tr>
+			</table>
+		</div>
+
+	 	<div class="kvnofull">
+			<table class="kvnofull">
+				<tr>
+					<td class="dotted td_label_bold" colspan="4"><p class="label"><?php echo $this->translate('nutrition') ?></p></td>
+				</tr>
+				<tr>
+					<td class="td_label_empty"></td>
+					<td class="td_label_big" >
+					<?php echo $this->formMultiCheckbox('ernahrung[]', $this->ernahrung, array ('onclick' => 'updatePatientInformation(\'Ernahrung\',\'ernahrung\',\'grow20\',this,\'' . $this->enc_patid . '\', \'ern\')'), $this->ernahrungs, '</td><td>'); ?>
+					</td>
+				</tr>
+				<!-- ISPC-2508 Carmen 06.02.2020  new box grow100-->
+				<tr>
+					<td class="td_label_empty"></td>
+					<td ><?php echo $this->formCheckbox('zvk', $this->zvk, array ('onclick' => 'updatePatientInformation(\'MoreInfo\',\'zvk\',\'grow100\',this,\'' . $this->enc_patid . '\')'), array ('1')); ?><label for="zvk"><?php echo $this->translate('zvk') ?></label></td>
+					<td ><?php echo $this->formCheckbox('magensonde', $this->magensonde, array ('onclick' => 'updatePatientInformation(\'MoreInfo\',\'magensonde\',\'grow100\',this,\'' . $this->enc_patid . '\')'), array ('1')); ?><label for="magensonde"><?php echo $this->translate('magensonde') ?></label></td>
+					<td ><?php echo $this->formCheckbox('peg', $this->peg, array ('onclick' => 'updatePatientInformation(\'MoreInfo\',\'peg\',\'grow100\',this,\'' . $this->enc_patid . '\',\'pegmorediv\')'), array ('1')); ?><label for="peg"><?php echo $this->translate('peg') ?></label><span id="pegmorediv" style="display: none; ">&nbsp;<input type="text" id="pegmore" name="pegmore" value="<?php echo $this->pegmore ?>" style=" width: 120px;"/></span></td>
+				</tr>
+
+				<tr>
+					<td class="dotted td_label_empty"></td>
+					<td class="dotted" colspan="3"><?php echo $this->formCheckbox('port', $this->port, array ('onclick' => 'updatePatientInformation(\'MoreInfo\',\'port\',\'grow100\',this,\'' . $this->enc_patid . '\',\'portmorediv\')'), array ('1')); ?><label for="port"><?php echo $this->translate('port') ?></label><span id="portmorediv" style="display: none; ">&nbsp;<input type="text" id="portmore" name="portmore" value="<?php echo $this->portmore ?>" style=" width: 120px;"/></span></td>
+				</tr>
+			</table>
+		</div>
+
+	 	<div class="kvnofull">
+			<table class="kvnofull">
+
+				<tr>
+					<td class="dotted td_label_bold" colspan="4"><p class="label"><?php echo $this->translate('religion') ?></p></td>
+				</tr>
+				<tr>
+					<td class="td_label_empty"></td>
+					<td class="td_label_big"><input type="radio" onclick="updatePatientInformation('Religions','religion','grow8',this,'<?php echo $this->enc_patid; ?>','rad')" value="1" id="religion-1" name="religion" /><label for="religion-1"><?php echo $this->translate('evangelisch') ?></label></td>
+					<td class="td_label"><input type="radio" onclick="updatePatientInformation('Religions','religion','grow8',this,'<?php echo $this->enc_patid; ?>','rad')" value="2" id="religion-2" name="religion"><label for="religion-2"><?php echo $this->translate('katholisch') ?></label></td>
+					<td ><input type="radio" onclick="updatePatientInformation('Religions','religion','grow8',this,'<?php echo $this->enc_patid; ?>','rad')" value="3" id="religion-3" name="religion"><label for="religion-3"><?php echo $this->translate('orthodox') ?></label></td>
+				</tr>
+				<tr>
+					<td class="td_label_empty"></td>
+					<td ><input type="radio" onclick="updatePatientInformation('Religions','religion','grow8',this,'<?php echo $this->enc_patid; ?>','rad')" value="4" id="religion-4" name="religion"><label for="religion-4"><?php echo $this->translate('judisch') ?></label></td>
+					<td ><input type="radio" onclick="updatePatientInformation('Religions','religion','grow8',this,'<?php echo $this->enc_patid; ?>','rad')" value="5" id="religion-5" name="religion"><label for="religion-5"><?php echo $this->translate('muslimisch') ?></label></td>
+					<td ><input type="radio" onclick="updatePatientInformation('Religions','religion','grow8',this,'<?php echo $this->enc_patid; ?>','rad')" value="6" id="religion-6" name="religion"><label for="religion-6"><?php echo $this->translate('keine') ?></label></td>
+				</tr>
+				<tr>
+					<td  class="dotted td_label_empty" ></td>
+					<td  class="dotted"><input type="radio" onclick="updatePatientInformation('Religions','religion','grow8',this,'<?php echo $this->enc_patid; ?>','rad')" value="7" id="religion-7" name="religion"><label for="religion-7"><?php echo $this->translate('sonstige') ?></label></td>
+					<td  class="dotted"></td>
+					<td  class="dotted"></td>
+				</tr>
+			</table>
+		</div>
+
+	 	<div class="kvnofull">
+			<table class="kvnofull">
+				<tr>
+					<td class="dotted td_label_bold" colspan="4"><p class="label"><?php echo $this->translate('patient_aid') ?></p></td>
+				</tr>
+				<tr>
+					<td class="td_label_empty"></td>
+					<td class="td_label_big"><input type="checkbox" onclick="updatePatientInformation('Hilfsmittel','hilfsmittel','grow24',this,'<?php echo $this->enc_patid; ?>', 'hil')" value="1" id="hilfsmittel-1" name="hilfsmittel[]"><label for="hilfsmittel-1"><?php echo $this->translate('O2') ?></label></td>
+					<td class="td_label"><input type="checkbox" onclick="updatePatientInformation('Hilfsmittel','hilfsmittel','grow24',this,'<?php echo $this->enc_patid; ?>', 'hil')" value="2" id="hilfsmittel-2" name="hilfsmittel[]"><label for="hilfsmittel-2"><?php echo $this->translate('Toilettensitz') ?></label></td>
+					<td ><input type="checkbox" onclick="updatePatientInformation('Hilfsmittel','hilfsmittel','grow24',this,'<?php echo $this->enc_patid; ?>', 'hil')" value="3" id="hilfsmittel-3" name="hilfsmittel[]"><label for="hilfsmittel-3"><?php echo $this->translate('Pflegebett') ?></label></td>
+				</tr>
+				<tr>
+					<td class="td_label_empty"></td>
+					<td ><input type="checkbox" onclick="updatePatientInformation('Hilfsmittel','hilfsmittel','grow24',this,'<?php echo $this->enc_patid; ?>', 'hil')" value="4" id="hilfsmittel-4" name="hilfsmittel[]"><label for="hilfsmittel-4"><?php echo $this->translate('Rollstuhl') ?></label></td>
+					<td ><input type="checkbox" onclick="updatePatientInformation('Hilfsmittel','hilfsmittel','grow24',this,'<?php echo $this->enc_patid; ?>', 'hil')" value="5" id="hilfsmittel-5" name="hilfsmittel[]"><label for="hilfsmittel-5"><?php echo $this->translate('Rollator') ?></label></td>
+					<td ><input type="checkbox" onclick="updatePatientInformation('Hilfsmittel','hilfsmittel','grow24',this,'<?php echo $this->enc_patid; ?>', 'hil')" value="6" id="hilfsmittel-6" name="hilfsmittel[]"><label for="hilfsmittel-6"><?php echo $this->translate('Nachtstuhl') ?></label></td>
+				</tr>
+				<tr>
+					<td class="dotted td_label_empty"></td>
+					<td class="dotted"><input type="checkbox" onclick="updatePatientInformation('Hilfsmittel','hilfsmittel','grow24',this,'<?php echo $this->enc_patid; ?>', 'hil')" value="7" id="hilfsmittel-7" name="hilfsmittel[]"><label for="hilfsmittel-7"><?php echo $this->translate('Wechseldruckmatratze') ?></label></td>
+					<td class="dotted"><input type="checkbox" onclick="updatePatientInformation('Hilfsmittel','hilfsmittel','grow24',this,'<?php echo $this->enc_patid; ?>', 'hil')" value="8" id="hilfsmittel-8" name="hilfsmittel[]"><label for="hilfsmittel-8"><?php echo $this->translate('Pumpe') ?></label></td>
+					<td class="dotted"></td>
+				</tr>
+			</table>
+		</div>
+
+	 	<div class="kvnofull">
+				<table class="kvnofull">
+				<tr>
+					<td class="dotted td_label_bold" colspan="4"><p class="label">Wunsch des Patienten</p></td>
+				</tr>
+				<tr>
+					<td class="td_label_empty"></td>
+					<td class="td_label_big"><input type="checkbox" onclick="updatePatientInformation('Wunsch','wunsch','grow25',this,'<?php echo $this->enc_patid; ?>', 'wun')" value="1" id="wunsch-1" name="wunsch[]" /><label for="wunsch-1">Zu Hause bleiben können</label></td>
+					<td class="td_label"><input type="checkbox" onclick="updatePatientInformation('Wunsch','wunsch','grow25',this,'<?php echo $this->enc_patid; ?>', 'wun')" value="2" id="wunsch-2" name="wunsch[]" /><label for="wunsch-2">kein Krankenhaus</label></td>
+					<td ><input type="checkbox" onclick="updatePatientInformation('Wunsch','wunsch','grow25',this,'<?php echo $this->enc_patid; ?>', 'wun')" value="3" id="wunsch-3" name="wunsch[]" /><label for="wunsch-3">Autonomie</label></td>
+				</tr>
+				<tr>
+					<td class="td_label_empty"></td>
+					<td ><input type="checkbox" onclick="updatePatientInformation('Wunsch','wunsch','grow25',this,'<?php echo $this->enc_patid; ?>', 'wun')" value="4" id="wunsch-4" name="wunsch[]" /><label for="wunsch-4">Leidenslinderung</label></td>
+					<td ><input type="checkbox" onclick="updatePatientInformation('Wunsch','wunsch','grow25',this,'<?php echo $this->enc_patid; ?>', 'wun')" value="5" id="wunsch-5" name="wunsch[]" /><label for="wunsch-5">Symptomlinderung</label></td>
+					<td ><input type="checkbox" onclick="updatePatientInformation('Wunsch','wunsch','grow25',this,'<?php echo $this->enc_patid; ?>', 'wun')" value="6" id="wunsch-6" name="wunsch[]" /><label for="wunsch-6">mehr Kraft</label></td>
+				</tr>
+				<tr>
+					<td class="td_label_empty"></td>
+					<td ><input type="checkbox" onclick="updatePatientInformation('Wunsch','wunsch','grow25',this,'<?php echo $this->enc_patid; ?>', 'wun')" value="7" id="wunsch-7" name="wunsch[]" /><label for="wunsch-7">wieder aufstehen können</label></td>
+					<td ><input type="checkbox" onclick="updatePatientInformation('Wunsch','wunsch','grow25',this,'<?php echo $this->enc_patid; ?>', 'wun')" value="8" id="wunsch-8" name="wunsch[]" /><label for="wunsch-8">noch eine Reise machen</label></td>
+					<td ><input type="checkbox" onclick="updatePatientInformation('Wunsch','wunsch','grow25',this,'<?php echo $this->enc_patid; ?>', 'wun')" value="9" id="wunsch-9" name="wunsch[]" /><label for="wunsch-9">In Ruhe gelassen werden</label></td>
+				</tr>
+				<tr>
+					<td class="td_label_empty"></td>
+					<td ><input type="checkbox" onclick="updatePatientInformation('Wunsch','wunsch','grow25',this,'<?php echo $this->enc_patid; ?>', 'wun')" value="10" id="wunsch-10" name="wunsch[]" /><label for="wunsch-10">Keine Angabe</label></td>
+					<td ><input type="checkbox" onclick="updatePatientInformation('Wunsch','wunsch','grow25',this,'<?php echo $this->enc_patid; ?>', 'wun')" value="11" id="wunsch-11" name="wunsch[]" /><label for="wunsch-11">Frage nach aktiver Sterbehilfe</label></td>
+					<td ><input type="checkbox" onclick="updatePatientInformation('Wunsch','wunsch','grow25',this,'<?php echo $this->enc_patid; ?>', 'wun')" value="12" id="wunsch-12" name="wunsch[]" /><label for="wunsch-12">Lebensbeendigung</label></td>
+				</tr>
+				<tr>
+					<td class="dotted td_label_empty"></td>
+					<td class="dotted"><input type="checkbox" onclick="updatePatientInformation('Wunsch','wunsch','grow25',this,'<?php echo $this->enc_patid; ?>', 'wun')" value="13" id="wunsch-13" name="wunsch[]" /><label for="wunsch-13">Expliziter Wunsch</label></td>
+					<td class="dotted"><span id="wmorediv">&nbsp;<input type="text" name="wmore" id="wmore" value="<?php echo $this->wunschmore ?>" /></span></td>
+					<td class="dotted"></td>
+				</tr>
+			</table>
+		</div>
+
+	 	<div class="kvnofull">
+			<table class="kvnofull">
+				<tr>
+					<td class="dotted td_label_bold" colspan="3"><p class="label"><?php echo $this->translate('staatszugehorigkeit') ?></p></td>
+				</tr>
+				<tr>
+					<td class="dotted td_label_empty"></td>
+					<td class="dotted td_label_big"><input type="radio" onclick="updatePatientInformation('Stastszugehorigkeit','stastszugehorigkeit','grow17',this,'<?php echo $this->enc_patid; ?>', 'sta')" value="1" id="stastszugehorigkeit-1" name="stastszugehorigkeit"><label for="stastszugehorigkeit-1">Deutsch</label></td>
+					<td class="dotted"><input type="radio" onclick="updatePatientInformation('Stastszugehorigkeit','stastszugehorigkeit','grow17',this,'<?php echo $this->enc_patid; ?>', 'sta')" value="2" id="stastszugehorigkeit-2" name="stastszugehorigkeit"><label for="stastszugehorigkeit-2">andere</label><input type="text" name="andere_more" id="andere_more" value="" style="width: 120px;"/></td>
+				</tr>
+			</table>
+		</div>
+	 	<div class="kvnofull">
+			<table class="kvnofull">
+				<tr>
+					<td class="dotted td_label_bold" colspan="4"><p class="label">Ausscheidung</p></td>
+				</tr>
+				<tr>
+					<td class="td_label_empty"></td>
+					<td class="td_label_big"><input type="checkbox" onclick="updatePatientInformation('Ausscheidung','ausscheidung','grow21',this,'<?php echo $this->enc_patid; ?>', 'aus')" value="1" id="ausscheidung-1" name="ausscheidung[]"><label for="ausscheidung-1"><?php echo $this->translate('self') ?></label></td>
+					<td class="td_label"><input type="checkbox" onclick="updatePatientInformation('Ausscheidung','ausscheidung','grow21',this,'<?php echo $this->enc_patid; ?>', 'aus')" value="2" id="ausscheidung-2" name="ausscheidung[]"><label for="ausscheidung-2">teilw. Hilfe</label></td>
+					<td ><input type="checkbox" onclick="updatePatientInformation('Ausscheidung','ausscheidung','grow21',this,'<?php echo $this->enc_patid; ?>', 'aus')" value="3" id="ausscheidung-3" name="ausscheidung[]"><label for="ausscheidung-3">vollst. Hilfe</label></td>
+				</tr>
+				<!-- ISPC-2508 Carmen 06.02.2020  new box grow100-->
+				<tr class="dotted">
+					<td class="dotted td_label_empty"></td>
+					<!-- <td ><?php echo $this->formCheckbox('dk', $this->dk, array ('onclick' => 'updatePatientInformation(\'MoreInfo\',\'dk\',\'grow21\',this,\'' . $this->enc_patid . '\')'), array ('1')); ?><label for="dk">DK</label></td> -->
+					<td><input type="checkbox" onclick="updatePatientInformation('Ausscheidung','ausscheidung-4','grow100',this,'<?php echo $this->enc_patid; ?>', 'ausnew')"  value="4" id="ausscheidung-4" name="ausscheidungnew[]"><label for="ausscheidung-4">DK</label></td>
+					<td class="dotted"></td>
+					<td class="dotted"></td>
+				</tr>
+		</table>
+		</div>
+
+	 	<div class="kvnofull">
+			<table class="kvnofull">
+				<tr>
+					<td class="dotted td_label_bold" colspan="3"><p class="label"><?php echo $this->translate('mobility') ?></p></td>
+				</tr>
+				<tr>
+					<td class="td_label_empty"></td>
+					<td class="td_label_big">
+						<?php echo $this->formCheckbox('bed', $this->bed, array ('onclick' => 'updatePatientInformation(\'Mobility\',\'bed\',\'grow5\',this,\'' . $this->enc_patid . '\',\'bedmorediv\')'), array ('1')); ?><label for="bed"><?php echo $this->translate('bed') ?></label>
+						<span id="bedmorediv" style="display: none;">&nbsp;<input type="text" name="bedmore" id="bedmore" value="<?php echo $this->bedmore ?>" style="width:120px;" /></span>
+					</td>
+					<td >
+						<?php echo $this->formCheckbox('walker', $this->walker, array ('onclick' => 'updatePatientInformation(\'Mobility\',\'walker\',\'grow5\',this,\'' . $this->enc_patid . '\',\'walkermorediv\')'), array ('1')); ?><label for="walker"><?php echo $this->translate('walker') ?></label>
+						<span id="walkermorediv" style="display: none; ">&nbsp;<input type="text" name="walkermore" id="walkermore" value="<?php echo $this->walkermore ?>" style="width:120px;" /></span>
+					</td>
+				</tr>
+				<tr>
+					<td class="td_label_empty"></td>
+					<td >
+			<?php echo $this->formCheckbox('wheelchair', $this->wheelchair, array ('onclick' => 'updatePatientInformation(\'Mobility\',\'wheelchair\',\'grow5\',this,\'' . $this->enc_patid . '\',\'wheelchairmorediv\')'), array ('1')); ?><label for="wheelchair"><?php echo $this->translate('wheelchair') ?></label>
+						<span id="wheelchairmorediv" style="display: none; ">&nbsp;<input type="text" name="wheelchairmore" id="wheelchairmore" value="<?php echo $this->wheelchairmore ?>" style="width:120px;" /></span>
+
+					</td>
+
+					<td >
+							<?php echo $this->formCheckbox('goable', $this->goable, array ('onclick' => 'updatePatientInformation(\'Mobility\',\'goable\',\'grow5\',this,\'' . $this->enc_patid . '\',\'goablemorediv\')'), array ('1')); ?><label for="goable"><?php echo $this->translate('goable') ?></label>
+						<span id="goablemorediv" style="display: none; ">&nbsp;<input type="text" name="goablemore" id="goablemore" value="<?php echo $this->goablemore ?>" style="width:120px;" /></span>
+
+					</td>
+				</tr>
+				<tr>
+					<td class="dotted td_label_empty"></td>
+					<td class="dotted">
+
+						<?php echo $this->formCheckbox('nachtstuhl', $this->nachtstuhl, array ('onclick' => 'updatePatientInformation(\'Mobility\',\'nachtstuhl\',\'grow5\',this,\'' . $this->enc_patid . '\',\'nachtstuhlmorediv\')'), array ('1')); ?><label for="nachtstuhl">Nachtstuhl</label>
+						<span id="nachtstuhlmorediv" style="display: none;">&nbsp;<input type="text" name="nachtstuhlmore" id="nachtstuhlmore" value="<?php echo $this->nachtstuhlmore ?>" style="width:120px;"/></span>
+
+					</td>
+					<td class="dotted">
+					<?php echo $this->formCheckbox('wechseldruckmatraze', $this->wechseldruckmatraze, array ('onclick' => 'updatePatientInformation(\'Mobility\',\'wechseldruckmatraze\',\'grow5\',this,\'' . $this->enc_patid . '\',\'wechseldruckmatrazemorediv\')'), array ('1')); ?><label for="wechseldruckmatraze">Wechseldruckmatraze</label>
+						<span id="wechseldruckmatrazemorediv" style="display: none;">&nbsp;<input type="text" name="wechseldruckmatrazemore" id="wechseldruckmatrazemore" value="<?php echo $this->wechseldruckmatrazemore ?>" style="width:120px;"/></span>
+
+					</td>
+				</tr>
+			</table>
+		</div>
+
+	 	<div class="kvnofull">
+			<table class="kvnofull">
+				<tr>
+					<td class="dotted td_label_bold" colspan="4"><p class="label"><?php echo $this->translate('livingwill') ?></p></td>
+				</tr>
+				<tr>
+					<td class="dotted td_label_empty"></td>
+					<td  class="dotted"><?php echo $this->formCheckbox('living_will', $this->living_will, array ('onclick' => 'updatePatientInformation(\'Master\',\'living_will\',\'grow6\',this,\'' . $this->enc_patid . '\', \'living_willmorediv\')'), array ('1')); ?><label for="living_will">Vorhanden</label></td>
+					<td class="dotted"><div id="living_willmorediv" style="display: none;">
+							<label for="living_will_from">von wann </label><input type="text" name="living_will_from" id="living_will_from" value="<?php echo $this->living_will_from ?>" style="width: 142px;" />
+							<label for="living_will_deposited">wo hinterlegt </label><input type="text" name="living_will_deposited" id="living_will_deposited" value="<?php echo $this->living_will_deposited ?>" />
+						</div>
+
+					</td>
+				</tr>
+			</table>
+		</div>
+
+
+		<div class="kvnofull">
+			<table class="kvnofull">
+				<tr>
+					<td class="dotted td_label_bold" colspan="4"><p class="label">Vigilanz</td>
+				</tr>
+				<tr>
+					<td class="dotted td_label_empty"></td>
+					<td class="dotted td_label_big">
+					<?php echo $this->formRadio('vigilanz', $this->vigilanz, array ('onclick' => 'updatePatientInformation(\'Vigilanz\',\'vigilanz\',\'grow18\',this,\'' . $this->enc_patid . '\',\'vig\')'), $this->vigilanzs, '</td><td class="dotted">'); ?>
+					</td>
+				</tr>
+		</table>
+		</div>
+		<div class="kvnofull">
+			<table class="kvnofull">
+			<!-- ISPC-2508 Carmen 06.02.2020  new box grow100-->
+				<tr>
+					<td class="dotted td_label_bold" colspan="4"><p class="label">K&#252;nstliche Ausg&#228;nge</td>
+				</tr>
+				<tr>
+					<td class="td_label_empty"></td>
+						<td class="td_label_big"><input type="checkbox" onclick="updatePatientInformation('Kunstliche','kunstliche','grow100',this,'<?php echo $this->enc_patid; ?>', 'kun')" value="1" id="kunstliche-1" name="kunstliche[]"><label for="kunstliche-1">Darm</label></td>
+					<td class="td_label"><input type="checkbox" onclick="updatePatientInformation('Kunstliche','kunstliche','grow100',this,'<?php echo $this->enc_patid; ?>', 'kun')" value="2" id="kunstliche-2" name="kunstliche[]"><label for="kunstliche-2">Blase</label></td>
+					<td ><input type="checkbox" onclick="updatePatientInformation('Kunstliche','kunstliche','grow100',this,'<?php echo $this->enc_patid; ?>', 'kun')" value="3" id="kunstliche-3" name="kunstliche[]"><label for="kunstliche-3">Luftröhre</label></td>
+				</tr>
+				<tr>
+					<td class="dotted td_label_empty"></td>
+					<td class="dotted"><input type="checkbox" onclick="updatePatientInformation('Kunstliche','kunstliche','grow100',this,'<?php echo $this->enc_patid; ?>', 'kun')" value="4" id="kunstliche-4" name="kunstliche[]"><label for="kunstliche-4">Ablaufsonde</label></td>
+					<td colspan="2" class="dotted"><input type="checkbox" onclick="updatePatientInformation('Kunstliche','kunstliche','grow100',this,'<?php echo $this->enc_patid; ?>', 'kun')" value="5" id="kunstliche-5" name="kunstliche[]"><label for="kunstliche-5">besonderer Aus-/ Eingang</label>
+					<span id="kunstlichemorediv" style="display: none;"><input type="text" value="<?php echo $this->kunstlichemore; ?>" name="kunstlichemore" id="kunstlichemore" style="width: 120px;" /></span></td>
+				</tr>
+		</table>
+
+		</div>
+
+		<br/>
+		<br/>
+		<br/>
+		<div class="kvnofull">
+		<p class="label">Orientierung</p>
+			<table class="kvnofull">
+				<tr>
+					<td class="td_label_bold" colspan="5">Voll</td>
+				</tr>
+				<tr>
+					<td class="dotted td_label_empty" ></td>
+					<td class="dotted"><input id="voll_1" type="checkbox" name="orientierung_voll[]" value="1" /><label for="voll_1"> zur Person</label></td>
+					<td class="dotted"><input id="voll_2" type="checkbox" name="orientierung_voll[]" value="2" /><label for="voll_2"> zu komplexen Geschehen</label></td>
+					<td class="dotted"><input id="voll_3" type="checkbox" name="orientierung_voll[]" value="3" /><label for="voll_3"> situativ</label></td>
+					<td class="dotted"><input id="voll_4" type="checkbox" name="orientierung_voll[]" value="4" /><label for="voll_4">zeitlich/örtlich</label></td>
+				</tr>
+				<tr>
+					<td class="td_label_bold" colspan="5">Teilweise</td>
+				</tr>
+				<tr>
+					<td class="dotted td_label_empty" ></td>
+					<td class="dotted"><input id="teilweise_1" type="checkbox" name="orientierung_teilweise[]" value="1" /><label for="teilweise_1"> zur Person</label></td>
+					<td class="dotted"><input id="teilweise_2" type="checkbox" name="orientierung_teilweise[]" value="2" /><label for="teilweise_2"> zu komplexen Geschehen</label></td>
+					<td class="dotted"><input id="teilweise_3" type="checkbox" name="orientierung_teilweise[]" value="3" /><label for="teilweise_3"> situativ</label></td>
+					<td class="dotted"><input id="teilweise_4" type="checkbox" name="orientierung_teilweise[]" value="4" /><label for="teilweise_4">zeitlich/örtlich</label></td>
+				</tr>
+				<tr>
+					<td class="td_label_bold" colspan="5">schwer einschätzbar</td>
+				</tr>
+				<tr>
+					<td class="dotted td_label_empty" ></td>
+					<td class="dotted"><input id="schwer_1" type="checkbox" name="orientierung_schwer[]" value="1" /><label for="schwer_1"> zur Person</label></td>
+					<td class="dotted"><input id="schwer_2" type="checkbox" name="orientierung_schwer[]" value="2" /><label for="schwer_2"> zu komplexen Geschehen</label></td>
+					<td class="dotted"><input id="schwer_3" type="checkbox" name="orientierung_schwer[]" value="3" /><label for="schwer_3"> situativ</label></td>
+					<td class="dotted"><input id="schwer_4" type="checkbox" name="orientierung_schwer[]" value="4" /><label for="schwer_4">zeitlich/örtlich</label></td>
+				</tr>
+				<tr>
+					<td class="td_label_bold" colspan="5">desorientiert</td>
+				</tr>
+				<tr>
+					<td class="dotted td_label_empty" ></td>
+					<td class="dotted"><input id="desorientiert_1" type="checkbox" name="orientierung_desorientiert[]" value="1" /><label for="desorientiert_1"> zur Person</label></td>
+					<td class="dotted"><input id="desorientiert_2" type="checkbox" name="orientierung_desorientiert[]" value="2" /><label for="desorientiert_2"> zu komplexen Geschehen</label></td>
+					<td class="dotted"><input id="desorientiert_3" type="checkbox" name="orientierung_desorientiert[]" value="3" /><label for="desorientiert_3"> situativ</label></td>
+					<td class="dotted"><input id="desorientiert_4" type="checkbox" name="orientierung_desorientiert[]" value="4" /><label for="desorientiert_4">zeitlich/örtlich</label></td>
+				</tr>
+		</table>
+		</div>
+
+		<br/>
+		<br/>
+		<br/>
+	<div class="kvnocontainer">
+		<div class="kvnofull">
+			<p class="label">Ängste / Sorgen:</p>
+			<table class="kvnofull">
+				<tr>
+					<td class="dotted" width="22%">Depressivität</td>
+					<td class="dotted" width="5%"><label for="kein1"><input id="kein1" type="radio" name="depresiv" value="1" /> kein</label></td>
+					<td class="dotted" width="5%"><label for="leicht1"><input id="leicht1" type="radio" name="depresiv" value="2" /> leicht</label></td>
+					<td class="dotted" width="5%"><label for="mittel1"><input id="mittel1" type="radio" name="depresiv" value="3" /> mittel</label></td>
+					<td class="dotted" width="5%"><label for="stark1"><input id="stark1" type="radio" name="depresiv" value="4" /> stark</label></td>
+				</tr>
+				<tr>
+					<td class="dotted" width="22%">Angst</td>
+					<td class="dotted" width="5%"><label for="kein2"><input id="kein2" type="radio" name="angst" value="1" /> kein</label></td>
+					<td class="dotted" width="5%"><label for="leicht2"><input id="leicht2" type="radio" name="angst" value="2" /> leicht</label></td>
+					<td class="dotted" width="5%"><label for="mittel2"><input id="mittel2" type="radio" name="angst" value="3" /> mittel</label></td>
+					<td class="dotted" width="5%"><label for="stark2"><input id="stark2" type="radio" name="angst" value="4" /> stark</label></td>
+				</tr>
+				<tr>
+					<td class="dotted" width="22%">Anspannung</td>
+					<td class="dotted" width="5%"><label for="kein3"><input id="kein3" type="radio" name="anspannung" value="1" /> kein</label></td>
+					<td class="dotted" width="5%"><label for="leicht3"><input id="leicht3" type="radio" name="anspannung" value="2" /> leicht</label></td>
+					<td class="dotted" width="5%"><label for="mittel3"><input id="mittel3" type="radio" name="anspannung" value="3" /> mittel</label></td>
+					<td class="dotted" width="5%"><label for="stark3"><input id="stark3" type="radio" name="anspannung" value="4" /> stark</label></td>
+				</tr>
+				<tr>
+					<td class="dotted" width="22%">Desorientiertheit / Verwirrtheit</td>
+					<td class="dotted" width="5%"><label for="kein4"><input id="kein4" type="radio" name="desorientier" value="1" /> kein</label></td>
+					<td class="dotted" width="5%"><label for="leicht4"><input id="leicht4" type="radio" name="desorientier" value="2" /> leicht</label></td>
+					<td class="dotted" width="5%"><label for="mittel4"><input id="mittel4" type="radio" name="desorientier" value="3" /> mittel</label></td>
+					<td class="dotted" width="5%"><label for="stark4"><input id="stark4" type="radio" name="desorientier" value="4" /> stark</label></td>
+				</tr>
+			</table>
+
+
+			<table class="kvnofull">
+				<tr>
+					<td class="dotted" width="22%"><p class="label">Schmerzen: </p></td>
+					<td class="dotted" width="5%"><label for="kein10"><input id="kein10" type="radio" name="schmerzen" value="1" /> kein</label></td>
+					<td class="dotted" width="5%"><label for="leicht10"><input id="leicht10" type="radio" name="schmerzen" value="2" /> leicht</label></td>
+					<td class="dotted" width="5%"><label for="mittel10"><input id="mittel10" type="radio" name="schmerzen" value="3" /> mittel</label></td>
+					<td class="dotted" width="5%"><label for="stark10"><input id="stark10" type="radio" name="schmerzen" value="4" /> stark</label></td>
+				</tr>
+
+			</table>
+
+			<table class="kvnofull">
+				<tr>
+					<td class="dotted" width="22%"> bisher	behandelt nach WHO III: </td>
+					<td class="dotted" width="5%"><label for="kein9"><input id="kein9" type="radio" name="who" value="1" /> ja</label></td>
+					<td class="dotted" width="5%"><label for="leicht9"><input id="leicht9" type="radio" name="who" value="2" /> nein</label></td>
+					<td class="dotted" width="5%"></td>
+					<td class="dotted" width="5%"></td>
+				</tr>
+			</table>
+
+
+			<div class="ClrBoth"></div>
+			<br />
+			<p class="label">Andere schwerwiegende Symptome:</p>
+			<table class="kvnofull">
+				<tr>
+					<td class="dotted" width="22%">Übelkeit</td>
+					<td class="dotted" width="5%"><label for="kein11"><input id="kein11" type="radio" name="ubelkeit" value="1" /> kein</label></td>
+					<td class="dotted" width="5%"><label for="leicht11"><input id="leicht11" type="radio" name="ubelkeit" value="2" /> leicht</label></td>
+					<td class="dotted" width="5%"><label for="mittel11"><input id="mittel11" type="radio" name="ubelkeit" value="3" /> mittel</label></td>
+					<td class="dotted" width="5%"><label for="stark11"><input id="stark11" type="radio" name="ubelkeit" value="4" /> stark</label></td>
+				</tr>
+				<tr>
+					<td class="dotted" width="22%">Erbrechen</td>
+					<td class="dotted" width="5%"><label for="kein12"><input id="kein12" type="radio" name="erbrechen" value="1" /> kein</label></td>
+					<td class="dotted" width="5%"><label for="leicht12"><input id="leicht12" type="radio" name="erbrechen" value="2" /> leicht</label></td>
+					<td class="dotted" width="5%"><label for="mittel12"><input id="mittel12" type="radio" name="erbrechen" value="3" /> mittel</label></td>
+					<td class="dotted" width="5%"><label for="stark12"><input id="stark12" type="radio" name="erbrechen" value="4" /> stark</label></td>
+				</tr>
+				<tr>
+					<td class="dotted" width="22%">Luftnot</td>
+					<td class="dotted" width="5%"><label for="kein13"><input id="kein13" type="radio" name="luftnot" value="1" /> kein</label></td>
+					<td class="dotted" width="5%"><label for="leicht13"><input id="leicht13" type="radio" name="luftnot" value="2" /> leicht</label></td>
+					<td class="dotted" width="5%"><label for="mittel13"><input id="mittel13" type="radio" name="luftnot" value="3" /> mittel</label></td>
+					<td class="dotted" width="5%"><label for="stark13"><input id="stark13" type="radio" name="luftnot" value="4" /> stark</label></td>
+				</tr>
+				<tr>
+					<td class="dotted" width="22%">Verstopfung</td>
+					<td class="dotted" width="5%"><label for="kein14"><input id="kein14" type="radio" name="verstopfung" value="1" /> kein</label></td>
+					<td class="dotted" width="5%"><label for="leicht14"><input id="leicht14" type="radio" name="verstopfung" value="2" /> leicht</label></td>
+					<td class="dotted" width="5%"><label for="mittel14"><input id="mittel14" type="radio" name="verstopfung" value="3" /> mittel</label></td>
+					<td class="dotted" width="5%"><label for="stark14"><input id="stark14" type="radio" name="verstopfung" value="4" /> stark</label></td>
+				</tr>
+				<tr>
+					<td class="dotted" width="22%">Schwäche</td>
+					<td class="dotted" width="5%"><label for="kein15"><input id="kein15" type="radio" name="swache" value="1" /> kein</label></td>
+					<td class="dotted" width="5%"><label for="leicht15"><input id="leicht15" type="radio" name="swache" value="2" /> leicht</label></td>
+					<td class="dotted" width="5%"><label for="mittel15"><input id="mittel15" type="radio" name="swache" value="3" /> mittel</label></td>
+					<td class="dotted" width="5%"><label for="stark15"><input id="stark15" type="radio" name="swache" value="4" /> stark</label></td>
+				</tr>
+				<tr>
+					<td class="dotted" width="22%">Appetitmangel</td>
+					<td class="dotted" width="5%"><label for="kein16"><input id="kein16" type="radio" name="appetitmangel" value="1" /> kein</label></td>
+					<td class="dotted" width="5%"><label for="leicht16"><input id="leicht16" type="radio" name="appetitmangel" value="2" /> leicht</label></td>
+					<td class="dotted" width="5%"><label for="mittel16"><input id="mittel16" type="radio" name="appetitmangel" value="3" /> mittel</label></td>
+					<td class="dotted" width="5%"><label for="stark16"><input id="stark16" type="radio" name="appetitmangel" value="4" /> stark</label></td>
+				</tr>
+				<tr>
+					<td class="dotted" width="22%">Sonstiges <input type="text" name="sonstigesmore" value="<?php echo $this->sonstigesmore;?>" /></td>
+					<td class="dotted" width="5%"><label for="kein18"><input id="kein18" type="radio" name="sonstiges" value="1" /> kein</label></td>
+					<td class="dotted" width="5%"><label for="leicht18"><input id="leicht18" type="radio" name="sonstiges" value="2" /> leicht</label></td>
+					<td class="dotted" width="5%"><label for="mittel18"><input id="mittel18" type="radio" name="sonstiges" value="3" /> mittel</label></td>
+					<td class="dotted" width="5%"><label for="stark18"><input id="stark18" type="radio" name="sonstiges" value="4" /> stark</label></td>
+				</tr>
+			</table>
+		</div>
+
+		<div class="kvnofull dotted">
+			<p class="label">Angaben  zur  Erkrankung:</p>
+			<textarea name="diagnosen" tabindex="5" rows="4" cols="110"><?php echo $this->diagnosen; ?></textarea>
+			<div class="ClrBoth"></div>
+			<br />
+		</div>
+
+			<div class="ClrBoth"></div>
+			<br />
+		<div class="kvnocontainer">
+		<div class="kvnofull">
+			<p class="label">Aktuelle Medikation:</p>
+			<?php echo $this->medications; ?>
+			<br />
+			<div class="ClrBoth"></div>
+			<p class="label">Medikamente hinzufügen</p>
+			<?php echo $this->medicgrid; ?>
+			<br />
+			<div class="add_new_medi"><a href="javascript:createnewmedic()"><img src="<?php echo RES_FILE_PATH; ?>/images/edit_add.png" width="20" height="20" /><div class="add_new_medi_link"><?php echo $this->translate('addnewmedication'); ?></div></a></div><br />
+			<div class="ClrBoth"></div>
+			<br />
+			<p class="label">Bedarfs Medikation:</p>
+			<?php echo $this->bedarfsmedications; ?>
+			<div class="ClrBoth"></div>
+			<p class="label">Bedarf Medikamente hinzufügen</p>
+			<?php echo $this->bedarfmedicgrid; ?>
+			<br />
+			<div class="add_new_medi"><a href="javascript:createnewmedicrowbedarf();"><img src="<?php echo RES_FILE_PATH; ?>/images/edit_add.png" width="20" height="20" /><div class="add_new_medi_link"><?php echo $this->translate('addnewmedication'); ?></div></a></div><br />
+
+			<div class="ClrBoth"></div>
+			<br />
+			<div class="ClrBoth"></div>
+			<p class="label"><?php echo $this->translate('discontinuedmedlist'); ?></p>
+			<input type="hidden" value="<?php echo $this->jsmedadd; ?>" id="jsmedadd" />
+			<?php echo $this->delmedications ?>
+			<br />
+		</div>
+
+		</div>
+				<div class="ClrBoth"></div>
+			<br />
+			<div class="ClrBoth"></div>
+		<div class="kvnofull">
+			<p class="label">Vorausschauende  Therapieplanung: </p>
+			<table width="100%" class="kvnofull">
+
+				<tr>
+					<td class="dotted" width="30px" valign="top"><?php echo $this->formCheckbox('ernahrungstherapie', $this->ernahrungstherapie, array ('onclick' => 'updatePatientInformation(\'Therapieplanung\',\'ernahrungstherapie\',\'grow37\',this,\'' . $this->enc_patid . '\')'), array ('1')); ?></td>
+					<td class="dotted" valign="top"><label for="ernahrungstherapie"> <?php echo $this->translate('ernahrungstherapie') ?></label></td>
+				</tr>
+				<tr>
+					<td class="dotted" width="30px" valign="top"><?php echo $this->formCheckbox('infusionstherapie', $this->infusionstherapie, array ('onclick' => 'updatePatientInformation(\'Therapieplanung\',\'infusionstherapie\',\'grow37\',this,\'' . $this->enc_patid . '\')'), array ('1')); ?></td>
+					<td class="dotted" valign="top"><label for="infusionstherapie"> <?php echo $this->translate('infusionstherapie') ?></label></td>
+				</tr>
+				<tr>
+					<td class="dotted" width="30px" valign="top"><?php echo $this->formCheckbox('antibiose_bei_pneumonie', $this->antibiose_bei_pneumonie, array ('onclick' => 'updatePatientInformation(\'Therapieplanung\',\'antibiose_bei_pneumonie\',\'grow37\',this,\'' . $this->enc_patid . '\')'), array ('1')); ?></td>
+					<td class="dotted" valign="top"><label for="antibiose_bei_pneumonie"> <?php echo $this->translate('antibiose_bei_pneumonie') ?></label></td>
+				</tr>
+				<tr>
+					<td class="dotted" width="30px" valign="top"><?php echo $this->formCheckbox('antibiose_bei_HWI', $this->antibiose_bei_HWI, array ('onclick' => 'updatePatientInformation(\'Therapieplanung\',\'antibiose_bei_HWI\',\'grow37\',this,\'' . $this->enc_patid . '\')'), array ('1')); ?></td>
+					<td class="dotted" valign="top"><label for="antibiose_bei_HWI"> <?php echo $this->translate('antibiose_bei_HWI') ?></label></td>
+				</tr>
+				<tr>
+					<td class="dotted" width="30px" valign="top"><?php echo $this->formCheckbox('tumorreduktionstherapie_chemo', $this->tumorreduktionstherapie_chemo, array ('onclick' => 'updatePatientInformation(\'Therapieplanung\',\'tumorreduktionstherapie_chemo\',\'grow37\',this,\'' . $this->enc_patid . '\')'), array ('1')); ?></td>
+					<td class="dotted" valign="top"><label for=tumorreduktionstherapie_chemo> <?php echo $this->translate('tumorreduktionstherapie_chemo') ?></label></td>
+				</tr>
+				<tr>
+					<td class="dotted" width="30px" valign="top"><?php echo $this->formCheckbox('krankenhausverlegung', $this->krankenhausverlegung, array ('onclick' => 'updatePatientInformation(\'Therapieplanung\',\'krankenhausverlegung\',\'grow37\',this,\'' . $this->enc_patid . '\')'), array ('1')); ?></td>
+					<td class="dotted" valign="top"><label for="krankenhausverlegung"> <?php echo $this->translate('krankenhausverlegung') ?></label></td>
+				</tr>
+				<tr>
+					<td class="dotted" width="30px" valign="top"><?php echo $this->formCheckbox('lagerung_durch_pflege', $this->lagerung_durch_pflege, array ('onclick' => 'updatePatientInformation(\'Therapieplanung\',\'lagerung_durch_pflege\',\'grow37\',this,\'' . $this->enc_patid . '\')'), array ('1')); ?></td>
+					<td class="dotted" valign="top"><label for="lagerung_durch_pflege"> <?php echo $this->translate('lagerung_durch_pflege') ?></label></td>
+				</tr>
+				<tr>
+					<td class="dotted" width="30px" valign="top"><?php echo $this->formCheckbox('orale_medikation_mehr', $this->orale_medikation_mehr, array ('onclick' => 'updatePatientInformation(\'Therapieplanung\',\'orale_medikation_mehr\',\'grow37\',this,\'' . $this->enc_patid . '\')'), array ('1')); ?></td>
+					<td class="dotted" valign="top"><label for="orale_medikation_mehr"> <?php echo $this->translate('orale_medikation_mehr') ?></label></td>
+				</tr>
+				<tr>
+					<td class="dotted" width="30px" valign="top"><?php echo $this->formCheckbox('blut_volumenersatztherapie', $this->blut_volumenersatztherapie, array ('onclick' => 'updatePatientInformation(\'Therapieplanung\',\'blut_volumenersatztherapie\',\'grow37\',this,\'' . $this->enc_patid . '\')'), array ('1')); ?></td>
+					<td class="dotted" valign="top"><label for="blut_volumenersatztherapie"> <?php echo $this->translate('blut_volumenersatztherapie') ?></label></td>
+				</tr>
+				<tr>
+					<td class="dotted" width="30px" valign="top"><?php echo $this->formCheckbox('palliative', $this->palliative, array ('onclick' => 'updatePatientInformation(\'Therapieplanung\',\'palliative\',\'grow37\',this,\'' . $this->enc_patid . '\')'), array ('1')); ?></td>
+					<td class="dotted" valign="top"><label for="palliative"> <?php echo $this->translate('palliative') ?></label> <input type="text" id="vvfreetext" name="freetext" value="<?php echo $this->freetext ?>" /></td>
+				</tr>
+
+			</table>
+		</div>
+
+<br/>
+<br/>
+<br/>
+	<hr />
+	</div>
+<br/>
+<br/>
+<br/>
+
+ 	<input type="hidden" value="0" id="edit_symptom" name="edit_symptom"/>&nbsp;&nbsp;
+	<input type="hidden" value="<?php echo $this->recording_assessment_id; ?>" id="recording_assessment_id" name="recording_assessment_id"/>&nbsp;&nbsp;
+	<input type="submit" value="<?php echo $this->translate('save') ?>" id="btnsubmit" name="btnsave"/>&nbsp;&nbsp;
+	<input type="submit" value="<?php echo $this->translate('generatepdf') ?>" id="btnsubmit" name="btnsubmit" />
+</form>
+
+<script type="text/javascript">
+getSelected('<?php echo $this->familienstand; ?>', 'familienstand',"0");
+getSelected('<?php echo $this->religion; ?>', 'religion',"0");
+getSelected('<?php echo $this->ernahrung; ?>', 'ernahrung[]','1');
+getSelected('<?php echo $this->hilfsmittel; ?>', 'hilfsmittel[]','1');
+getSelected('<?php echo $this->wunsch; ?>', 'wunsch[]','1');
+getSelected('<?php echo $this->ausscheidung; ?>', 'ausscheidung[]','1');
+getSelected('<?php echo $this->ausscheidungnew; ?>', 'ausscheidungnew[]','1'); //ISPC-2508 Carmen 06.02.2020  new box grow100
+getSelected('<?php echo $this->stastszugehorigkeit; ?>', 'stastszugehorigkeit',"0");
+getSelected('<?php echo $this->kunstliche; ?>', 'kunstliche[]','1');
+
+getSelected('<?php echo $this->orientierung_voll; ?>', 'orientierung_voll[]','1');
+getSelected('<?php echo $this->orientierung_teilweise; ?>', 'orientierung_teilweise[]','1');
+getSelected('<?php echo $this->orientierung_schwer; ?>', 'orientierung_schwer[]','1');
+getSelected('<?php echo $this->orientierung_desorientiert; ?>', 'orientierung_desorientiert[]','1');
+
+//radiobuttons
+getSelected('<?php echo $this->depresiv; ?>', 'depresiv',"0");
+getSelected('<?php echo $this->angst; ?>', 'angst',"0");
+getSelected('<?php echo $this->anspannung; ?>', 'anspannung',"0");
+getSelected('<?php echo $this->desorientier; ?>', 'desorientier',"0");
+getSelected('<?php echo $this->dekubitus; ?>', 'dekubitus',"0");
+getSelected('<?php echo $this->hilfebedarf; ?>', 'hilfebedarf',"0");
+getSelected('<?php echo $this->versorgung; ?>', 'versorgung',"0");
+getSelected('<?php echo $this->umfelds; ?>', 'umfelds',"0");
+getSelected('<?php echo $this->vigilanz; ?>', 'vigilanz',"0");
+getSelected('<?php echo $this->schmerzen; ?>', 'schmerzen',"0");
+getSelected('<?php echo $this->who; ?>', 'who',"0");
+getSelected('<?php echo $this->ubelkeit; ?>', 'ubelkeit',"0");
+getSelected('<?php echo $this->erbrechen; ?>', 'erbrechen',"0");
+getSelected('<?php echo $this->luftnot; ?>', 'luftnot',"0");
+getSelected('<?php echo $this->verstopfung; ?>', 'verstopfung',"0");
+getSelected('<?php echo $this->swache; ?>', 'swache',"0");
+getSelected('<?php echo $this->appetitmangel; ?>', 'appetitmangel',"0");
+getSelected('<?php echo $this->sonstiges; ?>', 'sonstiges',"0");
+
+
+
+<?php echo $this->openhidediv; ?>;
+
+	if($('#peg:checked').length==1){$("#pegmorediv").show();} else {$("#pegmorediv").hide();}
+	if($('#port:checked').length==1){$("#portmorediv").show();} else {$("#portmorediv").hide();}
+	if($('#living_will:checked').length==1){$("#living_willmorediv").show();} else {$("#living_willmorediv").hide();}
+	if($('#kunstliche-5:checked').length==1){$("#kunstlichemorediv").show();} else {$("#kunstlichemorediv").hide();$('#kunstlichemore').val("");}
+
+	if($('#bed:checked').length==1){$("#bedmorediv").show();}
+	if($('#wunsch-13:checked').length==1){$("#wmorediv").show();}
+	if($('#walker:checked').length==1){$("#walkermorediv").show();}
+	if($('#wheelchair:checked').length==1){$("#wheelchairmorediv").show();}
+	if($('#goable:checked').length==1){$("#goablemorediv").show();}
+	if($('#nachtstuhl:checked').length==1){$("#nachtstuhlmorediv").show();}
+	if($('#wechseldruckmatraze:checked').length==1){$("#wechseldruckmatrazemorediv").show();}
+
+	$('#FormDiv').hide();
+	if($('#openhidediv').val()==1)
+	{
+		$('#FormDiv').show();
+	}
+
+	function getSelected(dbvalue,fieldname,checkbox){
+		var fieldarray = document.getElementsByName(fieldname);
+
+		if(checkbox == "0"){
+			for(i=0; i<fieldarray.length;i++){
+				if(fieldarray[i].value==dbvalue){
+					fieldarray[i].checked = true;
+				}
+			}
+		}else if(checkbox == "1"){
+			var checkbox_values = $.parseJSON(dbvalue);
+				var checkbox_results = $.makeArray(checkbox_values);
+			for(i=0; i<fieldarray.length;i++){
+				if($.inArray(fieldarray[i].value, checkbox_results) > '-1'){
+					fieldarray[i].checked = true;
+				}
+			}
+		}
+	}
+</script>

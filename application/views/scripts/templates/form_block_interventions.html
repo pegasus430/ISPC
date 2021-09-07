@@ -1,0 +1,776 @@
+<?php
+//ISPC-2630, elena, 29.09.2020 , fixes
+$medical = $this->medical;
+$nonmedical = $this->nonmedical;
+
+?>
+<?php if($this->pdf==false):?>
+<script>
+    var detailscookies = '<?php echo $this->detailscookies; ?>';
+    var current_entry = 0;
+    var from_type = "<?php echo $_GET['interventiontype']; ?>";
+    $(document).ready(function(){
+
+            $('#interventions').tabs();
+            $('.dialog_info').dialog({
+            autoOpen: false
+            });
+            if(from_type === 'nonmedical'){
+                // to nonmedical
+                $('#nonmedical_tab').click();
+            }
+
+
+
+            $('#add_new_medical').on('click', function(e){
+                e.preventDefault();
+                current_entry = 0
+                $( "#medical_intervention_dialog" ).dialog('open');
+            });
+
+            $('.edit_medical').on('click', function(e){
+                e.preventDefault();
+                current_entry = $(this).attr('data-id');
+                $( "#medical_intervention_dialog" ).dialog('open');
+            });
+            $('#add_new_nonmedical').on('click', function(e){
+                e.preventDefault();
+                current_entry = 0
+                $( "#nonmedical_intervention_dialog" ).dialog('open');
+            });
+
+            $('.edit_nonmedical').on('click', function(e){
+                e.preventDefault();
+                current_entry = $(this).attr('data-id');
+                $( "#nonmedical_intervention_dialog" ).dialog('open');
+            });
+
+        function serializeToJson(serializer){
+            var _string = '{';
+            for(var ix in serializer)
+            {
+                var row = serializer[ix];
+                _string += '"' + row.name + '":"' + row.value + '",';
+            }
+            var end =_string.length - 1;
+            _string = _string.substr(0, end);
+            _string += '}';
+            console.log('_string: ', _string);
+            return JSON.parse(_string);
+        }
+
+        //used in mmi dialog
+        var active_recipe_row = null;
+        var healthinsuranceik = '';
+
+        $(document).on('click', '.mmi_search_button', function(){
+            var receipt_field = $(this).prev();
+            active_recipe_row = receipt_field;
+            console.log(active_recipe_row);
+        });
+
+        window.selectOpscode = function(opscode_key, opscode_value)
+        {
+            console.log(opscode_key);
+            $('#opscode_0').val(opscode_key + ' ' + opscode_value);
+            $('#hidd_opscode').val($('#opscode_key__' + opscode_key).val());
+            //$('#opscode').val(($('#opscode_key__' + opscode_key).val()));
+
+
+        }
+        window.selectMedications = function(mid, row, mmi_handler){
+            console.log(mid, row, mmi_handler);
+            $('#medication_0').val($('#medi_wirkstoffe_'+mid).val());
+            $('#medication_praep_0').val($('#medi_me_'+mid).val());
+            if(!mmi_handler)
+            {
+                $('#comment'+row).val($('#medi_comment_'+mid).val());
+                $('#hidd_medication'+row).val($('#medi_id_'+mid).val());
+            }
+
+        }
+
+        $( "#nonmedical_intervention_dialog" ).dialog({
+            autoOpen: false,
+            title:"Nicht-medikamentöse Intervention",
+            resizable: false,
+            //height: 200,
+            width: 720, //ISPC-2719, elena, 30.11.2020
+            modal: true,
+            open: function (){
+                $.ajax({
+                    type: 'POST',
+                    url: '<?php echo APP_BASE; ?>ajax/nonmedicalintervention?id=<?php echo $_REQUEST['id']; ?>&cnt='+ current_entry + '&blockname=<?php echo $this->blockconfig['blockname']; ?>',
+
+                    beforeSend:function(){
+                        //loading image
+                        //$('#medipump_ajax_load_edt').show();
+                    },
+                    success:function(data){
+                        //$('#medipump_ajax_load_edt').hide();
+                        //var editcont = jQuery.parseJSON(data);
+                        $('#nonmedical_intervention_content').html(data).promise().done(function(){
+
+
+                            $('.livesearchopscode').bind('change', function() {
+                                var input_row = parseInt($(this).attr('id').substr(('opscode').length));
+                                var this_id = $(this).attr('id');
+                                //reset_medications(input_row);
+                            }).liveSearch({
+                                url: 'ajax/opscode?q=' + $(this).val(),
+                                id: 'livesearch_opscode',
+                                aditionalWidth: '0',
+                                noResultsDelay: '900',
+                                typeDelay: '900',
+                                returnRowId: function (input) {return parseInt($(input).attr('id').substr(('opscode').length));}
+                            });
+                        });
+
+
+
+
+
+                    }
+                })
+
+            },
+            buttons: {
+                "Speichern": function(){
+
+                    //console.log( $('#nonmedical_intervention_content_form'));
+                    //$('#nonmedical_intervention_content_form').submit();
+                    ajax_saveintervention('#nonmedical_intervention_content_form');
+
+
+                },
+                "<?php echo $this->translate('cancel'); ?>": function(){
+                    $("#nonmedical_intervention_dialog" ).dialog('close');
+                }
+            },create:function () {
+                $(this).closest(".ui-dialog")
+                    .find(".ui-button:first") // the first button
+                    .addClass("submitform");
+            },
+            close:function () {
+                $('#nonmedical_intervention_content').html('');
+                $('.submitform').attr('disabled',false),
+                    $(".ui-button:first").attr("disabled", false)
+                        .removeClass("ui-state-disabled").next("button").attr("disabled", false)
+                        .removeClass("ui-state-disabled");
+            }
+        });
+
+        $( "#medical_intervention_dialog" ).dialog({
+            autoOpen: false,
+            title:"Medikamentöse Intervention",
+            resizable: false,
+            //height: 680,
+            width: 720, // ISPC-2719, elena, 30.11.2020
+            modal: true,
+            open: function (){
+                $.ajax({
+                        type: 'POST',
+                        url: '<?php echo APP_BASE; ?>ajax/medicalintervention?id=<?php echo $_REQUEST['id']; ?>&cnt='+ current_entry + '&blockname=<?php echo $this->blockconfig['blockname']; ?>',
+
+                        beforeSend:function(){
+                            //loading image
+                            //$('#medipump_ajax_load_edt').show();
+                        },
+                        success:function(data){
+
+                            $('#medical_intervention_content').html(data).promise().done(function(){
+
+                                //INSTALL MEDIINDEX-WIDGET
+                                var pi = new pharmaindex();
+                                pi.input_medname = ".med";
+                                pi.input_rowparent = "div";
+                                pi.input_receipe_butt = ".mmi_search_button";
+                                pi.input_to_recipe = ".to_recipe";
+                                pi.mode="recipe";
+                                pi.ikno = "#ikno_input";
+                                pi.use_suggestions = '0';
+                                pi.otcWarningSw = '0';
+
+                                //PATH FOR THE AJAX SCRIPTS
+                                pi.ajaxPath = "pharmaindex";
+
+                                //PATH FOR THE IMAGE FOLDER
+                                pi.imagePath="images/pharmaindex";
+
+                                pi.callback = function(recipe, drug, extra_object ){
+                                    console.log(arguments);
+
+                                    var input_row = active_recipe_row.data('row');
+
+                                    var pzn = 0;
+                                    var source = "custom";
+                                    var dbf_id = 0;
+
+                                    //extra_object
+                                    if (arguments.length == 3 && typeof arguments[2] == 'object') {
+
+                                        if (arguments[2]['source'] == "mmi_dialog_price" && typeof arguments[2]['PRICE_ITEM'] == 'object') {
+                                            //this is a medication selected from the mmi pricelist
+                                            var PRICE_ITEM = arguments[2]['PRICE_ITEM'];
+                                            pzn = PRICE_ITEM.PZN;
+                                            dbf_id = PRICE_ITEM.ID;
+                                            source = arguments[2]['source'];
+                                        } else if (arguments[2]['source'] == "mmi_dialog_product" && typeof arguments[2]['PRODUCT'] == 'object') {
+                                            //this is a medication selected from the packages list
+                                            //!!! we don't use the pzn from the package list here ...
+                                            //PRODUCT.PACKAGE_LIST is [{}]
+                                            /*
+                                            var PACKAGE_ITEM_0 = arguments[2]['PRODUCT']['PACKAGE_LIST'][0];
+                                            pzn = PACKAGE_ITEM_0.PZN;
+                                            dbf_id = PACKAGE_ITEM_0.ID;
+                                            */
+                                            var PRODUCT = arguments[2]['PRODUCT']
+                                            pzn = 0;
+                                            dbf_id = PRODUCT.ID;
+                                            source = arguments[2]['source'];
+                                        } else {
+                                            //error
+                                            pzn = 0;
+                                            source = "custom";
+                                            dbf_id = 0;
+                                        }
+                                    }
+
+                                    $('#medication_praep_0').val(recipe);
+                                    $('#medication_0').val(arguments[1]);
+
+                                    $('#set-'+input_row+'-pzn').val(pzn.toString().escapeValue());
+                                    $('#set-'+input_row+'-source').val(source.toString().escapeValue());
+                                    $('#set-'+input_row+'-dbf_id').val(dbf_id.toString().escapeValue());
+
+                                    if(drug){
+                                        $('#set-'+input_row+'-drug').val(drug);
+                                    }else{
+                                        $('#set-'+input_row+'-drug').val('');
+                                    }
+                                    $('#set-'+input_row+'-medication').val(recipe);
+                                    $('#set-'+input_row+'-hidd_medication').val('');
+
+                                    //$('#edited_'+input_row).val('1');
+
+                                };
+
+                                pi.install();
+
+                                $('.livesearchmedinp').bind('change', function() {
+                                    var input_row = parseInt($(this).attr('id').substr(('medication').length));
+                                    //reset_medications(input_row);
+                                }).liveSearch({
+                                    url: 'pharmaindex/getproductsmedils?ik_no='+healthinsuranceik+'&sm=0&searchtext=' + $(this).val(),
+                                    //url: 'ajax/medications?q=' + $(this).val(),
+                                    id: 'livesearch_admission_medications',
+                                    aditionalWidth: '0',
+                                    noResultsDelay: '900',
+                                    typeDelay: '900',
+                                    returnRowId: function (input) {return parseInt($(input).attr('id').substr(('medication').length));}
+                                });
+
+                                $('.livesearchopscode').bind('change', function() {
+                                    var input_row = parseInt($(this).attr('id').substr(('opscode').length));
+                                    var this_id = $(this).attr('id');
+                                    //reset_medications(input_row);
+                                }).liveSearch({
+                                    url: 'ajax/opscode?q=' + $(this).val(),
+                                    id: 'livesearch_opscode',
+                                    aditionalWidth: '0',
+                                    noResultsDelay: '900',
+                                    typeDelay: '900',
+                                    returnRowId: function (input) {return parseInt($(input).attr('id').substr(('opscode').length));}
+                                });
+                            });
+
+
+
+
+
+                        }
+            }) },
+            buttons: {
+                "Speichern": function(){
+
+                    ajax_saveintervention('#medical_intervention_content_form');
+
+
+
+                },
+                "<?php echo $this->translate('cancel'); ?>": function(){
+                    $("#medical_intervention_dialog" ).dialog('close');
+                }
+            },create:function () {
+                $(this).closest(".ui-dialog")
+                    .find(".ui-button:first") // the first button
+                    .addClass("submitform");
+            },
+            close:function () {
+                $('#medical_intervention_content').html('');
+                $('.submitform').attr('disabled',false);
+                    $(".ui-button:first").attr("disabled", false)
+                        .removeClass("ui-state-disabled").next("button").attr("disabled", false)
+                        .removeClass("ui-state-disabled");
+            }
+        });
+
+        $('.more_infos_dosis').on('click', function(){
+            var id = $(this).attr('data-id');
+            var elem_id = '#dialog_dosis_' + id;
+            $(elem_id).dialog('open');
+        })
+
+        function ajax_saveintervention(formid) {
+            var formData = ($(formid).serializeArray());
+            //formData = serializeToJson(formData);
+            //console.log(formData);
+            var interventiontype = 'medical';
+            if(formid == '#nonmedical_intervention_content_form'){
+                interventiontype = 'nonmedical';
+                $('#nonmedical_errors').html('');
+
+            }else{
+                $('#medical_errors').html('');
+            }
+
+            //console.log(formData['interventions']);
+            console.log('save form');
+            $.ajax({
+                type: 'POST',
+                url: 'ajax/saveintervention?id=<?php echo $_GET['id']; ?>',
+                data:  $(formid).serialize(),
+                //dataType: 'json',
+                //encode: true,
+
+                success: function (jdata) {
+
+                    console.log(jdata);
+
+                    var data = jQuery.parseJSON(jdata);
+                    if(data.success == true){
+                        //reload after changes
+                        location.href = "<?php echo APP_BASE ?>patientformnew/interventions?id=<?php echo $_GET['id']; ?>&interventiontype=" + interventiontype;
+
+                    }else{
+                        var errorsMarkup = '';
+                        var error_div = '#medical_errors';
+                        if(formid == '#nonmedical_intervention_content_form'){
+                            error_div = '#nonmedical_errors';
+                        }
+
+                        $.each(data.errors, function(key, value){
+                            errorsMarkup += '<span>' + value + '</span>';
+                            console.log(errorsMarkup);
+                            $(error_div).html(errorsMarkup);
+                        })
+
+                        console.log(data.errors);
+                    }
+
+                },
+                error : function(error){
+                    console.log(error);
+                }
+            });
+        }
+
+        $('.delete_intervention').on('click', function(){
+            var intervention_id = $(this).attr('data-id');
+            var interventiontype = 'medical';
+
+            if($(this).hasClass('delete_nonmedical')){
+                interventiontype = 'nonmedical';
+
+            }
+            console.log(intervention_id);
+            jConfirm('<? echo $this->translate('confirmdeleterecord'); ?>', '<? echo $this->translate('confirmdeletetitle'); ?>', function(r) {
+                if(r)
+                {
+                    delete_intervention(intervention_id, interventiontype);
+                }
+            });
+        })
+
+        function delete_intervention(id, interventiontype){
+            $.ajax({
+                type: 'POST',
+                url: 'ajax/deleteintervention?id=<?php echo $_GET['id']; ?>',
+                data:  'intervention_id=' + id,
+                //dataType: 'json',
+                //encode: true,
+
+                success: function (jdata) {
+
+                    console.log(jdata);
+
+                    var data = jQuery.parseJSON(jdata);
+                    if(data.success == true){
+                        //reload after changes
+                        location.href = "<?php echo APP_BASE ?>patientformnew/interventions?id=<?php echo $_GET['id']; ?>&interventiontype=" + interventiontype ;
+
+                    }else{
+                       //error handling
+                    }
+
+                },
+                error : function(error){
+                    console.log(error);
+                }
+            });
+
+        }
+
+        })
+</script>
+<?php //ISPC-2719, elena, 30.11.2020  ?>
+<style>
+    #tabs-1 .datatable, #tabs-2 .datatable{
+        width: 100% !important;
+    }
+</style>
+
+<div id="interventions">
+    <ul>
+        <li><a href="#tabs-1">Medikamentöse Interventionen</a></li>
+        <li><a id="nonmedical_tab" href="#tabs-2">Nicht-medikamentöse Interventionen</a></li>
+
+    </ul>
+    <div id="tabs-1">
+        <table class="datatable">
+
+
+            <tr>
+                <th>OPS Code</th>
+                <th>Wirkstoff</th>
+                <th>Präparat</th>
+                <th>Dosierung</th>
+                <th>Leitsymptom</th>
+                <th>Erste Gabe</th>
+                <th>Letzte Gabe</th>
+                <th>Indikationen</th>
+                <?php if (!$this->blockconfig['no_actions']) : //ISPC-2831 Dragos 15.03.2021?>
+                    <th colspan="2"></th><?php //ISPC-2719, Ancuta 02.02.2021  ?>
+                <?php endif; //ISPC-2831 Dragos 15.03.2021 ?>
+
+            </tr>
+            <?php foreach($medical as $m_int): ?>
+            <tr>
+                <td><?php echo $m_int['opscode']; ?></td>
+                <td><?php echo $m_int['active_ingredient']; ?></td>
+                <td><?php echo $m_int['preparation']; ?></td>
+                <td>
+                   <div class="more_infos_dosis" data-id="<?php echo $m_int['id']; ?>">Weitere Infos</div>
+                    <div id="dialog_dosis_<?php echo $m_int['id']; ?>" class="dialog_info">
+                        <table class="infotable" border="1">
+                            <tr>
+                                <td>Dosis</td>
+                                <td><?php echo $m_int['dosis_absolute']; ?>  <?php echo $m_int['dosis_absolute_unit']; ?></td>
+                            </tr>
+                            <tr>
+                                <td>Häufigkeit der Intervention</td>
+                                <td><?php echo $m_int['frequency']; ?>  <?php echo $m_int['frequency_freetext']; ?></td>
+                            </tr>
+                            <?php if($m_int['frequency'] == 'mehrfach täglich') : ?>
+                            <tr>
+                                <td>Anzahl Interventionen pro Tag</td>
+                                <td><?php echo $m_int['count_day']; ?> </td>
+                            </tr>
+                            <?php endif; ?>
+                            <tr>
+                                <td>Dauer in Stunden</td>
+                                <td><?php echo $m_int['duration_hours']; ?> </td>
+                            </tr>
+                            <tr>
+                                <td>Interval in Stunden</td>
+                                <td><?php echo $m_int['interval_hours']; ?> </td>
+                            </tr>
+
+                        </table>
+
+                    </div>
+
+                </td>
+                <td><?php echo $m_int['main_symptom']; ?>
+                <?php if(!empty($m_int['main_symptom_freetext'])) : ?>
+                    <br><b>Kommentar:</b><br>
+                    <?php echo $m_int['main_symptom_freetext']; ?>
+                <?php endif; ?>
+                </td>
+                <td><?php
+                if($m_int['first'] !='0000-00-00 00:00:00'){
+                echo date('d.m.Y H:i', strtotime($m_int['first']));
+                }
+
+                ?></td>
+                <td>
+                    <?php
+                    if($m_int['last'] !='0000-00-00 00:00:00'){
+                     echo date('d.m.Y H:i', strtotime($m_int['last']));
+                     }
+                     if($m_int['last'] =='0000-00-00 00:00:00' && $m_int['is_ongoing'] == 1){
+                    echo 'ist fortlaufend';
+                    }
+                ?></td>
+                <td><?php echo $m_int['aim_reason']; ?></td>
+                <?php if (!$this->blockconfig['no_actions']) : //ISPC-2831 Dragos 15.03.2021?>
+                    <td><img src="<?php echo RES_FILE_PATH; ?>/images/edit.png" width="16px" data-id="<?php echo $m_int['id']; ?>" class="edit_medical" data-entry="<?php echo json_encode($m_int) ?>" /></td>
+                    <td><img src="<?php echo RES_FILE_PATH; ?>/images/cross.png" width="16px" data-id="<?php echo $m_int['id']; ?>" class="delete_medical delete_intervention" data-entry="<?php echo json_encode($m_int) ?>" /></td>
+                <?php endif; //ISPC-2831 Dragos 15.03.2021 ?>
+            </tr>
+            <?php endforeach; ?>
+
+        </table>
+        <?php if (!$this->blockconfig['no_actions']) : //ISPC-2831 Dragos 15.03.2021?>
+            <div><input type="image" src="<?php echo RES_FILE_PATH; ?>/images/edit_add.png" width="16px" id="add_new_medical" /></div>
+        <?php endif; //ISPC-2831 Dragos 15.03.2021 ?>
+    </div>
+    <div id="tabs-2">
+
+        <table class="datatable">
+            <tr>
+                <th>OPS Code</th>
+                <th>Verfahrensgruppe</th>
+                <th>Intervention</th>
+                <th>Leitsymptom</th>
+                <th>Dosierung</th>
+                <th>Erste Durchführung</th>
+                <th>Letzte Durchführung</th>
+                <th>Indikationen</th>
+                <?php if (!$this->blockconfig['no_actions']) : //ISPC-2831 Dragos 15.03.2021?>
+                    <th colspan="2"></th><?php //ISPC-2719, Ancuta 02.02.2021  ?>
+                <?php endif; //ISPC-2831 Dragos 15.03.2021 ?>
+
+            </tr>
+            <?php foreach($nonmedical as $nm_int): ?>
+            <tr>
+                <td><?php echo $nm_int['opscode']; ?></td>
+                <td><?php echo $nm_int['proceed_group']; ?>
+                    <?php if(!empty($nm_int['proceed_group_freetext'])): ?>
+                        <br><b>Kommentar:</b><br>
+                    <?php echo $nm_int['proceed_group_freetext']; ?>
+                    <? endif; ?>
+
+                </td>
+                <td><?php echo $nm_int['intervention']; ?></td>
+                <td><?php echo $nm_int['main_symptom']; ?>
+                    <?php if(!empty($nm_int['main_symptom_freetext'])) : ?>
+                    <br><b>Kommentar:</b><br>
+                    <?php echo $nm_int['main_symptom_freetext']; ?>
+                    <?php endif; ?>
+
+                </td>
+                <td>
+                    <div class="more_infos_dosis" data-id="<?php echo $nm_int['id']; ?>">Weitere Infos</div>
+                    <div id="dialog_dosis_<?php echo $nm_int['id']; ?>" class="dialog_info">
+                        <table class="infotable" border="1">
+
+                            <tr>
+                                <td>Häufigkeit der Intervention</td>
+                                <td><?php echo $nm_int['frequency']; ?>  <?php echo $nm_int['frequency_freetext']; ?></td>
+                            </tr>
+                            <?php if($nm_int['frequency'] == 'mehrfach täglich') : ?>
+                            <tr>
+                                <td>Anzahl Interventionen pro Tag</td>
+                                <td><?php echo $nm_int['count_day']; ?> </td>
+                            </tr>
+                            <?php endif; ?>
+                            <tr>
+                                <td>Dauer in Stunden</td>
+                                <td><?php echo $nm_int['duration_hours']; ?> </td>
+                            </tr>
+                            <tr>
+                                <td>Interval in Stunden</td>
+                                <td><?php echo $nm_int['interval_hours']; ?> </td>
+                            </tr>
+
+                        </table>
+
+                    </div>
+
+                </td>
+                <td><?php
+                if($nm_int['first'] !='0000-00-00 00:00:00'){
+                    echo date('d.m.Y H:i', strtotime($nm_int['first']));
+                }
+
+                ?></td>
+                <td><?php
+                if($nm_int['last'] !='0000-00-00 00:00:00'){
+                echo date('d.m.Y H:i', strtotime($nm_int['last']));
+                }
+                 if($nm_int['last'] =='0000-00-00 00:00:00' && $nm_int['is_ongoing']== 1){
+                    echo 'ist fortlaufend';
+                 }
+
+                    ?></td>
+                <td><?php echo $nm_int['aim_reason']; ?></td>
+                <?php if (!$this->blockconfig['no_actions']) : //ISPC-2831 Dragos 15.03.2021?>
+                    <td><img src="<?php echo RES_FILE_PATH; ?>/images/edit.png" width="16px" data-id="<?php echo $nm_int['id']; ?>" class="edit_nonmedical" data-entry="<?php echo json_encode($m_int) ?>" /></td>
+                    <td><img src="<?php echo RES_FILE_PATH; ?>/images/cross.png" width="16px" data-id="<?php echo $nm_int['id']; ?>" class="delete_nonmedical delete_intervention" data-entry="<?php echo json_encode($m_int) ?>" /></td>
+                <?php endif; //ISPC-2831 Dragos 15.03.2021 ?>
+            </tr>
+
+            <?php endforeach; ?>
+
+
+        </table>
+        <?php if (!$this->blockconfig['no_actions']) : //ISPC-2831 Dragos 15.03.2021?>
+            <div><input type="image" src="<?php echo RES_FILE_PATH; ?>/images/edit_add.png" width="16px" id="add_new_nonmedical" /></div>
+        <?php endif; //ISPC-2831 Dragos 15.03.2021 ?>
+
+    </div>
+</div>
+<div id="nonmedical_intervention_dialog" class="dialog_input">
+    <div id="nonmedical_intervention_content"></div>
+
+</div>
+
+<div id="medical_intervention_dialog" class="dialog_input">
+    <div id="medical_intervention_content"></div>
+
+</div>
+<?php else: ?>
+<h4>Medikamentöse Interventionen</h4>
+<table border="1" width="27cm" cellpadding="5" cellspacing="0">
+
+    <tr>
+        <th><b>OPS Code</b></th>
+        <th><b>Wirkstoff</b></th>
+        <th><b>Präparat</b></th>
+        <th width="4.5cm"><b>Dosierung</b></th>
+        <th><b>Leitsymptom</b></th>
+        <th><b>Erste Gabe</b></th>
+        <th><b>Letzte Gabe</b></th>
+        <th><b>Indikationen</b></th>
+        <th colspan="2"></th><?php //ISPC-2719, Ancuta 02.02.2021  ?>
+
+    </tr>
+    <?php foreach($medical as $m_int): ?>
+    <tr>
+        <td><?php echo $m_int['opscode']; ?></td>
+        <td><?php echo $m_int['active_ingredient']; ?></td>
+        <td><?php echo $m_int['preparation']; ?></td>
+        <td>
+
+                <table cellpadding="5" >
+                    <tr>
+                        <td><b>Dosis</b></td>
+                        <td><?php echo number_format($m_int['dosis_absolute'], 2, ',', '.'); ?>  <?php echo $m_int['dosis_absolute_unit']; ?></td>
+                    </tr>
+                    <tr>
+                        <td><b>Häufigkeit<br> der Intervention</b></td>
+                        <td><?php echo $m_int['frequency']; ?>  <?php echo $m_int['frequency_freetext']; ?></td>
+                    </tr>
+                    <?php if($m_int['frequency'] == 'mehrfach täglich') : ?>
+                    <tr>
+                        <td><b>Anzahl<br> Interventionen<br> pro Tag</b></td>
+                        <td><?php echo $m_int['count_day']; ?> </td>
+                    </tr>
+                    <?php endif; ?>
+                    <tr>
+                        <td><b>Dauer in Stunden</b></td>
+                        <td><?php echo number_format($m_int['duration_hours']); ?> </td>
+                    </tr>
+                    <tr>
+                        <td><b>Interval in Stunden</b></td>
+                        <td><?php echo number_format($m_int['interval_hours']); ?> </td>
+                    </tr>
+
+                </table>
+
+
+
+        </td>
+        <td><?php echo $m_int['main_symptom']; ?></td>
+        <td><?php
+        if($m_int['first'] !='0000-00-00 00:00:00'){
+        echo date('d.m.Y H:i', strtotime($m_int['first']));
+        }
+        ?></td>
+        <td><?php
+
+        if($m_int['last'] != '0000-00-00 00:00:00'){
+        echo date('d.m.Y H:i', strtotime($m_int['last']));
+        }
+        if($m_int['last'] =='0000-00-00 00:00:00' && intval($m_int['is_ongoing']) == 1){
+            echo 'ist fortlaufend';
+            }
+        ?></td>
+        <td><?php echo $m_int['aim_reason']; ?></td>
+
+    </tr>
+    <?php endforeach; ?>
+
+</table>
+<p></p>
+<h4>Nicht-medikamentöse Interventionen</h4>
+<table  border="1" width="27cm" cellpadding="5" cellspacing="0">
+    <tr>
+        <th><b>OPS Code</b></th>
+        <th><b>Verfahrensgruppe</b></th>
+        <th><b>Intervention</b></th>
+        <th><b>Leitsymptom</b></th>
+        <th width="4.5cm"><b>Dosierung</b></th>
+        <th><b>Erste Durchführung</b></th>
+        <th><b>Letzte Durchführung</b></th>
+        <th><b>Indikationen</b></th>
+        <th colspan="2"></th><?php //ISPC-2719, Ancuta 02.02.2021  ?>
+    </tr>
+    <?php foreach($nonmedical as $nm_int): ?>
+    <tr>
+        <td><?php echo $nm_int['opscode']; ?></td>
+        <td><?php echo $nm_int['proceed_group']; ?></td>
+        <td><?php echo $nm_int['intervention']; ?></td>
+        <td><?php echo $nm_int['main_symptom']; ?></td>
+        <td>
+
+                <table cellpadding="5" >
+
+                    <tr>
+                        <td><b>Häufigkeit der Intervention</b></td>
+                        <td><?php echo $nm_int['frequency']; ?>  <?php echo $nm_int['frequency_freetext']; ?></td>
+                    </tr>
+                    <?php if($nm_int['frequency'] == 'mehrfach täglich') : ?>
+                    <tr>
+                        <td><b>Anzahl Interventionen pro Tag</b></td>
+                        <td><?php echo $nm_int['count_day']; ?> </td>
+                    </tr>
+                    <?php endif; ?>
+                    <tr>
+                        <td><b>Dauer in Stunden</b></td>
+                        <td><?php echo number_format($nm_int['duration_hours']); ?> </td>
+                    </tr>
+                    <tr>
+                        <td><b>Interval in Stunden</b></td>
+                        <td><?php echo number_format($nm_int['interval_hours']); ?> </td>
+                    </tr>
+
+                </table>
+
+
+
+        </td>
+        <td><?php
+        if($nm_int['first'] !== '0000-00-00 00:00:00'){
+        echo date('d.m.Y H:i', strtotime($nm_int['first']));
+        }
+        ?></td>
+        <td><?php
+        if($nm_int['last'] !== '0000-00-00 00:00:00'){
+        echo date('d.m.Y H:i', strtotime($nm_int['last']));
+        }
+        if($nm_int['last'] =='0000-00-00 00:00:00' && intval($nm_int['is_ongoing']) == 1){
+            echo 'ist fortlaufend';
+        }
+        ?></td>
+        <td><?php echo $nm_int['aim_reason']; ?></td>
+    </tr>
+
+    <?php endforeach; ?>
+
+
+</table>
+
+
+<?php endif; ?>

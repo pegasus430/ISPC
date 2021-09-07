@@ -1,0 +1,199 @@
+<?php
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/data_tables/jquery.dataTables.js?'.date('Ymd'));
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/data_tables/dataTables.jqueryui.js?'.date('Ymd'));
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/qtip/jquery.qtip.min.js?'.date('Ymd'));
+$this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/qtip/jquery.qtip.min.css?'.date('Ymd'));
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/data_tables/dataTables.jqueryui.css?' . date('Ymd'));
+$this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/page-css/muster13_style.css');
+echo $this->patientinfo;
+echo $this->tabmenus;
+$rec_id = $this->rec_id;
+?>
+
+<script type="text/javascript">
+$(document).ready(function() { /*------ Start $(document).ready --------------------*/
+
+	// DATATABLE
+	var table = $('#muster13_table').DataTable({
+		// ADD language
+		 "language": {
+                "url": "<?php echo RES_FILE_PATH.'/javascript/data_tables/de_language.json?'.date('Ymd')?>"
+         },
+ 
+		"sDom": 
+			't'+
+			'<"fg-toolbar ui-toolbar ui-widget-header ui-helper-clearfix ui-corner-bl ui-corner-br"<"#bottom_export">ip>',
+		// la sDom - este sa zic - declarat tablelu(t) - cu header - search, paginare(p)
+
+			
+		"lengthMenu": [[ 10, 25, 50,100, 150], [10, 25, 50,100, 150]],
+			
+		"processing": true,
+
+		"info": true,
+		"filter": true,
+		"paginate": true,
+
+		"serverSide": true,
+		"autoWidth": true,
+		"stateSave": false,
+		"scrollX": true,
+		"scrollCollapse": true,
+ 		"columns": [
+ 		          { data: "id", className: ""},
+ 		          { data: "remedies", className: ""},
+		          { data: "title", className: ""},
+		          { data: "created_by", className: ""},
+		          { data: "created_date", className: ""},
+		          { data: "actions", className: " "}
+			],
+			
+		"columnDefs": [
+				       	{ "targets":  0, "visible": false},
+				       	{ "targets":  1,  "searchable": false, "orderable": false},
+				       	{ "targets":  2,  "searchable": false, "orderable": false},
+				       	{ "targets":  3,  "searchable": false, "orderable": false},
+				       	{ "targets":  4,  "searchable": false, "orderable": false},
+				       	{ "targets":  5,  "searchable": false, "orderable": false},
+
+				],
+		"drawCallback": function () {			
+		               var api = this.api();
+		 
+		               api.rows({ page: "current" }).every(function () {
+		            	   var rowData = this.data();
+		            	   
+		                   this
+		                     .child($(
+		                       '<tr><td colspan="5">'+
+		                      '<div class="history_log" data-muster13-id="'+rowData['id']+'">'+
+		                      '<h3><a href="javascript:void(0);">Heilmittelverordnung Verlauf</a></h3>'+
+		      					'<div id="history_log_content_'+rowData['id']+'" class="history_log_content"></div></div></td></tr>'
+		                     ))	                     
+		                     
+		                     .show();
+		               });
+		               
+		               $( ".history_log" ).accordion({
+		           		collapsible: true,
+		           		active: false,
+		           		autoHeight: false,
+		           		heightStyle: "fill",
+		           		change: function(event, ui) {
+		           			var ms13id = $(this).data('muster13Id');
+		           			var element = $('#history_log_content_'+ms13id);
+		           			if(ui.newContent.length == "1")
+		           			{
+		           				ajaxCallserver({url: appbase + 'ajax/loadmuster13log?id=<?php echo $rec_id; ?>&prid='+ms13id+'', callLoading: loader(element)});
+		           			}
+		           			else
+		           			{
+		           				$('#history_log_content_'+ms13id).html('');
+//		           				$('#history_log_content').html('');
+		           			}
+		           		}
+		           	});
+		           },
+		
+ 		"ajax": {
+			url:'patientformnew/getmuster13list', // aici se iau detaliile prin ajax la incarcarea paginii
+			data: {id:'<?php echo $rec_id; ?>'},
+			type: 'POST'
+		}
+ 	
+	});
+	
+	var loader = function (element)
+    {
+		var dlist = '<div class="loadingdiv" align="center" style="width: 100%;float: left; height:100%; vertical-align:middle;"><img src="<?php echo RES_FILE_PATH; ?>/images/loader_transparent.gif" width="32"><br /><?php echo $this->translate('loadingpleasewait'); ?></div>';
+		element.html(dlist);
+	}
+ 
+	// DELETE
+	$(".delete").live('click', function() {
+		$.confirmdeleteprid = $(this).attr('rel_prid');
+		$.confirmdeleteid = $(this).attr('rel_id');
+			jConfirm('<? echo $this->translate('confirmdeleterecord'); ?>', '<? echo $this->translate('confirmdeletetitle'); ?>', function(r) {
+			if(r)
+			{	
+				location.href = "<? echo APP_BASE ?>patientformnew/deletemuster13?id="+ $.confirmdeleteid+"&prid="+$.confirmdeleteprid;
+			}
+		});
+	});
+	
+	// DUPLICATE
+	$(".duplicate").live('click', function() {
+		$.confirmdeleteprid = $(this).attr('rel_prid');
+		$.confirmdeleteid = $(this).attr('rel_id');
+			jConfirm('<? echo $this->translate('confirm_duplicate_record'); ?>', '<? echo $this->translate('confirm_duplicate_title'); ?>', function(r) {
+			if(r)
+			{	
+				location.href = "<? echo APP_BASE ?>patientformnew/duplicatemuster13?id="+ $.confirmdeleteid+"&prid="+$.confirmdeleteprid;
+			}
+		});
+	});
+	
+	// PRINT PDF
+	$(".printpdf").live('click', function() {
+		$.confirmdeleteprid = $(this).attr('rel_prid');
+		$.confirmdeleteid = $(this).attr('rel_id');
+		
+		location.href = "<? echo APP_BASE ?>patientformnew/printmuster13?id="+ $.confirmdeleteid+"&prid="+$.confirmdeleteprid+'&print=pdf';
+	});
+	
+	// PREPRINT
+	$(".printpre").live('click', function() {
+		$.confirmdeleteprid = $(this).attr('rel_prid');
+		$.confirmdeleteid = $(this).attr('rel_id');
+		
+		location.href = "<? echo APP_BASE ?>patientformnew/printmuster13?id="+ $.confirmdeleteid+"&prid="+$.confirmdeleteprid+'&print=prepdf';
+	});
+
+	
+	$("select[name='table_length']").live('change', function() {
+		
+		if($(this).val())
+		{
+			$.ajax({
+				url : 'ajax/saveuserpageresults',
+				type : 'POST',
+				data : {
+					page: "muster13",
+					results: $(this).val()
+				} 
+			});
+			
+			 $('#setlimit').val( $(this).val());
+		}
+		
+	});
+	
+});/*-- END  $(document).ready ----------- --*/
+
+	var callback_history = function (params)
+{
+	$('#history_log_content_'+params.ms13id).html(params.historylog);
+}
+</script>
+<br/>
+<br/>
+<h1 class="first_half"><?php echo $this->translate('Heilmittelverordnung 13')?></h1>
+<div class="second_half"><a href="patientformnew/muster13?id=<?php echo $_REQUEST['id']; ?>"><? echo $this->translate('addmuster13') ?></a></div>
+<!-- <div style="clear: both;"></div> -->
+<br/>
+<div style="width: 840px; float: left;">
+<div id="addfamilydoctor_Msgerror" class="err"><? echo urldecode($_GET['mes']); ?></div>
+
+<table id="muster13_table" class="table table-striped table-bordered table-hover table-condensed dataTable no-footer">
+ 	<thead>
+ 		<tr>
+ 			<th style="display: none"></th>
+ 			<th><?php echo $this->translate('remedies');?></th>
+ 			<th>Heilmittelverordnungen</th>
+ 			<th><?php echo $this->translate('receipts_created_by');?></th>
+ 			<th><?php echo $this->translate('receipts_created_date');?></th>
+ 			<th><?php echo $this->translate('m13list_actions'); ?></th>
+ 		</tr>
+ 	</thead>
+ </table>
+ </div>

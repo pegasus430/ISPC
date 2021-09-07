@@ -1,0 +1,1280 @@
+<script type="text/javascript">
+$(document).ready(function(){
+    //  When user clicks on tab, this code will be executed
+    $("#tabsaddr li").click(function() {
+        //  First remove class "active" from currently active tab
+        $("#tabsaddr li").removeClass('active');
+
+        //  Now add class "active" to the selected/clicked tab
+        $(this).addClass("active");
+
+        //  Hide all tab content
+        $(".tabaddr_content").hide();
+
+        //  Here we get the href value of the selected tab
+        var selected_tab = $(this).find("a").attr("href");
+
+        //  Show the selected tab content
+        $(selected_tab).fadeIn();
+
+        //  At the end, we add return false so that the click on the link is not executed
+        return false;
+    });
+});
+</script>
+<script type="text/javascript">
+
+	var pl_loading = function()
+	{
+		var dlist = '<div class="loadingdiv" align="center" style="width: 660px;float: left;padding-top: 40px;"><img src="<? echo RES_FILE_PATH;  ?>/images/pageloading.gif"><br />	Loading... please wait</div>';
+		document.getElementById('content').innerHTML = dlist;
+	}
+
+	var callBack = function(params)
+	{
+		document.getElementById('content').innerHTML = params.patientlist;
+	}
+
+	$(document).ready(function() {
+		$('.addr-letter').live('click',function() {
+			ajaxCallserver({callLoading:pl_loading,url:'addressbook/fetchlist/?slet='+$(this).attr('rel') + '&type=' + $('#type_c').val()});
+
+			$('.addr-letter').each(function() {
+				$(this).removeClass('selected');
+			});
+			$('#fav-filter').parent().css('background','#fff');
+			$(this).addClass('selected');
+
+			return false;
+		});
+
+		$('#default-all').live('click',function() {
+			ajaxCallserver({callLoading:pl_loading,url:'addressbook/fetchlist?type=' + $('#type_c').val()});
+			$('.addr-letter').each(function() {
+				$(this).removeClass('selected');
+			});
+			$('#fav-filter').parent().css('background','#fff');
+			return false;
+		});
+
+		$('#fav-filter').live('click',function() {
+			ajaxCallserver({callLoading:pl_loading,url:'addressbook/fetchlist/?fav=1&type=' + $('#type_c').val()});
+
+			$('.addr-letter').each(function() {
+				$(this).removeClass('selected');
+			});
+
+			$(this).parent().css('background','black');
+
+			return false;
+		});
+
+		$('.addr-more').live('click',function() {
+			$(this).parent().find('.addr-details').toggle();
+			return false;
+		});
+
+
+		$('tr.alternable').live('mouseover',function(){
+			$(this).addClass('hover');
+		});
+
+		$('tr.alternable').live('mouseout',function(){
+			$(this).removeClass('hover');
+		});
+
+		$('.addr-star').live('click',function(){
+			var fav_id = $(this).attr('rel');
+			var user_id = $('#user_'+fav_id).val();
+			var type = $('#type_'+fav_id).val();
+			var isfavorite = $(this).attr('title');
+
+			if(isfavorite != '') {
+				$.get('addressbook/deladdrfavorite/?usr_id='+user_id+'&fav_id='+fav_id+'&type='+type, function(data) {
+					  //alert(data);
+				});
+				$(this).removeClass('favorite');
+			} else {
+				$.get('addressbook/addaddrfavorite/?usr_id='+user_id+'&fav_id='+fav_id+'&type='+type, function(data) {
+					  //alert(data);
+				});
+				$(this).addClass('favorite');
+			}
+
+			return false;
+		});
+		//other ajax buttons
+		$('.tabf').live('click',function() {
+			var thetype = $(this).attr('id');
+			$('#type_c').val(thetype);
+			$('#addressbook-tabs').show();
+			ajaxCallserver({callLoading:pl_loading,url:'addressbook/fetchlist?type='+ thetype});
+			$('.addr-letter').each(function() {
+				$(this).removeClass('selected');
+			});
+			$('#fav-filter').parent().css('background','#fff');
+			$('#pat').hide();
+			return false;
+		});
+		//locations button
+		$('.tabl').live('click',function() {
+			var thetype = $(this).attr('id');
+			$('#type_c').val(thetype);
+			$('#addressbook-tabs').hide();
+			ajaxCallserver({callLoading:pl_loading,url:'locations/fetchlist?clm=pk&ord=ASC&pgno=0&source=addressbook'});
+			$('#pat').hide();
+			return false;
+		});
+		//sonstiges button
+		$('.tabs').live('click',function() {
+			var thetype = $(this).attr('id');
+			$('#type_c').val(thetype);
+			$('#addressbook-tabs').hide();
+			ajaxCallserver({callLoading:pl_loading,url:'locations/fetchuserlist'});
+			$('#pat').hide();
+			return false;
+		});
+
+		//pattient tab
+		$('#patienttab').live('click', function(){
+			$('#addressbook-container').remove();
+			$('#locationFetchlist_contenttable').remove();
+			$('#addressbook-tabs').hide();
+ 			$('#pat').show();
+ 			return false;
+		});
+
+		//show/hide more details
+		$('.row').live('click', function(){
+			var id = $(this).attr('alt');
+
+			if($('#moreinfo-'+id).hasClass("open")){
+				$('#moreinfo-'+id).removeClass("open");
+				$('#moreinfo-'+id).slideUp("slow");
+
+			} else {
+				$('#moreinfo-'+id).slideDown("slow");
+				$('#moreinfo-'+id).addClass("open");
+			}
+		});
+
+		//edit
+		$('.edit').live('click', function(){
+			var idloc = $(this).attr('alt');
+
+			//populate form fields
+			$('#fname').val($('#fname-'+idloc).val());
+			$('#lname').val($('#lname-'+idloc).val());
+			$('#companyname').val($('#companyname-'+idloc).val());
+			$('#street').val($('#street-'+idloc).val());
+			$('#zipcodex').val($('#zip-'+idloc).val());
+			$('#cityx').val($('#city-'+idloc).val());
+			$('#phone1').val($('#phone1-'+idloc).val());
+			$('#phone2').val($('#phone2-'+idloc).val());
+			$('#faxx').val($('#fax-'+idloc).val());
+			$('#comment').text($('#comment-'+idloc).val());
+
+			//hidden id for update
+			$('#hiddedtid').val(idloc);
+		});
+//reset
+		$('#clear').live('click', function() {
+			$('#fname').val("");
+			$('#lname').val("");
+			$('#companyname').val("");
+			$('#street').val("");
+			$('#zipcodex').val("");
+			$('#cityx').val("");
+			$('#phone1').val("");
+			$('#phone2').val("");
+			$('#faxx').val("");
+			$('#comment').text("");
+			$('#hiddedtid').val("");
+		});
+// delete
+		$('.delete').live('click', function(){
+			var delid= $(this).attr('alt');
+
+			jConfirm("<? echo $this->translate('confirmdeleterecord'); ?>", "<? echo $this->translate('confirmdeletetitle'); ?>", function(r) {
+				if(r){
+					ajaxCallserver({url:'patient/addressbook?id=<?php echo $_REQUEST["id"];?>&step=del&delid='+delid});
+					$('#listlocations_trcontent'+delid).remove();
+				}
+			});
+		});
+		$('#submitsecond').live('click', function(){
+			$('#userlocation').submit();
+		});
+		$('#addressbook-tabs').hide();
+
+	});
+function toggleDiv(id) {
+
+			if($('#moreinfo-'+id).hasClass("open")){
+				$('#moreinfo-'+id).removeClass("open");
+				$('#moreinfo-'+id).slideUp("slow");
+			} else {
+				$('#moreinfo-'+id).slideDown("slow");
+				$('#moreinfo-'+id).addClass("open");
+			}
+		}
+</script>
+<? echo $this->patientinfo ?>
+<? echo $this->tabmenus ?>
+<br /><br /><br />
+<div class="tab_container">
+<table style="width: 800px">
+<tr>
+<td colspan="2">
+
+</td>
+</tr>
+<tr>
+<td style="width: 800px">
+<div class="err"><? echo $this->error_message ?></div>
+<div style="border: 1px solid #000;width: 780px; padding: 10px">
+<!--XXXXXX-->
+<input type="hidden" id="type_c" />
+				<ul class="tabs addressb">
+					<?php if(!$this->hide_patient_tab):?>
+						<li>
+							<a href="#" id="patienttab">Patient</a>
+						</li>
+					<?php endif;?>
+					<li>
+						<a href="#" id="All" class="tabf">Alle</a>
+					</li>
+					<li>
+						<a href="#" id="H" class="tabf">Hausarzt</a>
+					</li>
+					<li>
+						<a href="#" id="F" class="tabf">Facharzt</a>
+					</li>
+					<li>
+						<a href="#" id="P" class="tabf">Pflegedienst</a>
+					</li>
+					<li>
+						<a href="#" id="A" class="tabf">Apotheke</a>
+					</li>
+					<li>
+						<a href="#" id="L" class="tabl">Aufenthaltsorte</a>
+					</li>
+					<li>
+						<a href="#" id="I" class="tabf"><?php echo $this->translate('clienthealthinsurancetab')  ?></a>
+					</li>
+					<li>
+						<a href="#" id="SH" class="tabf"><?php echo $this->translate('supplies');  ?></a>
+					</li>
+					<li>
+						<a href="#" id="SR" class="tabf"><?php echo $this->translate('suppliers');  ?></a>
+					</li>
+					<li>
+						<a href="#" id="PH" class="tabf">Physiotherapeut</a>
+					</li>
+					<li>
+						<a href="#" id="HC" class="tabf">Homecare</a>
+					</li>
+					<li>
+						<a href="#" id="S" class="tabs">Sonstiges</a>
+					</li>
+					<li>
+						<a href="#" id="B" class="tabf">Bestatter</a>
+					</li>
+				</ul>
+				<div id="content"> </div>
+
+
+				<?php if(!$this->hide_patient_tab):?>
+
+
+				<div id="pat" style="">
+				<br /> <br /> <br /> <br />
+				<div class="clear"></div>
+<!-- HAUSARTZ -->
+ <div class="addr-details">
+<?php if($this->fam_doctor > 0): ?>
+<? $family_doctor = $this->family_doctor; ?>
+<table class="addr-moredetails">
+<tbody>
+							<tr>
+								<th colspan="2" style=" text-align: center;"><b>Hausarzt</b>
+								</th>
+							</tr>
+							<tr>
+								<th>Praxis</th>
+								<td><?php echo $family_doctor['practice']; ?></td>
+							</tr>
+							<tr>
+								<th>Titel</th>
+								<td><?php echo $family_doctor['title']; ?></td>
+							</tr>
+							<tr>
+								<th>Name</th>
+								<td><?php echo $family_doctor['last_name'].', '.$family_doctor['first_name']; ?></td>
+							</tr>
+							<tr>
+								<th>Anrede</th>
+								<td><?php echo $family_doctor['salutation']; ?></td>
+							</tr>
+							<tr>
+								<th>Straße</th>
+								<td><?php echo $family_doctor['street1']; ?></td>
+							</tr>
+							<tr>
+								<th>PLZ</th>
+								<td><?php echo $family_doctor['zip']; ?></td>
+							</tr>
+							<tr>
+								<th>Stadt</th>
+								<td><?php echo $family_doctor['city']; ?></td>
+							</tr>
+							<tr>
+								<th>Telefon Praxis</th>
+								<td><?php echo $family_doctor['phone_practice']; ?></td>
+							</tr>
+							<tr>
+								<th>Handy Nummer</th>
+								<td><?php echo $family_doctor['phone_cell']; ?></td>
+							</tr>
+							<tr>
+								<th>Fax</th>
+								<td><?php echo $family_doctor['fax']; ?></td>
+							</tr>
+							<tr>
+								<th>Email Adresse</th>
+								<td><?php echo $family_doctor['email']; ?></td>
+							</tr>
+							<tr>
+								<th>Lebenslange Arztnummer</th>
+								<td><?php echo $family_doctor['doctornumber']; ?></td>
+							</tr>
+							<tr>
+								<th>Medizinisches Fachgebiet</th>
+								<td><?php echo $family_doctor['medical_speciality']; ?></td>
+							</tr>
+							<tr>
+								<th>Kommentare</th>
+								<td><?php echo $family_doctor['comments']; ?></td>
+							</tr>
+						</tbody>
+					</table>
+					<?php else : ?>
+					<?php endif; ?>
+				</div>
+							<!-- HEALTH INSURANCE				 -->
+							<div class="addr-details">
+								<?php if (!empty($this->patient_healthinsurance)) : ?>
+									<?php $i = 1;
+									foreach ($this->patient_healthinsurance as $value) : ?>
+										<table class="addr-moredetails">
+											<tr>
+												<th colspan="2" style=" text-align: center;" >
+													<label for="recipient-I-<?php echo $value['id']; ?>" ><b><?php echo $this->translate('clienthealthinsurancetab')  ?> </b></label>
+												</th>
+											</tr>
+											<tr>
+												<th>Krankenversicherung</th>
+												<td><?php echo $value['company_name']; ?></td>
+											</tr>
+											<tr>
+												<th>Kostenträgertyp (Name Forts.) </th>
+												<td><?php echo $value['ins_insurance_provider']; ?></td>
+											</tr>
+											<tr>
+												<th>Ansprechpartner</th>
+												<td><?php echo $value['ins_contactperson']; ?></td>
+											</tr>
+											<tr>
+												<th><?php echo $this->translate('street');  ?></th>
+												<td><?php echo $value['ins_street']; ?></td>
+											</tr>
+											<tr>
+												<th><?php echo $this->translate('zip');  ?></th>
+												<td><?php echo $value['ins_zip']; ?></td>
+											</tr>
+											<tr>
+												<th><?php echo $this->translate('city');  ?></th>
+												<td><?php echo $value['ins_city']; ?></td>
+											</tr>
+											<tr>
+												<th>Telefon</th>
+												<td><?php echo $value['ins_phone']; ?></td>
+											</tr>
+											<tr>
+												<th>Mobil</th>
+												<td><?php echo $value['ins_phone2']; ?></td>
+											</tr>
+											<tr>
+												<th>Fax</th>
+												<td><?php echo $value['ins_phonefax']; ?></td>
+											</tr>
+											
+											
+											<tr>
+												<th>Postfach</th>
+												<td><?php echo $value['ins_post_office_box']; ?></td>
+											</tr>
+											<tr>
+												<th>PLZ Postfach</th>
+												<td><?php echo $value['ins_zip_mailbox']; ?></td>
+											</tr>
+											<tr>
+												<th>Ort Postfach</th>
+												<td><?php echo $value['ins_post_office_box_location']; ?></td>
+											</tr>
+											
+											
+											<tr>
+												<th>Email</th>
+												<td><?php echo $value['ins_email']; ?></td>
+											</tr>
+											<tr>
+												<th>Kassennummer</th>
+												<td><?php echo $value['kvk_no']; ?></td>
+											</tr>
+											<tr>
+												<th>Institutskennzeichen (IK)</th>
+												<td><?php echo $value['institutskennzeichen']; ?></td>
+											</tr>
+											<tr>
+												<th>Versichertennummer</th>
+												<td><?php echo $value['insurance_no']; ?></td>
+											</tr>
+											<tr>
+												<th>Versicherungsstatus</th>
+												<td><?php echo $value['insurance_status']; ?></td>
+											</tr>
+											<tr>
+												<th>Gebührenbefreit</th>
+												<td><?php if($value['rezeptgebuhrenbefreiung']== '1'): echo $this->translate('yes_radio');  endif; ?></td>
+											</tr>
+											<tr>
+												<th>Gebührenpflichtig</th>
+												<td><?php if($value['rezeptgebuhrenbefreiung']== '2'): echo $this->translate('yes_radio');  endif; ?></td>
+											</tr>
+											<tr>
+												<th>Kommentare</th>
+												<td><?php echo $value['comment']; ?></td>
+											</tr>
+
+										</table>
+										<?php $i++;
+									endforeach; ?>
+								<?php else : ?>
+	<?php endif; ?>
+							</div>
+<!-- PFLEGE				 -->
+				<div class="addr-details">
+<?php if(!empty($this->pat_pfleg)) :?>
+ <?php $i = 1; foreach ($this->pat_pfleg as $value) :?>
+					<table class="addr-moredetails">
+						<tr>
+							<th colspan="2" style=" text-align: center;"><b>
+									<?php echo $i;?>. Pflegedienst</b>
+							</th>
+						</tr>
+						<tr>
+							<th>Pflegedienst</th>
+							<td><?php echo $value['nursing']; ?></td>
+						</tr>
+						<tr>
+							<th>Titel</th>
+							<td><?php echo $value['title'];?></td>
+						</tr>
+						<tr>
+							<th>Vorname</th>
+							<td><?php echo $value['first_name'];?></td>
+						</tr>
+						<tr>
+							<th>Nachname</th>
+							<td><?php echo $value['last_name'];?></td>
+						</tr>
+						<tr>
+							<th>Anrede</th>
+							<td><?php echo $value['salutation'];?></td>
+						</tr>
+						<tr>
+							<th>Straße</th>
+							<td><?php echo $value['street1'];?></td>
+						</tr>
+						<tr>
+							<th>PLZ</th>
+							<td><?php echo $value['zip'];?></td>
+						</tr>
+						<tr>
+							<th>Stadt</th>
+							<td><?php echo $value['city'];?></td>
+						</tr>
+						<tr>
+							<th>Telefon</th>
+							<td><?php echo $value['phone_practice'];?></td>
+						</tr>
+						<tr>
+							<th>Telefon privat</th>
+							<td><?php echo $value['private_phone'];?></td>
+						</tr>
+						<tr>
+							<th>Notruf telefon</th>
+							<td><?php echo $value['phone_emergency'];?></td>
+						</tr>
+						<tr>
+							<th>Lebenslange Arztnummer</th>
+							<td><?php echo $value['doctornumber'];?></td>
+						</tr>
+						<tr>
+							<th>Medizinisches Fachgebiet</th>
+							<td><?php echo $value['medical_speciality'];?></td>
+						</tr>
+						<tr>
+							<th>Fax</th>
+							<td><?php echo $value['fax'];?></td>
+						</tr>
+						<tr>
+							<th>Email Adresse</th>
+							<td>
+								<?php echo $value['email'];?>
+							</td>
+						</tr>
+						<tr>
+							<th>Kommentare</th>
+							<td>
+								<?php echo $value['comments'];?>
+							</td>
+						</tr>
+						
+					</table>
+					<?php $i++; endforeach;?>
+					<?php else   : ?>
+					<?php endif; ?>
+				</div>
+				<!-- FACHARZT -->
+				<div class="addr-details">
+					<?php if (!empty($this->patient_specialists)) : ?>
+						<?php $i = 1;
+						foreach ($this->patient_specialists as $value) : ?>
+							<table class="addr-moredetails" id="fulltable">
+								<tr>
+									<th colspan="2" style=" text-align: center;" >
+										<div style="height: 16px; vertical-align: middle; width: auto;">
+										<input type="radio" name="recipient" id="recipient-F-<?php echo $value['master']['id']; ?>" value="F-<?php echo $value['master']['id']; ?>" style="width:auto;" />
+										<label for="recipient-F-<?php echo $value['master']['id']; ?>" ><b><?php echo $i; ?>. Facharzt</b></label>
+										</div>
+									</th>
+								</tr>
+								<tr>
+									<th>Praxis</th>
+									<td>
+										<?php echo $value['master']['practice']; ?>
+									</td>
+								</tr>
+								<tr>
+									<th>Titel</th>
+									<td>
+										<?php echo $value['master']['title']; ?>
+									</td>
+								</tr>
+								<tr>
+									<th>Vorname</th>
+									<td>
+										<?php echo $value['master']['first_name']; ?>
+									</td>
+								</tr>
+								<tr>
+									<th>Nachname</th>
+									<td>
+										<?php echo $value['master']['last_name']; ?>
+									</td>
+								</tr>
+								
+								<tr>
+									<th>Anrede</th>
+									<td>
+										<?php echo $value['master']['salutation']; ?>
+									</td>
+								</tr>
+								<tr>
+									<th>Straße</th>
+									<td>
+										<?php echo $value['master']['street1']; ?>
+									</td>
+								</tr>
+								<tr>
+									<th>PLZ</th>
+									<td>
+										<?php echo $value['master']['zip']; ?>
+									</td>
+								</tr>
+								<tr>
+									<th>Stadt</th>
+									<td>
+										<?php echo $value['master']['city']; ?>
+									</td>
+								</tr>
+								<tr>
+									<th>Telefon</th>
+									<td>
+										<?php echo $value['master']['phone_practice']; ?>
+									</td>
+								</tr>
+								<tr>
+									<th>Telefon privat</th>
+									<td>
+										<?php echo $value['master']['phone_private']; ?>
+									</td>
+								</tr>
+								<tr>
+									<th>Mobil</th>
+									<td>
+										<?php echo $value['master']['phone_cell']; ?>
+									</td>
+								</tr>
+								<tr>
+									<th>Lebenslange Arztnummer</th>
+									<td>
+										<?php echo $value['master']['doctornumber']; ?>
+									</td>
+								</tr>
+								<tr>
+									<th>Medizinisches Fachgebiet </th>
+									<td>
+										<?php echo $this->s_type[$value['master']['medical_speciality']]; ?>
+									</td>
+								</tr>
+								<tr>
+									<th>Fax</th>
+									<td>
+										<?php echo $value['master']['fax']; ?>
+									</td>
+								</tr>
+								<tr>
+									<th>Email Adresse</th>
+									<td>
+										<?php echo $value['master']['email']; ?>
+									</td>
+								</tr>
+								<tr>
+									<th>Kommentare</th>
+									<td>
+										<? if(strlen($value['comment'])>0):?>
+										<?php echo $value['comment']; ?>
+										<? else: ?>
+										<?php echo $value['master']['comments']; ?>
+										<? endif;?>
+									</td>
+								</tr>
+
+							</table>
+							<?php $i++;
+						endforeach; ?>
+					<?php else : ?>
+					<?php endif; ?>
+				</div>
+
+<!-- Sanitätshäuser				 -->
+				<div class="addr-details">
+					<?php if(!empty($this->patient_spupplies)) :?>
+					<?php $i = 1; foreach ($this->patient_spupplies as $value) :?>
+					<table class="addr-moredetails" >
+						<tr>
+							<th colspan="2" style="  text-align: center;"><b>
+									<?php echo $i;?>. Sanitätshäuser</b>
+							</th>
+						</tr>
+						<tr>
+							<th>Sanitätshäuser</th>
+							<td>
+								<?php echo $value['supplier']; ?>
+							</td>
+						</tr>
+						<tr>
+							<th>Vorname</th>
+							<td>
+								<?php echo $value['first_name'];?>
+							</td>
+						</tr>
+						<tr>
+							<th>Nachname</th>
+							<td>
+								<?php echo $value['last_name'];?>
+							</td>
+						</tr>
+						<tr>
+							<th>Anrede</th>
+								<td>
+									<?php echo $value['salutation']; ?>
+								</td>
+							</tr>
+						<tr>
+							<th>Straße</th>
+							<td>
+								<?php echo $value['street1'];?>
+							</td>
+						</tr>
+						<tr>
+							<th>PLZ</th>
+							<td>
+								<?php echo $value['zip'];?>
+							</td>
+						</tr>
+						<tr>
+							<th>Stadt</th>
+							<td>
+								<?php echo $value['city'];?>
+							</td>
+						</tr>
+						<tr>
+							<th>Telefon</th>
+							<td>
+								<?php echo $value['phone'];?>
+							</td>
+						</tr>
+						<tr>
+							<th>Fax</th>
+							<td>
+								<?php echo $value['fax'];?>
+							</td>
+						</tr>
+						<tr>
+							<th>Email Adresse</th>
+							<td>
+								<?php echo $value['email'];?>
+							</td>
+						</tr>
+						<tr>
+							<th>Kommentare</th>
+							<td>
+								<?php echo $value['supplier_comment'];?>
+							</td>
+						</tr>
+					</table>
+					<?php $i++; endforeach;?>
+					<?php else   : ?>
+					<?php endif; ?>
+				</div>				
+<!-- PHARMACY	-->
+				<div class="addr-details">
+ <?php if(!empty($this->pat_pharmacy)) :?>
+ <?php $i = 1; foreach ($this->pat_pharmacy as $value) :?>
+					<table class="addr-moredetails">
+						<tr>
+							<th colspan="2" style=" text-align: center;"><b>
+									<?php echo $i;?>. Apotheke</b>
+							</th>
+						</tr>
+						<tr>
+							<th>Apotheke</th>
+							<td>
+								<?php echo $value['Pharmacy']['pharmacy']; ?>
+							</td>
+						</tr>
+						<tr>
+							<th>Vorname</th>
+							<td>
+								<?php echo $value['Pharmacy']['first_name'];?>
+							</td>
+						</tr>
+						<tr>
+							<th>Nachname</th>
+							<td>
+								<?php echo $value['Pharmacy']['last_name'];?>
+							</td>
+						</tr>
+						<tr>
+							<th>Anrede</th>
+								<td>
+									<?php echo $value['Pharmacy']['salutation']; ?>
+								</td>
+							</tr>
+						<tr>
+							<th>Straße</th>
+							<td>
+								<?php echo $value['Pharmacy']['street1'];?>
+							</td>
+						</tr>
+						<tr>
+							<th>PLZ</th>
+							<td>
+								<?php echo $value['Pharmacy']['zip'];?>
+							</td>
+						</tr>
+						<tr>
+							<th>Stadt</th>
+							<td>
+								<?php echo $value['Pharmacy']['city'];?>
+							</td>
+						</tr>
+						<tr>
+							<th>Telefon</th>
+							<td>
+								<?php echo $value['Pharmacy']['phone'];?>
+							</td>
+						</tr>
+						<tr>
+							<th>Fax</th>
+							<td>
+								<?php echo $value['Pharmacy']['fax'];?>
+							</td>
+						</tr>
+						<tr>
+							<th>Email Adresse</th>
+							<td>
+								<?php echo $value['Pharmacy']['email'];?>
+							</td>
+						</tr>
+						<tr>
+							<th>Kommentare</th>
+							<td>
+								<?php echo $value['ph_com'];?>
+							</td>
+						</tr>
+					</table>
+					<?php $i++; endforeach;?>
+					<?php else   : ?>
+					<?php endif; ?>
+				</div>
+<!-- PATIENT CONTACTS -->
+
+				<div class="addr-details">
+ 	<?php $degree = $this->degree; ?>
+  <?php if(!empty($this->patient_contacts)) :?>
+ <?php $i = 1; foreach ($this->patient_contacts as $value) :?>
+					<table class="addr-moredetails">
+						<tr>
+							<th colspan="2" style=" text-align: center;"><b>
+									<?php echo $i;?>. Ansprechpartner</b>
+							</th>
+						</tr>
+						<tr>
+							<th>Vorname</th>
+							<td>
+								<?php echo $value['cnt_first_name']; ?>
+							</td>
+						</tr>
+						<tr>
+							<th>Nachname</th>
+							<td>
+								<?php echo $value['cnt_last_name'];?>
+							</td>
+						</tr>
+						<tr>
+							<th>Straße</th>
+							<td>
+								<?php echo $value['cnt_street1'];?>
+							</td>
+						</tr>
+						<tr>
+							<th>PLZ</th>
+							<td>
+								<?php echo $value['cnt_zip'];?>
+							</td>
+						</tr>
+						<tr>
+								<th>Stadt</th>
+								<td>
+									<?php echo  $value['cnt_city']; ?>
+								</td>
+						</tr>
+						<tr>
+							<th>Telefon</th>
+							<td>
+								<?php echo $value['cnt_phone'];?>
+							</td>
+						</tr>
+						<tr>
+							<th>Mobil</th>
+							<td>
+								<?php echo $value['cnt_mobile'];?>
+							</td>
+						</tr>
+						<tr>
+							<th>Email Adresse</th>
+							<td>
+								<?php echo $value['cnt_email'];?>
+							</td>
+						</tr>
+						<tr>
+							<th>Hat Vorsorgevollmacht</th>
+							<td>
+								<? if($value['cnt_hatversorgungsvollmacht'] == "1"):?>
+									Ja
+								<? endif;?>
+							</td>
+						</tr>
+
+						<tr>
+							<th>Gesetzlicher Betreuer</th>
+							<td>
+								<? if($value['cnt_legalguardian'] == "1"):?>
+									Ja
+								<? endif;?>
+							</td>
+						</tr>
+
+						<tr>
+							<th>ist die Kontakt-Telefonnummer</th>
+							<td> 
+								<? if(!empty($this->real_contact_number) && $this->kontactnumbertype == '2' && $this->real_contact_number == $value['cnt_phone']): ?>
+									Ja
+								<? endif;?>
+								
+							</td>
+						</tr>
+
+
+						<tr>
+							<th>Trauerfeier benachrichtigen</th>
+							<td>
+								<? if($value['notify_funeral'] == "1"):?>
+									Ja
+								<? endif;?>
+							</td>
+						</tr>
+
+
+						<tr>
+							<th>Qualitätskontrolle Ansprechpartner</th>
+							<td>
+								<? if($value['quality_control'] == "1"):?>
+									Ja
+								<? endif;?>
+							</td>
+						</tr>
+						
+						<tr>
+							<th>Beziehung zum Pat.</th>
+							<td>
+								<?php echo   $degree[$value['cnt_familydegree_id']];?>
+							</td>
+						</tr>
+						<tr>
+							<th>Kommentare</th>
+							<td>
+								<?php echo $value['cnt_comment'];?>
+							</td>
+						</tr>
+					</table>
+					<?php $i++; endforeach;?>
+					<?php else: ?>
+					<?php endif; ?>
+ 				</div>	
+ 					
+<!-- PATIENT SONSTIGE VERSORGER -->
+ 
+					<div class="addr-details">
+					<?php if(!empty($this->patient_suppliers)) :?>
+					<?php $i = 1; foreach ($this->patient_suppliers as $value) :?>
+					<table class="addr-moredetails" id="fulltable">
+						<tr>
+							<th colspan="2" style="  text-align: center;"><b>
+									<?php echo $i;?>. sonst. Versorger</b>
+							</th>
+						</tr>
+						<tr>
+							<th>sonst. Versorger</th>
+							<td>
+								<?php echo $value['supplier']; ?>
+							</td>
+						</tr>
+						<tr>
+							<th>Typ</th>
+							<td>
+								<?php echo $value['type'];?>
+							</td>
+						</tr>
+						<tr>
+							<th>Vorname</th>
+							<td>
+								<?php echo $value['first_name']; ?>
+							</td>
+						</tr>
+						<tr>
+							<th>Nachname</th>
+							<td>
+								<?php echo $value['last_name'];?>
+							</td>
+						</tr>
+						<tr>
+							<th>Anrede</th>
+							<td>
+								<?php echo $value['salutation'];?>
+							</td>
+						</tr>
+						<tr>
+							<th>Straße</th>
+							<td>
+								<?php echo $value['street1'];?>
+							</td>
+						</tr>
+						<tr>
+							<th>PLZ</th>
+							<td>
+								<?php echo $value['zip'];?>
+							</td>
+						</tr>
+						<tr>
+							<th>Stadt</th>
+							<td>
+								<?php echo  $value['city']; ?>
+							</td>
+						</tr>
+						<tr>
+							<th>Telefon</th>
+							<td>
+								<?php echo $value['phone'];?>
+							</td>
+						</tr>
+						<tr>
+							<th>Fax</th>
+							<td>
+								<?php echo $value['fax'];?>
+							</td>
+						</tr>
+						<tr>
+							<th>Email Adresse</th>
+							<td>
+								<?php echo $value['email'];?>
+							</td>
+						</tr>
+						
+						<tr>
+							<th>Kommentare</th>
+							<td>
+								<?php echo $value['supplier_comment'];?>
+							</td>
+						</tr>
+					</table>
+					<?php $i++; endforeach;?>
+					<?php else: ?>
+					<?php endif; ?>
+					</div>
+<!-- PHYSIOTHERAPEUTEN -->
+  
+					<div class="addr-details">
+					<?php if(!empty($this->patient_physioterapeuten)) :?>
+					<?php $i = 1; foreach ($this->patient_physioterapeuten as $value) :?>
+					<table class="addr-moredetails"  id="fulltable">
+						<tr>
+							<th colspan="2" style=" text-align: center;"><b>
+									<?php echo $i;?>. Physioterapeuten</b>
+							</th>
+						</tr>
+						<tr>
+							<th>Physioterapeuten</th>
+							<td>
+								<?php echo $value['physiotherapist']; ?>
+							</td>
+						</tr>
+						<tr>
+							<th>Vorname</th>
+							<td>
+								<?php echo $value['first_name'];?>
+							</td>
+						</tr>
+						<tr>
+							<th>Nachname</th>
+							<td>
+								<?php echo $value['last_name'];?>
+							</td>
+						</tr>
+						<tr>
+							<th>Anrede</th>
+							<td>
+								<?php echo $value['salutation'];?>
+							</td>
+						</tr>
+						<tr>
+							<th>Straße</th>
+							<td>
+								<?php echo $value['street1'];?>
+							</td>
+						</tr>
+						<tr>
+							<th>PLZ</th>
+							<td>
+								<?php echo $value['zip'];?>
+							</td>
+						</tr>
+						<tr>
+							<th>Stadt</th>
+							<td>
+								<?php echo $value['city'];?>
+							</td>
+						</tr>
+						<tr>
+							<th>Telefon</th>
+							<td>
+								<?php echo $value['phone_practice'];?>
+							</td>
+						</tr>
+						
+						<tr>
+							<th>Notruf telefon</th>
+							<td>
+								<?php echo $value['phone_emergency'];?>
+							</td>
+						</tr>
+						
+						<tr>
+							<th>Fax</th>
+							<td>
+								<?php echo $value['fax'];?>
+							</td>
+						</tr>
+						<tr>
+							<th>Email Adresse</th>
+							<td>
+								<?php echo $value['email'];?>
+							</td>
+						</tr>
+						<tr>
+							<th>IK - ­Nummer</th>
+							<td>
+								<?php echo $value['ik_number'];?>
+							</td>
+						</tr>
+						<tr>
+							<th>Kommentare</th>
+							<td>
+								<?php echo $value['ph_com'];?>
+							</td>
+						</tr>
+						
+					</table>
+					<?php $i++; endforeach;?>
+					<?php else   : ?>
+					<?php endif; ?>
+				</div>
+				 
+<!-- HOMECARE -->	
+ 
+				  	<div class="addr-details">
+					<?php if(!empty($this->patient_homecare)) :?>
+					<?php $i = 1; foreach ($this->patient_homecare as $value) :?>
+					<table class="addr-moredetails"  id="fulltable">
+						<tr>
+							<th colspan="2" style=" text-align: center;"><b>
+									<?php echo $i;?>. Homecare</b>
+							</th>
+						</tr>
+						<tr>
+							<th>Homecare</th>
+							<td>
+								<?php echo $value['homecare']; ?>
+							</td>
+						</tr>
+						<tr>
+							<th>Vorname</th>
+							<td>
+								<?php echo $value['first_name'];?>
+							</td>
+						</tr>
+						<tr>
+							<th>Nachname</th>
+							<td>
+								<?php echo $value['last_name'];?>
+							</td>
+						</tr>
+						<tr>
+							<th>Anrede</th>
+							<td>
+								<?php echo $value['salutation'];?>
+							</td>
+						</tr>
+						<tr>
+							<th>Straße</th>
+							<td>
+								<?php echo $value['street1'];?>
+							</td>
+						</tr>
+						<tr>
+							<th>PLZ</th>
+							<td>
+								<?php echo $value['zip'];?>
+							</td>
+						</tr>
+						<tr>
+							<th>Stadt</th>
+							<td>
+								<?php echo $value['city'];?>
+							</td>
+						</tr>
+						<tr>
+							<th>Telefon</th>
+							<td>
+								<?php echo $value['phone_practice'];?>
+							</td>
+						</tr>
+						
+						<tr>
+							<th>Notruf telefon</th>
+							<td>
+								<?php echo $value['phone_emergency'];?>
+							</td>
+						</tr>
+						
+						<tr>
+							<th>Fax</th>
+							<td>
+								<?php echo $value['fax'];?>
+							</td>
+						</tr>
+						<tr>
+							<th>Email Adresse</th>
+							<td>
+								<?php echo $value['email'];?>
+							</td>
+						</tr>
+						<tr>
+							<th>IK - ­Nummer</th>
+							<td>
+								<?php echo $value['ik_number'];?>
+							</td>
+						</tr>
+						<tr>
+							<th>Kommentare</th>
+							<td>
+								<?php echo $value['home_comment'];?>
+							</td>
+						</tr>
+						
+					</table>
+					<?php $i++; endforeach;?>
+					<?php else   : ?>
+					<?php endif; ?>
+				</div>   
+				
+				
+				
+				
+					<?php if(empty($this->pat_pfleg) && empty($this->patient_contacts) && empty($this->pat_pharmacy) && empty($this->fam_doctor) && empty($this->patient_healthinsurance)): ?>
+					<div style="text-align:center; font-size:1.2em; padding-top:5px;" ><span>keine Patient Details</span></div>
+					<?php endif; ?>
+    </div>
+
+    <?php endif;?>
+
+				<div id="addressbook-tabs">
+		<table>
+		<tr><td><a href="#" id="default-all">Alle</a></td></tr>
+		<tr><td><a href="#" id="fav-filter"></a></td></tr>
+		<?php
+		$alphabet = array ("A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z");
+		foreach($alphabet as $letter){
+				echo '<tr><td><a href="#" class="addr-letter" rel="'.$letter.'">'.$letter.'</a></td></tr>';
+		}
+		?>
+		</table>
+</div>
+		<br style="clear: both" />
+</div>
+</td>
+</tr>
+</table>
+</div>
+<?php if($this->hide_patient_tab):?>
+	<script type="text/javascript">
+	 ajaxCallserver({callLoading:pl_loading,url:'addressbook/fetchlist?type=All'});
+	</script>
+<?php endif;?>
+
+

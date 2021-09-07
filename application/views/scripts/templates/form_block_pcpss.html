@@ -1,0 +1,167 @@
+<!--  Maria:: Migration CISPC to ISPC 22.07.2020 -->
+<?php
+$form_values=array('total_score'=>0);
+if(is_array($this->f_values) && isset($this->f_values['total_score'])) {
+    $form_values=$this->f_values;
+}
+
+$xx=function ($x, $val, $values ) {
+    $checked = "";
+    if ($values[$x] === strval($val)) {
+        $checked = "checked";
+    }
+
+
+    if ($this->pdf) {
+        $p= PUBLIC_PATH . "/images/";
+        if ($checked == "checked") {
+            echo "<img src=\"".$p."radio-selected-btn.jpg\" >";
+        }else{
+            echo "<img src=\"".$p."radio-btn.jpg\" >";
+        }
+
+    } else {
+        echo "<input type=\"radio\" name=\"pcpss[" . $x . "]\" value=\"" . $val . "\"  " . $checked . " />";
+    }
+}
+
+?>
+<?php $headstyle='background-color: #CCCCCC;font-weight: bold;';?>
+<?php if(!$this->pdf):?>
+    <?php $headstyle='';?>
+<script type="text/javascript">
+
+    $(document).ready(function(){
+        var last_checked=null;
+        $('#pcpss_form_table input[type=radio]').live('click', function(){
+            if(this == last_checked){
+                last_checked=null;
+                $(this).prop('checked',false);
+            }else{
+                last_checked=this;
+                $(this).prop('checked',true);
+            }
+            var score = calculate_pcpss_form_score();
+            $('#pcpss_form_table #pcpss_total_score').val(score);
+
+            pcpss_checkbox_verification();
+            return 1;
+        });
+
+        <?php if(isset($form_values['total_score']) && strlen($form_values['total_score'])): ?>
+        var saved_score = <?php echo $form_values['total_score']; ?>
+
+        if(saved_score == '0')
+        {
+            //recalculate score
+            $('#pcpss_form_table #pcpss_total_score').val(calculate_pcpss_form_score());
+        }
+        else
+        {
+            //get value from db
+            $('#pcpss_form_table #pcpss_total_score').val(saved_score);
+        }
+        pcpss_checkbox_verification();
+
+        <?php endif; ?>
+    });
+
+    function pcpss_checkbox_verification()
+    {
+        var counter=0;
+        $('#pcpss_form_table input[type=radio]').each(function() {
+            if ($(this).is(':checked')) {
+                counter++;
+            }
+        });
+
+        if(counter == 4  || (counter ==0 && $('#pcpss_mandatory').val()<1)){
+            $('#pcpss_form_table .nag_user').val("");
+            $('#pcpss_form_table .nag_user').hide();
+        } else {
+            $('#pcpss_form_table .nag_user').val("PCPSS-Index ist nicht vollständig ausgefüllt");
+            $('#pcpss_form_table .nag_user').show();
+        }
+
+        return counter;
+    }
+    $('#pcpss_mandatory').live('change', function(){
+        pcpss_checkbox_verification();
+    });
+
+
+    function calculate_pcpss_form_score()
+    {
+        var score = '0';
+        $('#pcpss_form_table input[type=radio]').each(function() {
+            if ($(this).is(':checked')) {
+                score = Number(Number(score) + Number($(this).val()));
+            }
+        });
+        return score;
+    }
+</script>
+<?php endif;?>
+
+
+<?php
+
+$topics=[1=>"Schmerzen", 2=>"Weitere Symptome", 3=>"psychische/spirituelle Probleme", 4=>"Probleme der Angehörigen"];
+$options=[
+        0=>"keine Beschwer&shy;den / Probleme",
+        1=>"gering",
+        2=>"mäßig",
+        3=>"starke Beschwer&shy;den / Probleme"
+];
+
+?>
+
+<?php if($this->pdf):?>&nbsp;<?php endif;?><table border="<?php echo $this->pdf? "1":"0";?>" cellspacing="<?php echo $this->pdf? "0":"2";?>" cellpadding="2" class="datatable" id="pcpss_form_table" style="border-collapse: separate;">
+	<tbody>
+    <tr>
+        <th width="39%" style="<?php echo $headstyle;?>">Bereich</th>
+        <?php foreach ($options as $oi=>$option):?>
+            <th width="15%" class="col_description" style="<?php echo $headstyle;?>text-align:center;" <?php echo $headstyle;?>><?php echo $option;?></th>
+        <?php endforeach;?>
+    </tr>
+    <?php foreach ($topics as $topk=>$topv):?>
+    <tr>
+        <td class="col_description" style="<?php echo $headstyle;?>"><?php echo $topv;?></td>
+        <?php foreach ($options as $oi=>$option):?>
+        <td style="text-align:center;"><?php $xx($topk, $oi, $form_values);?></td>
+        <?php endforeach;?>
+    </tr>
+    <?php endforeach;?>
+
+	<tr>
+		<th colspan="5" class="col_description" style="<?php echo $headstyle;?>text-align:right;">
+			PCPSS Index Gesamtscore:
+            <span style="font-weight: bold;">
+                <?php if(!$this->pdf):?>
+                    <input style="width:3em;text-align:center;" type="text" name="pcpss[total_score]" id="pcpss_total_score" value="" readonly="readonly" />&nbsp
+
+                    <?php
+                    /*
+                     * trigger_enabled: This box was hidden but then triggered to appear (after lmu_visit-change)
+                     * pcpss_nag_user: Present Error-Messages.
+                     * pcpss_mandatory: Present an error if this block is filled valid but blank
+                     */
+                    ?>
+                    <input type="hidden" id="pcpss_mandatory" class="mandatory" value="0" />
+                    <input type="hidden" id="pcpss_trigger_enabled" name="pcpss[trigger_enabled]" class="trigger_enabled" value="<?php echo (isset($form_values['trigger_enabled']) && $form_values['trigger_enabled'])?1:0;?>" />
+                <?php else:?>
+                    <?php echo $form_values['total_score'];?>
+                <?php endif;?>
+            </span>
+		</th>
+
+	</tr>
+    <?php if(!$this->pdf):?>
+    <tr>
+        <td colspan="5">
+            <input style="color:red;border:0px;width:99%;text-align:center;" type="text" readonly="readonly" id="pcpss_nag_user" class="nag_user" value="" />
+        </td>
+    </tr>
+    <?php endif;?>
+	</tbody>
+</table>

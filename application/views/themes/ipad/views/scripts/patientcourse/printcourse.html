@@ -1,0 +1,175 @@
+<?php
+$this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/page-css/patient_course_new.css?'.date('Ymd'));
+?>
+
+<script type="text/javascript">
+var printnow = "<?php echo $_REQUEST['pn'];?>";
+var decid = "<?php echo $_REQUEST['id'];?>";
+var textsize = "<?php echo $_REQUEST['ts'];?>";
+var nocolor = "<?php echo $_REQUEST['nc'];?>";
+var start_date = "<?php echo $_REQUEST['sd'];?>";
+var end_date = "<?php echo $_REQUEST['ed'];?>";
+$(document).ready(function(){
+
+
+	if(printnow == '1'){
+		$( "#verlauf_print_c" ).hide();
+
+		if(nocolor == 1) {
+			$("body *").css('background',"#ffffff");
+			$("body *").css('color',"#000000");
+		}
+
+		if(textsize == 'large'){
+			$("body *").addClass("ts-large");
+		}
+
+		if(textsize == 'larger'){
+			$("body *").addClass("ts-larger");
+		}
+
+		setTimeout('window.print()',1000);
+
+	} else {
+		$('#filterstart, #filterend').datepicker({
+			showOn: "both",
+			buttonImage: $('#calImg').attr('src'),
+			buttonImageOnly: true,
+			changeMonth: true,
+			changeYear: true,
+			nextText: '',
+			prevText: ''
+		});
+		$( "#verlauf_print_c" ).dialog( "open" );
+
+
+		$( "#verlauf_print_c" ).dialog({
+			autoOpen: true,
+			resizable: false,
+			height: 400,
+			width: 400,
+			modal: true,
+			buttons: {
+				"PDF": function() {
+						var filters = '';
+						var url = '<?php echo APP_BASE;  ?>patientcourse/printpdfcourse?id=' + decid + '&pn=1&sd=' +$('#filterstart').val()+ '&ed=' + $('#filterend').val()+ '&nc=' +$('#removecolor:checked').val()+ '&ts='+$('#fontsize').val()+'&pph='+$('#print_pat_header:checked').val()+'&pun='+$('#print_user_name:checked').val();
+						$('input:checkbox[name="f[]"]:checked').each(function() {
+							filters = filters + 'f[]=' + $(this).val() + '&';
+						});
+						if($('input:checkbox[name="_shared"]').is(':checked')){
+							filters = filters + 'f[]=_shared';
+						};
+						if(filters != ''){
+							url = url + '&' + filters;
+						}
+						window.location.replace(url);
+						$( this ).dialog( "close" );
+
+				},
+				"Drucken": function() {
+						var filters = '';
+						var url = '<?php echo APP_BASE;  ?>patientcourse/printcourse?id=' + decid + '&pn=1&sd=' +$('#filterstart').val()+ '&ed=' + $('#filterend').val()+ '&nc=' +$('#removecolor:checked').val()+ '&ts='+$('#fontsize').val()+'&pph='+$('#print_pat_header:checked').val()+'&pun='+$('#print_user_name:checked').val();
+						$('input:checkbox[name="f[]"]:checked').each(function() {
+							filters = filters + 'f[]=' + $(this).val() + '&';
+						});
+						if($('input:checkbox[name="_shared"]').is(':checked')){
+							filters = filters + 'f[]=_shared';
+						};
+						if(filters != ''){
+							url = url + '&' + filters;
+						}
+						window.location.replace(url);
+						$( this ).dialog( "close" );
+
+				}
+			},
+			close: function() {
+			},
+			open: function() {
+				$('.ui-icon-closethick').html('schließen');
+			}
+		});
+	}
+});
+</script>
+<div id="MainContent">
+<h4>ISPC - Informationssystem Palliative Care</h4>
+<?php if($_REQUEST['pph'] != 'undefined' || strlen($_REQUEST['pph']) == '0'):  ?>
+<div><?php echo $this->patHeader; ?></div>
+<?php endif;  ?>
+<div><strong><? echo $this->patientname;?></strong></div>
+<div><strong><? echo $this->translate('date');?> : <? echo $this->currdate;?></strong></div>
+
+<h1><? echo $this->translate('patientcourse');?></h1>
+
+<div id="ListBox" class="clearer"  style="display:<? echo $this->style ?>">
+<? echo $this->gridcourse ;?>
+</div>
+<div class="ClrBoth"></div>
+<div class="shortcutlist print_verlauf">
+	<? echo $this->cshortcuts ?>
+</div>
+<div class="clearer"></div>
+<p>&nbsp;</p>
+
+<div id="verlauf_print_c">
+	<div id="verlauf_print" >
+	<div class="setcolor">
+		<div class="daterow"><label><? echo $this->translate('removecolor'); ?></label><input id="removecolor" type="checkbox"  name="removecolor" value="1" /></div>
+	</div>
+	<div class="setcolor">
+		<div class="daterow"><label><? echo $this->translate('print_patient_header'); ?></label><input id="print_pat_header" type="checkbox"  name="print_pat_header" value="1" /></div>
+	</div>
+	<div class="setfilter">
+		<div class="daterow"><label><? echo $this->translate('filterstart'); ?></label><input type="text" name="filterstart" id="filterstart" value="<? echo $this->filterstart ?>" /></div>
+ 		<div class="daterow"><label><? echo $this->translate('filterend'); ?></label><input type="text" name="filterend" id="filterend" value="<? echo $this->filterend ?>" /></div>
+	</div>
+	<div class="setsize">
+		<div class="daterow">
+		<label><? echo $this->translate('setfontsize'); ?></label>
+		<select id="fontsize">
+			<option value="" selected="selected">normal</option>
+			<option value="large">groß</option>
+			<option value="larger">größer</option>
+		</select>
+		</div>
+	</div>
+	<div class="setcolor">
+		<div class="daterow"><label><? echo $this->translate('print_user_name'); ?></label><input id="print_user_name" type="checkbox"  name="print_user_name" value="1" /></div>
+	</div>
+
+	<div class="filters">
+		<label>Filter:</label>
+		<div class="short_block">
+		<?php
+			foreach($this->filter_shortcuts as $shorcut) {
+				$style = '';
+
+				if($shorcut['isbold']){
+					$style .= 'font-weight: 700;';
+				}
+
+				if($shorcut['isitalic']){
+					$style .= 'font-style: italic;';
+				}
+
+				if($shorcut['isitalic']){
+					$style .= 'text-decoration: underline;';
+				}
+
+				if($shorcut['font_color']){
+					$style .= 'color: #'.$shorcut['font_color'].';';
+				}
+
+				echo '<div style="'.$style.'"><input type="checkbox" name="f[]" value="'.$shorcut['shortcut'].'" /> '.$shorcut['shortcut'].' '.$shorcut['course_fullname'].'</div>';
+			}
+			if($this->hasSharedShortcuts)
+			{
+				echo '<div style="color: #000;"><input type="checkbox" name="_shared" value="1" /> '.$this->translate('hide_other_client_entryes').'</div>';
+			}
+		?>
+		</div>
+	</div>
+	</div>
+</div>
+</div>

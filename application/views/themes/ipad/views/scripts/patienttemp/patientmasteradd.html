@@ -1,0 +1,562 @@
+<?php  $this->headScript()->appendFile('javascript/livesearch/patientcontact.js'); ?>
+
+<script type="text/javascript">
+var jscount = <? echo $this->jscount+1 ?>;
+var jsmedcount = <? echo $this->jsmedcount+1 ?>;
+
+var dcntr = <? echo $this->dcntr ?>;
+var mcntr = <? echo $this->mcntr ?>;
+
+
+function refDropDownchange(ltrval)
+{
+  ajaxCallserver({url:'patient/fetchreferreddropdown?ltr='+ltrval,callLoading:r_loading});
+} 
+
+function getMetaIcd(mid)
+{
+  ajaxCallserver({url:'diagnosis/fetchicdmeta?mid='+mid});
+} 
+
+
+
+var callMeta = function(params){
+ 
+ if(params.icdnumber.length>0)
+ {
+     $("#meta_icdnumber").val(params.icdnumber);
+ }
+ 
+}
+/*function medicationDropDown(ltrval)
+{
+  ajaxCallserver({url:'medication/fetchdropdown?ltr='+ltrval,callLoading:m_loading});
+}*/
+
+</script>
+<script type="text/javascript" src="<? echo RES_FILE_PATH;  ?>/javascript/livesearch/familydocs.js"></script>
+<script type="text/javascript" src="<? echo RES_FILE_PATH;  ?>/javascript/livesearch/diagnosis.js"></script>
+<script type="text/javascript" src="<? echo RES_FILE_PATH;  ?>/javascript/livesearch/diagnosisicd.js"></script>
+<script type="text/javascript" src="<? echo RES_FILE_PATH;  ?>/javascript/livesearch/medication.js"></script>
+<script type="text/javascript" src="<? echo RES_FILE_PATH;  ?>/javascript/livesearch/referredby.js"></script>
+<script type="text/javascript" src="<? echo RES_FILE_PATH;  ?>/javascript/livesearch/patlocation.js"></script>
+<script type="text/javascript" src="<? echo RES_FILE_PATH;  ?>/javascript/livesearch/pathealthinsu.js"></script>
+
+<script type="text/javascript">
+/*******************************************************************/
+
+function removeElem(ids)
+{
+  $(ids).remove();
+}
+
+function closepopup()
+{
+	disablePopup();	
+}
+
+//var jarr = <? echo $this->jdarr ?>;
+var fdocblur = true;
+var healthblur = true;
+var diagnosisblur = Array();
+var icddiagnosisblur = Array();
+var medblur = Array();
+var locationblur = Array();
+$(function() {
+	
+	$('#recording_date').datepick({showTrigger: '#calImg'});
+	$('#birthd').datepick({showTrigger: '#calImg'});
+	$('#cardentry_date').datepick({showTrigger: '#calImg'});
+	$('#date_of_birth').datepick({showTrigger: '#calImg'});
+	$('#card_valid_till').datepick({showTrigger: '#calImg'});
+/*	$('#admission_date').datepick({showTrigger: '#calImg'});*/
+	$('#admission_date').datepick({showTrigger: '#calImg'});
+	
+	$(".livesearchinp").each(function(){
+	
+		diagnosisblur[$(this).attr('id')] = true;
+		$(this).bind('keydown',function(e){livesearchkeup(e,$(this))});
+	
+	});
+	$(".livesearchinp").blur(function(){
+	
+		diagnosisblur[$(this).attr('id')] = true;
+		setTimeout(function(){closediaearch($(this))},500);
+	});
+	
+	
+	$(".livesearchicdinp").each(function(){
+	
+		icddiagnosisblur[$(this).attr('id')] = true;
+		$(this).bind('keydown',function(e){icdlivesearchkeup(e,$(this))});
+	
+	});
+	$(".livesearchicdinp").blur(function(){
+	
+		diagnosisblur[$(this).attr('id')] = true;
+		setTimeout(function(){closediaearch($(this))},500);
+	});
+	
+	
+	//onblur="closediaearch([[cntr]])" 
+	
+	$(".livesearchmedinp").each(function(){
+	
+		medblur[$(this).attr('id')] = true;
+		$(this).bind('keydown',function(e){livemedicationsearchkeup(e,$(this))});
+	});
+	
+	$(".livesearchmedinp").blur(function(){
+	
+		medblur[$(this).attr('id')] = true;
+		setTimeout(function(){closediaearch($(this))},500);
+	});
+	
+	$("#familydoc_id").bind('keydown',function(e){livefdocsearchkeup(e,$(this))});
+	
+	$("#familydoc_id").blur(function(){
+		
+		fdocblur = true;
+		setTimeout(function(){closefdocs()},100);
+	});
+	
+	$("#company_name").bind('keydown',function(e){livesearchhealthup(e,$(this))});
+	
+	$("#company_name").blur(function(){
+		
+		healthblur = true;
+		setTimeout(function(){closehealth()},100);
+	});
+	
+	$("#location_id").bind('keydown',function(e){livesearchlocationkeup(e,$(this))});
+	
+	$("#location_id").blur(function(){
+		
+		locationblur = true;
+		setTimeout(function(){closeloc()},100);
+	});
+	
+});
+function closediaearch(ele)
+{	
+	id = $(ele).attr('id');
+	$('#diagnodropdown'+id).hide('slow');
+	$('#icddiagnodropdown'+id).hide('slow');
+	$('#medidropdown'+id).hide('slow');
+	$('.focused').removeClass('focused');
+	
+}
+function closefdocs(){
+
+	$('#doctdropdown').hide();
+}
+
+function closehealth(){
+
+	$('#healthinsudropdown').hide();
+}
+
+function closeloc(){
+
+	$('#locdropdown').hide();
+}
+
+function checkDiagnosisTypeSelected()
+{
+	var err = "";
+	var finalc = 0;
+	for(var j=1;j<dcntr;j++)
+	{
+		var ct = 0; 
+		if((document.getElementById('diagnosis'+j).value.length)>0)
+		{
+		  var ltrs = document.getElementsByName('dtype['+j+']');
+	       
+	   		for(var i=0;i<ltrs.length;i++)
+	   		{
+	    		if(ltrs[i].checked==true)
+				{
+					ct++; 
+				}
+			}
+			
+		   if(ct==0)		        
+			 {
+			    finalc++;
+				err+= "<? echo $this->translate('selectdiagnosisfor'); ?>:"+document.getElementById('diagnosis'+j).value+"\n";
+			 }
+		}
+		
+	}
+	if(finalc>0)
+	{
+	  jAlert(err);
+	}
+	else
+	{
+	   document.frmpatient.submit();
+	}
+}
+
+
+	function closeautosearch(val)
+	{	
+		$('medidropdown'+val).hide();
+		$('.focused').removeClass('focused');
+	}
+</script>
+
+
+ 
+<form action=""  name="frmpatient" id="frmpatient" method="post" autocomplete="off">
+<!--<input type="hidden" id="1" name="triggerformid" value="1"/>
+<input type="hidden" id="formname" name="formname" value="frmpatient"/><span class="err"><?php echo $this->error_hl7_message ?></span><br />-->
+<div id="CalImg" style="display: none;">
+	<img id="calImg" src="<? echo RES_FILE_PATH;  ?>/images/calendar.png" alt="Popup" class="trigger">
+</div>
+
+<fieldset id="feldset_patientMsterAd">
+	<legend id="legnd_feldset_patientMsterAd"><? echo $this->translate('addpatient') ?></legend>
+    <div id="patientMsterAd_ErrorMsg" class="<?echo $this->errorclass?>"><? echo $this->translate('missedsthtofill'); ?></div>
+    <div class="error"><? echo $this->error_clientid?></div>
+	<h4 class="LineHeading"><? echo $this->translate('administrativedata') ?></h4>
+    <br />
+    <label for="clientname" id="lbl_clientname_by"><? echo $this->translate('clientname') ?>: </label>
+    <label id="nameclientname" style="font-weight:bold; margin-left:32px;"><? echo $this->clientname;?></label>
+ 	<div class="clearer"></div>
+    <br />
+    <label for="referred_by" id="lbl_referred_by"><? echo $this->translate('referredby') ?></label>
+    <!--<input type="text" name="referred_by" id="referred_by" value="<? echo $this->referred_by ?>" onkeyup="refDropDownchange(this.value)"><input type="hidden" name="hidd_referred_by" id="hidd_referred_by"  /><br /><div id="refdropdown" style="position:absolute;"></div>-->
+     <? echo $this->formSelect('referred_by', $this->referred_by, null, $this->referredbyarray) ?>
+    <div id="patientMsterAd_ErrorMsg" class="error"><? echo $this->error_ref_by; ?></div>
+    <br />
+	<!--<label for="recording_date" id="lbl_recording_date"><? echo $this->translate('recordingdate') ?></label>
+   <input type="text" name="recording_date" id="recording_date" style="width:177px;" value="<? echo $this->recording_date ?>" >&nbsp;
+   <? echo $this->formSelect('rec_timeh', $this->rec_timeh, null, $this->hours) ?>
+   <? echo $this->formSelect('rec_timem', $this->rec_timem, null, $this->minutes) ?>
+   <div class="error"><?php echo $this->error_recording_date ?></div>&nbsp;<br />-->
+  
+   <br />
+   <label for="admission_date" id="lbl_admission_date"><? echo $this->translate('adminssiondate') ?></label>
+   <input type="text" name="admission_date" id="admission_date"  style="width:177px;" value="<? echo $this->admission_date ?>" >
+   <? echo $this->formSelect('adm_timeh', $this->adm_timeh, null, $this->hours) ?>
+   <? echo $this->formSelect('adm_timem', $this->adm_timem, null, $this->minutes) ?>
+   <div id="patientMsterAd_ErrorMsg" class="error"><?php echo $this->error_admission_date ?></div>&nbsp;
+   <br />
+
+   
+  	<h5 class="LineHeading"><? echo $this->translate('patientmasterdata') ?></h5>
+  	<br />
+  	<label for="first_name" id="Pt_Add_first_name"><? echo $this->translate('firstname') ?></label>
+  	<input type="text" name="first_name" id="first_name" value="<? echo $this->first_name ?>">
+  	<div id="patientMsterAd_ErrorMsg" class="error"><?php echo $this->error_first_name ?></div>&nbsp;<br />
+ 	<!--<label for="middle_name" id="lbl_middle_name"><? echo $this->translate('middlename') ?></label>
+    <input type="text" name="middle_name" id="middle_name" value="<? echo $this->middle_name ?>">
+    <div id="patientMsterAd_ErrorMsg" class="error"><?php echo $this->error_middle_name ?></div>&nbsp;<br />-->
+  	<label for="last_name" id="Pt_Add_last_name"><? echo $this->translate('lastname') ?></label>
+   	<input type="text" name="last_name" id="last_name" value="<? echo $this->last_name ?>">
+  	<div id="patientMsterAd_ErrorMsg" class="error"><?php echo $this->error_last_name ?></div>&nbsp;
+   	<br />
+   	<!--<label for="title" id="Pt_Add_title"><? echo $this->translate('title') ?></label>
+   	<input type="text" name="title" id="title" value="<? echo $this->title ?>">
+  	<div id="patientMsterAd_ErrorMsg" class="error"> <?php echo $this->error_title ?></div>&nbsp;<br />-->
+
+	<!--<label for="salutation" id="lbl_salutation"><? echo $this->translate('salutation') ?></label>
+  	<? echo $this->formSelect('salutation', $_POST['salutation'], null, $this->salutations) ?>
+    <div class="error"><?php echo $this->error_salutation ?></div>&nbsp;<br />-->
+    
+  	<label for="street1" id="lbl_street1"><? echo $this->translate('street1') ?></label>
+   	<input type="text" name="street1" id="street1" value="<? echo $this->street1 ?>">
+   	<div id="patientMsterAd_ErrorMsg" class="error"><?php echo $this->error_street1 ?></div>&nbsp;<br />
+<!--  	<label for="street2" id="lbl_street2"><? echo $this->translate('street2') ?></label>
+   	<input type="text" name="street2" id="street2" value="<? echo $this->street2 ?>">
+    <div id="patientMsterAd_ErrorMsg" class="error"><?php echo $this->error_street2 ?></div>&nbsp;
+    <br />-->
+  	<label for="zip" id="lbl_zip"><? echo $this->translate('zip') ?></label>
+  	<input type="text" name="zip" id="zip" value="<? echo $this->zip ?>">
+   	<div id="patientMsterAd_ErrorMsg" class="error"><?php echo $this->error_zip ?></div>&nbsp;<br />
+  	<label for="city" id="lbl_city"><? echo $this->translate('city') ?></label>
+  	<input type="text" name="city" id="city" value="<? echo $this->city ?>">
+  	<div id="patientMsterAd_ErrorMsg" class="error"><?php echo $this->error_city ?></div>&nbsp;<br />
+  	<label for="phone" id="lbl_phone"><? echo $this->translate('phone') ?></label>
+  	<input type="text" name="phone" id="phone" value="<? echo $this->phone ?>">
+   	<div id="patientMsterAd_ErrorMsg" class="error"> <?php echo $this->error_phone ?></div>&nbsp;<br />
+  	<label for="mobile" id="lbl_mobile"><? echo $this->translate('mobile') ?></label>
+   	<input type="text" name="mobile" id="mobile" value="<? echo $this->mobile ?>">
+  	<div id="patientMsterAd_ErrorMsg" class="error"> <?php echo $this->error_mobile ?></div>&nbsp;
+   	<br />
+	<label for="birthd" id="lbl_birthd"><? echo $this->translate('birthd') ?></label>
+  	<input type="text" name="birthd" id="birthd"  style="width:177px;" value="<? echo $this->birthd ?>" >
+ 	<div id="patientMsterAd_ErrorMsg" class="error"> <?php echo $this->error_birthd ?></div>&nbsp;<br />
+	<label for="sex" id="lbl_sex"><? echo $this->translate('sex') ?></label>
+   	<? echo $this->formSelect('sex', $_POST['sex'], null, $this->genders) ?>
+   	<div id="patientMsterAd_ErrorMsg" class="error"> <?php echo $this->error_sex ?></div>&nbsp;
+    <br />
+	<!--<label for="nation" id="lbl_nation"><? echo $this->translate('region') ?></label>
+   	<? echo $this->formSelect('nation', $this->preselectregion, null, $this->regions) ?>
+  	<div id="patientMsterAd_ErrorMsg" class="error"> <?php echo $this->error_nation ?></div>&nbsp;<br />-->
+  
+  	<h5 class="LineHeading"><? echo $this->translate('familydoc'); ?></h5>
+  	<label for="familydoc_id" id="lbl_familydoc_id"><? echo $this->translate('familydoc') ?></label>
+	<input type="text" name="familydoc_id" id="familydoc_id" value="<? echo $this->familydoc_id ?>" >
+	<input type="hidden" name="hidd_docid" id="hidd_docid" value="<?php echo $this->hidd_docid ?>"  /><br /><div id="doctdropdown" style="height:175px; orverflow:auto; position:absolute;"></div>
+    <div class="error"> <?php echo $this->error_familydoc_id ?></div>&nbsp;<div id="loading"></div>
+
+	<br />
+   	<label for="fdoc_caresalone" id="lbl_fdoc_caresalone"><? echo $this->translate('familycare') ?></label>
+    <? if($POST['fdoc_caresalone']==1) {$ischeckedhd="checked='checked'";} else {$ischeckedhd="";} ?>
+    <!-- <input type="checkbox" name="fdoc_caresalone" id="fdoc_caresalone" value="1" >-->
+     <? echo  $this->formCheckbox('fdoc_caresalone', $_POST['fdoc_caresalone'], null, array('1')); ?>
+    <div class="error"><?php echo $this->error_familydoc_id ?></div>&nbsp;<br />
+  
+  	<h5 class="LineHeading"><? echo $this->translate('contactperson') ?></h5>
+  
+   	<div  id="msg" class="Msg"> <a href="javascript:centerPopup({sr:'contactpersonmaster/addcontactpersontemp?popup=popup',ht:'430px',wt:'420px'});loadPopup();" class="resultlink"><? echo $this->translate('addnewcontactperson'); ?></a></div>
+    <br />
+   	<div id="contact" class="grid">
+     <table width="100%" border="0" cellspacing="0" cellpadding="0" class="datatable" id="PatieContactMasAdd_table">
+  <tr id="PatieMasAdd_tr">
+    <th id="PatieMasAdd_tr_th1" width="20%" align="left"><strong>Name</strong></th>
+    <th id="PatieMasAdd_tr_th2" width="30%" align="left"><strong>Phone</strong></th>
+    <th width="20%" align="left" id="PatieMasAdd_tr_th3"><strong>Mobile</strong></th>
+    <th width="20%" align="left" id="PatieMasAdd_tr_th4"><strong>Address</strong></th>
+    <th id="PatieMasAdd_tr_th5" width="10%" align="left"><strong>Remove</strong></th>
+  </tr>
+  <? echo $this->contactgrid;?>
+  </table>
+  
+  </div>
+   	<br />
+	<h5 class="LineHeading"><? echo $this->translate('patient_health_insurance') ?></h5>
+    
+    <br />
+    
+   
+  	<label for="company_name" id="lbl_company_name"><? echo $this->translate('company_name') ?></label>
+   	 <input type="text" name="company_name" id="company_name" value="<? echo $this->company_name ?>" class="healthdesc"  >
+     <input type="hidden" name="hdn_company_name" id="hdn_company_name"  /><br /><div id="healthinsudropdown" class="livesearchdropdown" style="position:absolute;display:none;"></div>
+  	<div id="patientMsterAd_ErrorMsg" class="error"> <?php echo $this->error_company_name ?></div>&nbsp;
+   	<br />
+  	<label for="insurance_no" id="lbl_insurance_no"><? echo $this->translate('insuranceno') ?></label>
+   	<input type="text" name="insurance_no" id="insurance_no" value="<? echo $this->insurance_no ?>">
+   	<div id="patientMsterAd_ErrorMsg" class="error"><?php echo $this->error_insurance_no ?></div>&nbsp;
+   	<br />
+  	<label for="insurance_status" id="lbl_insurance_status"><? echo $this->translate('insurancestatus') ?></label>
+  	<!--<input type="text" name="insurance_status" id="insurance_status" value="<? echo $this->insurance_status ?>">-->
+  	<? echo $this->formSelect('insurance_status',$this->insurance_status,NULL,$this->status_array); ?>
+   	<div id="patientMsterAd_ErrorMsg" class="error"><?php echo $this->error_insurance_status ?></div>&nbsp;
+   	<br />
+    
+    <? if($this->allowedform == "allowed")
+    { ?>
+    
+    <div id="patientmasteradd_InfoDenPatie">
+<br>
+<h4 class="LineHeading" id="InfoDenPatie"><? echo $this->translate('informationhead')?></h4>
+<br>
+<? echo $this->translate('tickboxes')?><br>
+<br>
+
+
+<table width="100%" id="InfoDenPatie_table">
+<tbody id="InfoDenPatie_tbody1">
+<tr id="InfoDenPatie_tbody1_tr1">
+<td id="InfoDenPatie_tbody1_tr1_td1" height="25" colspan="2"><h5 id="InfoDenPatie_LebtLi"><? echo $this->translate('lives')?></h5></td>
+<td id="InfoDenPatie_tbody1_tr1_td2" colspan="2"><h5 id="InfoDenPatie_VerSup"><? echo $this->translate('supply')?></h5></td>
+<td id="InfoDenPatie_tbody1_tr1_td3" colspan="2"><h5 id="InfoDenPatie_mobMobi"><? echo $this->translate('mobility')?></h5></td>
+</tr>
+<tr id="InfoDenPatie_tbody1_tr2">
+<td id="InfoDenPatie_tbody1_tr2_td1" width="20%" height="28">
+<label for="alone" id="InfoDenPatie_alleAlo"><? echo $this->translate('alone')?></label></td>
+<td width="16%" height="28" id="InfoDenPatie_tbody1_tr2_td2">
+<? echo  $this->formCheckbox('alone', $_POST['alone'], null, array('1')); ?></td>
+
+<td width="20%" height="28" id="InfoDenPatie_tbody1_tr2_td3">
+<label for="even" id="InfoDenPatie_selEv"><? echo $this->translate('even')?></label></td>
+<td width="16%" height="28" id="InfoDenPatie_tbody1_tr2_td4">
+<? echo  $this->formCheckbox('even', $_POST['even'], null, array('1')); ?></td>
+
+<td width="20%" height="28" id="InfoDenPatie_tbody1_tr2_td5"><label id="InfoDenPatie_BettBe" for="bed"><? echo $this->translate('bed')?></label></td>
+<td width="16%" height="28" id="InfoDenPatie_tbody1_tr2_td6">
+<? echo  $this->formCheckbox('bed', $_POST['bed'], null, array('1')); ?></td>
+</tr>
+<tr id="InfoDenPatie_tbody1_tr3">
+<td width="20%" height="28" id="InfoDenPatie_tbody1_tr3_td1"><label id="InfoDenPatie_HouDer" for="house_of_relatives"><? echo $this->translate('houseofrelatives')?><br></label></td>
+<td width="16%" height="28" id="InfoDenPatie_tbody1_tr3_td2">
+<? echo  $this->formCheckbox('house_of_relatives', $_POST['house_of_relatives'], null, array('1')); ?></td>
+
+<td width="20%" height="28" id="InfoDenPatie_tbody1_tr3_td3"><label for="spouse" id="InfoDenPatie_Eherpar"><? echo $this->translate('spouse')?></label></td>
+<td width="16%" height="28" id="InfoDenPatie_tbody1_tr3_td4"><? echo  $this->formCheckbox('spouse', $_POST['spouse'], null, array('1')); ?></td>
+
+<td width="20%" height="28" id="InfoDenPatie_tbody1_tr3_td5">
+<label for="walker" id="InfoDenPatie_Rollato"><? echo $this->translate('walker')?></label></td>
+<td width="16%" height="28" id="InfoDenPatie_tbody1_tr3_td6"><? echo  $this->formCheckbox('walker', $_POST['walker'], null, array('1')); ?></td>
+</tr>
+<tr id="InfoDenPatie_tbody1_tr4">
+<td width="20%" height="28" id="InfoDenPatie_tbody1_tr4_td1">
+<label for="apartment" id="InfoDenPatie_WohApa"><? echo $this->translate('apartment')?></label></td>
+<td width="16%" height="28" id="InfoDenPatie_tbody1_tr4_td2"><? echo  $this->formCheckbox('apartment', $_POST['apartment'], null, array('1')); ?></td>
+
+<td width="20%" height="28" id="InfoDenPatie_tbody1_tr4_td3"><label for="member" id="InfoDenPatie_AngMem"><? echo $this->translate('member')?></label></td>
+<td width="16%" height="28" id="InfoDenPatie_tbody1_tr4_td4"><? echo  $this->formCheckbox('member', $_POST['member'], null, array('1')); ?></td>
+
+<td width="20%" height="28" id="InfoDenPatie_tbody1_tr4_td5">
+<label for="wheelchair" id="InfoDenPatie_RollWhe"><? echo $this->translate('wheelchair')?></label></td>
+<td width="16%" height="28" id="InfoDenPatie_tbody1_tr4_td6"><? echo  $this->formCheckbox('wheelchair', $_POST['wheelchair'], null, array('1')); ?></td>
+</tr>
+<tr id="InfoDenPatie_tbody1_tr5">
+<td width="20%" height="28" id="InfoDenPatie_tbody1_tr5_td1">
+<label for="home" id="InfoDenPatie_HeimHo"><? echo $this->translate('home')?></label></td>
+<td width="16%" height="28" id="InfoDenPatie_tbody1_tr5_td2"><? echo  $this->formCheckbox('home', $_POST['home'], null, array('1')); ?></td>
+
+<td width="20%" height="28" id="InfoDenPatie_tbody1_tr5_td3"><label for="private_support" id="InfoDenPatie_privaHilfe"><? echo $this->translate('support'); ?><br></label></td>
+<td width="16%" height="28" id="InfoDenPatie_tbody1_tr5_td4"><? echo  $this->formCheckbox('private_support', $_POST['private_support'], null, array('1')); ?></td>
+
+<td width="20%" height="28" id="InfoDenPatie_tbody1_tr5_td5"><label for="goable" id="InfoDenPatie_gehfa"><? echo $this->translate('goable')?></label></td>
+<td width="16%" height="28" id="InfoDenPatie_tbody1_tr5_td6"><? echo  $this->formCheckbox('goable', $_POST['goable'], null, array('1')); ?></td>
+</tr>
+<tr id="InfoDenPatie_tbody1_tr6">
+<td width="20%" height="28" id="InfoDenPatie_tbody1_tr6_td1"></td>
+<td width="16%" height="28" id="InfoDenPatie_tbody1_tr6_td2"></td>
+
+<td width="20%" height="28" id="InfoDenPatie_tbody1_tr6_td3"><label for="nursing" id="InfoDenPatie_pflnst"><? echo $this->translate('nursing')?></label></td>
+<td width="16%" height="28" id="InfoDenPatie_tbody1_tr6_td4"><? echo  $this->formCheckbox('nursing', $_POST['nursing'], null, array('1')); ?></td>
+
+<td width="20%" height="28" id="InfoDenPatie_tbody1_tr6_td5"></td>
+<td width="16%" height="28" id="InfoDenPatie_tbody1_tr6_td6"></td>
+</tr>
+
+<tr id="InfoDenPatie_tbody1_tr7">
+<td height="15" colspan="2" align="left" valign="middle" id="InfoDenPatie_tbody1_tr7_td1">&nbsp;</td>
+<td height="15" colspan="2" align="left" valign="middle" id="InfoDenPatie_tbody1_tr7_td2">&nbsp;</td>
+<td height="15" colspan="2" align="left" valign="middle" id="InfoDenPatie_tbody1_tr7_td3">&nbsp;</td>
+</tr>
+<tr id="InfoDenPatie_tr8">
+<td height="30" colspan="2" align="left" valign="middle" id="InfoDenPatie_tr8_td1"><h5 id="InfoDenPatie_paverg"><? echo $this->translate('livingwill')?></h5></td>
+<td height="30" colspan="2" align="left" valign="middle" id="InfoDenPatie_tr8_td2">
+<h5 id="InfoDenPatie_weitinfne"><? echo $this->translate('moreinformation')?></h5></td>
+<td height="30" colspan="2" align="left" valign="middle" id="InfoDenPatie_tr8_td3">
+<h5 id="InfoDenPatie_pflfe"><? echo $this->translate('carelevel')?></h5></td>
+</tr>
+<tr id="InfoDenPatie_tr9">
+<td width="20%" height="20" id="InfoDenPatie_tr9_td1"><label for="living_will" id="InfoDenPatie_pfja"><? echo $this->translate('ja')?></label></td>
+<td width="16%" height="20" id="InfoDenPatie_tr9_td2"><? echo  $this->formCheckbox('living_will', $_POST['living_will'], null, array('1')); ?></td>
+<td width="20%" height="20" id="InfoDenPatie_tr9_td3"><label for="dk" id="InfoDenPatie_pfdk"><? echo $this->translate('dk')?></label></td>
+<td width="16%" height="20" id="InfoDenPatie_tr9_td4"><? echo  $this->formCheckbox('dk', $_POST['dk'], null, array('1')); ?></td>
+<td width="16%" height="20" colspan="2" id="InfoDenPatie_tr9_td5"><select name="stage" style="width: 200px;" class="combo" id="InfoDenPatie_pfdk"><option selected="selected" id="InfoDenPatie_biweh"><? echo $this->translate('pleaseselect')?>...</option>
+<option value="1" id="InfoDenPatie_pf1bi">1</option>
+<option value="2" id="InfoDenPatie_pf2bi">2</option>
+<option value="3" id="InfoDenPatie_pf3bi">3</option>
+<option value="antrag" id="InfoDenPatie_pf4bi">Antrag</option></select></td>
+</tr>
+<tr id="InfoDenPatie_tr10">
+<td width="20%" height="20" id="InfoDenPatie_tr10_td1"></td>
+<td width="16%" height="20" id="InfoDenPatie_tr10_td2"></td>
+<td width="20%" height="20" id="InfoDenPatie_tr10_td3">
+<label for="peg" id="InfoDenPatie_bepeg"><? echo $this->translate('peg')?></label></td>
+<td width="16%" height="20" colspan="3" id="InfoDenPatie_tr10_td4">
+<? echo  $this->formCheckbox('peg', $_POST['peg'], null, array('1')); ?></td>
+</tr>
+<tr id="InfoDenPatie_tr11">
+<td width="20%" height="20" id="InfoDenPatie_tr11_td1"></td>
+<td width="16%" height="20" id="InfoDenPatie_tr11_td2"></td>
+<td width="20%" height="20" id="InfoDenPatie_tr11_td3">
+<label for="port" id="InfoDenPatie_beport"><? echo $this->translate('port')?></label></td>
+<td width="16%" height="20" colspan="3" id="InfoDenPatie_tr11_td4">
+<? echo  $this->formCheckbox('port', $_POST['port'], null, array('1')); ?></td>
+</tr>
+<tr id="InfoDenPatie_tr12">
+<td width="20%" height="20" id="InfoDenPatie_tr12_td1"></td>
+<td width="16%" height="20" id="InfoDenPatie_tr12_td2"></td>
+<td width="20%" height="20" id="InfoDenPatie_tr12_td3">
+<label for="pumps" id="InfoDenPatie_bepume"><? echo $this->translate('pumps')?></label></td>
+<td width="16%" height="20" colspan="3" id="InfoDenPatie_tr12_td4"><? echo  $this->formCheckbox('pumps', $_POST['pumps'], null, array('1')); ?></td>
+</tr>
+<tr id="InfoDenPatie_tr13">
+<td width="20%" height="20" id="InfoDenPatie_tr13_td1"></td>
+<td width="16%" height="20" id="InfoDenPatie_tr13_td2"></td>
+<td width="20%" height="20" id="InfoDenPatie_tr13_td3">
+<label for="zvk" id="InfoDenPatie_zvkbe"><? echo $this->translate('zvk')?></label></td>
+<td width="16%" height="20" colspan="3" id="InfoDenPatie_tr13_td4">
+<? echo  $this->formCheckbox('zvk', $_POST['zvk'], null, array('1')); ?></td>
+</tr>
+</tbody></table>
+</div>
+<? } ?>
+ 	<br />
+  	<h4 class="LineHeading"><? echo $this->translate('patientlocation') ?></h4>
+    <br />
+    
+
+    <label for="location_id" id="lbl_referred_by"><? echo $this->translate('selectlocation') ?></label>
+    <? echo $this->formSelect('location_id', $_POST['location_id'], null, $this->locationarray) ?>
+   <div id="patientMsterAd_ErrorMsg" class="error"> <? echo $this->error_ref_by; ?></div>
+    <br />
+	<h4 class="LineHeading"><? echo $this->translate('diagnosis') ?></h4>
+
+<table id="samtab" class="patientMasterStab1Table livesearchdropdown">
+
+<tr id="pat_samtab_tr2">
+<td id="pat_samtab_tr2_td1" valign="top" align="left"><input name="meta_icdnumber" id="meta_icdnumber" class="fortextbox" type="text" /></td>
+<td id="pat_samtab_tr2_td2" valign="top">
+ <? echo $this->formSelect('meta_diagnosis', $_POST['meta_diagnosis'], array('onchange'=>'getMetaIcd(this.value)'), $this->icddiagnosisarr) ?>
+</td>
+<td id="pat_samtab_tr2_td3" class="" valign="middle" align="center">&nbsp;</td>
+</tr>
+<tr id="pat_samtab_tr3">
+<td id="pat_samtab_tr3_td1" valign="top"></td>
+<td id="pat_samtab_tr3_td2" valign="top">
+ <label class="forlabel"><? echo $this->translate("meta"); ?></label><? echo $this->formSelect('meta_title[]', $_POST['meta_title'][0], null, $this->diagnosismeta) ?>
+</td>
+<td id="pat_samtab_tr3_td3" class="" valign="middle" align="center">&nbsp;</td>
+</tr>
+<tr id="pat_samtab_tr4">
+<td id="pat_samtab_tr4_td1" valign="top"></td>
+<td id="pat_samtab_tr4_td2" valign="top">
+ <label class="forlabel"><? echo $this->translate("meta"); ?></label><? echo $this->formSelect('meta_title[]', $_POST['meta_title'][1], null, $this->diagnosismeta) ?>
+
+</td>
+<td id="pat_samtab_tr4_td3" valign="middle" align="center">&nbsp;</td>
+</tr>
+<tr id="pat_samtab_tr5">
+<td id="pat_samtab_tr5_td1" valign="top"></td>
+<td id="pat_samtab_tr5_td2" valign="top">
+ <label class="forlabel"><? echo $this->translate("meta"); ?></label><? echo $this->formSelect('meta_title[]', $_POST['meta_title'][2], null, $this->diagnosismeta) ?>
+<td id="pat_samtab_tr5_td3" class="" valign="middle" align="center">&nbsp;</td>
+</tr>
+<tr id="liAdmDia_tr1">
+	<td valign="top"><? echo $this->translate("icdcode"); ?></td>
+	<td valign="top"><? echo $this->translate("diagnosis"); ?></td>
+	<td align="center" valign="top"><? echo $this->translate("remove"); ?></td>
+</tr>
+ <? echo $this->diagno ?> <? echo $this->diagnogrid ?><br />
+</table>
+   
+    
+    <div  id="msg" class="Msg"><a href="javascript:admission_selectdignosis()"><? echo $this->translate('addnewdiagnosis'); ?></a></div>
+    <br />
+    
+	<div id="med">
+		<h4 class="LineHeading"><? echo $this->translate('medication') ?></h4>
+		
+		<? echo $this->medicgrid ;?>
+	</div>
+	
+
+ 	<div  id="msg" class="Msg"><a href="javascript:selectmedication()"><? echo $this->translate('addnewmedication'); ?></a></div>
+	<br />
+
+  
+     <input type="submit" name="btnsubmit" id="btnsubmit" tabindex="4" class="button" value="<? echo $this->translate('submit') ?>" >
+   
+
+</fieldset>
+</form>
+
+	<div id="popupContact">
+		<a id="popupContactClose" onclick="closepopup()">x</a>
+		<p id="contactArea">
+		 <iframe id='add_family_doc' frameborder='0' src='' scrolling="no"  style="margin:0 auto;"></iframe>
+		</p>
+	</div>
+	<div id="backgroundPopup"></div>

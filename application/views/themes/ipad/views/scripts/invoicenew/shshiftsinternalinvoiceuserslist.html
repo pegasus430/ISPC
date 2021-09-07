@@ -1,0 +1,312 @@
+<?php
+	$this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/page-css/shshiftsinternalinvoiceuserslist.css?'.date('Ymd'));
+
+	//IE Freaking hack
+	$url = APP_BASE . "invoicenew/shshiftsinternalinvoiceuserslist?" . $_SERVER['QUERY_STRING'];
+	if(str_replace("&list=" . $_REQUEST['list'] . "", "", $url))
+	{
+		$finalJsUrl = str_replace("&list=" . $_REQUEST['list'] . "", "", $url);
+	}
+	else
+	{
+		$finalJsUrl = $url;
+	}
+?>
+
+<script type="text/javascript" >
+	function changeMonth(data) {
+	    var url = "<?php echo $finalJsUrl; ?>&list=" + data;
+	    $(location).attr('href', url);
+	}
+
+	var pl_loading = function(){
+		var dlist = '<div class="loadingdiv" align="center"><img src="images/pageloading.gif"><br /><?php echo $this->translate('loading_tables_data'); ?></div>';
+		document.getElementById('content').innerHTML = dlist;
+	}
+
+	function loadpage(ord,clm)
+	{
+		if($('#hdnlastpage').val() >= parseInt($('#pageno').val())) {
+			if((parseInt($('#pageno').val())) > 0) {
+				pgno = (parseInt($('#pageno').val() - 1));
+			} else {
+				pgno = 0;
+			}
+
+			ajaxCallserver({url: 'invoicenew/fetchshshiftsinternaluserslist?clm=' + clm + '&ord=' + ord + '&pgno=' + pgno + '&list=<?php echo $_REQUEST['list']; ?>', callLoading: pl_loading});
+		} else {
+			jAlert("<? echo $this->translate('invalidpageno'); ?>");
+		}
+	}
+	function searchData(val)
+	{
+		ajaxCallserver({
+			url:'invoicenew/fetchshshiftsinternaluserslist',
+			method:'POST',
+			data:{
+				clm:'ln',
+				ord:'ASC',
+				pgno:0,
+				val:val.value,
+				list:'<?php echo $_REQUEST['list'];?>'
+			},
+			callLoading: pl_loading
+		});
+	}
+
+	var callBack = function(params)
+	{
+		document.getElementById('content').innerHTML = params.shshiftsinternaluserslist;
+	}
+
+	jQuery.download = function(url, data, method) {
+		//url and data options required
+		if (url && data) {
+			//data can be string of parameters or array/object
+			data = typeof data == 'string' ? data : jQuery.param(data);
+			//split params into form inputs
+			var inputs = '';
+			jQuery.each(data.split('&'), function() {
+				var pair = this.split('=');
+				inputs += '<input type="hidden" name="' + pair[0] +
+					'" value="' + pair[1] + '" />';
+			});
+			//send request
+			jQuery('<form action="' + url + '" method="' + (method || 'post') + '">' + inputs + '</form>')
+				.appendTo('body').submit().remove();
+		};
+	};
+
+	$(function () {
+
+	//disable enter key
+	$(window).keydown(function(event){
+		if(event.keyCode == 13) {
+			event.preventDefault();
+			return false;
+		}
+	});
+	
+	$('#check_all').live('change', function(){
+		
+		if($(this).is(':checked')){
+			$('.selected_users_chk').attr('checked', true).trigger('change');
+		} else {
+			$('.selected_users_chk').removeAttr('checked');
+		}
+	});
+	
+		$('li.sapv_flow_element, li.current_month_flow_element').live('click', function() {
+			if(!verify_patient_selected($(this).find('input[type="radio"]').data('userid'))) {
+				var userid = $(this).data('userid');
+				var list = $(this).data('list');
+				//redirect vars
+				var sort_vars = $(this).data('sortvars').split('|');
+				var clm = sort_vars[0];
+				var ord = sort_vars[1];
+				var pgno = sort_vars[2];
+
+
+				var url = appbase+'invoicenew/shshiftsinternalinvoice';
+				var params = 'user=' + userid + '&list=' + list+'&type=pdf';
+
+				var check_array = [];
+				check_array.userid = userid;
+				check_array.invoice_type = $(this).data('check_invoice_type');
+				check_array.period_type = $(this).data('check_period_type');
+				check_array.period_start = $(this).data('check_period_start');
+				check_array.period_end = $(this).data('check_period_end');
+				check_array.period_id = $(this).data('check_period_id');
+				
+				var element_id = $(this).attr('id');
+				
+				
+				
+
+				$.ajax({
+				  	url:'ajax/checkgenerateinvoices',
+				    type: 'POST',
+					data:{
+						'userid': check_array.userid,
+						'invoice_type': check_array.invoice_type,
+						'period_type': check_array.period_type,
+						'period_id': check_array.period_id,
+						'period_start': check_array.period_start,
+						'period_end': check_array.period_end
+					}, 
+				    success: function(result) {
+				    	var result_data = jQuery.parseJSON(result);
+				    	if(result_data.skip_modal == "1"){
+				    		
+			 				$.download(url, params);
+			 				$('#'+element_id).addClass('generated_flow_element');
+			 				
+				    	} else{
+				    		
+				    		if(result_data.completed_invoices){
+				    			alert('<?php echo $this->translate("The relevant invoice is already completed and or paid. Please Storno it before you proceed.")?>');
+				    		} else if(result_data.invoices){
+				    			
+					    		// open modal 
+					    		$('#already_generated_invoices')
+					    		.data('url' , url)
+					    		.data('params' , params)
+					    		.data('invoices' , result_data.invoices)
+					    		.data('userid' ,  check_array.userid)
+					    		.data('invoice_type' ,  check_array.invoice_type)
+					    		.data('element_id' ,  element_id)
+					    		.dialog('open');
+					    		
+				    		} else{
+				 				$.download(url, params);
+				 				$('#'+element_id).addClass('generated_flow_element');
+				 					
+				    		}
+				    	}
+				    },
+				    error: function(){
+				      alert("Unable to check period");
+				    }
+				  });
+				
+				
+// 				$.download(url, params);
+
+// 				$(this).addClass('generated_flow_element');
+
+//				setTimeout(function () { ajaxCallserver({url: 'invoicenew/fetchshpatientlist?clm=' + clm + '&ord=' + ord + '&pgno=' + pgno + '&list=<?php echo $_REQUEST['list']; ?>', callLoading: pl_loading}); }, 150);
+//				ajaxCallserver({url: 'invoicenew/fetchshpatientlist?clm=' + clm + '&ord=' + ord + '&pgno=' + pgno + '&list=<?php echo $_REQUEST['list']; ?>', callLoading: pl_loading});
+			}
+			else
+			{
+				$(this).find('input[type="radio"]').attr('checked', true).trigger('change');
+			}
+		});
+
+		$('.sapv_radio').live('change', function() {
+			if(!verify_patient_selected($(this).data('userid'))) {
+				return false;
+				//open dialog?
+			}
+		});
+
+		$('.selected_users_chk').live('click, change',function(){
+			$('input.selected_users_'+$(this).data('userid')+'_period').attr('checked', false);
+			$(this).parent().parent().next('tr').children().find('.sapv_flow').find('li:last').children().attr('checked', $(this).is(':checked')).trigger('change');
+		})
+		
+		
+		
+		$('#already_generated_invoices').dialog({
+			autoOpen:false,
+			resize:false,
+			draggable:false,
+			width:950,
+			height:150,
+			title: '<?php echo $this->translate('confirmdeletetitle'); ?>',
+			buttons: {
+			"<?php echo $this->translate('delete existing draft and generate'); ?>": function() {
+		   		var inv_url = $(this).data('url');
+				var inv_params = $(this).data('params');
+				var element_id = $(this).data('element_id');
+				$.ajax({
+					  	url:'ajax/deletedraftinvoices',
+					    type: 'POST',
+						data:{
+							'userid': $(this).data('userid'),
+							'invoice_type': $(this).data('invoice_type'),
+							'invoices': $(this).data('invoices')
+						}, 
+					    success: function(result) {
+					    	var result_data = jQuery.parseJSON(result);
+					    	console.log(result_data.invoice_deleted);
+					    	if(result_data.invoice_deleted == "1"){
+					    		
+					 
+								$.download(inv_url, inv_params);
+								$('#'+element_id).addClass('generated_flow_element');
+								$('#already_generated_invoices').dialog( "close" );
+					    		
+					    	} else{
+					    		alert("Old invoice was not DELETED");
+					    	}
+					    },
+					    error: function(){
+					      alert("Unable to check period");
+					    }
+					  });
+				
+			},
+			"<?php echo $this->translate('continue generating the invoice'); ?>": function(){
+
+					var element_id = $(this).data('element_id');				 		
+					var url = $(this).data('url');
+					var params = $(this).data('params');
+					$.download(url, params);
+					$('#'+element_id).addClass('generated_flow_element');
+					
+					$('#already_generated_invoices').dialog( "close" );
+			},
+			"<?php echo $this->translate('cancel'); ?>": function(){
+					 
+				$('#already_generated_invoices').dialog( "close" );
+			}
+		},
+		close: function(){
+			$('input[name=deletemore]').val("");
+		}
+	});
+		
+		
+		
+		
+		
+	});
+
+	function verify_patient_selected(userid)
+	{
+		if($('#selected_users_'+userid).is(':checked')) {
+			return true;
+		} else {
+			return false;
+		}
+	}
+</script>
+<h1><?php echo $this->translate('sh_internal_invoice'); ?></h1>
+<form name="generate_sh_internal_invoices" id="generate_sh_internal_invoices" action="" method="POST">
+
+<br />
+<?php echo $this->translate('select_month'); ?> : <?php echo $this->months_selector; ?>
+<br />
+<br />
+<?php
+	if($_REQUEST['list'])
+	{
+		$list_url = '&list=' . $_REQUEST['list'];
+	}
+	else
+	{
+		$list_url = '';
+	}
+?>
+<div>
+	<label for="search"><?php echo $this->translate('quicksearch')?></label>&nbsp;&nbsp;
+	<input name="search" id="search" type="text" onkeyup="searchData(this);" />
+</div>
+	<div id="content">
+		<!--ajax loaded content here-->
+	</div>
+	<input type="submit" name="submit" value="<?php echo $this->translate('generate_multiple_sh_internal_invoices'); ?>" />
+</form>
+<script type="text/javascript">
+	ajaxCallserver({url: appbase+'invoicenew/fetchshshiftsinternaluserslist?clm=usr&ord=ASC&pgno=0&list=<?php echo $_REQUEST['list']; ?>', callLoading: pl_loading});
+</script>
+
+
+
+
+
+
+<div id="already_generated_invoices">
+	<?php echo $this->translate('invoices are already generated or this period');?>
+</div>

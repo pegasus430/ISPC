@@ -1,0 +1,538 @@
+<!--  Maria:: Migration CISPC to ISPC 22.07.2020 -->
+<?php
+//print_r($this->f_values);
+$filename = (isset($this->f_values['fileupload']['filename'])) ? $this->f_values['fileupload']['filename'] : ((isset($this->f_values['filename'])) ? $this->f_values['filename'] : '' );
+$date = (isset($this->f_values['fileupload']['date'])) ? $this->f_values['fileupload']['date'] : ((isset($this->f_values['date'])) ? $this->f_values['date'] : '' );
+$tag_name = (isset($this->f_values['fileupload']['tag_name'])) ? $this->f_values['fileupload']['tag_name'] : ((isset($this->f_values['tag_name'])) ? $this->f_values['tag_name'] : '' );
+$restricted_tags = $this->blockconfig['restricted_tags'];
+$all_tags = $this->blockconfig['all_tags'];
+$patient_file_tag_rights_arr = explode(',', $this->blockconfig['patient_file_tag_rights']);
+$patient_file_tag_rights_js = json_encode(explode(',', $this->blockconfig['patient_file_tag_rights']));
+
+if($this->pdf != true) :
+?>
+<script>
+    var restricted_tags = jQuery.parseJSON('<?php echo $this->restricted_tags_js; ?>');
+    var all_tags = jQuery.parseJSON('<?php echo $this->all_tags_js; ?>');
+    var patient_file_tag_rights = jQuery.parseJSON('<?php echo $patient_file_tag_rights_js; ?>');
+    $(document).ready(function(){
+        $('.datepicker').datepicker();
+
+        $('#tag_name').tagEditor({
+            placeholder: '<?php echo $this->translate("enter_tags"); ?>',
+            minLength: '3',
+            maxLength: '255',
+            forceLowercase: false,
+            onChange: function(ui) {
+                //element is the textarea
+                var content = ui.val();
+                var content_obj = content.split(',');
+                //console.log(content);
+                //console.log(content_obj);
+                $('#tagname_cont').val(content);
+
+                $.each(content_obj, function(index, value){
+                    if(jQuery.inArray(value, restricted_tags) >= "0")
+                    {
+                        $('#tag_name').tagEditor('removeTag', value);
+                    }
+
+                    if(jQuery.inArray(value, all_tags) < "0" && value !='')
+                    {
+                        if(jQuery.inArray('create', patient_file_tag_rights) < "0")
+                        {
+                            alert('<?php echo $this->translate('No rights to add new tags!').$this->translate('The tag').' '; ?>'+value+' '+'<?php echo $this->translate('will not be saved!'); ?>');
+                            $('#tag_name').tagEditor('removeTag', value);
+                        }
+                    }
+                });
+            }
+        });
+
+//		$('.tags_editor').live('click', function(){
+//			$('#dialog_edit_file').dialog('open');
+//		});
+//		$('#dialog_edit_file').dialog({
+//			autoOpen: false,
+//			modal: true,
+//			title: "<?php echo $this->translate('edit_file_tags'); ?>",
+//			resizable: false,
+//			draggable: false,
+//			close: function () {
+//				reset_edit_dialog();
+//			},
+//			buttons: {
+//				"<?php echo $this->translate('submit'); ?>": function () {
+////					$('#save_edit_tag').submit();
+//					reset_edit_dialog();
+//				},
+//				"<?php echo $this->translate('cancel'); ?>": function () {
+//					reset_edit_dialog();
+//					$(this).dialog("close");
+//				}
+//			}
+//		});
+
+        $('.tags_selector a').on('click', function() {
+            /*if(jQuery.inArray('use', patient_file_tag_rights) < "0")
+            {
+                alert('No rights to use tags! The tag '+$(this).attr('rel')+' will not be added!');
+                $('#tag_name').tagEditor('removeTag', $(this).attr('rel'));
+            }
+            else
+            {*/
+            $('#tag_name').tagEditor('addTag', $(this).attr('rel'));
+            //}
+        });
+
+        $('.tags_info').qtip({
+            style: {
+                name: 'cream',
+                tip: true
+            },
+            position: {
+                my: 'center right',  // Position my top left...
+                at: 'center left' // at the bottom right of...
+            },
+            show: {
+                event: 'click mouseenter'
+            },
+            hide: {
+                event: 'click mouseout'
+            }
+        });
+
+        $('a.tag').live('click', function(){
+            if($(this).attr('rel') !== '0')
+            {
+                var tag_id = $(this).attr('rel');
+            }
+            else
+            {
+                var tag_id = "all";
+            }
+
+            $('.tag_all').hide();
+            $('.tag_'+tag_id).show('slow');
+            $('a.tag').removeClass('selected');
+            $('[rel='+$(this).attr('rel')+']').addClass('selected');
+            //$(this).addClass('selected');
+        });
+/*
+        $('#file_tag').change(function(){
+            $('#tagname_cont').val($('#file_tag').val());
+        })
+*/
+        $('.qq_file_uploader_placeholder').each(function(){
+            fileuploader_create(this, ['pdf','docx','doc']);
+        });
+        //extensions = array[];
+
+        function fileuploader_create( holderId, allowed_extensions , max_filesize, multiple_files)
+        {
+            var _cid = window._cid || 0;
+            //defaults
+            var _max_filesize = 102400000;
+            var _allowed_extensions = ['pdf','docx'];
+            var _multiple_files = false;
+
+            if ( ! $.isNumeric(max_filesize) ) {
+                max_filesize = _max_filesize;
+            }
+            if ( ! $.isArray(allowed_extensions) ) {
+                allowed_extensions = _allowed_extensions;
+            }
+            if (  typeof multiple_files !== "boolean"  ) {
+                multiple_files = _multiple_files;
+            }
+
+            var holderElement, tabname, action_name;
+
+            if (typeof holderId === 'object') {
+                holderElement = holderId;
+            } else {
+                holderElement = document.getElementById(holderId);
+            }
+
+
+            if (holderElement == null) {
+                return;//holderId not found
+            }
+
+
+            var sessionParams = function sessionParams() {
+
+                var _action_name =  $(holderElement).data('action_name') || 'upload_patient_files';
+
+                var _params = {
+                    '_method'	: 'SESSION',
+                    'action'	: _action_name,
+                    'date'		: function() {
+                        return new Date();
+                    },
+                    'cid'		: _cid,
+                    'id'		: window.idpd,
+                };
+
+                return _params;
+            };
+
+            var deleteParams = function deleteParams() {
+
+                var _action_name =  $(holderElement).data('action_name') || 'upload_patient_files';
+
+                var _params = {
+                    '_method'	: 'DELETE',
+                    'action'	: _action_name,
+                    'date'		: new Date(),
+                    'cid'		: _cid,
+                    'id'		: window.idpd,
+                };
+
+                return _params;
+            };
+
+            var qq_uploader = new qq.FineUploader({
+
+                'debug': false,
+                'maxConnections' : 1,
+                'multiple' : multiple_files,
+                'element': holderElement,
+                'template': 'qq-template',
+
+                session : {
+                    endpoint : appbase+'patient/uploadify2018',
+                    params: sessionParams(),
+                },
+
+                'request': {
+                    'customHeaders': {},
+                    'endpoint': appbase+'patient/uploadify2018',
+                    'filenameParam': "qqfilename",
+                    'forceMultipart': true,
+                    'inputName': "qqfile",
+                    'method': "POST",
+                    'params': {
+                        // !! params are overwriten on submit this are for info
+                        'action'    : 'upload_patient_files',
+                        'id'        : window.idpd,
+                        //'tabname'   : holderId,
+                        'action_name': 0,//holderId,
+                        'date'      : function() {
+                            return new Date();
+                        },
+                        'multiple'  : multiple_files,
+                        //'file_date' : '',
+                        'upload_and_save' : false,
+                    },
+                    'paramsInBody': true,
+                    'totalFileSizeName': "qqtotalfilesize",
+                    'uuidName': "qquuid",
+                },
+
+
+                deleteFile: {
+                    enabled: true, // defaults to false
+                    method: "POST",
+                    endpoint: appbase+'patient/uploadify2018',
+                    customHeaders: {},
+                    params: deleteParams()
+                },
+
+
+                retry: {
+                    enableAuto: false
+                },
+
+
+                validation: {
+                    allowedExtensions: allowed_extensions,
+                    sizeLimit: max_filesize
+                },
+
+
+                messages: {
+                    typeError: translate('FineUploader_lang')['typeError'],
+                    sizeError: translate("FineUploader_lang")["sizeError"],
+                    minSizeError: translate("FineUploader_lang")["minSizeError"],
+                    emptyError: translate("FineUploader_lang")["emptyError"],
+                    noFilesError: translate("FineUploader_lang")["noFilesError"],
+                    tooManyItemsError: translate("FineUploader_lang")["tooManyItemsError"],
+                    maxHeightImageError: translate("FineUploader_lang")["maxHeightImageError"],
+                    maxWidthImageError: translate("FineUploader_lang")["maxWidthImageError"],
+                    minHeightImageError: translate("FineUploader_lang")["minHeightImageError"],
+                    minWidthImageError: translate("FineUploader_lang")["minWidthImageError"],
+                    retryFailTooManyItems: translate("FineUploader_lang")["retryFailTooManyItems"],
+                    onLeave: translate("FineUploader_lang")["onLeave"],
+                    unsupportedBrowserIos8Safari: translate("FineUploader_lang")["unsupportedBrowserIos8Safari"],
+
+                },
+
+                callbacks: {
+
+                    onSessionRequestComplete : function(response, success, rawXhrOrXdr) {
+                        if ( ! success) {
+                            return;
+                        }
+
+                        $.each(response, function(id, file) {
+
+                            var _filename = file.name;
+                            _filename = _filename.split('.').slice(0, -1).join('.');
+
+                            $('li[qq-file-id="'+id+'"] input.qquuid', $(holderElement)).val(file.uuid);
+                            $('li[qq-file-id="'+id+'"] input.qquuid_file_title', $(holderElement)).val(_filename);
+                            $('#filename_cont').val(file.name);
+                        });
+
+                    },
+
+                    /*
+                      onDelete : function (id) {
+                      },
+
+                      onSubmitDelete : function(id) {
+                      },
+                      */
+                    onSubmit: function(id, name) {
+
+                        $('input[name=btnsubmit]').attr("disabled", true);
+
+                        var el = this._options.element;
+
+                        var file_date = true;
+
+                        //setParams
+                        tabname =  $(el).data('tabname') || null;
+
+                        action_name =  $(el).data('action_name') || 'upload_patient_files';
+
+
+                        var params = {
+                            'idcidpd'       : window.idcidpd,
+                            'id'            : window.idpd, // this is for patient files
+                            //'cid'           : _cid,// use this if you link clients
+                            'action'        : action_name,
+                            'tabname'       : tabname,
+                            'date'          : function() {
+                                return new Date();
+                            },
+                            'multiple'      : multiple_files,
+                            'file_date'     : file_date,
+                            'upload_and_save' : false
+                        };
+
+                        this.setParams(params, id);
+
+                        return true;
+
+                    },
+
+                    onComplete: function(id, fileName, responseJSON){
+
+                        $('input[name=btnsubmit]').attr("disabled", false);
+
+                        if (responseJSON.success == true){
+                            var _filename = fileName.split('.').slice(0, -1).join('.')
+
+                            $('li[qq-file-id="'+id+'"] input.qquuid', $(holderElement)).val(this.getUuid(id));
+                            $('li[qq-file-id="'+id+'"] input.qquuid_file_title', $(holderElement)).val(_filename);
+                            $('#filename_cont').val(fileName);
+//                  getSize (id)
+                        } else if ('error' in responseJSON) {
+                            var _error = $.map(responseJSON.error, function(e){
+                                return e;
+                            }).join('; ');
+
+                            $('li[qq-file-id="'+id+'"] input.qquuid_file_title', $(holderElement)).val(_error);
+                        }
+
+                        if (responseJSON.redirect == true){
+                            if (typeof responseJSON.redirect_location != 'undefined') {
+
+                            } else {
+//                  window.location.reload();//redirect to self
+                            }
+
+                        }
+
+                    },
+                }
+
+
+            });
+
+            return qq_uploader;
+        }
+
+    })
+
+</script>
+
+<div class="block_fileupload">
+
+    <table border="0" cellspacing="2" cellpadding="2" style="width:100%;">
+        <td colspan="2" align="left" class="file_upload"><b><?php echo $this->translate('[Add file]') ?></b></td>
+        <tr>
+            <td>Datum</td>
+            <td>
+                <input name="fileupload[date]" class="date datepicker" value="<?php if($this->f_values['fileupload']['date']){echo $this->f_values['fileupload']['date'];}else{echo date("d.m.Y");;} ?>" id="file_date">
+            </td>
+        </tr>
+        <tr>
+            <td><?php echo $this->translate('uploadfile_user_new') ?>*</td>
+            <td>
+                <div id="qq_file_upload" class="qq_file_uploader qq_file_uploader_placeholder" data-action_name="upload_patient_files" data-tabname="0"><noscript>Please enable JavaScript to use file uploader</noscript></div>
+            </td>
+        </tr>
+
+        <tr>
+            <td width="20%" align="left" class="file_upload">
+                <label for="tag_name"><?php echo $this->translate('file_upload_tags_new') ?></label>
+            </td>
+            <td colspan="3" align="left" class="tags_sel_cell file_upload">
+                <!-- <td colspan="2" height="28" align="left" style="padding: 0px; vertical-align: top;" class="tags_sel_cell"> -->
+                <div class="clearer"></div>
+                <?php if(in_array('create', $patient_file_tag_rights_arr))
+										{
+										?>
+                <textarea id="tag_name" name="tag_name"></textarea>
+                <?php } else {
+												if(in_array('use', $patient_file_tag_rights_arr))
+												{
+											?>
+                <textarea id="tag_name" name="tag_name"></textarea>
+                <?php } else { ?>
+                <textarea id="no_tag" name="no_tag" placeholder="<?php echo $this->translate('enter_tags'); ?>" style="width:100%; height: 100%;" disabled></textarea>
+                <?php } ?>
+                <?php } ?>
+            </td>
+            <td align="left" class="err file_upload"></td>
+            <!-- <td width="39%" height="28" align="left" style="vertical-align: top;">&nbsp;</td> -->
+        </tr>
+
+
+
+    <tr>
+        <td colspan="2">
+    <input type="hidden" name="fileupload[filename]" id="filename_cont" value="<?php echo $this->f_values['fileupload']['filename'];  ?>" />
+    <input type="hidden" name="fileupload[tag_name]" id="tagname_cont" value="<?php echo $this->f_values['fileupload']['tag_name'];  ?>" />
+
+    <div style="width: 100%;height:auto;display: inline-block;">
+        <?php if($this->system_tags):
+        if(in_array('use', $patient_file_tag_rights_arr))
+        {
+        $first_tag = 0;
+        ?>
+        <ul class="tags tags_selector">
+            <?php foreach($this->system_tags as $k_ctag => $vs_ctag): ?>
+            <?php if(!in_array($vs_ctag['tag'], $this->restricted_tags)): ?>
+            <?php if ($first_tag == 0) { ?>
+            <li>
+                <a id="jump_here" href="javascript:void(0);" rel="<?php echo $vs_ctag['tag']; ?>" class="system"><?php echo $vs_ctag['tag']; ?></a>
+            </li>
+            <?php
+													$first_tag++;
+												} else { ?>
+            <li>
+                <a href="javascript:void(0);" rel="<?php echo $vs_ctag['tag']; ?>" class="system"><?php echo $vs_ctag['tag']; ?></a>
+            </li>
+            <?php } endif; ?>
+            <?php endforeach; ?>
+        </ul>
+        <?php } else {
+										$first_tag = 0;
+									?>
+        <ul class="tags">
+            <?php foreach($this->system_tags as $k_ctag => $vs_ctag): ?>
+            <?php if(!in_array($vs_ctag['tag'], $this->restricted_tags)): ?>
+            <?php if ($first_tag == 0) { ?>
+            <li>
+                <a id="jump_here" href="javascript:void(0);" rel="<?php echo $vs_ctag['tag']; ?>" class="system syst_use"><?php echo $vs_ctag['tag']; ?></a>
+            </li>
+            <?php
+												$first_tag++;
+												} else { ?>
+            <li>
+                <a href="javascript:void(0);" rel="<?php echo $vs_ctag['tag']; ?>" class="system syst_use"><?php echo $vs_ctag['tag']; ?></a>
+            </li>
+            <?php } endif; ?>
+            <?php endforeach; ?>
+        </ul>
+        <?php } ?>
+        <?php endif; ?>
+
+        <?php if($this->blockconfig['client_tags']):
+        if(!$this->blockconfig['system_tags'])
+        {
+        $first_tag = 0;
+        }
+        if(in_array('use', $patient_file_tag_rights_arr))
+        {
+        ?>
+        <ul class="tags tags_selector">
+            <?php foreach($this->blockconfig['client_tags'] as $k_ctag => $v_ctag): ?>
+            <?php if(!in_array($v_ctag['tag'], $restricted_tags)): ?>
+            <?php if(!$this->blockconfig['system_tags'] && $first_tag == 0) { ?>
+            <li>
+                <a id="jump_here" href="javascript:void(0);" rel="<?php echo $v_ctag['tag']; ?>" class="custom"><?php echo $v_ctag['tag']; ?></a>
+            </li>
+            <?php
+														$first_tag++;
+													} else { ?>
+            <li>
+                <a href="javascript:void(0);" rel="<?php echo $v_ctag['tag']; ?>" class="custom"><?php echo $v_ctag['tag']; ?></a>
+            </li>
+            <?php } endif; ?>
+            <?php endforeach; ?>
+        </ul>
+        <?php } else { ?>
+        <ul class="tags">
+            <?php foreach($this->blockconfig['client_tags'] as $k_ctag => $v_ctag): ?>
+            <?php if(!in_array($v_ctag['tag'], $this->restricted_tags)): ?>
+            <?php if(!$this->blockconfig['system_tags'] && $first_tag == 0) { ?>
+            <li>
+                <a id="jump_here" href="javascript:void(0);" rel="<?php echo $v_ctag['tag']; ?>" class="custom cust_use"><?php echo $v_ctag['tag']; ?></a>
+            </li>
+            <?php
+													$first_tag++;
+													} else { ?>
+            <li>
+                <a href="javascript:void(0);" rel="<?php echo $v_ctag['tag']; ?>" class="custom cust_use"><?php echo $v_ctag['tag']; ?></a>
+            </li>
+            <?php } endif; ?>
+            <?php endforeach; ?>
+        </ul>
+        <?php } ?>
+        <?php endif; ?>
+    </div>
+        </td>
+    </tr>
+    </table>
+</div>
+<?php else: ?>
+<div class="block_fileupload">
+    <table border="0" cellspacing="2" cellpadding="2" style="width:100%;">
+        <tr>
+            <td>Datei</td>
+            <td>
+                <?php echo $filename; ?>
+            </td>
+        </tr>
+        <tr>
+            <td>Datum</td>
+            <td>
+                <?php echo $date; ?>
+            </td>
+        </tr>
+        <tr>
+            <td>Etikette(n)</td>
+            <td>
+                <?php echo $tag_name; ?>
+            </td>
+
+        </tr>
+    </table>
+</div>
+
+<?php endif; ?>

@@ -1,0 +1,217 @@
+<gridrow>
+	<phpscript>
+		$invoice_type = "nie_patient_invoice";
+		$rowspans = $view->rowspan_rows;
+		$sapv_falls_str = '';
+		$sapv_falls = array();
+		$admission_falls_str = '';
+		$admission_falls = array();
+		$count++;
+		$current_month_fall_html = "";
+		$selected_element_month = "";
+		$selected = "";
+		
+		$encr_id = str_replace('=','', Pms_Uuid::encrypt($id));
+		
+		$epid = strtolower($epid);
+		$epid_upper = strtoupper($epid);
+		if($admission_date != '0000-00-00 00:00:00')
+		{
+			$admission_date = $admission_date;
+		}
+		else 
+		{
+			$admission_date= ' - ';
+		}
+		
+		if($discharge_date != '0000-00-00 00:00:00')
+		{
+			$discharge_date = $discharge_date;
+		}
+		else 
+		{
+			$discharge_date= ' - ';
+		}
+		
+		$sort_vars = $_REQUEST['clm'].'|'.$_REQUEST['ord'].'|'.(int)$_REQUEST['pageno'];
+		
+		$sapv_falls[] =  '<ul class="sapv_flow">';
+		$sapv_falls_li = array();
+		foreach($this->sapv_periods[$ipid] as $k_fall_id => $v_fall_details)
+		{
+			if(in_array($k_fall_id, $view->invoiced_sapv_ids))
+			{
+				$selected = 'generated_flow_element';
+			}
+			else
+			{
+				$selected = '';
+			}
+			
+			$sapv_falls_li[]= '<li class="sapv_flow_element '.$selected.'" id="'.$k_fall_id.'" data-patientid="'.$epid.'" data-sapvid="'.$k_fall_id.'" data-sortvars="'.$sort_vars.'"
+			data-check_invoice_type = "'.$invoice_type.'"
+			data-check_period_type = "sapvid" 
+			data-check_period_id = "'.$k_fall_id.'" 
+			data-check_period_start ="'.$v_fall_details['start'].'" 
+			data-check_period_end ="'.$v_fall_details['end'].'" 
+			>
+			<input type="radio" class="sapv_radio selected_patient_'.$epid.'_period" name="selected_patient_period['.$epid.']" id="selected_patient_'.$epid.'_period" value="'.$k_fall_id.'" 
+			data-patientid="'.$epid.'" 
+			data-check_invoice_type = "'.$invoice_type.'"
+			data-check_period_type = "sapvid" 
+			data-check_period_id = "'.$k_fall_id.'" 
+			data-check_period_start ="'.$v_fall_details['start'].'" 
+			data-check_period_end ="'.$v_fall_details['end'].'" 
+			
+			/>'.$v_fall_details['start'].' - '.$v_fall_details['end'].'</li>';
+		}
+		$sapv_falls[] = implode('<li class="sapv_flow_arrow">&#8658;</li>', $sapv_falls_li);
+		$sapv_falls[] =  '</ul>';
+		
+		$empty_row_class = "";
+		if(!empty($sapv_falls_li))
+		{
+			$sapv_falls_str = implode('', $sapv_falls);
+			//$patient_checkbox = '<input type="checkbox" name="selected_patient[]" id="selected_patient_'.$epid.'" class="selected_patient_chk" value="'.$epid.'" data-patientid="'.$epid.'" />';
+		}
+		else
+		{
+			$empty_row_class = "empty";
+			$sapv_falls_str = $view->translate('no_sapv_falls');
+			//$patient_checkbox = '';
+		}
+		$patient_checkbox = '<input type="checkbox" name="selected_patient[]" id="selected_patient_'.$epid.'" class="selected_patient_chk" value="'.$epid.'" data-patientid="'.$epid.'" />';
+		
+		$sapv_falls_html = '';
+		if($view->billing_method == "sapv" || $view->billing_method == "both"){
+			$sapv_falls_html = '<tr class="'.$empty_row_class.' blocks_row"><td colspan="2"><strong>'.$view->translate('sapv_fall').'</strong></td><td colspan="4">'.$sapv_falls_str.'</td></tr>';
+		}
+		
+		$selected_month = $view->selected_month;
+		$selected_month_details = $view->selected_month_details;
+		$selected_month_period = date('d.m.Y', strtotime($selected_month_details['start'])).' - '.date('d.m.Y', strtotime($selected_month_details['end']));
+		$selected_period_START = date('d.m.Y', strtotime($selected_month_details['start']));
+		if(strtotime($selected_month_details['end']) > strtotime(date("d.m.Y")) ){
+			$selected_period_END =  date('d.m.Y');		
+		} else{
+			$selected_period_END = date('d.m.Y', strtotime($selected_month_details['end']));
+		}
+		//$selected_period_END =  date('d.m.Y', strtotime($selected_month_details['end']));		
+		
+		$selected_month_period_checker = date('Y_m_d', strtotime($selected_month_details['start'])).'_'.date('Y_m_d', strtotime($selected_month_details['end']));
+		
+		$invoice_month_id = $ipid.'_'.$selected_month_period_checker;
+
+		if(in_array($invoice_month_id,$view->invoiced_fall_ids) ||   in_array($ipid,$view->invoiced_month_fall_ipids))
+		{
+			$selected_element_month = 'generated_flow_element';
+		}
+		else
+		{
+			$selected_element_month = '';
+		}
+		
+		$current_month_fall = '<ul class="sapv_flow">';
+		$current_month_fall .= '<li class="current_month_flow_element '.$invoice_month_id.' '.$selected_element_month.'" id="'.$epid.$selected_month.'" data-patientid="'.$epid.'" data-list="'.$selected_month.'" data-sortvars="'.$sort_vars.'"
+		
+			data-check_invoice_type = "'.$invoice_type.'"
+			data-check_period_type = "list" 
+			data-check_period_id = "'.$selected_month.'" 
+			data-check_period_start ="'.$selected_period_START.'" 
+			data-check_period_end ="'.$selected_period_END.'">
+			<input type="radio" class="sapv_radio selected_patient_'.$epid.'_period" name="selected_patient_period['.$epid.']" id="selected_patient_'.$epid.'_period" value="0" data-patientid="'.$epid.'"
+			data-check_invoice_type = "'.$invoice_type.'"
+			data-check_period_type = "list" 
+			data-check_period_id = "'.$selected_month.'" 
+			data-check_period_start ="'.$selected_period_START.'" 
+			data-check_period_end ="'.$selected_period_END.'"/>
+			'.$selected_month_period.'
+		</li>';
+		$current_month_fall .= '</ul>';
+		
+		$current_month_fall_html = '';
+		if($view->billing_method == "month" || $view->billing_method == "both")
+		{	
+			$current_month_fall_html = '<tr class="blocks_row"><td colspan="2"><strong>'.$view->translate('month_fall').'</strong></td><td colspan="4">'.$current_month_fall.'</td></tr>';
+		}
+		
+		
+		
+		//admissions fall
+		$admission_falls[] =  '<ul class="sapv_flow">';
+		$admission_falls_li = array();
+		$selected_month_period_checker="";
+		
+		foreach($this->admission_periods[$ipid] as $k_fall_id => $v_fall_details)
+		{
+		
+		
+			$selected_month_period_checker = date('Y_m_d', strtotime($v_fall_details['start'])).'_'.date('Y_m_d', strtotime($v_fall_details['end']));
+		
+			$invoice_admission_id = $ipid.'_'.$selected_month_period_checker;
+		
+			if(in_array($k_fall_id, $view->invoiced_admissions_ids) || in_array($invoice_admission_id,$view->invoiced_fall_ids))
+			{
+				$selected = 'generated_flow_element';
+			}
+			else
+			{
+				$selected = '';
+			}
+			
+			$admission_falls_li[]= '<li class="sapv_flow_element '.$selected.'" id="'.$k_fall_id.'" data-patientid="'.$epid.'" data-admission="'.$k_fall_id.'" data-sortvars="'.$sort_vars.'"
+			data-check_invoice_type = "'.$invoice_type.'"
+			data-check_period_type = "admission" 
+			data-check_period_id = "'.$k_fall_id.'" 
+			data-check_period_start ="'.$v_fall_details['start'].'" 
+			data-check_period_end ="'.$v_fall_details['end'].'"
+			>
+			<input type="radio" class="sapv_radio selected_patient_'.$epid.'_period  '.$invoice_admission_id.' " name="selected_patient_period['.$epid.']" id="selected_patient_'.$epid.'_period" value="admission_'.$k_fall_id.'" 
+			data-patientid="'.$epid.'" 
+			data-check_invoice_type = "'.$invoice_type.'"
+			data-check_period_type = "admission" 
+			data-check_period_id = "'.$k_fall_id.'" 
+			data-check_period_start ="'.$v_fall_details['start'].'" 
+			data-check_period_end ="'.$v_fall_details['end'].'"/>
+			'.$v_fall_details['start'].' - '.$v_fall_details['end'].'</li>';
+		}
+		$admission_falls[] = implode('<li class="sapv_flow_arrow">&#8658;</li>', $admission_falls_li);
+		$admission_falls[] =  '</ul>';
+		
+		$empty_row_class = "";
+		if(!empty($admission_falls_li))
+		{
+			$admission_falls_str = implode('', $admission_falls);
+			//$patient_checkbox = '<input type="checkbox" name="selected_patient[]" id="selected_patient_'.$epid.'" class="selected_patient_chk" value="'.$epid.'" data-patientid="'.$epid.'" />';
+		}
+		else
+		{
+			$empty_row_class = "empty";
+			$admission_falls_str = $view->translate('no_sapv_falls');
+			//$patient_checkbox = '';
+		}
+		$patient_checkbox = '<input type="checkbox" name="selected_patient[]" id="selected_patient_'.$epid.'" class="selected_patient_chk" value="'.$epid.'" data-patientid="'.$epid.'" />';
+		
+		$admission_falls_html = '';
+		if($view->billing_method == "admission" || $view->billing_method == "both"){
+			$admission_falls_html = '<tr class="'.$empty_row_class.' blocks_row"><td colspan="2"><strong>'.$view->translate('admission_fall').'</strong></td><td colspan="4">'.$admission_falls_str.'</td></tr>';
+		}
+		
+
+	</phpscript>
+	<tr id="listpharmacy_trcontent[[count]]" class="row">
+		<td rowspan="[[rowspans]]">
+			[[patient_checkbox]]
+			[[count]]
+		</td>
+		<td>[[epid_upper]]</td>
+		<td>[[last_name]]</td>
+		<td>[[first_name]]</td>
+		<td>[[admission_date]]</td>
+		<td>[[discharge_date]]</td>
+		<td></td>
+	</tr>	
+	[[admission_falls_html]]
+	[[sapv_falls_html]]
+	[[current_month_fall_html]]
+</gridrow>

@@ -1,0 +1,449 @@
+<div id="layout_result_messages">
+    <?php if (count($this->SuccessMessages)) : ?>
+    <!--  SuccessMessages -->
+        <ul id="messages" class="success">
+        <?php foreach ($this->SuccessMessages as $message) : ?>
+            <li><?php echo $this->escape($message); ?></li>
+        <?php endforeach; ?>
+        </ul>
+    <?php endif; ?>
+    <?php if (count($this->ErrorMessages)) : ?>
+    <!--  ErrorMessages -->
+        <ul id="messages" class="err">
+        <?php foreach ($this->ErrorMessages as $message) : ?>
+            <li><?php echo $this->escape($message); ?></li>
+        <?php endforeach; ?>
+        </ul>
+    <?php endif; ?>
+</div>
+
+<?php
+    $this->headScript()->appendFile(RES_FILE_PATH.'/javascript/data_tables/jquery.dataTables.js');
+    $this->headScript()->appendFile(RES_FILE_PATH.'/javascript/data_tables/dataTables.jqueryui.js');
+    $this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/data_tables/dataTables.jqueryui.css');
+
+    
+    $this->headScript()->appendFile(RES_FILE_PATH.'/javascript/livesearch/getunifiedprovider.js');
+    $this->headScript()->appendFile(RES_FILE_PATH.'/javascript/livesearch/getzipcities.js');
+    
+    
+    //add file uploader
+    $this->headLink()->appendStylesheet(RES_FILE_PATH.'/javascript/fine-uploader/fine-uploader.css');
+    $this->headScript()->appendFile(RES_FILE_PATH.'/javascript/fine-uploader/fine-uploader.min.js');
+    //rendered-add the fine-uploader file-uploader template
+    //$qqtemplate = $this->render("templates/qq_fileupload_template_small_2017_09.html");
+//     $qqtemplate = Pms_Template::createTemplate(array(), 'templates/qq_fileupload_template_multiple_2018_04.html');
+    $qqtemplate = Pms_Template::createTemplate(array(), 'templates/qq_fileupload_template_multiple_2018_09.html');
+    $this->headScript()->setAllowArbitraryAttributes(true)->appendScript($qqtemplate, 'text/template', array("id" => "qq-template", "noescape" => true));
+
+    $this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/page-css/projects.css');
+    
+    function return_bytes($val) {
+        $val = trim($val);
+        $last = strtolower($val[strlen($val)-1]);
+        switch($last) {
+            // The 'G' modifier is available since PHP 5.1.0
+            case 'g':
+                $val *= (1024 * 1024 * 1024); //1073741824
+                break;
+            case 'm':
+                $val *= (1024 * 1024); //1048576
+                break;
+            case 'k':
+                $val *= 1024;
+                break;
+        }
+    
+        return $val;
+    }
+
+    //$upload_max_filesize = '10M'; ??
+    $upload_max_filesize = ini_get('upload_max_filesize');
+    $upload_max_filesize_bytes = return_bytes($upload_max_filesize);  
+?>
+
+<script type="text/javascript">
+var selected_tab = '<?=$this->selected_tab;?>';
+var _max_filesize = <?=(int)$upload_max_filesize_bytes ?>;
+var DEBUGMODE = <?=APPLICATION_ENV == 'development' ? 'true' : 'false' ?>;
+</script>
+
+<!-- right button back to projects -->
+<?= $this->formButton('back_to_projects', $this->translate('[Back to Projects]'), array('style'=> 'float:right', 'onClick' => 'javascript:location.href=\''.APP_BASE.'projects/overview\''))?>
+<!-- datapicker image -->
+<div id="calImgs" style="display: none;">
+    <img id="calImg" src="<?php echo RES_FILE_PATH; ?>/images/calendar.png" alt="Popup" class="trigger">
+</div>
+
+<!-- project name description and date -->
+<h1><?=$this->project['name']?></h1>
+<?= ! empty($this->project['description']) ? nl2br($this->escape($this->project['description'])) . '<br/>' : ' ';?>
+<?=$this->translate('[Projects Open on]')?> : <?=$this->project['open_from'] . ' - ' . $this->project['open_till'];?>
+<br/>
+<?=$this->translate('[Projects Prepare on]')?> : <?=$this->project['prepare_from'] . ' - ' . $this->project['prepare_till'];?>
+<br/>
+<?=$this->translate('[Projects Created on]')?> : <?=$this->project['create_date']?> - <?=$this->project['create_user_nice_name'];?>
+<br/>
+<!-- tab_container start  -->
+<div class="tab_container" >
+    <!-- extra div start  -->
+    <div>
+        <div id="tabs_project">
+            <!-- Tab Navigation -->
+            <ul>
+                <li><a href="#tabs-1"><?=$this->translate('[Projects Course]');?></a></li>
+                <li><a href="#tabs-2"><?=$this->translate('[Projects Files]');?></a></li>
+                <li><a href="#tabs-3"><?=$this->translate('[Projects Work]');?></a></li>
+                <li><a href="#tabs-4"><?=$this->translate('[Projects Outside Participants]');?></a></li>
+            </ul>
+            <!-- Tab Panel ::  Project Course -->
+            <div id="tabs-1">
+                <div id="project-course">
+                    <?=$this->translate('[Project Course legend]')?>                    
+                    
+                    <table class="selector_course_table datatable">
+                    
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th style="display:none">create_date</th> <!-- hidden -->
+                                <th><?=$this->translate('user')?> / <?=$this->translate('date')?></th>
+                                <th><?=$this->translate('[Project Work Description]')?> / <?=$this->translate('[Project Work Date]')?></th>
+                                <th><?=$this->translate('deletes')?></th>
+                            </tr>
+                        </thead>
+                    
+                        <tbody>
+                        <?php $ProjectCourse = $this->project['ProjectCourse'];?>
+                        <?php foreach ($ProjectCourse as $row) : ?>
+                            <tr>
+                                <td></td>
+                                <td  style="display:none"><?= $row['create_date'];?></td> <!-- hidden -->
+                                <td>
+                                    <span class="entry_date_block_icon"><?= $row['create_date_formated'];?></span>
+                                    <br/>
+                                    <span class="course_user_block_icon"><?= $row['create_user_nice_name'];?></span>
+                                </td>
+                                
+                                <?php switch ($row['__type']) : 
+                                    case "ProjectComments" :
+                                ?>
+                                <td>
+                                    <strong><?=$this->translate('comments');?> : </strong>
+                                    <?= nl2br($this->escape($row['comment']));?>
+                                </td>
+                                <td><i onClick="deleteProjectEntryDialog('<?=$row['project_ID']?>','<?=$row['__type']?>', '<?=$row['project_comment_ID']?>', 'add_project_comments')" class="icon-btn action action_delete" data-btnaction="project-delete" title="<?=$this->translate('delete')?>"></i></td>
+                                
+                                <?php 
+                                break;
+                                case  "ProjectParticipants" : 
+                                ?>
+                                <td>
+                                    <strong><?=$this->translate('[Project Work done by]');?></strong>
+                                    <?= $row['participant_nice_name'];?> 
+                                    <br/>
+                                    
+                                    <strong><?=$this->translate('[Project Work Description]');?></strong>
+                                    <?= nl2br($this->escape($row['work_description']));?>
+                                    <br/>
+                                    
+                                    <strong><?=$this->translate('[Project Work Date]');?></strong>
+                                    <?= $row['work_date'];?>
+                                </td>
+                                <td><i onClick="deleteProjectEntryDialog('<?=$row['project_ID']?>','<?=$row['__type']?>', '<?=$row['project_participant_ID']?>', 'add_project_comments')" class="icon-btn action action_delete" data-btnaction="project-delete" title="<?=$this->translate('delete')?>"></i></td>
+                                
+                                <?php 
+                                break;
+                                case "ProjectFiles" : 
+                                ?>
+                                 <td>
+                                    <strong><?=$this->translate('[File]');?> : </strong>
+                                    <a href="misc/clientfile?doc_id=<?=$row['id']?>" style="display:inline-block;">
+                                        <?= nl2br($this->escape($row['pf.title']));?>
+                                    </a>
+                                </td>
+                                <td>
+                                    <a href="misc/uploadfiles?delid=<?=$row['id']?>&project_ID=<?=$this->project['project_ID']?>&selected_tab=add_project_comments" class="delete_link" rel="<?=$row['id']?>"><img src="<?=RES_FILE_PATH?>/images/action_delete.png" border="0" /></a>
+                                </td>
+                                
+                                <?php 
+                                break;
+                                case "ProjectOutsideParticipants" : 
+                                ?>
+                                <td>
+                                    <strong><?=$this->translate('[Project Outside Participant]');?> : </strong>
+                                    <?= $this->escape($row['nice_name']);?>
+                                    <?php if ( ! empty($row['comment'])) : ?>
+                                        </br>
+                                        <strong><?=$this->translate('comment');?> : </strong>
+                                        <?= nl2br($this->escape($row['comment']));?>
+                                    <?php endif; ?>
+                                </td>
+                                <td><i onClick="deleteProjectEntryDialog('<?=$row['project_ID']?>','<?=$row['__type']?>', '<?=$row['project_outside_participant_ID']?>', 'add_project_outside_participant')" class="icon-btn action action_delete" data-btnaction="project-delete" title="<?=$this->translate('delete')?>"></i></td>
+                                
+                                
+                                <?php 
+                                break;
+                                endswitch; 
+                                ?>
+                                
+                            </tr>
+                        <?php endforeach;?>
+                        
+                        
+                        </tbody>
+                    </table>
+                    
+                    <form action="<?=APP_BASE . 'projects/overview'?>" method="post">
+                        <?=$this->formHidden('step', 'add_project_comments');?>
+                        <?=$this->formHidden('project_ID', $this->project['project_ID']);?>
+                        
+                        <fieldset>
+                            <legend><?= $this->translate('[Add comment]');?></legend>                    
+                            <?=$this->formTextarea('comment','', array('placeholder'=> $this->translate('[Add comment]') , 'class'=>'elastics', 'rows' => 3));?>
+                            <br/>
+                            <?=$this->formButton('button_action', $this->translate('save'), array('type' => 'submit', 'class'=>'btnSubmit2018'));?>
+                        </fieldset>
+                    </form>
+                    
+                </div>
+            </div>
+            
+            <!-- Tab Panel ::  Project Files -->
+            <div id="tabs-2">
+                <div id="project-files">
+                    <?=$this->translate('[Project Files legend]')?>
+                    
+                    <table  border="0" align="left" cellpadding="0" cellspacing="0"  class="selector_file_table datatable file_table_<?=$this->project['project_ID']?>" style="width: 100%">
+                    	
+                    	<thead>
+                    		<tr>
+                    			<th align="left" valign="top">#</th>
+                    			<th align="left" valign="top"><strong><?=$this->translate('date');?></strong></th>
+                    			<th align="left" valign="top"><strong><?=$this->translate('date_hidden');?></strong></th>
+                    			<th align="left" valign="top"><strong><?=$this->translate('title');?></strong></th>
+                    			<th align="left" valign="top"><strong><?=$this->translate('filetype');?></strong></th>
+                    			<th align="left" valign="top"><strong><?=$this->translate('uploadby');?></strong></th>
+                    			<th align="left" valign="top"><strong><?=$this->translate('deletes');?></strong></th>
+                    		</tr>
+                		</thead>
+                		
+                		<tbody>
+                		<?php $ProjectFiles = $this->project['ProjectFiles'];?>
+                		<?php
+                		$filetypearray = array("zip"=>"zip.png","msword"=>"word.png","vnd.openxmlformats-officedocument.wordprocessingml.document"=>"word.png","docx"=>"word.png","excel"=>"excel.png","xls"=>"excel.png","XLSX"=>"excel.png","vnd.openxmlformats-officedocument.spreadsheetml.sheet"=>"excel.png","pdf"=>"pdf.png","txt"=>"text.png","text"=>"text.png","plain"=>"text.png","vnd.ms-powerpoint"=>"powerpoint.png","vnd.openxmlformats-officedocument.presentationml.presentation"=>"powerpoint.png","jpeg"=>"file-jpg.png","jpg"=>"file-jpg.png","gif"=>"file-gif.png");
+                        
+                        $clientid_enc = array();
+                
+                		foreach ($ProjectFiles as $keyf=>$fileData) :
+                
+                		    $fileData['title'] = $fileData['pf.title'];
+                		    $fileData['file_type'] = $fileData['pf.file_type'];
+                    		$filetype = strtoupper($fileData['file_type']);
+                    		$file_type = $filetypearray[$fileData['file_type']];
+                
+                            if ( ! isset($clientid_enc[$fileData['clientid']])) {
+                                $clientid_enc[$fileData['clientid']] = Pms_Uuid::encrypt($fileData['clientid']);
+                            }
+                
+                    		if ($fileData['isdeleted'] == 1) {
+                    			$title = "<strike>".$fileData['title']."</strike>";
+                    			$deltete = " - ";
+                    			$prefix = " - ".$this->translate('deleted');
+                    		} else {
+                    			$title = '<a href="misc/clientfile?doc_id='.$fileData[id] . '&cid=' . $clientid_enc[$fileData['clientid']] . '">'.$fileData['title'].'</a>';
+                    			$delete = '<a href="misc/uploadfiles?delid='.$fileData[id] . '&cid=' . $clientid_enc[$fileData['clientid']] . '&project_ID=' . $this->project['project_ID'] . '&selected_tab=add_project_files" class="delete_link" rel="'.$fileData[id].'" ><img src="'.RES_FILE_PATH.'/images/action_delete.png" border="0" /></a>';
+                    			$prefix = "";
+                    		}
+                    		
+                    		if ($fileData['isdeleted'] != 1) :
+                		?>
+                    		<tr class="row">
+                                <td height="20" align="center" valign="top"></td>
+                    			<td align="left" valign="top"><?=date("d.m.Y H:i", strtotime($fileData['create_date']))?></td>
+                    			<td align="left" valign="top"><?=$fileData['create_date']?></td>
+                    			<td align="left" valign="top"><?=$title.$prefix?></td>
+                    			<td align="left" valign="top"><?=$filetype?></td>
+                    			<td align="left" valign="top"><?=$fileData['create_user_nice_name']?></td>
+                    			<td align="left" valign="top"><?=$delete?></td>
+                    		</tr>
+                		<?php 
+                		  endif;
+                		endforeach;
+                		?>
+                		</tbody>
+                		
+                	</table>
+                  
+                    <form action="<?=APP_BASE . 'projects/overview'?>" method="post">
+                        <?=$this->formHidden('step', 'add_project_files');?>
+                        <?=$this->formHidden('project_ID', $this->project['project_ID']);?>
+                       
+                        <fieldset>
+                            <legend><?= $this->translate('uploadnewfile');?> (<?= $this->translate('maxfilesize'); ?>: <?=$upload_max_filesize;?>B)</legend>                                 
+                            <div id="qq_file_uploader_placeholder" class='qq_file_uploader_placeholder qq_file_uploader_multiple' data-parent='fieldset' data-action_name="<?=Projects::CLIENT_FILES_TABNAME?>" data-tabname="0">
+                            	<noscript>
+                            		Please enable JavaScript to use file uploader.
+                            	</noscript>
+                            </div>
+                            <br/>
+                    
+                            <?=$this->formButton('button_action', $this->translate('save'), array('type' => 'submit', 'class'=>'btnSubmit2018'));?>
+                        </fieldset>
+                    </form>
+                    
+                </div>
+            </div>
+            
+            <!-- Tab Panel ::  Project Work -->
+            <div id="tabs-3">
+                <div id="project-work">
+                    <?=$this->translate('[Project Work legend]')?>
+                    <?php $ProjectParticipants = $this->project['ProjectParticipants'];?>
+                    <table class="selector_work_table datatable">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th><?=$this->translate('[Project Work done by]')?></th>
+                                <th><?=$this->translate('[Project Work Description]')?></th>
+                                <th><?=$this->translate('[Project Work Date]')?></th>
+                                <th>work_date</th> <!-- hidden -->
+                                <th><?=$this->translate('[Project Work Duration]')?></th>
+                                <th><?=$this->translate('[Project Work Driving Distance]')?></th>
+                                <th><?=$this->translate('[Project Work Driving Time]')?></th>
+                                <th><?=$this->translate('[Project actions]')?></th>
+                                
+                                <!-- hidden -->
+                                <th style="display: none">pkey</th>
+                                <th style="display: none">participant_type</th>
+                                <th style="display: none">participant_id</th>
+                                <th style="display: none">participant_name</th>
+                            </tr>
+                        </thead>
+                    
+                        <tbody>
+                        <?php foreach ($ProjectParticipants as $row) : ?>
+                            <tr>
+                                <td></td>
+                                <td><?= $row['participant_nice_name'];?></td>
+                                <td><?= $row['work_description'];?></td>
+                                <td><?= date('d.m.Y', strtotime($row['work_date']));?></td>
+                                <td><?= $row['work_date'];?></td><!-- hidden -->
+                                <td><?= $row['work_duration'];?></td>
+                                <td><?= $row['work_driving_distance'];?></td>
+                                <td><?= $row['work_driving_time'];?></td>
+                                <td></td> <!-- action -->
+                                
+                                <!-- hidden -->
+                                <td style="display: none"><?= $row['project_participant_ID'];?></td> 
+                                <td style="display: none"><?= $row['participant_type'];?></td>
+                                <td style="display: none"><?= $row['participant_id'];?></td>
+                                <td style="display: none"><?= $row['participant_name'];?></td>
+                            </tr>
+                        <?php endforeach;?>
+                        </tbody>
+                    
+                    </table>
+                    
+                    
+                    <form action="<?=APP_BASE . 'projects/overview'?>" method="post" class="livesearchFormEvents">
+                        <?=$this->formHidden('step', 'add_project_work');?>
+                        <?=$this->formHidden('project_ID', $this->project['project_ID']);?>
+                        <table>
+                        <tr>
+                            <td colspan=2>
+            					<a class="add_new_shv_patient_line" href="/index/PleaseEnableJavascript" onclick="project_work_add(this,'project_work');return false;">
+            					   <img width="20" height="20" src="<?php echo RES_FILE_PATH;  ?>/images/edit_add.png">
+            					   <span><?php echo $this->translate('add single work to patient')?></span>
+                                </a>
+                            </td>
+                        </tr>
+                        
+                        </table>
+                    </form>
+                    
+                </div>
+            </div>
+           
+           
+           <!-- Tab Panel ::  Project Outside Participants -->
+			<!-- ISPC-2608 Dragos Added actions and id columns -->
+            <div id="tabs-4">
+                <div id="project-outside-participants">
+                    <?=$this->translate('[Project Outside Participants legend]')?>
+                    <?php $ProjectOutsideParticipants = $this->project['ProjectOutsideParticipants'];?>
+                    <table class="selector_outside_participants_table datatable">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th><?=$this->translate('first_name')?></th>
+                                <th><?=$this->translate('last_name')?></th>
+                                <th><?=$this->translate('title_prefix')?></th>
+                                <th><?=$this->translate('title_suffix')?></th>
+                                <th><?=$this->translate('salutation')?></th>
+                                <th><?=$this->translate('street')?></th>
+                                <th><?=$this->translate('zip')?></th>
+                                <th><?=$this->translate('city')?></th>
+                                <th><?=$this->translate('email')?></th>
+                                <th><?=$this->translate('mobile')?></th>
+                                <th><?=$this->translate('phone')?></th>
+                                <th><?=$this->translate('comment')?></th>
+								<th><?=$this->translate('[Project actions]')?></th>
+								<th><!-- hidden id --></th>
+                            </tr>
+                        </thead>
+                    
+                        <tbody>
+                        <?php foreach ($ProjectOutsideParticipants as $row) :?>
+                            <tr>
+                                <td></td>
+                                <td><?= $row['first_name'];?></td>
+                                <td><?= $row['last_name'];?></td>
+                                <td><?= $row['title_prefix'];?></td>
+                                <td><?= $row['title_suffix'];?></td>
+                                <td><?= $row['salutation'];?></td>
+                                <td><?= $row['street'];?></td>
+                                <td><?= $row['zip'];?></td>
+                                <td><?= $row['city'];?></td>
+                                <td><?= $row['email'];?></td>
+                                <td><?= $row['mobile'];?></td>
+                                <td><?= $row['phone'];?></td>
+                                <td><?= $row['comment'];?></td>
+								<td>
+									<i class="icon-btn action action_edit" data-btnaction="outsideparticipant-edit" title="<?=$this->translate('edit')?>"></i>
+									<i class="icon-btn action action_delete" data-btnaction="outsideparticipant-delete" title="<?=$this->translate('delete')?>"></i>
+								</td>
+								<td><?=$row['project_outside_participant_ID']?></td>
+                            </tr>
+                        <?php endforeach;?>
+                        </tbody>
+                    
+                    </table>
+                    
+                    
+                    <form action="<?=APP_BASE . 'projects/overview'?>" method="post" class="livesearchFormEvents">
+                        <?=$this->formHidden('step', 'add_project_outside_participant');?>
+                        <?=$this->formHidden('project_ID', $this->project['project_ID']);?>
+                        <table>
+                        <tr>
+                            <td colspan=2>
+            					<a class="add_new_shv_patient_line" href="#" onclick="project_add_outside_participant(this,'project_outside_participants');return false;">
+            					   <img width="20" height="20" src="<?php echo RES_FILE_PATH;  ?>/images/edit_add.png">
+            					   <span><?= $this->translate('add single outside participant')?></span>
+                                </a>
+                            </td>
+                        </tr>
+                        
+                        </table>
+                    </form>
+                    
+                </div>
+            </div>
+                
+        </div>
+        
+    </div><!-- extra div end  -->
+
+    
+</div>
+<!-- tab_container end  -->

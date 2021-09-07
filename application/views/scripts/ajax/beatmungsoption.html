@@ -1,0 +1,399 @@
+<?php
+// ISPC-2697, Elena, 10.11.2020
+$label = '';
+$machine = '';
+$value = '';
+$has_emergency = 0;
+$has_alarm = 0;
+$alarm_higher = null;
+$alarm_lower = null;
+$emergency = null;
+$list = [];
+$machine = $this->machine;
+
+//print_r($this->editingoption);
+if($this->editingoption != null){
+    $label = $this->editingoption['label'];
+    $value = $this->editingoption['value'];
+    $validation = $this->editingoption['validation'];
+    $unit = $this->editingoption['unit'];
+    if(isset($this->editingoption['list'])){
+        $list = $this->editingoption['list'];
+    }
+    if(isset($this->editingoption['alarm_higher'])){
+        $alarm_higher = $this->editingoption['alarm_higher'];
+    }
+    if(isset($this->editingoption['alarm_lower'])){
+    $alarm_lower = $this->editingoption['alarm_lower'];
+    }
+    $has_emergency = intval($this->editingoption['has_emergency']);
+    $emergency = $this->editingoption['emergency'];
+    $has_alarm = intval($this->editingoption['has_alarm']);
+
+   //echo $value;
+}
+?>
+<script>
+    var validation_list = new Array();
+    <?php foreach($list as $listentry): ?>
+    validation_list.push("<?php echo $listentry ?>");
+    <?php endforeach; ?>
+    function newListentry(entryname){
+        retValue = '<tr>\n' +
+            '                                <td><input name="list[]" value="' + entryname +'"></td>\n' +
+            '                                <td><img class="delete_listentry" src="<?php echo RES_FILE_PATH; ?>/images/cross.png" width="16px" /></td>\n' +
+            '\n' +
+            '                            </tr>';
+        return retValue;
+
+    }
+    $('document').ready(function(){
+
+        function rebuild_alarm_list(){
+            $('#alarm_higher').children().remove();
+            $('#alarm_lower').children().remove();
+            $('#emergency_select').children().remove();
+            console.log(validation_list);
+
+            for(var j=0;j<validation_list.length;j++){
+                var alopt = '<option value="' + validation_list[j] + '" >' + validation_list[j] + '</option>';
+                console.log(alopt);
+                $(alopt).appendTo($('#alarm_higher'));
+                $(alopt).appendTo($('#alarm_lower'));
+                $(alopt).appendTo($('#emergency_select'));
+
+            }
+            var emergency_val = $('#emergency_result').val();
+            if(validation_list.includes(emergency_val)){
+                $('#emergency_select').val(emergency_val);
+            }
+            var alarm_higher_val = $('#alarm_higher_result').val();
+            if(validation_list.includes(alarm_higher_val)){
+                $('#alarm_higher').val(alarm_higher_val);
+            }
+            var alarm_lower_val = $('#alarm_lower_result').val();
+            if(validation_list.includes(alarm_lower_val)){
+                $('#alarm_lower').val(alarm_lower_val);
+            }
+        }
+
+
+        $('.delete_listentry').die('click');
+
+        $('.delete_listentry').live('click', function(){
+            console.log('clicked', $(this));
+
+
+           var tr = $(this).parent().parent();
+           var entryinput = $(this).parent().prev().find('input');
+           var val_to_delete = entryinput.val();
+           console.log(val_to_delete);
+           console.log($(tr).index());
+           var tr_index = $(tr).index()
+           validation_list.splice(tr_index, 1);
+           console.log('new list', validation_list);
+           rebuild_alarm_list();
+           $(tr).remove();
+        })
+
+        function show_alarm_ui(){
+            if($('#option_val').val() == 'freetext'){
+                $('#alarm_higher').hide();
+                $('#alarm_freetext').show();
+                $('#alarm_lower').hide();
+                $('#alarm_lower_freetext').show();
+                $('#alarm_higher_freetext').show();
+                $('#emergency_select').hide();
+                $('#emergency_freetext').show();
+            }else{
+                $('#alarm_higher').show();
+                $('#alarm_freetext').hide();
+                $('#alarm_lower').show();
+                $('#alarm_lower_freetext').hide();
+                $('#alarm_higher_freetext').hide();
+                $('#emergency_select').show();
+                $('#emergency_freetext').hide();
+            }
+        }
+
+
+
+        <?php if($has_alarm == 0): ?>
+            $('#alarm_set_list').hide();
+        <?php endif; ?>
+        <?php if($has_emergency == 0): ?>
+        $('#emergency_set_list').hide();
+        <?php endif; ?>
+
+        <?php if($value == 'freetext'): ?>
+            $('#alarm_higher').hide();
+            $('#alarm_freetext').show();
+            $('#alarm_lower').hide();
+            $('#alarm_lower_freetext').show();
+            $('#emergency_select').hide();
+            $('#emergency_freetext').show();
+        <?php  else: ?>
+            $('#alarm_higher').show();
+            $('#alarm_higher_freetext').hide();
+             $('#alarm_lower').show();
+            $('#alarm_lower_freetext').hide();
+            $('#emergency_select').show();
+            $('#emergency_freetext').hide();
+        <?php endif; ?>
+        if($('#option_val').val() == 'freetext'){
+            $('#alarm_higher').hide();
+            $('#alarm_higher_freetext').show();
+            $('#alarm_lower').hide();
+            $('#alarm_lower_freetext').show();
+            $('#emergency_select').hide();
+            $('#emergency_freetext').show();
+        }else{
+            $('#alarm_higher').show();
+            $('#alarm_freetext').hide();
+            $('#alarm_lower').show();
+            $('#alarm_lower_freetext').hide();
+            $('#emergency_select').show();
+            $('#emergency_freetext').hide();
+        }
+
+        $('#has_alarm').on('change', function(e){
+            if(this.checked) {
+                $('#alarm_set_list').show();
+                show_alarm_ui();
+                rebuild_alarm_list();
+
+            }else{
+                $('#alarm_set_list').hide();
+            }
+
+
+        })
+
+        $('#has_emergency').on('change', function(e){
+            if(this.checked) {
+                $('#emergency_set_list').show();
+                show_alarm_ui();
+                rebuild_alarm_list();
+            }else{
+                $('#emergency_set_list').hide();
+            }
+
+
+        })
+
+        $('#addnewlistentry').on('click', function(e){
+
+          var newname = $('#newlistentry').val();
+
+          if(newname.length == 0){
+              jAlert('Das Wert darf nicht leer sein');
+          }else{
+              validation_list.push(newname);
+              console.log(validation_list);
+              rebuild_alarm_list();
+
+              var newrow = newListentry(newname);
+              $(newrow).appendTo($('#list'));
+
+
+          }
+
+
+
+        })
+
+        <?php if($value == 'dropdown'): ?>
+        $('#validation_row').hide();
+        <?php else: ?>
+        $('#list_row').hide();
+        <?php endif; ?>
+        $('#option_val').on('change', function(e){
+
+            var opt = $('#option_val').val();
+            if(opt == 'freetext'){
+                $('#list_row').hide();
+                $('#validation_row').show();
+                $('#alarm_higher').hide();
+                $('#alarm_lower').hide();
+                $('#alarm_higher_freetext').show();
+                $('#alarm_lower_freetext').show();
+                $('#emergency_select').hide();
+                $('#emergency_freetext').show();
+
+            }else{
+
+                $('#list_row').show();
+                $('#validation_row').hide();
+                $('#alarm_higher').show();
+                $('#alarm_lower').show();
+                $('#alarm_higher_freetext').hide();
+                $('#alarm_lower_freetext').hide();
+                $('#emergency_select').show();
+                $('#emergency_freetext').hide();
+            }
+
+        });
+
+        $('#alarm_higher').live('change', function(){
+        $('#alarm_higher_result').val($(this).val());
+        });
+        $('#alarm_lower').live('change', function(){
+        $('#alarm_lower_result').val($(this).val());
+        });
+
+        $('#alarm_higher_freetext').live('change', function(){
+        $('#alarm_higher_result').val($(this).val());
+        });
+        $('#alarm_lower_freetext').live('change', function(){
+        $('#alarm_lower_result').val($(this).val());
+        });
+
+
+    $('#emergency_select').live('change', function(){
+        $('#emergency_result').val($(this).val());
+    });
+
+    $('#emergency_freetext').live('change', function(){
+        $('#emergency_result').val($(this).val());
+    });
+
+
+
+    })
+</script>
+<div>
+    <form method="post" id="beatmungoption">
+        <input type="hidden" name="optionnumber" value="<?php echo $this->optionnumber; ?>" >
+        <input type="hidden" name="machine" value="<?php echo $this->machine->id; ?>" >
+
+
+        <fieldset id="machine_options">
+
+
+            <table id="machine_params" cellpadding="5">
+                <tr>
+                    <td>Bezeichnung</td><!--//ISPC-2816,Elena,04.02.2021-->
+                    <td><input type="text" name="label" id="label" value="<?php echo $label; ?>"></td>
+                </tr>
+                <tr>
+                    <td>Wert</td>
+                    <td>
+                        <select name="value" id="option_val">
+                        <option value="freetext" <?php if($value == 'freetext') echo 'selected'; ?> >Freie Eingabe</option><!-- ISPC-2816,Elena,04.02.2021 -->
+                        <option value="dropdown" <?php if($value == 'dropdown') echo 'selected'; ?> >Dropdown</option>
+                    </select>
+                    </td>
+                </tr>
+                <tr>
+                    <td>Einheit</td><!-- ISPC-2816,Elena,04.02.2021 -->
+                    <td><input type="text" value="<?php echo $unit; ?>" name="unit" is="unit"></td>
+                </tr>
+                <tr id="validation_row">
+                    <td>Feldüberprüfung auf...</td><!-- ISPC-2816,Elena,04.02.2021 -->
+                    <td>
+                        <select name="validation" id="validation">
+                            <option value="decimal" <?php if($validation == 'decimal') echo 'selected'; ?> >Dezimal-Zahl</option><!-- ISPC-2816,Elena,04.02.2021 -->
+                            <option value="integer" <?php if($validation == 'integer') echo 'selected'; ?> >Ganzzahl</option><!-- ISPC-2816,Elena,04.02.2021 -->
+                            <option value="novalidate" <?php if($validation == 'novalidate') echo 'selected'; ?> >ohne Validierung</option><!-- ISPC-2816,Elena,04.02.2021 -->
+                        </select>
+                    </td>
+                </tr>
+                <tr id="list_row">
+                    <td>Liste</td>
+                    <td>
+                        <table id="list">
+                            <?php foreach($list as $listentry): ?>
+                            <tr>
+                                <td><input name="list[]" value="<?php echo $listentry; ?>"> </td>
+                                <td><img class="delete_listentry" src="<?php echo RES_FILE_PATH; ?>/images/cross.png" width="16px" /></td>
+
+                            </tr>
+                            <?php endforeach; ?>
+
+
+                        </table>
+                        <input type="text" name="newlistentry" id="newlistentry">
+                        <input type="button" id="addnewlistentry" value="Hinzufügen">
+
+                    </td>
+                </tr>
+                <tr id="alarmgroup">
+                    <td>Hat Alarmgrenzen?</td>
+                    <td><input type="checkbox" name="has_alarm" id="has_alarm" value="1" <?php if(intval($has_alarm) == 1){echo 'checked';} ?> >
+                    <!--    <table id="alarm_set_list">
+                            <tr>
+                                <td>Höhere Alarmgrenze</td>
+                                <td>
+                                    <input type="hidden" name="alarm_higher_result" id="alarm_higher_result" value="<?php echo $alarm_higher; ?>">
+                                    <select id="alarm_higher" name="alarm_higher">
+                                        <?php foreach($list as $listentry): ?>
+                                        <option value="<?php echo $listentry; ?>" <?php if($listentry == $alarm_higher){echo 'selected'; } ?> ><?php echo $listentry; ?></option>
+
+
+
+                                        <?php endforeach; ?>
+
+                                    </select>
+                                    <input type="text" name="alarm_higher" id="alarm_higher_freetext" value="<?php echo $alarm_higher; ?>">
+
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Niedrigere Alarmgrenze</td>
+                                <td>
+                                    <input type="hidden" name="alarm_lower_result" id="alarm_lower_result" value="<?php echo $alarm_lower; ?>">
+                                    <select id="alarm_lower" name="alarm_lower">
+                                        <?php foreach($list as $listentry): ?>
+                                        <option value="<?php echo $listentry; ?>" <?php if($listentry == $alarm_lower){echo 'selected'; } ?> ><?php echo $listentry; ?></option>
+
+
+
+                                        <?php endforeach; ?>
+
+
+                                    </select>
+                                    <input type="text" name="alarm_lower" id="alarm_lower_freetext" value="<?php echo $alarm_lower; ?>">
+
+                                </td>
+                            </tr>
+
+                        </table>-->
+
+
+                    </td>
+                </tr>
+                <!--ISPC-2836,Elena,23.02.2021-->
+                <!--<tr id="emergencygroup">
+
+                   <td>Hat Emergency?</td>
+                    <td><input type="checkbox" name="has_emergency" id="has_emergency" value="1"  <?php if(intval($has_emergency) == 1){echo 'checked';} ?>>-->
+                       <!-- <table id="emergency_set_list">
+                            <tr>
+                                <td>Emergency</td>
+                                <td>
+                                    <input type="hidden" name="emergency_result" id="emergency_result" value="<?php echo $emergency; ?>">
+                                    <select id="emergency_select" name="emergency">
+                                        <?php foreach($list as $listentry): ?>
+                                        <option value="<?php echo $listentry; ?>" <?php if($listentry == $emergency){echo 'selected'; } ?> ><?php echo $listentry; ?></option>
+
+
+
+                                        <?php endforeach; ?>
+
+                                    </select>
+                                    <input type="text" name="emergency" id="emergency_freetext" value="<?php echo $emergency;  ?>">
+
+                                </td>
+                            </tr>
+
+
+                    </td>
+
+                </tr>-->
+
+
+            </table>
+        </fieldset>
+
+    </form>
+</div>

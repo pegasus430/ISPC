@@ -1,0 +1,448 @@
+ <!--  Maria:: Migration CISPC to ISPC 22.07.2020 -->
+ <!-- Maria:: Migration CISPC to ISPC 20.08.2020 -->
+<?php $this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/page-css/patientclinic.css'); ?>
+
+
+<script>
+
+    $(document).ready(function () {
+
+        var del_record_message = '<? echo $this->translate('confirmdeleteonerecord'); ?>';
+
+       $('.datepicker').datepicker({
+            dateFormat: 'dd.mm.yy',
+            changeMonth: true,
+            changeYear: true,
+            nextText: '',
+            prevText: ''
+        });
+
+        $('.timepicker').timepicker({
+            minutes: {
+                interval: 5
+            },
+            showPeriodLabels: false,
+            rows: 4,
+            hourText: 'Stunde',
+            minuteText: 'Minute'
+        }).mask("99:99");
+
+
+        $('#readmission-button').show();
+
+        $('#casetable').on('click', '.remove-case-button', function (e) {
+
+            var whichtr = $(this).closest("tr");
+            jConfirm(del_record_message, '<? echo $this->translate('confirmdeletetitle'); ?>', function (r) {
+                if (r) {
+                    if(whichtr.find('.id').val() != 0) {
+
+                        whichtr.find('.isdelete').val('1');
+                        whichtr.removeClass('caserow').addClass('deletedrow');
+                        whichtr.hide();
+                    }
+                    else{
+                        whichtr.remove();
+                    }
+
+                }
+            });
+
+        });
+
+        $('#button-area').on('click', '#new-entry-button', function (e) {
+
+            var number= $('#casetable').find('.caserow').length;
+
+            //var last = $('#casetable').find('.caserow').last();
+
+            var newel = $('.row_proto').clone();  //clone the prototyp-row
+            $(newel).removeClass('row_proto').addClass('caserow');
+
+            //remove datepicker and reinitialize
+            $(newel).find('input.datepicker').each(function () {
+                $(this).removeClass('hasDatepicker').datepicker('destroy');
+                $(this).removeAttr("id");
+                $(this).datepicker({
+                    dateFormat: 'dd.mm.yy',
+                    changeMonth: true,
+                    changeYear: true,
+                    nextText: '',
+                    prevText: ''
+                });
+            });
+
+            //remove timepicker and reinitialize
+            $(newel).find('input.timepicker').each(function () {
+                $(this).removeClass('hasTimepicker').timepicker('destroy');
+                $(this).removeAttr("id");
+                $(this).timepicker({
+                    minutes: {
+                        interval: 5
+                    },
+                    showPeriodLabels: false,
+                        rows: 4,
+                        hourText: 'Stunde',
+                        minuteText: 'Minute'
+                }).mask("99:99");
+            });
+
+            //increment the array
+            $(newel).find('input, select').each(function(){
+                var n=$(this).attr('name');
+                if (n!=undefined){
+                    n= n.replace('[0]','[' + number + ']');
+                    $(this).attr('name', n);
+                }
+            });
+
+            $('#casetable').append(newel);
+
+        });
+
+
+
+        $('.caserow').each(function () {
+
+            var input = $(this).find('.disdate');
+            if(!input.val())
+                $(this).addClass('not_discharged').removeClass('discharged');
+            else
+                $(this).addClass('discharged').removeClass('not_discharged')
+
+        });
+
+        $("form").submit(function (event) {
+
+            hide_error_fields();
+
+            if(!validate_dialog()){
+                $('#btnSubmit').attr("disabled", false);
+                $('#new-entry-button').attr("disabled", false);
+                return false;
+            }
+
+            return true;
+        });
+
+
+    });
+
+    function validate_dialog() {
+
+        //check all fields
+        var a = 0;
+        var b = 0;
+        var c = 0;
+        var d = 0;
+        var isValid = true;
+
+        a += validate_input_not_empty('.caserow .admdate') ? 1 : 0;
+        a += validate_input_not_empty('.caserow .admtime') ? 1 : 0;
+        a += validate_input_not_empty('.caserow .casenumber') ? 1 : 0;
+        a += validate_input_not_empty('.caserow .casetype') ? 1 : 0;
+        b += validate_date_is_valid('.caserow .admdate') ? 1 : 0;
+        b += validate_date_is_valid('.caserow .disdate') ? 1 : 0;
+        c += validate_time_is_valid('.caserow .admtime') ? 1 : 0;
+        c += validate_time_is_valid('.caserow .distime') ? 1 : 0;
+        d += validate_date_interval_is_valid() ? 1 : 0;
+
+        if (a < 4) {
+            $('.error_display_area').show();
+            $('#mandatory_fields').show();
+            isValid = false;
+        }
+
+        if (b < 2) {
+            $('.error_display_area').show();
+            $('#format_error').show();
+            isValid = false;
+        }
+
+        if (c < 2) {
+            $('.error_display_area').show();
+            $('#time_error').show();
+            isValid = false;
+        }
+
+        if (d < 1) {
+            $('.error_display_area').show();
+            $('#interval_error').show();
+            isValid = false;
+        }
+
+        return isValid;
+
+    }
+
+
+    function validate_input_not_empty(selector) {
+        var is_valid = true;
+
+        $(selector).each(function () {
+            var val = $(this).val();
+            if (val =='' || val == 'keineauswahl') {
+                is_valid = false;
+                $(this).addClass('error_display_field');
+            }
+        });
+        return is_valid;
+    }
+
+    function validate_date_is_valid(selector) {
+        var is_valid = true;
+        $(selector).each(function () {
+            var val = $(this).val();
+            if(!isValidDate(val)){
+                is_valid = false;
+                $(this).addClass('error_display_field');
+            }
+        });
+        return is_valid;
+    }
+
+    function validate_time_is_valid(selector) {
+        var is_valid = true;
+        $(selector).each(function () {
+            var val = $(this).val();
+            if(!isValidTime(val)){
+                is_valid = false;
+                $(this).addClass('error_display_field');
+            }
+
+        });
+        return is_valid;
+    }
+
+
+    function validate_date_interval_is_valid() {
+        var is_valid = true;
+        $('.caserow').each(function () {
+            if($(this).find('.disdate').val() != '') {
+                var admDate = $(this).find('.admdate').datepicker('getDate');
+                var disDate = $(this).find('.disdate').datepicker('getDate');
+                if (disDate < admDate) {
+                    is_valid = false;
+                    $(this).find('.admdate').addClass('error_display_field');
+                    $(this).find('.disdate').addClass('error_display_field');
+                }
+            }
+        });
+        return is_valid;
+    }
+
+    function hide_error_fields() {
+        $('.error_display_area').hide();
+        $('#mandatory_fields').hide();
+        $('#format_error').hide();
+        $('#patientcasestatus .error_display_field').removeClass('error_display_field');
+    }
+
+    function isValidDate(val){
+
+        if(val == '')
+            return true; //empty date is checked separate
+
+        var date_regex = new RegExp(/\b\d{1,2}[\.]\d{1,2}[\.]\d{4}\b/);
+
+        return date_regex.test(val);
+
+    }
+
+    function isValidTime(val){
+
+        if(val == '')
+            return true; //empty date is checked separate
+
+        var date_regex = new RegExp(/([01]\d|2[0123]):(?:[012345]\d)/);
+
+        return date_regex.test(val);
+
+    }
+
+
+</script>
+
+
+<div id="patientcasestatus">
+
+    <div class="status">
+
+    <h1><?php echo $this->translate('edit_case_status');?></h1>
+
+    <?php if ($this->message):?>
+        <div class="message"><?php echo $this->message;?></div>
+    <?php endif;?>
+
+
+        <form method="post" id="patientcase" autocomplete="off">
+
+
+        <table id="casetable" width="100%" class="datatable">
+            <tr>
+                <th><?php echo $this->translate('adminssiondate');?></th>
+                <th><?php echo $this->translate('adminssiontime');?></th>
+                <th><?php echo $this->translate('dischargedate');?></th>
+                <th><?php echo $this->translate('dischargetime');?></th>
+                <th><?php echo $this->translate('case_number');?></th>
+                <th><?php echo $this->translate('case_type');?></th>
+                <th><?php echo $this->translate('case_status');?></th>
+                <th> <?php echo $this->translate('actions'); ?></th>
+            </tr>
+
+            <tr class="row_proto">
+
+                <td>
+                    <input class="id" type="hidden" name="case[0][id]" value="0">
+                    <input type="text" class="datepicker admdate" name="case[0][admdate]" value="">
+                </td>
+                <td>
+                    <input type="text" class="timepicker admtime" name="case[0][admtime]" value="" />
+                </td>
+                <td>
+                    <input type="text" class="datepicker disdate" name="case[0][disdate]" value="">
+                </td>
+                <td>
+                    <input type="text" class="timepicker distime" name="case[0][distime]" value="">
+                </td>
+                <td>
+                    <input class="casenumber" type="text" name="case[0][case_number]"
+                           value="">
+                </td>
+                <td>
+                    <select class="casetype" name="case[0][case_type]" >
+                        <?php foreach ($this->casetypes as $keytype => $type):?>
+                            <option value="<?php echo $keytype;?>">
+                                <?php echo $type;?>
+                            </option>
+                        <?php endforeach;?>
+                    </select>
+                </td>
+                <td>
+                    <select class="casestatus" name="case[0][case_finished]">
+                        <?php foreach ($this->casestatus as $keystatus => $status):?>
+                            <option value="<?php echo $keystatus;?>">
+                                <?php echo $status;?>
+                            </option>
+                        <?php endforeach;?>
+                    </select>
+                </td>
+                <td>
+                    <button type="button" value="1" class="remove-case-button"
+                            title="<?php echo $this->translate(delete); ?>"><img
+                            src="<? echo RES_FILE_PATH;  ?>/images/action_delete.png"></button>
+                </td>
+            </tr>
+
+            <?php foreach ($this->patientcases as $key=>$case):?>
+
+
+            <tr class="caserow">
+            <!--tr class="caserow"-->
+                <td>
+                    <input class="id" type="hidden" name="case[<?php echo $key;?>][id]" value="<?php echo $case['id'];?>">
+                    <input class="isdelete" type="hidden" name="case[<?php echo $key;?>][isdelete]" value="<?php echo $case['isdelete'];?>">
+                    <input type="text" class="datepicker admdate" name="case[<?php echo $key;?>][admdate]"
+                           value="<?php echo date('d.m.Y',strtotime($case['admdate']));?>">
+                </td>
+                <td>
+                    <input type="text" class="timepicker admtime" name="case[<?php echo $key;?>][admtime]" value="<?php echo date('H:i',strtotime($case['admdate']));?>" />
+                </td>
+                <td>
+                    <input type="text" class="datepicker disdate" name="case[<?php echo $key;?>][disdate]"
+                           value="<?php echo $case['disdate'] == '0000-00-00 00:00:00' ? '' : date('d.m.Y',strtotime($case['disdate']));?>">
+                </td>
+                <td>
+                    <input type="text" class="timepicker distime" name="case[<?php echo $key;?>][distime]"
+                           value="<?php echo $case['disdate'] == '0000-00-00 00:00:00' ? '' : date('H:i',strtotime($case['disdate']));?>">
+                </td>
+                <td>
+                    <input class="casenumber" type="text" name="case[<?php echo $key;?>][case_number]"
+                            value="<?php echo $case['case_number'];?>">
+                </td>
+                <td>
+                    <select class="casetype" name="case[<?php echo $key;?>][case_type]" >
+                        <?php foreach ($this->casetypes as $keytype => $type):?>
+                            <option value="<?php echo $keytype;?>" <?php if ($case['case_type'] == $keytype ) echo 'selected' ; ?>>
+                                <?php echo $type;?>
+                            </option>
+                        <?php endforeach;?>
+                    </select>
+                </td>
+
+                <td>
+                    <select class="casestatus" name="case[<?php echo $key;?>][case_finished]">
+                        <?php foreach ($this->casestatus as $keystatus => $status):?>
+                            <option value="<?php echo $keystatus;?>" <?php if ($case['case_finished'] == $keystatus ) echo 'selected' ; ?>>
+                            <?php echo $status;?>
+                            </option>
+                        <?php endforeach;?>
+                    </select>
+                </td>
+                <td>
+                    <button type="button" value="1" class="remove-case-button"
+                            title="<?php echo $this->translate(delete); ?>"><img
+                            src="<? echo RES_FILE_PATH;  ?>/images/action_delete.png"></button>
+                </td>
+            </tr>
+            <?php endforeach;?>
+        </table>
+
+            <div class="error_display_area" style="display:none">
+                <div id="mandatory_fields" style="display:none">
+                    <?php echo $this->translate('fill_mandatory_fields'); ?>
+                </div>
+                <div id="format_error" style="display:none">
+                    <?php echo $this->translate('invalid_date'); ?>
+                </div>
+                <div id="time_error" style="display:none">
+                    <?php echo $this->translate('invalid_time'); ?>
+                </div>
+                <div id="interval_error" style="display:none">
+                    <?php echo $this->translate('invalid_date_interval'); ?>
+                </div>
+            </div>
+
+
+        <div id="button-area">
+            <input id="new-entry-button" class="button" type="button" value="<?php echo $this->translate('new_entry'); ?>">
+            <input class="button" id="btnSubmit" type="submit" value="<?php echo $this->translate('save_changes'); ?>">
+        </div>
+
+    </form>
+
+    </div>
+    <div class="discharge">
+        <h2>
+            Entlassungen:</h2>
+        <?php if($this->discharges):?>
+        <table class="datatable">
+            <tr>
+                <th>Datum</th>
+                <th>Grund der Entlassung</th>
+                <th>Entlassung entfernen</th>
+            </tr>
+            <?php foreach ($this->discharges as $discharge):?>
+            <tr>
+                <td>
+                    <?php echo strftime("%d.%m.%Y %H:%M", strtotime($discharge["disdate"]) );?>
+                </td>
+                <td>
+                    <?php echo $this->dismethodid_to_method[$discharge['discharge_method']];?>
+                </td>
+                <td>
+                    <form action="<? echo $this->act ?>" method="post" autocomplete="off">
+                        <input type="hidden" name="discharge_id_in_discharge_table" value="<?php echo $discharge['patient_discharge_id']; ?>">
+                        <input type="hidden" name="delete_discharge" value="<?php echo $discharge['id'];?>">
+                        <input type="submit" value="Entlassung entfernen">
+                    </form>
+                </td>
+            </tr>
+            <?php endforeach;?>
+        </table>
+        <?php else:?>
+        <p>Es gibt keine Entlassungen zu diesem Patienten.</p>
+
+        <?php endif;?>
+    </div>
+</div>

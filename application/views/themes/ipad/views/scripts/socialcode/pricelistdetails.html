@@ -1,0 +1,182 @@
+<?php
+	$price_groups = $this->price_groups;
+	$group_details = $this->group_details;
+	$bonus_details = $this->bonus_details;
+	$price_bonuses = $this->price_bonuses;
+	$pl = $this->price_list;
+?>
+
+ <script>
+	$(document).ready(function() {
+		$('#action_del').val('');
+
+		$('.delete_action').live('click',function(){
+			$('#action_del').val( $(this).attr('rel'));
+
+
+			jConfirm('<? echo $this->translate('confirmdeleterecord'); ?>', '', function(r) {
+			    if(r){
+			    	$('#save_prices_form').submit();
+			    } else{
+					$('#action_del').val('');
+			    }
+			});
+			return false;
+		});
+
+		var fix_helper = function(e, ui) {
+			ui.children().each(function() {
+				$(this).width($(this).width());
+	});
+			return ui;
+		};
+
+		$('table#actions_table tbody').sortable({
+			placeholder: "ui-state-highlight",
+			helper: fix_helper,
+			items: "tr:not(.disabled)",
+			update: function(event,ui){
+				var item = ui.item;
+				var container = item.parent();
+				var reorder = [];
+				container.children('tr').each(function(i){
+					// save the item id order in array
+					reorder[i] = $(this).attr('id');
+				});
+
+				$.ajax({
+					method:'POST',
+					url:'<?php echo APP_BASE . 'ajax/orderactions'; ?>',
+					data:{
+						'list_id':"<?php echo $_REQUEST['list']; ?>",
+						'order':reorder
+					}
+				});
+
+			}
+		}).disableSelection();
+	});
+</script>
+
+<h1><?php echo $this->translate('Price List Details');  ?><?php if($this->price_list): ?>: <?php echo $pl[$_REQUEST['list']]['price_sheet'];  ?><?php endif;  ?></h1>
+<p>
+	<a href="<?php echo APP_BASE;  ?>socialcode/pricelist" ><?php echo $this->translate('back_to_price_list');  ?></a>
+</p>
+<br/>
+	<?php if($this->price_list): ?>
+	<h4><?php echo $this->translate('Period');?> <?php echo date('d.m.Y', strtotime($pl[$_REQUEST['list']]['start'])).' - '.date('d.m.Y', strtotime($pl[$_REQUEST['list']]['end']));  ?></h4>
+	<?php endif;  ?>
+
+<form action=""  method="post" id="save_prices_form" name="save_prices_form">
+
+ <table style="width:100%" class="datatable">
+	<thead>
+		<tr>
+			<th style="width: 185px;"><?php echo $this->translate('pricelist_groups');  ?></th>
+			<th><?php echo $this->translate('Price');  ?></th>
+		</tr>
+	</thead>
+	<tbody>
+		<?php  foreach($group_details as $k_sa => $v_sa): ?>
+		<tr>
+			<td>
+				<? if(empty($price_groups[$k_sa]['groupname'])):?>
+					<? echo $group_details[$k_sa] ?>
+				<? else:?>
+					<?php echo $price_groups[$k_sa]['groupname'];?>
+				<? endif;?>
+			</td>
+			<td><input type="text" value="<?php echo number_format($price_groups[$k_sa]['price'], '2', ',', '.');  ?>" name="groups[<?php echo $k_sa;  ?>][price]" id="price_<?php echo $k_sa;  ?>" class="curency_format" />&nbsp;&nbsp;&euro;</td>
+		</tr>
+		<?php endforeach;  ?>
+	</tbody>
+</table>
+
+ <table style="width:100%" class="datatable">
+	<thead>
+		<tr>
+			<th style="width: 185px;"><?php echo $this->translate('Bonus');  ?></th>
+			<th><?php echo $this->translate('Price');  ?></th>
+		</tr>
+	</thead>
+	<tbody>
+		<?php  foreach($bonus_details as $k_sa => $v_sa): ?>
+		<tr>
+			<td>
+				<? if(empty($price_bonuses[$k_sa]['bonusname'])):?>
+					<? echo $bonus_details[$k_sa] ?>
+				<? else:?>
+					<?php echo $price_bonuses[$k_sa]['bonusname'];?>
+				<? endif;?>
+			</td>
+			<td><input type="text" value="<?php echo number_format($price_bonuses[$k_sa]['price'], '2', ',', '.');  ?>" name="bonuses[<?php echo $k_sa;  ?>][price]" id="price_<?php echo $k_sa;  ?>" class="curency_format" />&nbsp;&nbsp;&euro;</td>
+		</tr>
+		<?php endforeach;  ?>
+	</tbody>
+</table>
+
+
+<input type="submit" value="<?php echo $this->translate('save');?>" id="save_prices" name="save_prices" />
+
+
+	 <table class="datatable" id="actions_table">
+		<tr class="disabled">
+			<th>#</th>
+				<th>
+					<? echo $this->translate('social_action_internal_nr')?>
+				</th>
+				<th>
+					<? echo $this->translate('social_action_name')?>
+				</th>
+				<th>
+					<? echo $this->translate('social_action_price')?>
+				</th>
+
+				<th>
+					<? echo $this->translate('social_action_group')?>
+				</th>
+				<th>
+					<? echo $this->translate('edit')?>
+				</th>
+				<th>
+					<? echo $this->translate('remove')?>
+				</th>
+			</tr>
+
+			<? $i=1; foreach($this->actionslist as $key=>$action_details):?>
+		<tr id="<?php echo $action_details['id']; ?>">
+				<td>
+					<? echo $i?>
+				</td>
+				<td>
+					<? echo $action_details['internal_nr']?>
+				</td>
+
+				<td>
+					<? echo $action_details['action_name']?>
+				</td>
+				<td>
+					<? echo $action_details['price']?>
+				</td>
+
+				<td>
+					<? echo $this->group_details[$action_details['groupid']]; ?>
+				</td>
+				<td>
+					<a href="socialcode/editaction?id=<? echo $action_details['id']?>&list=<? echo $_REQUEST['list']?>">	<img border="0" src="<? echo RES_FILE_PATH;  ?>/images/edit.png" />	</a>
+				</td>
+				<td>
+					<input type="checkbox" name="del_actions[]" value="<? echo $action_details['id']?>" />
+				</td>
+			</tr>
+			<? $i++; endforeach;?>
+			<tr>
+				<td colspan="6">
+					<span class="add_station_link"><a href="socialcode/addaction?extra=1&list=<? echo $_REQUEST['list']?> "><img src="<? echo RES_FILE_PATH; ?>/images/edit_add.png" width="20" height="20" /><? echo $this->translate('add_new_action') ?></a></span>
+				</td>
+				<td>
+					<input type="submit" value="<?php echo $this->translate('remove_actions');?>" id="delete_action" name="delete_action" />
+				</td>
+			</tr>
+		</table>
+</form>

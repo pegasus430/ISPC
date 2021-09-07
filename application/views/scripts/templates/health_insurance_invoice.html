@@ -1,0 +1,165 @@
+<?php
+$patient_details = $this->patient_details;
+$health_insurance = $this->health_insurance;
+$invoice_items = $this->items;
+$client_details = $this->client_details;
+?>
+<table class="table" id="invoice" cellspacing="2" cellpadding="2" width="100%">
+	<tr class="rowa">
+		<td class="col1 cell"></td>
+		<td class="col2 cell"></td>
+		<td class="col3 cell"></td>
+	</tr>
+	<tr class="rowb">
+		<td class="col1 cell" style="width: 85mm; height: 45mm;">
+			<?php echo nl2br($this->address); ?>
+		</td>
+		<td class="col2 cell"></td>
+		<td class="col3 cell"></td>
+	</tr>
+	<tr class="rowa">
+		<td class="col1 cell"></td>
+		<td class="col2 cell" style="text-align: right;" colspan="2"><?php if(strlen($client_details['lbg_city'])): echo $client_details['lbg_city'].','; endif;  ?> den <?php echo date('d.m.Y', strtotime($this->completed_date));  ?></td>
+	</tr>
+	<tr class="rowb">
+		<td class="col1 cell" colspan="3">
+			&nbsp;
+		</td>
+	</tr>
+	<tr class="rowb">
+		<td class="col1 cell" colspan="3">
+			<table style="width:100%">
+				<tr>
+					<td style="width:200px">
+						<b>Betreff:</b>
+					</td>
+					<td style="width:480px;">
+						<b><?php echo $patient_details['first_name'] . ' ' . $patient_details['last_name']; ?>, geb. <?php echo $patient_details['birthd']; ?><br />
+							Versichertennummer: <?php echo $health_insurance['insurance_no']; ?><br/>
+							Rechnungsnummer: <?php echo $this->prefix; ?><?php echo $this->invoice_number; ?> (bitte bei Überweisung angeben)</b>
+					</td>
+				</tr>
+			</table>
+		</td>
+	</tr>
+	<?php if(strlen($this->header) == 0):  ?>
+	<tr class="rowa">
+		<td class="col1 cell" colspan="3"><b><u>Liquidation</u></b></td>
+	</tr>
+	<tr class="rowa">
+		<td class="col1 cell" colspan="3">&nbsp;</td>
+	</tr>
+	<tr class="rowa">
+		<td class="col1 cell" colspan="3">O.g. <b><?php echo $patient_details['first_name'] . ' ' . $patient_details['last_name']; ?></b> erhält seit dem <b><?php echo date('d.m.Y', strtotime($patient_details['admission_date'])); ?></b> SAPV-Leistungen. </td>
+	</tr>
+	<tr class="rowa">
+		<td class="col1 cell" colspan="3">&nbsp;</td>
+	</tr>
+	<tr class="rowa">
+		<td class="col1 cell" colspan="3">
+			<p>
+				Wir erlauben uns, gemäß § 132 d Abs. 1 SGB V über die spezialisierte ambulante Palliativversorgung
+				(SAPV) nach § 37 b SGB V und dem entsprechenden Vertrag zwischen dem
+				Landeskrankenkassenverband und der <?php echo $this->client_name;  ?> für die Zeit vom <?php echo date('d.m.Y', strtotime($this->invoice_start)); ?>
+				bis zum  <?php echo date('d.m.Y', strtotime($this->invoice_end)); ?> folgende Kosten in Rechnung zu stellen:
+			</p>
+		</td>
+	</tr>
+	<?php else:  ?>
+	<tr class="rowa">
+		<td class="col1 cell" colspan="3">
+			<p>
+			<?php echo $this->header;  ?>
+			</p>
+		</td>
+	</tr>
+	<?php endif;  ?>
+
+	<tr>
+		<td colspan="3">
+			<table border="0">
+				<tr>
+					<td style="width:70px;"></td>
+					<td style="width:500px;">
+						<table border="1" cellpadding="2">
+							<tr>
+								<td>
+									<b>Pauschale</b>
+								</td>
+								<td style="width:70px;">
+									<b>Anzahl</b>
+								</td>
+								<td>
+									<b>x Vergütung</b>
+								</td>
+								<td style="width: 150px;">
+									<b>= Rechnungssumme</b>
+								</td>
+							</tr>
+							<?php foreach ($invoice_items as $k_item => $v_item): ?>
+								<?php if(($v_item['shortcut'] == 'E' && $v_item['qty'] > 0) || ($v_item['shortcut'] == 'EH' && $v_item['qty'] > 0) || ($v_item['shortcut'] != 'E' && $v_item['shortcut'] != 'EH')):  ?>
+
+								<tr>
+									<td>
+										<?php echo $v_item['shortcut'] ?>
+									</td>
+
+									<td style="text-align: right; margin-right: 5px;">
+										<?php echo $v_item['qty']; ?>
+									</td>
+									<td style="text-align: right; margin-right: 5px;">
+										<?php echo number_format(Pms_CommonData::str2num($v_item['price']), 2, ',', '.'); ?>&nbsp;&euro;
+									</td>
+									<td style="text-align: right; margin-right: 5px;">
+										<?php
+										$total = ($v_item['price'] * $v_item['qty']);
+										echo number_format(Pms_CommonData::str2num($total), 2, ',', '.');
+										$general_total += $total; ?>&nbsp;&euro;
+									</td>
+								</tr>
+								<?php endif;  ?>
+							<?php endforeach; ?>
+
+							<tr>
+								<td colspan="3" style="text-align: right; margin-right: 5px;">
+									<b>Insgesamt =</b>
+								</td>
+								<td style="text-align: right;">
+									<b><?php echo number_format(Pms_CommonData::str2num($general_total), 2, ',', '.'); ?>&nbsp;&euro;</b>
+								</td>
+							</tr>
+						</table>
+					</td>
+					<td style="width:130px;"></td>
+				</tr>
+			</table>
+
+		</td>
+	</tr>
+	<tr class="rowa">
+		<td class="cell" colspan="3">
+			&nbsp;
+		</td>
+	</tr>
+
+	<?php if(strlen($this->header)==0):  ?>
+		<tr class="rowa">
+			<td class="cell" colspan="3" style="text-align: left;">
+				Wir bitten um Erstattung der angegebenen Summe innerhalb von <b>3 Wochen</b> auf unten stehende Kontoverbindung. Für Rückfragen stehen wir gerne zur Verfügung.
+			</td>
+		</tr>
+
+		<tr class="rowa">
+			<td class="col1 cell" style="text-align: left;" colspan="3">&nbsp;</td>
+		</tr>
+		<tr class="rowa">
+			<td class="col1 cell" style="text-align: left;" colspan="3">Mit freundlichen Grüßen </td>
+		</tr>
+	<?php else:  ?>
+		<tr class="rowa">
+			<td class="col1 cell" style="text-align: left;" colspan="3">
+				<?php echo $this->footer;  ?>
+			</td>
+		</tr>
+	<?php endif  ?>
+</table>

@@ -1,0 +1,310 @@
+<?php
+	$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/page-css/daystructure.css?' . date('Ymd'));
+	echo $this->patientinfo;
+	echo $this->tabmenus;
+?>
+<script>
+	var res_file_path = '<?php echo RES_FILE_PATH; ?>';
+	var min_number = '0'; //to avoid NaN
+	var form_items = '<?php echo json_encode($this->form_items); ?>';
+	
+	$(document).ready(function(){
+		var items = jQuery.parseJSON(form_items);
+		
+		if(items)
+		{
+			$.each(items, function(item, index) {
+				//restore items after a failed submit validation
+				createnewitem(items[item]);
+			});
+		}
+		else
+		{
+			//add new empty item row
+			createnewitem();
+		}
+		
+		//remove system normal items
+		$('.remove_item_normal').live('click', function(){
+			var removed_elem_id = $(this).parent().parent().attr('id');
+
+			$(this).parent().parent().hide('slow').remove();
+
+			if($('.'+removed_elem_id))
+			{
+				$('.'+removed_elem_id + '_data').hide('slow').remove();
+			}
+ 
+		});
+		//remove system custom items
+		$('.remove_item_custom').live('click', function(){
+			var removed_elem_id = $(this).parent().parent().attr('id');
+
+			$(this).parent().parent().hide('slow').remove();
+
+			if($('.'+removed_elem_id))
+			{
+				$('.'+removed_elem_id + '_data').hide('slow').remove();
+			}
+ 
+		});
+	});
+	
+	function createnewitem(item_data)
+	{		
+		var itemcount = $('#counter').val();
+		
+		if(item_data)
+		{
+			var trInnerHtml = $('<tr id="row_'+itemcount+'">\n\
+				<td style="text-align: left;">\n\
+					<input type="hidden" id="row" name="row[]" value="'+itemcount+'" />\n\
+					<input type="text" name="item['+itemcount+'][start]" value="'+item_data['start']+'" id="timeinput_start_'+itemcount+'" class="start time" autocomplete="off"/>\n\
+				</td>\n\
+				<td style="text-align: left;">\n\
+					<input type="text" name="item['+itemcount+'][end]" value="'+item_data['end']+'" id="timeinput_end_'+itemcount+'" class="end time" autocomplete="off"/>\n\
+				</td>\n\
+				<td align="right">\n\
+					<input type="text" name="item['+itemcount+'][description]" value="'+item_data['description']+'" id="description_'+itemcount+'" class="description" autocomplete="off"/>\n\
+				</td>\n\
+				<td align="right">\n\
+				<input type="text" name="item['+itemcount+'][measures]" value="'+item_data['measures']+'" id="measures_'+itemcount+'" class="description" autocomplete="off"/>\n\
+			    </td>\n\
+				<td>\n\
+					<a href="javascript:void(0)" class="remove_item_custom" id="del_'+itemcount+'"><img src="<?php echo RES_FILE_PATH; ?>/images/action_delete.png" border="0"></a>\n\
+				</td></tr>');
+		}
+		else
+		{
+			var trInnerHtml = $('<tr id="row_'+itemcount+'">\n\
+				<td style="text-align: left;">\n\
+					<input type="hidden" id="row" name="row[]" value="'+itemcount+'" />\n\
+					<input type="text" name="item['+itemcount+'][start]" value="" id="timeinput_start_'+itemcount+'" class="start time" autocomplete="off"/>\n\
+				</td>\n\
+				<td style="text-align: left;">\n\
+					<input type="text" name="item['+itemcount+'][end]" value="" id="timeinput_end_'+itemcount+'" class="end time" autocomplete="off"/>\n\
+				</td>\n\
+				<td align="right">\n\
+				<input type="text" name="item['+itemcount+'][description]" value="" id="description_'+itemcount+'" class="description" autocomplete="off"/>\n\
+				</td>\n\
+				<td align="right">\n\
+				<input type="text" name="item['+itemcount+'][measures]" value="" id="measures_'+itemcount+'" class="description" autocomplete="off"/>\n\
+				</td>\n\
+				<td>\n\
+					<a href="javascript:void(0)" class="remove_item_custom" id="del_'+itemcount+'"><img src="<?php echo RES_FILE_PATH; ?>/images/action_delete.png" border="0"></a>\n\
+				</td></tr>');
+		}
+
+
+		if($('#pseudo_row').length) {			
+			$('#pseudo_row').before(trInnerHtml);
+		} else {			
+			$('#new_med_row_action').before(trInnerHtml);
+		}
+		
+		$('#timeinput_start_' + itemcount).mask("99:99"); //add hours and minute mask
+		$('#timeinput_start_' + itemcount).timepicker({
+			onSelect : function(time_value) {
+				$(this).focus();
+				return false;
+			},
+			minutes : {
+				interval : 5
+			},
+			showPeriodLabels : false,
+			rows : 4,
+			hourText : 'Stunde',
+			minuteText : 'Minute'
+		});
+		
+		$('#timeinput_end_' + itemcount).mask("99:99"); //add hours and minute mask
+		$('#timeinput_end_' + itemcount).timepicker({
+			onSelect : function(time_value) {
+				$(this).focus();
+				return false;
+			},
+			minutes : {
+				interval : 5
+			},
+			showPeriodLabels : false,
+			rows : 4,
+			hourText : 'Stunde',
+			minuteText : 'Minute'
+		});
+	
+		$("[id^=timeinput]").blur(function() {
+			var value = $(this).val();
+			var input_lenght = value.length;
+			var current_input = value.split(':');
+			var id_val = $(this).attr('id');
+			
+			
+			var id_string = id_val.split('_');
+			var error = 0;
+			var invalid_period = 0;
+
+			var start_time = $('#timeinput_start_'+id_string[2]).val();			
+			var start_time_str = start_time.split(':');		
+			var end_time = $('#timeinput_end_'+id_string[2]).val();			
+			var end_time_str = end_time.split(':');		
+			
+			if(input_lenght == 5)
+			{
+				if (Number(current_input[0]) > 23   && Number(current_input[1]) > 59)
+				{
+						error = 1; //invalid time format
+				}
+				else if(Number(current_input[0]) <= 23   && Number(current_input[1]) > 59)
+				{
+					error = 2;//Invalid minute format
+				}
+				else if(Number(current_input[0]) > 23   && Number(current_input[1]) <= 59)
+				{
+					error = 3;//Invalid hour format
+				}
+				
+				if( error>0){
+					 $(this).addClass("error_format");
+					 
+				} else{
+					 $(this).removeClass("error_format");
+				}			
+		
+				if(id_string[1] == "start" && error == 0 && invalid_period == 0 && end_time !=""){
+					 if( Number(current_input[0]) > Number(end_time_str[0]) || (Number(current_input[0]) == Number(end_time_str[0]) &&  Number(current_input[1]) > Number(end_time_str[1]) )  )
+						{
+							invalid_period = 1;//Start date must be smaller than the end date
+							$('#timeinput_start_'+id_string[2] ).addClass("error_overlapping");
+							$('#timeinput_end_'+id_string[2] ).addClass("error_overlapping");
+							$('#timeinput_start_'+id_string[2] ).addClass("invalid_period");
+							$('#timeinput_end_'+id_string[2] ).addClass("invalid_period");
+						}
+				}
+				
+				if(id_string[1] == "end" && error == 0 && invalid_period == 0  && start_time !=""){
+					 if( (Number(current_input[0]) <  Number(start_time_str[0])) ||  (Number(current_input[0]) == Number(start_time_str[0]) &&  Number(current_input[1]) < Number(start_time_str[1]) )  )
+						{
+							invalid_period = 1;//End date must be bigger than the start date
+							$('#timeinput_start_'+id_string[2] ).addClass("error_overlapping");
+							$('#timeinput_end_'+id_string[2] ).addClass("error_overlapping");
+							$('#timeinput_start_'+id_string[2] ).addClass("invalid_period");
+							$('#timeinput_end_'+id_string[2] ).addClass("invalid_period");
+						}
+				}
+			} 
+			
+			if(id_string[1] == "end" && input_lenght < 5 && start_time != '' && error == 0 ){
+				
+				invalid_period = 1;//End date is required
+				$('#timeinput_start_'+id_string[2] ).addClass("error_overlapping");
+				$('#timeinput_end_'+id_string[2] ).addClass("error_overlapping");
+				$('#timeinput_start_'+id_string[2] ).addClass("invalid_period");
+				$('#timeinput_end_'+id_string[2] ).addClass("invalid_period");
+			}
+			
+			if(id_string[1] == "start" && input_lenght < 5 && end_time != '' && error == 0 ){
+				
+				invalid_period = 1;//Start date is required
+				$('#timeinput_start_'+id_string[2] ).addClass("error_overlapping");
+				$('#timeinput_end_'+id_string[2] ).addClass("error_overlapping");
+				$('#timeinput_start_'+id_string[2] ).addClass("invalid_period");
+				$('#timeinput_end_'+id_string[2] ).addClass("invalid_period");
+			}
+			
+			if( invalid_period ==  0){
+				$('#timeinput_start_'+id_string[2] ).removeClass("error_overlapping");
+				$('#timeinput_end_'+id_string[2] ).removeClass("error_overlapping");
+				$('#timeinput_start_'+id_string[2] ).removeClass("invalid_period");
+				$('#timeinput_end_'+id_string[2] ).removeClass("invalid_period");
+		}
+	 });
+		itemcount++;
+		$('#counter').val(itemcount);
+	}
+</script>
+
+<div style="display: none;"><img id="calImg" src="<?php echo RES_FILE_PATH;  ?>/images/calendar.png" alt="Popup" class="trigger"></div>
+<input type="hidden" value="999999999" id="counter" />
+<form name="day_structure"  id="day_structure" method="POST" action="" style="display: block; float: left; width: 100%;">
+	<table class="table" id="day_structure_table" cellspacing="2" cellpadding="2" width="100%">
+ 
+		<tr class="rowb">
+			<td class="col1 cell">
+				<table class="day_structure">
+					<tr class="tr_th">
+						<th class="time_col" align="center"><?php echo $this->translate('Tagesstrukturplan action start'); ?></th>
+						<th class="time_col" align="center"><?php echo $this->translate('Tagesstrukturplan action end'); ?></th>
+						<th class="desc_col"><?php echo $this->translate('Tagesstrukturplan action description'); ?></th>
+						<th class="desc_col"><?php echo $this->translate('measures'); ?></th>
+						<th class="act_col"></th>
+					</tr>
+					<tr id="pseudo_row"></tr>					
+				</table>
+			</td>
+		</tr>
+
+
+		<tr id="new_med_row_action">
+			<td  >
+				<div class="add_new_medi">
+					<a href="javascript:createnewitem()">
+						<img src="<?php echo RES_FILE_PATH; ?>/images/action_add.png" width="32" height="32" />
+						<span style="line-height: 32px;"><?php echo $this->translate('add_new_item'); ?></span>
+					</a>
+				</div>
+			</td>
+		</tr>
+		
+		<tr class="rowb">
+			<td class="col1 cell">&nbsp;</td>
+		</tr>
+	
+		
+		<tr class="rowb">
+			<td class="col1 cell">&nbsp;</td>
+		</tr>
+	
+		<tr>
+			<td >
+				<input type="hidden" name="form_id" value="<? echo $this->form_id; ?>" />
+				<input type="hidden" value="" id="submit_status" name="submit_status" />
+				<input type="submit" value="<?php echo $this->translate('save'); ?>" id="btnsubmitx" name="save" rel="save"  class="btnsubmit_usersessions"/>
+				<input type="submit" value="<?php echo $this->translate('PDF_generation'); ?>"  name="pdf" rel="pdf"  class="btnsubmit_usersessions"/>
+			</td>
+		</tr>
+		
+		
+	</table>
+</form>
+<!-- $form_files -->
+<?php if(!empty($this->day_structure_files_history)):?>
+	<fieldset>
+		<legend><?php echo $this->translate('day_structure_files_history'); ?></legend>
+		<?php if(!empty($this->day_structure_files_history)):?>
+			<table class="datatable">
+				<tr>
+					<th>#</th>
+					<th><?php echo $this->translate('title'); ?></th>
+					<th><?php echo $this->translate('user'); ?></th>
+					<th class="date_col"><?php echo $this->translate('date'); ?></th>
+				</tr>
+				<?php $i = 1;
+				foreach ($this->day_structure_files_history as $k_contact_file => $day_str_file): ?>
+					<tr>
+						<td><a href="<?php echo APP_BASE . 'stats/patientfileupload?doc_id='.$day_str_file['id'].'&id='.$_REQUEST['id'];?>"><?php echo $i; ?></a></td>
+						<td><a href="<?php echo APP_BASE . 'stats/patientfileupload?doc_id='.$day_str_file['id'].'&id='.$_REQUEST['id'];?>"><?php echo $day_str_file['title']; ?></a></td>
+						<td><a href="<?php echo APP_BASE . 'stats/patientfileupload?doc_id='.$day_str_file['id'].'&id='.$_REQUEST['id'];?>"><?php echo $this->users_data[$day_str_file['create_user']]['user_title'].' '.$this->users_data[$day_str_file['create_user']]['last_name'].', '.$this->users_data[$day_str_file['create_user']]['first_name']; ?></a></td>
+						<td><a href="<?php echo APP_BASE . 'stats/patientfileupload?doc_id='.$day_str_file['id'].'&id='.$_REQUEST['id'];?>"><?php echo date('d.m.Y H:i', strtotime($day_str_file['create_date'])); ?></a></td>
+					</tr>
+				<?php $i++; endforeach; ?>
+			</table>
+		<?php else:?>
+		<table class="datatable">
+			<tr>
+				<td colspan="4"><?php echo $this->translate('no_day_structure_history_found');?></td>
+			</tr>
+		</table>
+		<?php endif;?>
+		
+	</fieldset>
+<?php endif;?>

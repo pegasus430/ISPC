@@ -1,0 +1,463 @@
+<?php
+$box_id		= 'grow6';
+$box_name	= 'acp_box';
+$box_val	= $this->val;  //values
+$radio_val	= $box_val['defaults']['radio_values'];
+$contact_p	= $box_val['defaults']['ContactPersonMaster'];
+$data       = $box_val['data'];
+$box_lang	= array(
+        "box_title"=>"Advanced Care Planning",
+        "living_will"=>"Patientenverfügung",
+        "care_orders"=>"Betreuungsverfügung",
+        "healthcare_proxy"=>"Vorsorgevollmacht",
+
+        //this 3 are used for box history only
+        "active" => "Status",
+        "contactperson_master_id" => "Ansprechpartner",
+        "comments" => "wo hinterlegt",
+
+        "contact person in charge" => "Ansprechpartner",
+        "from when" => "ausgestellt am:", // file date
+        "where deposited" => "wo hinterlegt", // comment
+// 				"Please first select file date" => "Bitte wähle die erste Datei aus",
+        "Please first select file date" => "Bitte füllen Sie die Felder, 'ausgestellt am:' und 'wo hinterlegt' aus.",
+        "file download" => "Datei Download",
+        "old version" => "alte Version",
+);?>
+
+<script>
+    $(document).ready(function() {
+        window.onbeforeprint = function(){
+            $('.ui-accordion-content').show();
+            $('.ui-accordion-content').css('height','');
+        };
+
+
+
+        $( ".accordion" ).accordion({
+            collapsible: true
+        });
+
+            uploader_create('acp_file_healthcare_proxy', ['pdf','docx','doc']);
+            uploader_create('acp_file_care_orders', ['pdf','docx','doc']);
+            uploader_create('acp_file_living_will', ['pdf','docx','doc']);
+
+            //datepicked for file_date
+            $('#grow6 .file_date').each(function(){
+                $(this).datepicker({dateFormat: 'dd.mm.yy',
+                    showOn: "both",
+                    buttonImage: $('#calImg').attr('src'),
+                    buttonImageOnly: true,
+                    changeMonth: true,
+                    changeYear: true,
+                    nextText: '',
+                    prevText: '',
+                    onSelect:function(){
+                        //upload the file if was allready selected?
+                    }
+                });
+            });
+
+            //onchange contact person
+            $('#grow6 .contactperson').each(function(){
+                $(this).change(function(){
+                    var division_tab = $(this).closest('div.parent_container').data('division_tab');
+                    ajaxcall('Acp', 'contactperson_master_id', $(this).val(), window.idpd, 'grow6', {"division_tab":division_tab});
+                });
+            });
+
+            //blur comments
+            $('#grow6 .comments').each(function(){
+                $(this).blur(function(){
+                    var division_tab = $(this).closest('div.parent_container').data('division_tab');
+                    ajaxcall('Acp', 'comments', $(this).val(), window.idpd, 'grow6', {"division_tab":division_tab});
+                });
+            });
+    });
+
+    $(document).on('change','.living_will_radio',function(){
+        var division_tab = $(this).closest(".parent_container").data('division_tab');
+        var parent = $(this).closest(".parent_container");
+        if (parent.length > 0) {
+            if(this.value == 1 || this.value== "yes" || this.value =="on")
+            {
+                $( ".extra_options", parent).show();
+            }
+            else
+            {
+                $( ".extra_options", parent).hide();
+            }
+        }
+    });
+
+    //extensions = array[];
+    function uploader_create( holderId, allowed_extensions , max_filesize, multiple_files)
+    {
+        //defaults
+        var _max_filesize = 102400000;
+        var _allowed_extensions = ['pdf','docx'];
+        var _multiple_files = false;
+
+        if ( ! $.isNumeric(max_filesize) ) {
+            max_filesize = _max_filesize;
+        }
+        if ( ! $.isArray(allowed_extensions) ) {
+            allowed_extensions = _allowed_extensions;
+        }
+        if ( ! typeof multiple_files === "boolean"  ) {
+            multiple_files = _multiple_files;
+        }
+
+        var holderElement = document.getElementById(holderId);
+
+        if (holderElement == null) {
+            return;//holderId not found
+        }
+
+        qq_uploader = new qq.FineUploader({
+            debug: false,
+            multiple : multiple_files,
+            element: holderElement,
+            template: 'qq-template',
+
+            request: {
+                customHeaders: {},
+                endpoint: appbase+'patientnew/fileupload',
+                filenameParam: "qqfilename",
+                forceMultipart: true,
+                inputName: "qqfile",
+                method: "POST",
+                params: {
+                    //params are overwriten on submit
+                    'action'	: 'upload_file_attachment',
+                    'id'		: window.idpd,
+                    'tabname'	: holderId,
+                    'date'		: function() {
+                        return new Date();
+                    },
+                    'multiple'	: multiple_files,
+                    'file_date' : '',
+                    'upload_and_save' : true,
+                },
+                paramsInBody: true,
+                totalFileSizeName: "qqtotalfilesize",
+                uuidName: "qquuid",
+            },
+
+
+            deleteFile: {
+                enabled: true, // defaults to false
+                method: "POST",
+                endpoint: appbase+'patientnew/fileupload',
+                customHeaders: {},
+                params: {
+                    'action':'delete',
+                    'date': new Date()
+                },
+            },
+
+            retry: {
+                enableAuto: false
+            },
+
+            validation: {
+                allowedExtensions: allowed_extensions,
+                sizeLimit: max_filesize
+            },
+
+            messages: {
+                typeError: "Ungültiges Dateiformat",
+                sizeError: "Datei zu groß",
+                minSizeError: "Datei zu klein",
+                emptyError: "Datei hat keinen Inhalt",
+                noFilesError: "Keine Datei ausgewählt",
+                tooManyItemsError: "zu viele Dateien",
+                maxHeightImageError: "Bilddimension zu groß",
+                maxWidthImageError: "Bilddimension zu groß",
+                minHeightImageError: "Bilddimension zu klein",
+                minWidthImageError:  "Bilddimension zu klein",
+                retryFailTooManyItems: "zu viele Dateien",
+                onLeave: "",
+                unsupportedBrowserIos8Safari: "Browser wird nicht unterstützt",
+            },
+
+            callbacks: {
+
+
+                onSubmit: function(id, name) {
+
+                    var el = this._options.element;
+                    var parent = $(el).closest('div.extra_options');
+                    var file_date = $('.file_date', parent).val();
+                    if( ! file_date) {
+
+                        //cancel upload
+                        setTimeout(function () {
+                            alert("Bitte füllen Sie die Felder, 'ausgestellt am:' und 'wo hinterlegt' aus.");
+                        },50);
+                        this.cancelAll();
+                        this.clearStoredFiles();
+
+                        return false;
+
+                    } else {
+                        //setParams
+                        var params = {
+                            'action'	: 'upload_file_attachment',
+                            'id'		: window.idpd,
+                            'tabname'	: holderId,
+                            'date'		: function() {
+                                return new Date();
+                            },
+                            'multiple'	: multiple_files,
+                            'file_date'	: file_date,
+                            'upload_and_save' : true
+                        };
+                        this.setParams(params, id);
+                        return true;
+                    }
+                },
+
+                onComplete: function(id, fileName, responseJSON){
+
+                    if (responseJSON.success == true){
+                        //update
+                        $('li[qq-file-id="'+id+'"] input.qquuid', $(holderElement)).val(this.getUuid(id));
+                    }
+
+                    if (responseJSON.redirect == true){
+                        if (typeof responseJSON.redirect_location != 'undefined') {
+
+                        } else {
+                            window.location.reload();//redirect to self
+                        }
+                    }
+                },
+            }
+        });
+        return qq_uploader;
+    }
+</script>
+<style>
+    .ui-accordion {
+    }
+    .ui-accordion .ui-accordion-content-active {
+        height: auto!important;
+        background: #fff;
+    }
+    .ui-accordion .ui-accordion-header{
+        height: 20px;
+        background: #B5BFD5;
+        color:#20396B;
+        border-color: #B5BFD5;
+        margin-right: 2px;
+    }
+    .accordion span.accordion_span_name {
+        height: 27px;
+        margin-left: 30px;
+        font-weight: 400;
+        font-size: 12px;
+        line-height: 20px;
+        color: #000;
+
+    }
+    .nonaccordion span.accordion_span_name {
+        color: #000;
+        font-size: 12px;
+    }
+    .accordion label{
+        width:320px;
+    }
+    .accordion label span{
+        width:120px;
+        display:inline-block;
+    }
+</style>
+<div class="accordion">
+    <?php
+    $box_division = 'living_will';
+    ?>
+    <h3><span class="accordion_span_name"><?php echo $box_lang['living_will']; ?></span></h3>
+    <div data-division_tab="<?php echo $box_division;?>" class="living_will parent_container " style="padding:5px; margin-right: 2px;">
+        <div>
+            <?php
+            echo $this->formRadio(
+                $box_division."[active]",
+                isset($data[$box_division]['active']) ? $data[$box_division]['active'] : null,
+                array(
+                    'class'=>'living_will_radio',
+                    //'onclick' => 'updatePatientInformation(\'Acp\',\'active\',\''.$box_id.'\',this,\'' . $this->pat_enc_id . '\')'
+                ),
+                $radio_val,
+                '<div class="clearer"></div>');
+            ?>
+
+            <div class="extra_options" style="<?php if ($data[$box_division]['active'] != 'yes') { echo 'display:none';} ?>"" >
+            <label>
+                <?php
+                echo '<span class="acp_lbl_txt">'.$box_lang['where deposited'].'</span>';
+                echo $this->formText($box_division.'[comments]', $data[$box_division]['comments'], array('style'=>'width: 140px;', 'class'=>'comments' , 'id'=> 'comments_' . $box_division));
+                ?>
+            </label>
+            <br />
+            <label>
+                <?php
+                echo '<span class="acp_lbl_txt">'.$box_lang['from when'].'</span>';
+                echo $this->formText($box_division.'[file_date]', null, array('style'=>'width: 120px;', 'class'=>'file_date' , 'id'=> 'file_date_' . $box_division));
+                ?>
+            </label>
+            <br />
+            <label>
+                Neues Dokument hochladen
+            </label>
+                <div id="acp_file_<?php echo $box_division;?>" class="qq_file_uploader"><noscript>Please enable JavaScript to use file uploader</noscript></div>
+
+            <?php  if ( ! empty($data[$box_division]['files'])) : /*list all files*/ ?>
+                <label><?php echo $box_lang['file download']; ?></label>
+                <ul style="font-size:12px;">
+                    <?php
+                    $latest_file = array_shift($data[$box_division]['files']);
+                    echo '<li><a href="stats/patientfileupload?doc_id='.$latest_file['id'].'&id='.$this->pat_enc_id.'">' . date("d.m.Y", strtotime($latest_file['file_date'])) . ' '. $latest_file['title'] . "</a></li>";
+
+                    foreach ($data[$box_division]['files'] as $old_file) {
+                        echo '<li><a style="color:gray;font-size:10px;" href="stats/patientfileupload?doc_id='.$old_file['id'].'&id='.$this->pat_enc_id.'">'. $box_lang['old version'] . " ". date("d.m.Y", strtotime($old_file['file_date'])). "</a></li>";
+                    }
+                    ?>
+                </ul>
+            <?php endif; /*eo files*/?>
+            </div>
+        </div>
+    </div>
+
+    <?php
+    $box_division = 'care_orders';
+    ?>
+    <h3><span class="accordion_span_name"><?php echo $box_lang[$box_division] ?></span></h3>
+    <div data-division_tab="<?php echo $box_division;?>" class="<?php echo $box_division;?> parent_container" style="padding:5px; margin-right: 2px;">
+        <div>
+            <?php
+            echo $this->formRadio(
+                $box_division."[active]",
+                isset($data[$box_division]['active']) ? $data[$box_division]['active'] : null,
+                array(
+                    'class'=>'living_will_radio',
+                    //'onclick' => 'updatePatientInformation(\'Acp\',\'active\',\''.$box_id.'\',this,\'' . $this->pat_enc_id . '\')'
+                ),
+                $radio_val,
+                '<div class="clearer"></div>');
+            ?>
+            <div class="extra_options" style="<?php if ($data[$box_division]['active'] != 'yes') { echo 'display:none';} ?>"" >
+            <?php if ( ! empty($contact_p)) : ?>
+                <label>
+                    <?php
+                    echo '<span class="acp_lbl_txt">'.$box_lang['contact person in charge'].'</span>';
+                    echo $this->formSelect($box_division.'[contactperson_master_id]', $data[$box_division]['contactperson_master_id'], array('class'=>'contactperson', 'id'=> 'contactperson_' . $box_division, 'style'=>'width: 140px;') , $contact_p);
+                    ?>
+                </label>
+                <br />
+            <?php endif; ?>
+
+            <label>
+                <?php
+                echo '<span class="acp_lbl_txt">'.$box_lang['where deposited'].'</span>';
+                echo $this->formText($box_division.'[comments]', $data[$box_division]['comments'], array('style'=>'width: 140px;', 'class'=>'comments' , 'id'=> 'comments_' . $box_division));
+                ?>
+            </label>
+            <br />
+
+            <label>
+                <?php
+                echo '<span class="acp_lbl_txt">'.$box_lang['from when'].'</span>';
+                echo $this->formText($box_division.'[file_date]', null, array('style'=>'width: 120px;', 'class'=>'file_date' ,'id'=> 'file_date_' . $box_division));
+                ?>
+            </label>
+
+            <br />
+            <label>
+                Neues Dokument hochladen
+            </label>
+                <div id="acp_file_<?php echo $box_division;?>" class="qq_file_uploader"><noscript>Please enable JavaScript to use file uploader.</noscript></div>
+
+            <?php  if ( ! empty($data[$box_division]['files'])) : /*list all files*/ ?>
+                <label><?php echo $box_lang['file download']; ?></label>
+                <ul style="font-size:12px;">
+                    <?php
+                    $latest_file = array_shift($data[$box_division]['files']);
+                    echo '<li><a href="stats/patientfileupload?doc_id='.$latest_file['id'].'&id='.$this->pat_enc_id.'">' . date("d.m.Y", strtotime($latest_file['file_date'])) . ' '. $latest_file['title'] . "</a></li>";
+
+                    foreach ($data[$box_division]['files'] as $old_file) {
+                        echo '<li><a style="color:gray;font-size:10px;" href="stats/patientfileupload?doc_id='.$old_file['id'].'&id='.$this->pat_enc_id.'">'. $box_lang['old version'] . " ". date("d.m.Y", strtotime($old_file['file_date'])). "</a></li>";
+                    }
+                    ?>
+                </ul>
+            <?php endif; /*eo files*/?>
+            </div>
+        </div>
+    </div>
+
+    <?php
+    $box_division = 'healthcare_proxy';
+    ?>
+    <h3><span class="accordion_span_name"><?php echo $box_lang[$box_division] ?></span></h3>
+    <div data-division_tab="<?php echo $box_division;?>" class="<?php echo $box_division;?> parent_container " style="padding:5px; margin-right: 2px;">
+        <div>
+            <?php
+            echo $this->formRadio(
+                $box_division."[active]",
+                isset($data[$box_division]['active']) ? $data[$box_division]['active'] : null,
+                array(
+                    'class'=>'living_will_radio',
+                    //'onclick' => 'updatePatientInformation(\'Acp\',\'active\',\''.$box_id.'\',this,\'' . $this->pat_enc_id . '\')'
+                ),
+                $radio_val,
+                '<div class="clearer"></div>');
+            ?>
+            <div class="extra_options" style="<?php if ($data[$box_division]['active'] != 'yes') { echo 'display:none';} ?>"" >
+                <?php if ( ! empty($contact_p)) : ?>
+                    <label>
+                        <?php
+                        echo '<span class="acp_lbl_txt">'.$box_lang['contact person in charge'].'</span>';
+                        echo $this->formSelect($box_division.'[contactperson_master_id]', $data[$box_division]['contactperson_master_id'], array('class'=>'contactperson', 'id'=> 'contactperson_' . $box_division, 'style'=>'width: 140px;') , $contact_p);
+                        ?>
+                    </label>
+                    <br />
+                <?php endif; ?>
+
+                <label>
+                    <?php
+                    echo '<span class="acp_lbl_txt">'.$box_lang['where deposited'].'</span>';
+                    echo $this->formText($box_division.'[comments]', $data[$box_division]['comments'], array('style'=>'width: 140px;', 'class'=>'comments' , 'id'=> 'comments_' . $box_division));
+                    ?>
+                </label>
+                <br />
+
+                <label>
+                    <?php
+                    echo '<span class="acp_lbl_txt">'.$box_lang['from when'].'</span>';
+                    echo $this->formText($box_division.'[file_date]', null, array('style'=>'width: 120px;', 'class'=>'file_date' ,'id'=> 'file_date_' . $box_division));
+                    ?>
+                </label>
+                <br />
+                <label>
+                    Neues Dokument hochladen
+                </label>
+                    <div id="acp_file_<?php echo $box_division;?>" class="qq_file_uploader"><noscript>Please enable JavaScript to use file uploader.</noscript></div>
+
+                <?php  if ( ! empty($data[$box_division]['files'])) : /*list all files*/ ?>
+                    <label><?php echo $box_lang['file download']; ?></label>
+                    <ul style="font-size:12px;">
+                        <?php
+                        $latest_file = array_shift($data[$box_division]['files']);
+                        echo '<li><a href="stats/patientfileupload?doc_id='.$latest_file['id'].'&id='.$this->pat_enc_id.'">' . date("d.m.Y", strtotime($latest_file['file_date'])) . ' '. $latest_file['title'] . "</a></li>";
+
+                        foreach ($data[$box_division]['files'] as $old_file) {
+                            echo '<li><a style="color:gray;font-size:10px;" href="stats/patientfileupload?doc_id='.$old_file['id'].'&id='.$this->pat_enc_id.'">'. $box_lang['old version'] . " ". date("d.m.Y", strtotime($old_file['file_date'])). "</a></li>";
+                        }
+                        ?>
+                    </ul>
+                <?php endif; /*eo files*/?>
+            </div>
+        </div>
+    </div>
+
+</div>

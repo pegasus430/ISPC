@@ -1,0 +1,690 @@
+<?php
+//ISPC-2657, elena, 25.08.2020 (ELSA: Reaktionen)
+//Maria:: Migration CISPC to ISPC 02.09.2020
+$reactions_allergy = $this->allergy;
+$reactions_intolerance = $this->intolerance;
+$reactions_sae = $this->sae_reactions;
+
+?>
+<?php if($this->pdf==false):?>
+<script>
+    var detailscookies = '<?php echo $this->detailscookies; ?>';
+    var current_entry = 0;
+    $(document).ready(function() {
+
+        $('#reactions').tabs();
+
+        //Allergies/Unverträglichkeiten
+
+        $('#add_new_allergy').on('click', function(e){
+            e.preventDefault();
+            current_entry = 0;
+            $( "#allergy_reaction_dialog" ).dialog('open');
+
+        });
+        $('#add_new_intolerance').on('click', function(e){
+            e.preventDefault();
+            current_entry = 0;
+            $( "#intolerance_reaction_dialog" ).dialog('open');
+
+        });
+        $('.edit_reaction').on('click', function(e){
+            e.preventDefault();
+            current_entry = $(this).attr('data-id');
+            $( "#allergy_reaction_dialog" ).dialog('open');
+
+        });
+
+        //dialogs
+        $( "#allergy_reaction_dialog" ).dialog({
+            autoOpen: false,
+            title:"Allergie",
+            resizable: false,
+            //height: 200,
+            width: 680,
+            modal: true,
+            open: function (){
+                $.ajax({
+                    type: 'POST',
+                    url: '<?php echo APP_BASE; ?>ajax/reaction?id=<?php echo $_REQUEST['id']; ?>&cnt='+ current_entry + '&typ=allergy&blockname=<?php echo $this->blockconfig['blockname']; ?>',
+
+                    beforeSend:function(){
+                        //loading image
+                        //$('#medipump_ajax_load_edt').show();
+                    },
+                    success:function(data){
+
+                        $('#allergy_reaction_content').html(data).promise().done(function(){
+
+
+                            $('.livesearchicdcode').bind('change', function() {
+                                var input_row = parseInt($(this).attr('id').substr(('icdnumber').length));
+                                var this_id = $(this).attr('id');
+                                //reset_medications(input_row);
+                            }).liveSearch({
+                                url: 'ajax/diagnosis?mode=icdnumber&q=' + $(this).val(),
+                                id: 'livesearch_admission_diagnosis',
+                                aditionalWidth: '300',
+                                noResultsDelay: '900',
+                                typeDelay: '900',
+                                returnRowId: function (input) {return parseInt($(input).attr('id').substr(('icdnumber').length));}
+                            });
+                        });
+                   }
+                })
+
+            },
+            buttons: {
+                "Speichern": function(){
+
+                    //console.log( $('#nonmedical_intervention_content_form'));
+                    //$('#nonmedical_intervention_content_form').submit();
+                    ajax_savereaction('#reaction_content_form');
+
+
+                },
+                "<?php echo $this->translate('cancel'); ?>": function(){
+                    $("#allergy_reaction_dialog" ).dialog('close');
+                }
+            },create:function () {
+                $(this).closest(".ui-dialog")
+                    .find(".ui-button:first") // the first button
+                    .addClass("submitform");
+            },
+            beforeClose: function(){
+                $('#icdcode_0').click();
+            },
+            close:function () {
+
+                $('#icdcode_0').click();
+                $('#allergy_reaction_content').html('');
+                $('.submitform').attr('disabled',false),
+                    $(".ui-button:first").attr("disabled", false)
+                        .removeClass("ui-state-disabled").next("button").attr("disabled", false)
+                        .removeClass("ui-state-disabled");
+            }
+        });
+        $( "#intolerance_reaction_dialog" ).dialog({
+            autoOpen: false,
+            title:"Unverträgichkeit",
+            resizable: false,
+            //height: 200,
+            width: 680,
+            modal: true,
+            open: function (){
+                $.ajax({
+                    type: 'POST',
+                    url: '<?php echo APP_BASE; ?>ajax/reaction?id=<?php echo $_REQUEST['id']; ?>&cnt='+ current_entry + '&typ=intolerance&blockname=<?php echo $this->blockconfig['blockname']; ?>',
+
+                    beforeSend:function(){
+                        //loading image
+                        //$('#medipump_ajax_load_edt').show();
+                    },
+                    success:function(data){
+
+                        $('#intolerance_reaction_content').html(data).promise().done(function(){
+
+
+                            $('.livesearchicdcode').bind('change', function() {
+                                var input_row = parseInt($(this).attr('id').substr(('icdnumber').length));
+                                var this_id = $(this).attr('id');
+                                //reset_medications(input_row);
+                            }).liveSearch({
+                                url: 'ajax/diagnosis?mode=icdnumber&q=' + $(this).val(),
+                                id: 'livesearch_admission_diagnosis',
+                                aditionalWidth: '300',
+                                noResultsDelay: '900',
+                                typeDelay: '900',
+                                returnRowId: function (input) {return parseInt($(input).attr('id').substr(('icdnumber').length));}
+                            });
+                        });
+                   }
+                })
+
+            },
+            buttons: {
+                "Speichern": function(){
+
+                    //console.log( $('#nonmedical_intervention_content_form'));
+                    //$('#nonmedical_intervention_content_form').submit();
+                    ajax_savereaction('#reaction_content_form');
+
+
+                },
+                "<?php echo $this->translate('cancel'); ?>": function(){
+                    $("#intolerance_reaction_dialog" ).dialog('close');
+                }
+            },create:function () {
+                $(this).closest(".ui-dialog")
+                    .find(".ui-button:first") // the first button
+                    .addClass("submitform");
+            },
+            beforeClose: function(){
+                $('#icdcode_0').click();
+            },
+            close:function () {
+                $('#intolerance_reaction_content').html('');
+                $('.submitform').attr('disabled',false),
+                    $(".ui-button:first").attr("disabled", false)
+                        .removeClass("ui-state-disabled").next("button").attr("disabled", false)
+                        .removeClass("ui-state-disabled");
+            }
+        });
+
+        function ajax_savereaction(formid) {
+            var formData = ($(formid).serializeArray());
+            //formData = serializeToJson(formData);
+            //console.log(formData);
+            //console.log(formData['interventions']);
+            console.log('save form');
+            $.ajax({
+                type: 'POST',
+                url: 'ajax/savereaction?id=<?php echo $_GET['id']; ?>',
+                data:  $(formid).serialize(),
+                //dataType: 'json',
+                //encode: true,
+
+                success: function (jdata) {
+
+                    console.log(jdata);
+
+                    var data = jQuery.parseJSON(jdata);
+                    if(data.success == true){
+                        //reload after changes
+                        location.href = "<?php echo APP_BASE ?>patientformnew/reactions?id=<?php echo $_GET['id']; ?>";
+
+                    }else{
+                        var errorsMarkup = '';
+                        var error_div = '#reaction_errors';
+
+                        $.each(data.errors, function(key, value){
+                            errorsMarkup += '<span>' + value + '</span>';
+                            console.log(errorsMarkup);
+                            $(error_div).html(errorsMarkup);
+                        })
+
+                        console.log(data.errors);
+                    }
+
+                },
+                error : function(error){
+                    console.log(error);
+                }
+            });
+        }
+
+        $('.delete_reaction').on('click', function(){
+            var reaction_id = $(this).attr('data-id');
+            console.log(reaction_id);
+            jConfirm('<? echo $this->translate('confirmdeleterecord'); ?>', '<? echo $this->translate('confirmdeletetitle'); ?>', function(r) {
+                if(r)
+                {
+                    delete_reaction(reaction_id);
+                }
+            });
+        })
+
+        function delete_reaction(id){
+            $.ajax({
+                type: 'POST',
+                url: 'ajax/deletereaction?id=<?php echo $_GET['id']; ?>',
+                data:  'reaction_id=' + id,
+                //dataType: 'json',
+                //encode: true,
+
+                success: function (jdata) {
+
+                    console.log(jdata);
+
+                    var data = jQuery.parseJSON(jdata);
+                    if(data.success == true){
+                        //reload after changes
+                        location.href = "<?php echo APP_BASE ?>patientformnew/reactions?id=<?php echo $_GET['id']; ?>";
+
+                    }else{
+                        //error handling
+                    }
+
+                },
+                error : function(error){
+                    console.log(error);
+                }
+            });
+
+        }
+
+        //SAE
+        $('#add_new_sae').on('click', function(e){
+            e.preventDefault();
+            current_entry = 0;
+            $( "#sae_reaction_dialog" ).dialog('open');
+
+        });
+        //dialog
+        $( "#sae_reaction_dialog" ).dialog({
+            autoOpen: false,
+            title:"SAE",
+            resizable: false,
+            //height: 200,
+            width: 680,
+            modal: true,
+            open: function (){
+                $.ajax({
+                    type: 'POST',
+                    url: '<?php echo APP_BASE; ?>ajax/saereaction?id=<?php echo $_REQUEST['id']; ?>&cnt='+ current_entry + '&blockname=saerections',
+
+                    beforeSend:function(){
+                        //loading image
+                        //$('#medipump_ajax_load_edt').show();
+                    },
+                    success:function(data){
+
+                        $('#sae_reaction_content').html(data).promise().done(function(){
+
+                        });
+
+
+
+                    }
+                })
+
+            },
+            buttons: {
+                "Speichern": function(){
+
+                    console.log('sae specihern');
+                    //console.log( $('#nonmedical_intervention_content_form'));
+                    //$('#nonmedical_intervention_content_form').submit();
+                    ajax_savesaereaction('#saereaction_content_form');
+
+
+                },
+                "<?php echo $this->translate('cancel'); ?>": function(){
+                    $("#sae_reaction_dialog" ).dialog('close');
+                }
+            },create:function () {
+                $(this).closest(".ui-dialog")
+                    .find(".ui-button:first") // the first button
+                    .addClass("submitform");
+            },
+            close:function () {
+                $('#sae_reaction_content').html('');
+                $('.submitform').attr('disabled',false),
+                    $(".ui-button:first").attr("disabled", false)
+                        .removeClass("ui-state-disabled").next("button").attr("disabled", false)
+                        .removeClass("ui-state-disabled");
+            }
+        });
+
+        function ajax_savesaereaction(formid) {
+            var formData = ($(formid).serializeArray());
+            //formData = serializeToJson(formData);
+            console.log(formData);
+            //console.log(formData['interventions']);
+            console.log('save form');
+            $.ajax({
+                type: 'POST',
+                url: 'ajax/savesaereaction?id=<?php echo $_GET['id']; ?>',
+                data:  $(formid).serialize(),
+                //dataType: 'json',
+                //encode: true,
+
+                success: function (jdata) {
+
+                    console.log(jdata);
+
+                    var data = jQuery.parseJSON(jdata);
+                    if(data.success == true){
+                        //reload after changes
+                        location.href = "<?php echo APP_BASE ?>patientformnew/reactions?id=<?php echo $_GET['id']; ?>";
+
+                    }else{
+                        var errorsMarkup = '';
+                        var error_div = '#reaction_errors';
+
+                        $.each(data.errors, function(key, value){
+                            errorsMarkup += '<span>' + value + '</span>';
+                            console.log(errorsMarkup);
+                            $(error_div).html(errorsMarkup);
+                        })
+
+                        console.log(data.errors);
+                    }
+
+                },
+                error : function(error){
+                    console.log(error);
+                }
+            });
+        }
+
+        $('.delete_saereaction').on('click', function(){
+            var reaction_id = $(this).attr('data-id');
+            console.log(reaction_id);
+            jConfirm('<? echo $this->translate('confirmdeleterecord'); ?>', '<? echo $this->translate('confirmdeletetitle'); ?>', function(r) {
+                if(r)
+                {
+                    delete_saereaction(reaction_id);
+                }
+            });
+        })
+
+        $('.edit_saereaction').on('click', function(e){
+            e.preventDefault();
+            current_entry = $(this).attr('data-id');
+            $( "#sae_reaction_dialog" ).dialog('open');
+
+        });
+
+        function delete_saereaction(id){
+            $.ajax({
+                type: 'POST',
+                url: 'ajax/deletesaereaction?id=<?php echo $_GET['id']; ?>',
+                data:  'saereaction_id=' + id,
+                //dataType: 'json',
+                //encode: true,
+
+                success: function (jdata) {
+
+                    console.log(jdata);
+
+                    var data = jQuery.parseJSON(jdata);
+                    if(data.success == true){
+                        //reload after changes
+                        location.href = "<?php echo APP_BASE ?>patientformnew/reactions?id=<?php echo $_GET['id']; ?>";
+
+                    }else{
+                        //error handling
+                    }
+
+                },
+                error : function(error){
+                    console.log(error);
+                }
+            });
+
+        }
+
+    })
+   </script>
+<style>
+    /* ISPC-2720, elena, 30.11.2020 */
+    #tabs-1 .datatable, #tabs-2 .datatable, #tabs-3 .datatable{
+        width: 100% !important;
+    }
+</style>
+
+    <div id="reactions">
+    <ul>
+        <li><a href="#tabs-1">Allergien</a></li>
+        <li><a href="#tabs-2">Unverträglichkeiten</a></li>
+        <li><a href="#tabs-3">SAE</a></li>
+
+    </ul>
+    <div id="tabs-1">
+        <table class="datatable">
+
+
+            <tr>
+                <th>ICD</th>
+                <th>Allergiestoff</th>
+                <th>Reaktion</th>
+                <th>Erstdiagnose</th>
+
+            </tr>
+            <?php foreach($reactions_allergy as $onereaction): ?>
+            <tr>
+            <td><?php echo $onereaction['icdcode']; ?></td>
+            <td><?php echo $onereaction['reaction_against']; ?></td>
+            <td><?php echo $onereaction['reaction_text']; ?></td>
+            <td>
+                <?php
+                if(trim($onereaction['first_diagnosis_date']) != '' && $onereaction['first_diagnosis_date'] != '0000-00-00'){
+                if( trim($onereaction['first_diagnosis_date_knowledge']) == '' || trim($onereaction['first_diagnosis_date_knowledge']) == 'full' ){
+                    echo date_format( date_create_from_format('Y-m-d', $onereaction['first_diagnosis_date']), 'd.m.Y');
+                }elseif(trim($onereaction['first_diagnosis_date_knowledge']) == 'year and month only'){
+                 echo date_format( date_create_from_format('Y-m-d', $onereaction['first_diagnosis_date']), 'm.Y');
+                }else{
+                echo date_format( date_create_from_format('Y-m-d', $onereaction['first_diagnosis_date']), 'Y');
+                }
+                }
+
+                ?>
+            </td>
+            <?php if (!$this->blockconfig['no_actions']) : //ISPC-2831 Dragos 15.03.2021?>
+                <td><img src="<?php echo RES_FILE_PATH; ?>/images/edit.png" width="16px" data-id="<?php echo $onereaction['id']; ?>" class="edit_reaction" /></td>
+                <td><img src="<?php echo RES_FILE_PATH; ?>/images/cross.png" width="16px" data-id="<?php echo $onereaction['id']; ?>" class="delete_reaction"  /></td>
+            <?php endif; //ISPC-2831 Dragos 15.03.2021 ?>
+            </tr>
+
+            <?php endforeach; ?>
+        </table>
+
+
+        <?php if (!$this->blockconfig['no_actions']) : //ISPC-2831 Dragos 15.03.2021?>
+            <div><input type="image" src="<?php echo RES_FILE_PATH; ?>/images/edit_add.png" width="16px" id="add_new_allergy" /></div>
+        <?php endif; //ISPC-2831 Dragos 15.03.2021 ?>
+    </div>
+    <div id="tabs-2">
+        <table class="datatable">
+
+
+            <tr>
+                <th>ICD</th>
+                <th>Unverträglichkeit gegen</th>
+                <th>Reaktion</th>
+                <th>Erstdiagnose</th>
+
+            </tr>
+            <?php foreach($reactions_intolerance as $onereaction): ?>
+            <tr>
+                <td><?php echo $onereaction['icdcode']; ?></td>
+                <td><?php echo $onereaction['reaction_against']; ?></td>
+                <td><?php echo $onereaction['reaction_text']; ?></td>
+                <td>
+                    <?php
+                if(trim($onereaction['first_diagnosis_date']) != '' && $onereaction['first_diagnosis_date'] != '0000-00-00'){
+                if( trim($onereaction['first_diagnosis_date_knowledge']) == '' || trim($onereaction['first_diagnosis_date_knowledge']) == 'full' ){
+                    echo date_format( date_create_from_format('Y-m-d', $onereaction['first_diagnosis_date']), 'd.m.Y');
+                }elseif(trim($onereaction['first_diagnosis_date_knowledge']) == 'year and month only'){
+                 echo date_format( date_create_from_format('Y-m-d', $onereaction['first_diagnosis_date']), 'm.Y');
+                }else{
+                echo date_format( date_create_from_format('Y-m-d', $onereaction['first_diagnosis_date']), 'Y');
+                }
+                }
+
+                ?>
+                </td>
+                <?php if (!$this->blockconfig['no_actions']) : //ISPC-2831 Dragos 15.03.2021?>
+                    <td><img src="<?php echo RES_FILE_PATH; ?>/images/edit.png" width="16px" data-id="<?php echo $onereaction['id']; ?>" class="edit_reaction" /></td>
+                    <td><img src="<?php echo RES_FILE_PATH; ?>/images/cross.png" width="16px" data-id="<?php echo $onereaction['id']; ?>" class="delete_reaction"  /></td>
+                <?php endif; //ISPC-2831 Dragos 15.03.2021 ?>
+            </tr>
+
+            <?php endforeach; ?>
+        </table>
+        <?php if (!$this->blockconfig['no_actions']) : //ISPC-2831 Dragos 15.03.2021?>
+            <div><input type="image" src="<?php echo RES_FILE_PATH; ?>/images/edit_add.png" width="16px" id="add_new_intolerance" /></div>
+        <?php endif; //ISPC-2831 Dragos 15.03.2021 ?>
+    </div>
+    <div id="tabs-3">
+        Hier bitte unerwünschte Ereignisse eintragen, die unmittelbar lebensbedrohend waren, und im Rahmen einer klinischen Studie mit Arzneimitteln/Medizinprodukten mit diesem Kind auftraten. Hierunter fallen Ereignisse, die einen unvorgerhgesehenen Krankenhausaufenthalt oder dessen Verlängerung erforderlich machten, eine kongenitale Anomalie oder einen Geburtsfehler nach sich zogen oder bleibende/schwerwiegende Behinderung oder Invalidität zur Folge hatten
+
+        <table class="datatable">
+
+
+            <tr>
+                <th>Datum der SAE</th>
+                <th>Studie</th>
+                <th>Reaktion</th>
+                <th>ggf. Ursache</th>
+                <th>Ort der SAE</th>
+                <th>Folge</th>
+
+            </tr>
+            <?php foreach($reactions_sae as $sae): ?>
+            <tr>
+                <td>
+                    <?php
+                if(trim($sae['first_sae_date']) != '' && $sae['first_sae_date'] != '0000-00-00'){
+                if( trim($sae['first_sae_date_knowledge']) == '' || trim($sae['first_sae_date_knowledge']) == 'full' ){
+                    echo date_format( date_create_from_format('Y-m-d', $sae['first_sae_date']), 'd.m.Y');
+                }elseif(trim($sae['first_sae_date_knowledge']) == 'year and month only'){
+                 echo date_format( date_create_from_format('Y-m-d', $sae['first_sae_date']), 'm.Y');
+                }else{
+                echo date_format( date_create_from_format('Y-m-d', $sae['first_sae_date']), 'Y');
+                }
+                }
+
+                ?>
+                </td>
+                <td><?php echo $sae['study']; ?></td>
+                <td><?php echo $sae['reaction_text']; ?></td>
+                <td><?php echo $sae['cause']; ?></td>
+                <td><?php echo $sae['place']; ?></td>
+               <td><?php echo $sae['consequence']; ?></td>
+                <?php if (!$this->blockconfig['no_actions']) : //ISPC-2831 Dragos 15.03.2021?>
+                    <td><img src="<?php echo RES_FILE_PATH; ?>/images/edit.png" width="16px" data-id="<?php echo $sae['id']; ?>" class="edit_saereaction" /></td>
+                    <td><img src="<?php echo RES_FILE_PATH; ?>/images/cross.png" width="16px" data-id="<?php echo $sae['id']; ?>" class="delete_saereaction"  /></td>
+                <?php endif; //ISPC-2831 Dragos 15.03.2021 ?>
+            </tr>
+
+            <?php endforeach; ?>
+        </table>
+
+        <?php if (!$this->blockconfig['no_actions']) : //ISPC-2831 Dragos 15.03.2021?>
+            <div><input type="image" src="<?php echo RES_FILE_PATH; ?>/images/edit_add.png" width="16px" id="add_new_sae" /></div>
+        <?php endif; //ISPC-2831 Dragos 15.03.2021 ?>
+    </div>
+
+        <?php if (!$this->blockconfig['no_actions']) : //ISPC-2831 Dragos 15.03.2021?>
+        <div id="allergy_reaction_dialog" class="dialog_input">
+            <div id="allergy_reaction_content"></div>
+
+        </div>
+        <div id="intolerance_reaction_dialog" class="dialog_input">
+            <div id="intolerance_reaction_content"></div>
+
+        </div>
+
+        <div id="sae_reaction_dialog" class="dialog_input">
+            <div id="sae_reaction_content"></div>
+        </div>
+        <?php endif; //ISPC-2831 Dragos 15.03.2021 ?>
+    </div><!--TODO-3909,Elena,01.03.2021-->
+
+<?php else: ?>
+<h4>Allergien</h4>
+            <table border="1" width="100%" cellpadding="5" cellspacing="0" >
+
+
+                <tr>
+                    <td><b>ICD</b></td>
+                    <td><b>Allergiestoff</b></td>
+                    <td><b>Reaktion</b></td>
+                    <td><b>Erstdiagnose</b></td>
+
+                </tr>
+                <?php foreach($reactions_allergy as $onereaction): ?>
+                <tr>
+                    <td><?php echo $onereaction['icdcode']; ?></td>
+                    <td><?php echo $onereaction['reaction_against']; ?></td>
+                    <td><?php echo $onereaction['reaction_text']; ?></td>
+                    <td>
+                        <?php
+                if(trim($onereaction['first_diagnosis_date']) != '' && $onereaction['first_diagnosis_date'] != '0000-00-00'){
+                if( trim($onereaction['first_diagnosis_date_knowledge']) == '' || trim($onereaction['first_diagnosis_date_knowledge']) == 'full' ){
+                    echo date_format( date_create_from_format('Y-m-d', $onereaction['first_diagnosis_date']), 'd.m.Y');
+                }elseif(trim($onereaction['first_diagnosis_date_knowledge']) == 'year and month only'){
+                 echo date_format( date_create_from_format('Y-m-d', $onereaction['first_diagnosis_date']), 'm.Y');
+                }else{
+                echo date_format( date_create_from_format('Y-m-d', $onereaction['first_diagnosis_date']), 'Y');
+                }
+                }
+
+                ?>
+                    </td>
+
+                </tr>
+
+                <?php endforeach; ?>
+            </table>
+            <p></p>
+
+            <h4>Unverträglichkeiten</h4>
+            <table border="1" width="100%" cellpadding="5" cellspacing="0">
+
+
+                <tr>
+                    <td><b>ICD</b></td>
+                    <td><b>Unverträglichkeit gegen</b></td>
+                    <td><b>Reaktion</b></td>
+                    <td><b>Erstdiagnose</b></td>
+
+                </tr>
+                <?php foreach($reactions_intolerance as $onereaction): ?>
+                <tr>
+                    <td><?php echo $onereaction['icdcode']; ?></td>
+                    <td><?php echo $onereaction['reaction_against']; ?></td>
+                    <td><?php echo $onereaction['reaction_text']; ?></td>
+                    <td>
+                        <?php
+                if(trim($onereaction['first_diagnosis_date']) != '' && $onereaction['first_diagnosis_date'] != '0000-00-00'){
+                if( trim($onereaction['first_diagnosis_date_knowledge']) == '' || trim($onereaction['first_diagnosis_date_knowledge']) == 'full' ){
+                    echo date_format( date_create_from_format('Y-m-d', $onereaction['first_diagnosis_date']), 'd.m.Y');
+                }elseif(trim($onereaction['first_diagnosis_date_knowledge']) == 'year and month only'){
+                 echo date_format( date_create_from_format('Y-m-d', $onereaction['first_diagnosis_date']), 'm.Y');
+                }else{
+                echo date_format( date_create_from_format('Y-m-d', $onereaction['first_diagnosis_date']), 'Y');
+                }
+                }
+
+                ?>
+                    </td>
+
+                </tr>
+
+                <?php endforeach; ?>
+            </table>
+        <p></p>
+
+<h4>SAE</h4>
+            <table border="1" width="100%" cellpadding="5" cellspacing="0">
+
+
+                <tr>
+                    <td><b>Datum der SAE</b></td>
+                    <td><b>Studie</b></td>
+                    <td><b>Reaktion</b></td>
+                    <td><b>ggf. Ursache</b></td>
+                    <td><b>Ort der SAE</b></td>
+                    <td><b>Folge</b></td>
+
+                </tr>
+                <?php foreach($reactions_sae as $sae): ?>
+                <tr>
+                    <td>
+                        <?php
+                if(trim($sae['first_sae_date']) != '' && $sae['first_sae_date'] != '0000-00-00'){
+                if( trim($sae['first_sae_date_knowledge']) == '' || trim($sae['first_sae_date_knowledge']) == 'full' ){
+                    echo date_format( date_create_from_format('Y-m-d', $sae['first_sae_date']), 'd.m.Y');
+                }elseif(trim($sae['first_sae_date_knowledge']) == 'year and month only'){
+                 echo date_format( date_create_from_format('Y-m-d', $sae['first_sae_date']), 'm.Y');
+                }else{
+                echo date_format( date_create_from_format('Y-m-d', $sae['first_sae_date']), 'Y');
+                }
+                }
+
+                ?>
+                    </td>
+                    <td><?php echo $sae['study']; ?></td>
+                    <td><?php echo $sae['reaction_text']; ?></td>
+                    <td><?php echo $sae['cause']; ?></td>
+                    <td><?php echo $sae['place']; ?></td>
+                    <td><?php echo $sae['consequence']; ?></td>
+
+                </tr>
+
+                <?php endforeach; ?>
+            </table>
+<?php endif; ?>

@@ -1,0 +1,334 @@
+<?php
+$national_holidays = $this->national_holidays;
+?>
+<link rel='stylesheet' type='text/css' href='<?php echo RES_FILE_PATH; ?>/css/page-css/shanlage14.css' />
+<?php
+	//IE Freaking hack
+	$url = APP_BASE . "patientformnew/nrbillingform?" . $_SERVER['QUERY_STRING'];
+	if(str_replace("&list=" . $_REQUEST['list'] . "", "", $url)):
+
+		$finalJsUrl = str_replace("&list=" . $_REQUEST['list'] . "", "", $url);
+	else:
+		$finalJsUrl = $url;
+	endif;
+?>
+<script type="text/javascript">
+	function changeMonth(data) {
+		var url = "<?php echo $finalJsUrl; ?>&list=" + data;
+		$(location).attr('href', url);
+	}
+
+	$(document).ready(function () {
+		$('.date_box').datepicker({
+			dateFormat: 'dd.mm.yy',
+			showOn: "focus",
+//			buttonImage: $('#calImg').attr('src'),
+//			buttonImageOnly: true,
+			changeMonth: true,
+			changeYear: true,
+			nextText: '',
+			prevText: ''
+		}).mask('99.99.9999');
+		
+// 		$('form').submit(function () {
+// 		setTimeout(function () {
+// 			$('input[type=submit]').attr('disabled', true);
+// 		}, 150);
+
+// 		setTimeout(function () {
+// 			$('input[type=submit]').attr('disabled', false);
+// 		}, 11000);
+// 		});
+		
+		
+		
+		
+		
+		$('.submiting').live('click', function(event) { //new function
+			event.preventDefault();
+			$.action = $(this).data('action');
+			$(document).userSession().checksession('abort', function(result) {
+				if(result === false) {
+					event.stopImmediatePropagation(); //stop going forward
+				} else {
+					
+					$('#form_action').val($.action);
+
+					if($.action == "save")
+					{
+						jConfirm('<? echo $this->translate("confirm_saving_form - this will affect the invoicing data"); ?>', '<? echo $this->translate('confirm_saving_form_title'); ?>', function(r) {
+							if(r)
+							{	
+								$('#hospiz_performance').submit();
+							}
+						});
+					}
+					else
+					{
+						$('#hospiz_performance').submit();
+					}
+				}
+			});
+		});
+		
+		
+	});
+</script>
+<style>
+	.short_input {
+		width: 20px;
+	}
+	td.red_light {
+/* 		background-color: #F2DBDB; */
+		background-color: #EADCDC;
+	}
+	td.red_dark {
+		background-color: #FE011B;
+	}
+	td.blue_light {
+		background-color: #C6D9F1;
+	}
+	td.blue_dark {
+		background-color: #2E57ED;
+	}
+	td.yellow_light {
+		background-color: #FFFFA9;
+	}
+	
+	.inactive_day_class{
+ 		background-color: #F2DBD9!important; 
+	}
+</style>
+<div class="clearer"></div>
+
+<?php if($this->has_data == '1'): ?>
+<div class="form_alert_info" >
+	<p><?php echo $this->translate("Form manually saved, to revert please press reset")?></p>
+	<br />&nbsp;
+</div>
+<?php endif;?>
+<?php echo $this->months_selector; ?>
+<form name="hospiz_performance" id="hospiz_performance" action="" method="POST">
+<table class="datatable" id="header_table">
+	<tr>
+		<td colspan="2">
+			<table style="width: 100%">
+				<tr>
+					<td style="width: 50%;">
+						<h1>Leistungsnachweis für Monat: <u><?php echo date('m Y', strtotime($this->current_period['start'])); ?></u></h1>
+					</td>
+					<td>
+						<h1></h1>
+					</td>
+				</tr>
+			</table>
+		</td>
+	</tr>
+	<tr>
+		<td colspan="2"></td>
+	</tr>
+	<tr>
+		<td width="20%">
+			<b><?php echo $this->translate('insured_patient'); ?>:</b>
+		</td>
+		<td>
+			<?php echo $this->patient_last_name; ?>, <?php echo $this->patient_first_name; ?>
+		</td>
+	</tr>
+	
+	<tr>
+		<td>
+			<b><?php echo $this->translate('shtbirthd'); ?>:</b>
+		</td>
+		<td>
+			 <?php echo $this->patient_dob; ?> 
+		</td>
+	</tr>
+	
+	
+	
+	<tr>
+		<td>
+			<b><?php echo $this->translate('pat_healthinsurance'); ?>:</b>
+		</td>
+		<td>
+			<?php echo $this->hi_company_name; ?>
+		</td>
+	</tr>
+	<tr>
+		<td>
+			<b><?php echo $this->translate('healthinsurance_nr'); ?>:</b>
+		</td>
+		<td>
+			 <?php echo $this->insurance_no; ?> 
+		</td>
+	</tr>
+ 
+</table>
+<br />
+
+
+	<table style="border:0px solid #000;width:100%;">
+		<tr>
+			<td style="width:400px;"></td>
+			<td style="width:80px;"><?php echo $this->translate('sh_betriebsstatten_nr'); ?></td>
+			<td style="width:120px;"><?php echo $this->betriebsstatten_nr; ?></td>
+			<td style="width:80px;"><?php echo $this->translate('sh_sapv_team'); ?></td>
+			<td style="width:120px;"><?php echo $this->sapv_team; ?></td>
+		</tr>
+	</table>
+	<table class="datatable_new" style="width: 800px;" cellpadding="2">
+		<tr>
+			<th class="header_cell">Leistungen</th>
+			<td class="big_cell" rowspan="10" style="padding:0;margin:0;">
+				<div class="overflowed_div">
+					<table class="datatable_new"  cellpadding="2" style="margin:0;padding:0; width: 1400px; height: 154px;border: 1px solid #000;border-top: 0px;border-bottom: 0px;">
+						<!-- Days row -->
+						<tr>
+							<?php foreach($this->selected_month_days as $k_month => $v_month): ?>
+							<?php
+								$curent_day_class = '';
+								if(strtotime($v_month) == strtotime(date('Y-m-d', time()))):
+									$curent_day_class = 'current_day ';
+								endif;
+
+								$inactive = '';
+								if(
+									!in_array(date('d.m.Y', strtotime($v_month)), $this->real_active_days) 
+									|| !in_array(date('d.m.Y', strtotime($v_month)), $this->sapv_days) 
+									|| in_array(date('d.m.Y', strtotime($v_month)), $this->hospital_days)):
+									$inactive = 'inactive_day_class ';
+								endif;
+
+ 								$weekend_holy = '';
+								 $day_type = date('w', strtotime($v_month));
+								 if($day_type == 0 || $day_type == 6 || in_array(strtotime($v_month),$national_holidays)):
+								 $weekend_holy = 'weekend' ; 
+								endif; 
+							?>
+								<th class="inside_header <?php echo $curent_day_class.$inactive.$weekend_holy; ?>">
+									<?php echo date('d', strtotime($v_month)); ?>
+								</th>
+							<?php endforeach; ?>
+						</tr>
+						<!--Shortcuts-->
+						<?php foreach($this->shortcuts as $k_short_a => $v_short_a): ?>
+							<?php $shortcut_total[$v_short_a] = '0'; ?>
+							<?php if(!in_array($v_short_a, $this->excluded_shortcuts)): ?>
+							<tr>
+								<?php foreach($this->selected_month_days as $k_month => $v_month): ?>
+								<?php
+									$curent_day_class = '';
+									if(strtotime($v_month) == strtotime(date('Y-m-d', time())))
+									{
+										$curent_day_class = 'current_day ';
+									}
+									
+									$inactive = '';
+									$disabled = '';
+									if(!in_array(date('d.m.Y', strtotime($v_month)), $this->real_active_days) 
+										|| !in_array(date('d.m.Y', strtotime($v_month)), $this->sapv_days)
+										|| in_array(date('d.m.Y', strtotime($v_month)), $this->hospital_days))
+									{
+										$inactive = 'inactive_day_class ';
+										$disabled = 'disabled="disabled" style="display:none"';
+									}
+								
+ 								
+								?>
+								<?php $class =''; ?>
+								<?php if($v_short_a == 'sh_doc_non_hospiz_visits'): ?>
+									<?php $class = ' red_light '; ?>
+								<?php elseif($v_short_a == 'sh_nur_non_hospiz_visits'): ?>
+									<?php $class = ' blue_light '; ?>	
+								<?php elseif($v_short_a == 'sh_other_visits'): ?>
+									<?php $class = ' yellow_light '; ?>	
+								<?php endif; ?>
+								
+									<td class="a6_ov_cell <?php echo $curent_day_class.$inactive.$class; ?>">
+									<?php $curent_day = date('Y-m-d', strtotime($v_month)); ?>
+										<?php if($v_short_a != 'sh_telefonat'): ?>
+											<input type="checkbox" name="<?php echo $v_short_a; ?>[<?php echo $curent_day; ?>][checked]" value="1" <?php if($this->master_data[$v_month][$v_short_a]['checked'] == '1'): ?>checked="checked"<?php endif; ?> <?php echo $disabled; ?> />
+											<input type="hidden" name="<?php echo $v_short_a; ?>[<?php echo $curent_day; ?>][qty]" value="<?php echo $this->master_data[$v_month][$v_short_a]['qty']; ?>" />											
+											<?php if($this->master_data[$v_month][$v_short_a]['checked'] == '1'): ?>
+												<?php $shortcut_total[$v_short_a] +=  number_format($this->master_data[$v_month][$v_short_a]['checked'],'2',',','.'); ?>
+											<?php endif; ?>
+										<?php else: ?>
+											
+											<?php if($this->master_data[$v_month][$v_short_a]['qty'] > '0'): ?>
+												<?php $qty = $this->master_data[$v_month][$v_short_a]['qty']; ?>
+											<?php else: ?>
+												<?php $qty = ""; ?>
+											<?php endif; ?>
+											
+											<input type="text" name="<?php echo $v_short_a; ?>[<?php echo $curent_day; ?>][qty]" value="<?php echo $qty; ?>" class="short_input" <?php echo $disabled; ?> />
+											<?php $shortcut_total[$v_short_a] +=  number_format($this->master_data[$v_month][$v_short_a]['qty'],'2',',','.'); ?>
+										<?php endif; ?>
+										
+									</td>
+								
+								<?php endforeach; ?>
+							</tr>
+							<?php else: ?>
+							<tr class="hidden_row" style="display:none;">
+								<?php foreach($this->selected_month_days as $k_month => $v_month): ?>
+								<?php $curent_day = date('Y-m-d', strtotime($v_month)); ?>
+								<input type="hidden" name="<?php echo $v_short_a; ?>[<?php echo $curent_day; ?>][qty]" value="<?php echo $this->master_data[$v_month][$v_short_a]['qty']; ?>" />
+								<?php endforeach; ?>
+							</tr>
+							<?php endif; ?>
+						<?php endforeach; ?>
+					</table>
+				</div>
+			</td>
+			<th class="header_cell"><?php echo $this->translate('sh_a14_total_col'); ?></th>
+		</tr>
+		<?php  foreach($this->shortcuts as $k_short_a => $v_short_a): ?>
+			<?php if(!in_array($v_short_a, $this->excluded_shortcuts)): ?>
+		
+				<?php $class =''; ?>
+				<?php if($v_short_a == 'sh_doc_non_hospiz_visits'): ?>
+					<?php $class = ' red_light '; ?>
+				<?php elseif($v_short_a == 'sh_nur_non_hospiz_visits'): ?>
+					<?php $class = ' blue_light '; ?>
+				<?php elseif($v_short_a == 'sh_other_visits'): ?>
+					<?php $class = ' yellow_light '; ?>		
+				<?php endif; ?>
+				<tr>
+					<td class="a6_start_cell <?php echo $class; ?>">
+						<?php echo $this->translate('shortcut_text_' . $v_short_a); ?>
+					</td>
+					<td class="last_col <?php echo $class; ?>"> <?php echo $shortcut_total[$v_short_a]; ?> </td>
+				</tr>
+			<?php endif; ?>
+		<?php endforeach; ?>
+		<tr class="border-bottom-slim">
+			<td class="a6_start_cell_last a6_start_cell_last">
+				&nbsp;
+			</td>
+			<td class="last_col">
+				&nbsp;
+			</td>
+		</tr>
+ 
+	</table>
+	<table style="width: 100%;" border="1">
+		<tr>
+			<td colspan="5">
+				&nbsp;<br />
+				&nbsp;<br />
+			</td>
+		</tr>
+	</table>
+ 
+
+	<br />
+	<br />
+	<input type="button" class="submiting" name="save" value="<?php echo $this->translate('submit'); ?>" data-action="save" class="btnsubmit_usersessions"/>&nbsp;&nbsp;
+	<?php if($this->has_data == '1'): ?>
+		<input  type="button" class="submiting"  name="reset" value="<?php echo $this->translate('RESET'); ?>"  data-action="reset"  class="btnsubmit_usersessions"/>&nbsp;&nbsp;
+	<?php endif; ?>
+	<input  type="button" class="submiting"  name="pdf" value="<?php echo $this->translate('generatepdf'); ?>"  data-action="pdf"  class="btnsubmit_usersessions"/>
+	
+	<input type="hidden" name="form_action" value="" id="form_action" />
+</form>

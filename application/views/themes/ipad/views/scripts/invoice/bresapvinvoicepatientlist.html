@@ -1,0 +1,239 @@
+<?php
+//anlage6billing
+//IE Freaking hack
+$url = APP_BASE . "invoice/bresapvinvoicepatientlist?" . $_SERVER['QUERY_STRING'];
+if (str_replace("&list=" . $_REQUEST['list'] . "", "", $url))
+{
+	$finalJsUrl = str_replace("&list=" . $_REQUEST['list'] . "", "", $url);
+}
+else
+{
+	$finalJsUrl = $url;
+}
+?>
+<script type="text/javascript" >
+	function changeMonth(data) {
+		var url = "<?php echo $finalJsUrl; ?>&list=" + data;
+		$(location).attr('href', url);
+	}
+
+	$(function() {
+		$('#invoice_number').live('change keyup', function() {
+			var invoice_nr = $(this).val();
+
+			$('.gen_invoices').each(function() {
+				var curent_url = $(this).attr('href');
+				var new_url = curent_url.replace(/(inr=).*?(&)/, '$1' + invoice_nr + '$2');
+				$(this).attr('href', new_url);
+			});
+		});
+
+		$('#select_all').live('click', function(){
+			if($(this).is(':checked')){
+				$('.select_patient').attr('checked', true);
+			} else {
+				$('.select_patient').removeAttr('checked');
+			}
+
+		});
+		
+		
+	/* ISPC- 2220 Ancuta 30.07.2018 */
+	$('.gen_invoices').on('click',function(event){
+		event.preventDefault();
+		
+		var url = $(this).attr('href');
+
+		var patientid = $(this).data('patientid');
+		var element_id = $(this).attr('id');		
+		var check_array = [];
+		check_array.patient_epid = patientid;
+		check_array.invoice_type = $(this).data('check_invoice_type');
+		check_array.period_start = $(this).data('check_period_start');
+		check_array.period_end = $(this).data('check_period_end');
+		
+		
+		
+		$.ajax({
+		  	url:'ajax/checkgenerateinvoices',
+		    type: 'POST',
+			data:{
+				'patient': check_array.patient_epid,
+				'invoice_type': check_array.invoice_type,
+				'period_type': check_array.period_type,
+				'period_id': check_array.period_id,
+				'period_start': check_array.period_start,
+				'period_end': check_array.period_end
+			}, 
+		    success: function(result) {
+		    	var result_data = jQuery.parseJSON(result);
+		    	if(result_data.skip_modal == "1"){
+		    		
+
+
+	 				$(location).attr('href',url);
+	 				$('#'+element_id).addClass('generated_flow_element');
+	 				
+		    	} else{
+		    		
+		    		if(result_data.completed_invoices){
+		    			alert('<?php echo $this->translate("The relevant invoice is already completed and or paid. Please Storno it before you proceed.")?>');
+		    		} else if(result_data.invoices){
+		    			
+			    		// open modal 
+			    		$('#already_generated_invoices')
+			    		.data('url' , url)
+			    		.data('invoices' , result_data.invoices)
+			    		.data('patient' ,  check_array.patient_epid)
+			    		.data('invoice_type' ,  check_array.invoice_type)
+			    		.data('element_id' ,  element_id)
+			    		.dialog('open');
+			    		
+		    		} else{
+		 				$(location).attr('href',url);
+		 				$('#'+element_id).addClass('generated_flow_element');
+		 					
+		    		}
+		    	}
+		    },
+		    error: function(){
+		      alert("Unable to check period");
+		    }
+		  });
+		
+
+
+	});
+	$('#already_generated_invoices').dialog({
+		autoOpen:false,
+		resize:false,
+		draggable:false,
+		width:800,
+		height:200,
+		title: '<?php echo $this->translate('confirmdeletetitle'); ?>',
+		buttons: {
+		"<?php echo $this->translate('delete existing draft and generate'); ?>": function() {
+	   		var inv_url = $(this).data('url');
+			var element_id = $(this).data('element_id');
+			
+			$.ajax({
+				  	url:'ajax/deletedraftinvoices',
+				    type: 'POST',
+					data:{
+						'patient': $(this).data('patient'),
+						'invoice_type': $(this).data('invoice_type'),
+						'invoices': $(this).data('invoices')
+					}, 
+				    success: function(result) {
+				    	
+				    	var result_data = jQuery.parseJSON(result);
+				    	if(result_data.invoice_deleted == "1"){
+							$(location).attr('href',inv_url);
+							$('#'+element_id).addClass('generated_flow_element');
+							$('#already_generated_invoices').dialog( "close" );
+				    		
+				    	} else{
+				    		alert("Old invoice was not DELETED");
+				    	}
+				    },
+				    error: function(){
+				      alert("Unable to check period");
+				    }
+				  });
+			
+		},
+		"<?php echo $this->translate('continue generating the invoice'); ?>": function(){
+
+				var element_id = $(this).data('element_id');				 		
+				var url = $(this).data('url');
+				$(location).attr('href',url);
+				$('#'+element_id).addClass('generated_flow_element');
+				
+				$('#already_generated_invoices').dialog( "close" );
+		},
+		"<?php echo $this->translate('cancel'); ?>": function(){
+				 
+			$('#already_generated_invoices').dialog( "close" );
+		}
+	},
+	close: function(){
+		 
+	}
+});
+		
+	});
+</script>
+<h1><?php echo $this->translate('rechnung active patients'); ?></h1>
+
+<br />
+<form name="gen_invoices" id="gen_invoices" action="" method="POST">
+<?php echo $this->translate('select_month'); ?> : <?php echo $this->months_selector; ?>
+<br />
+<br />
+<p>
+	<?php echo $this->translate('if_empty_continue_from'); ?> SAPV (<?php echo $this->bre_highest_invoice_number; ?>)
+</p>
+
+
+<table class="datatable" id="active_patients" >
+	<thead>
+		<tr>
+			<th><input type="checkbox" name="select_all" id="select_all" value="1" /></th>
+			<th><?php echo $this->translate('no'); ?></th>
+			<th><?php echo $this->translate('epid'); ?></th>
+			<th><?php echo $this->translate('lastname'); ?></th>
+			<th><?php echo $this->translate('firstname'); ?></th>
+			<th><?php echo $this->translate('admissiondate'); ?></th>
+			<th><?php echo $this->translate('discharge_date'); ?></th>
+			<th><?php echo $this->translate('SAPV Rechnung'); ?></th>
+			<th><?php echo $this->translate('has_invoice'); ?></th>
+		</tr>
+	</thead>
+
+	<tbody>
+		<?php if ($this->active_patients): ?>
+			<?php $i = 1;
+			foreach ($this->active_patients as $active_ipid => $active_details): ?>
+				<tr>
+					<td><input type="checkbox" name="selected_patient[]" id="selected_patient_<?php echo Pms_Uuid::encrypt($active_details['id']); ?>" value="<?php echo Pms_Uuid::encrypt($active_details['id']);  ?>" class="select_patient" /></td>
+					<td ><?php echo $i; ?></td>
+					<td ><?php echo strtoupper($active_details['epid']); ?></td>
+					<td ><?php echo $active_details['last_name']; ?></td>
+					<td ><?php echo $active_details['first_name']; ?></td>
+					<td ><?php if ($active_details['admission_date'] != '0000-00-00 00:00:00'): echo $active_details['admission_date'];
+				else: echo '-';
+				endif; ?></td>
+					<td ><?php if ($active_details['discharge_date'] != '0000-00-00 00:00:00'): echo $active_details['discharge_date'];
+				else: echo '-';
+				endif; ?></td>
+					<td style="width:100px; padding:0px;"  <?php if(in_array($active_details['ipid'], $this->patients_with_invoices)):  ?> class="green_td"<?php endif;?> >
+						<a class="gen_invoices" 
+						id="<?php echo strtoupper($active_details['epid']); ?>"
+						data-patientid="<?php echo strtoupper($active_details['epid']); ?>"
+						data-check_invoice_type="bre_sapv_invoice"
+						data-check_period_start="<?php echo $active_details['period_start']; ?>"
+						data-check_period_end="<?php echo $active_details['period_end']; ?>"
+					
+						href="<?php echo APP_BASE . 'patientform/bresapvperformance?id=' . Pms_Uuid::encrypt($active_details['id']) . '&list=' . $this->selected_month . '&inr=&mode=pdfs'; ?>" 
+						style="display:inline-block;"><?php echo $this->translate('sapv_rechnung'); ?></a>
+					</td>
+					<td>
+						<?php if(in_array($active_details['ipid'], $this->patients_with_invoices)):  ?>
+						<img src="<?php echo RES_FILE_PATH.'/images/has_invoice_icon.png';  ?>">
+						<?php else:  ?>
+							&nbsp; -
+						<?php endif;  ?>
+					</td>
+				</tr>
+		<?php $i++;
+	endforeach; ?>
+<?php endif; ?>
+	</tbody>
+</table>
+	<input type="submit" value="<?php echo $this->translate('generate_pdf');  ?>" id="submit" name="submit"/>
+</form>
+
+
+<div id="already_generated_invoices">
+	<?php echo $this->translate('invoices are already generated or this period');?>
+</div>

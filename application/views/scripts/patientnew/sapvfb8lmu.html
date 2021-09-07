@@ -1,0 +1,307 @@
+<?php $this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/page-css/sapvfb8_lmu_style.css'); ?>
+<?php 
+	$patient = $this->patient; 
+	$client = $this->client;
+	$sapv = $this->sapv_data;
+	$data = $this->form_data;
+	$partners = $this->partners;
+?>
+<?php 
+?>
+
+<?php
+$url = APP_BASE . "patientnew/sapvfb8lmu?" . $_SERVER['QUERY_STRING'];
+if (str_replace("&period=" . $_REQUEST['period'] . "", "", str_replace("&user=" . $_REQUEST['user'] . "", "", $url)))
+{
+	$finalJsUrl = str_replace("&period=" . $_REQUEST['period'] . "", "", str_replace("&user=" . $_REQUEST['user'] . "", "", $url));
+}
+else
+{
+	$finalJsUrl = $url;
+}
+?>
+<script type="text/javascript" >
+$(document).ready(function(){
+	$(".datetype").datepicker({
+		dateFormat: 'dd.mm.yy',
+		showOn: "both",
+		buttonImage: $('#calImg').attr('src'),
+		buttonImageOnly: true,
+		changeMonth: true,
+		changeYear: true,
+		nextText: '',
+		prevText: ''
+	});
+	
+	$('ul.tabs li').click(function(){
+		var tab_id = $(this).attr('data-tab');
+
+		$('ul.tabs li').removeClass('current');
+		$('.tab_block').removeClass('current');
+
+		$(this).addClass('current');
+		$("#"+tab_id).addClass('current');
+	})
+
+	$('#general_pdf').click(function(e){
+		$('.form_action').each(function() {
+			$(this).val("");
+		});
+	});
+	
+	
+	$('.submit_form').click(function(e){
+		$('.form_action').each(function() {
+			$(this).val("");
+		});
+	});
+	
+	$('.save_page').click(function(e){
+		e.preventDefault();
+		var page = $(this).data('page');
+		if(page != ""){
+			$('#save_page').val(page);
+			$('#sapvevaluation').submit();
+			
+		}
+	})
+	
+	$('.print_page').click(function(e){
+		e.preventDefault();
+		var page = $(this).data('page');
+		if(page != ""){
+			$('#print_page').val(page);
+			$('#sapvevaluation').submit();
+		}
+	})
+	
+	$('.reset_page').click(function(e){
+		e.preventDefault();
+		var page = $(this).data('page');
+		if(page != ""){
+			$('#reset_page').val(page);
+			$('#sapvevaluation').submit();
+		}
+	})
+	
+});
+
+
+function change_period(data){
+	if(data != "-1"){
+		var url = "<?php echo $finalJsUrl; ?>&period="+data; 
+	} 
+	else
+	{
+		var url = "<?php echo $finalJsUrl; ?>"; 
+	}
+	$(location).attr('href',url);
+}
+
+</script>
+
+
+
+
+
+<?php echo $this->patientinfo ?>
+<?php echo $this->tabmenus ?>
+<div class="tab_container">
+<form name="sapv_fb8_lmu" action="" method="post" id="sapv_fb8_lmu" >
+<div class="form_title">
+	<h1>Leistungsnachweis Kinder-SAPV</h1>
+</div>
+<div class="fall_selector">
+	<label><b><?php echo $this->translate("Select period: ")?></b></label>
+	<select name="period" onChange="change_period(this.value);">
+	
+		<option value="overall" <?php if($_REQUEST["admissionid"] == "overall"  ):?> selected = "selected" <?php endif;?>> <?php echo $this->translate("overall")?></option>
+
+		<optgroup label="<?php echo $this->translate('quarter');?>">
+		<?php foreach($this->q_drop as $q_period=>$q_ident): ?>
+			<?php $quarter_ident = "q-".$q_period;?>
+			<option value="<?php echo $quarter_ident;?>" <?php if($_REQUEST["period"] == $quarter_ident || $this->period == $quarter_ident ):?> selected = "selected" <?php endif;?>><?php echo $q_ident; ?></option>
+		<?php endforeach;?>
+
+		</optgroup>
+		
+		
+		<optgroup label="<?php echo $this->translate('Aufnahme-Monat');?>">
+		<?php foreach($this->admission_periods as $admi_id=>$admi_dates): ?>
+			<?php $adm_ident = "a-".strtotime($admi_dates['start']).'-'.strtotime($admi_dates['end']);?>
+			<option value="<?php echo  $adm_ident;?>" <?php if($_REQUEST["period"] == $adm_ident || $this->period == $adm_ident ):?> selected = "selected" <?php endif;?>> <?php echo $admi_dates['start']; ?> - <?php echo $admi_dates['end']; ?></option>
+		<?php endforeach;?>
+		</optgroup>
+		
+	</select>
+</div>
+
+<!-- 	patient details	 -->
+<table class="pdetails">
+	<tr>
+		<td class="pd_label" >Verischerter(Name, Vorname):</td> <td><?php echo $patient['details']['name'];?></td>
+		<td class="pd_empty"></td>
+		<td class="pd_label">Leistungserbringer:</td> <td><?php echo $client['team_name'];?></td>
+	</tr>
+	<tr>
+		<td class="pd_label">Anschrift:</td> <td><?php echo $patient['details']['address'];?></td>
+		<td class="pd_empty"></td>
+		<td class="pd_label">Anschrift:</td> <td><?php echo $client['address'];?></td>
+	</tr>
+	
+	<tr>
+		<td class="pd_label">Geburtsdatum:</td> <td><?php echo $patient['details']['birthd'];?></td>
+		<td class="pd_empty"></td>
+		<td class="pd_label">Institutskennzeichen:</td> <td><?php echo $client['ik_number'];?></td>
+	</tr>
+	
+	<tr>
+		<td class="pd_label">Versichertennummer:</td> <td><?php echo $patient['health_insurance']['insurance_no'];?></td>
+		<td class="pd_empty"></td>
+		<td class="pd_label"></td> <td></td>
+	</tr>
+	
+	<tr>
+		<td class="pd_label">Krankenkasse:</td> <td><?php echo $patient['health_insurance']['name'];?></td>
+		<td class="pd_empty"></td>
+		<td class="pd_label"></td> <td></td>
+	</tr>
+	
+
+</table>		
+
+
+<!-- 	sapv details	 -->		
+<?php if(!empty($sapv['list'])):?>
+	<table class="sapv_table">
+		<thead>
+			<tr>
+				<th><?php echo $this->translate("sv_type")?></th>
+				<th><?php echo $this->translate("sv_start")?></th>
+				<th><?php echo $this->translate("sv_end")?></th>
+				<th><?php echo $this->translate("sv_nr_days")?></th>
+			</tr>
+		</thead>
+		<tbody>
+	<?php foreach($sapv['list'] as $k=>$sdata):?>
+		<tr>
+				<td><?php echo $sdata['stype'];?></td>
+				<td><?php echo $sdata['start'];?></td>
+				<td><?php echo $sdata['end'];?></td>
+				<td><?php echo $sdata['interval_days'];?></td>
+			</tr>
+	<?php endforeach;?>
+		</tbody>
+		<tfoot>
+			<tr>
+				<td></td>
+				<td><b><?php echo $this->translate("sv_cumulate")?></b></td>
+				<td></td>
+				<td><?php echo $sapv['total'];?></td>
+			</tr>
+		</tfoot>
+	</table>
+<?php endif;?>
+
+<div class="scroll_div">
+	<div class="months_div" style="width:<?php echo count($this->sys_months_array)*420;?>px!important;" >
+<?php foreach($this->sys_months_array as $ym=>$m_nr_days):?>
+	<table class="sfb8_table">
+		<tr>
+			<th colspan="11" style="background: #ffffff;"><h1><?php echo $this->translate(date("F",strtotime($ym."-01")));?> <?php echo date("Y",strtotime($ym."-01"))?></h1></th>
+		</tr>
+		
+		
+		<tr class="header_rows">
+			<td class="day_td">&nbsp;</td>
+			<td> <img src="<?php echo RES_FILE_PATH;?>/images/sapv_fb8_lmu_1.png" alt="Voll-/ Teilversorgung 24h-Rufbereitschaft" /></td>
+		    <td> <img src="<?php echo RES_FILE_PATH;?>/images/sapv_fb8_lmu_2.png" alt="Anzahl Hausbesuche" /></td>
+		    <td> <img src="<?php echo RES_FILE_PATH;?>/images/sapv_fb8_lmu_3.png" alt="Dauer Besuche" /></td>
+		    <td> <img src="<?php echo RES_FILE_PATH;?>/images/sapv_fb8_lmu_4.png" alt="Fahrtdauer" /></td>
+		    <td> <img src="<?php echo RES_FILE_PATH;?>/images/sapv_fb8_lmu_5.png" alt="Dauer Besuche Krankenhaus / stat. Einrichtung" /></td>
+		    <td> <img src="<?php echo RES_FILE_PATH;?>/images/sapv_fb8_lmu_6.png" alt="Dauer Telefonat" /></td>
+			<!-- <td> <img src="<?php echo RES_FILE_PATH;?>/images/sapv_fb8_lmu_7.png" alt="Dauer kolegiale Absprache" /></td>-->
+		    <td> <img src="<?php echo RES_FILE_PATH;?>/images/sapv_fb8_lmu_8.png" alt="Dauer Dokumentation" /></td>
+		    <td> <img src="<?php echo RES_FILE_PATH;?>/images/sapv_fb8_lmu_9.png" alt="Dauer Koordination" /></td>
+		    <td> <img src="<?php echo RES_FILE_PATH;?>/images/sapv_fb8_lmu_10.png" alt="Dauer Teambesprechung" /></td>
+		    <td> <img src="<?php echo RES_FILE_PATH;?>/images/sapv_fb8_lmu_11.png" alt="Gesamtleistungen" /></td>
+		</tr>
+		<?php for($day_nr = 1; $day_nr <= $m_nr_days; $day_nr++): ?>
+		<tr class="data_rows">
+			<td> <?php echo $day_nr; ?></td>
+			<td> <?php echo $data['active_tv_vv'][date("d.m.Y",strtotime($ym."-".$day_nr))];?> </td> <!-- 1 add a X for every active day in TV or VV. ::DONE-->
+		    <td> <?php echo $data['visits']['amount'][date("d.m.Y",strtotime($ym."-".$day_nr))];?> </td><!-- 2 show ammount of visits that day ::DONE-->
+		    <td> <?php echo $data['visits']['duration'][date("d.m.Y",strtotime($ym."-".$day_nr))];?> </td><!-- 3  show overall minutes of all visits  ::DONE-->
+		    <td> <?php echo $data['visits']['driving_time'][date("d.m.Y",strtotime($ym."-".$day_nr))];?> </td><!-- 4 show overall "driving time" that day. ::DONE -->
+		    <td> <?php echo $data['visits']['in_hospital_minutes'][date("d.m.Y",strtotime($ym."-".$day_nr))];?> </td><!-- 5 overall minutes of visits in hospitals ::DONE-->
+		    <td> <?php echo $data['XT']['duration'][date("d.m.Y",strtotime($ym."-".$day_nr))];?> </td><!-- 6  overall ammount of minutes XT tht day ::DONE-->
+		    <!--   <td> - </td> 7 i dont know what to fill here !!!!!!!  -->
+		    <td> <?php echo $data['visits']['documentation_time'][date("d.m.Y",strtotime($ym."-".$day_nr))];?> </td><!-- 8 overall minutes that day for "Dokumentationszeit"  ::DONE-->
+		    <td> <?php echo $data['V']['duration'][date("d.m.Y",strtotime($ym."-".$day_nr))];?> </td><!-- 9 overall minutes for "Koordination" ::DONE-->
+		    <td> <?php echo $data['teammeeting']['duration'][date("d.m.Y",strtotime($ym."-".$day_nr))];?> </td><!-- 10 duration of the team besprechung that day. ::DONE-->
+		    <td> <?php echo $data['day_total_minutes'][date("d.m.Y",strtotime($ym."-".$day_nr))]?> </td><!-- 11 overall minutes of all coloumns ::DONE-->
+		</tr>
+		<?php endfor;?>
+	</table>
+	<?php endforeach;?>
+</div>
+</div>
+
+<div class="bottom_part">
+<table>
+	<tr>
+		<td>
+		<b>Beteiligte Leistungserbringer</b><br/>
+		<table class="partners_table">
+			<?php foreach($partners as $p => $p_data):?>
+			<tr>
+				<td>- <?php echo $p_data;?></td>
+			</tr>
+			<?php endforeach;?>
+			</table>	
+		</td>
+		<td class="bempty">
+		 </td>
+		
+		<td class="signatures">
+			<label>Hiermit bestätige ich die Richtigkeit der Angaben auf<br/>dem Leistungsnachweis:</label>
+			<table>
+				<tr>
+					<td>
+						<table class="sign_block">
+							<tr>
+								<td  style="vertical-align: bottom;">
+					
+									<?php echo $client['city'];?>,den <?php echo date('d.m.Y',time())?>									
+								</td>
+							</tr>	
+						</table>
+					Ort, Datum	
+					</td>
+					<td class="sign_empty">&nbsp;</td>
+					<td>
+						<table class="sign_block">
+							<tr>
+								<td  style="vertical-align: bottom;">
+					
+									<?php echo $client['signature'];?>									
+								</td>
+							</tr>	
+						</table>
+					Leitender Arzt des PCT	
+					</td>
+				</tr>	
+			</table>
+		</td>
+	
+	
+	</tr>
+
+</table>
+	
+</div>
+
+<button type="submit" class="btn-submit btnsubmit_usersessions"> <?php echo $this->translate('generatepdf');?> </button>
+
+</form>
+</div>

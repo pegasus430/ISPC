@@ -1,0 +1,601 @@
+ <!--  Maria:: Migration CISPC to ISPC 22.07.2020 -->
+<?php if($this->status == 'OCCUPATIONPLAN' || $this->status == 'ASSIGNMENT' || $this->status == 'EDITRESIDENCE'):?> <!-- add JAVASCRIPT-->
+    <?php $this->headScript()->appendFile(RES_FILE_PATH.'/javascript/views/patienttoroom/autosize.min.js?'.date('Ymd')); ?>
+    <script>
+        autosize(document.querySelectorAll('textarea'));
+    </script>
+<?php endif;?> <!-- JAVASCRIPT -->
+
+<?php if(($this->status == 'OCCUPATIONPLAN' || $this->status == 'ASSIGNMENT' || $this->status == 'EDITRESIDENCE') && $this->status != 'AJAX'):?>
+<?php  $this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/page-css/patienttoroom.css?' . date('Ymd'));?>
+<script>
+
+    $(document).on('change', '#raumzuordnung .roompatient', function(){
+        var patid=$(this).val();
+        var room=$(this).parents('.roomentry').find('.roomid').val();
+
+        $.ajax({
+            type: "POST",
+            url: "<?php echo APP_BASE;?>/patient/patienttoroom",
+            data: { ajax: "1", eid: patid, roomid:room, <?php if(isset($this->encid)) echo "id:'$this->encid'";?> },
+        success: function( data ) {$( "#assignarea" ).html( data )},
+    })
+    });
+    $(document).on('change', '.pat_theme', function () {
+        var memos = [];
+        $('.pat_theme').each(function () {
+            var m = $(this).attr('name');
+            m = m.slice(5, m.length - 1)
+            var v = $(this).val();
+            if (m.length > 0 && v.length > 0) {
+                memos.push([m, v]);
+            }
+        });
+
+        $.ajax({
+            type: "POST",
+            url: "<?php echo APP_BASE;?>/patient/patienttoroom",
+            data: {ajax: "1", themen: memos}
+        })
+    });
+
+    $(document).on('change', '.pat_action', function () {
+
+        var memos = [];
+        $('.pat_action').each(function () {
+            var m = $(this).attr('name');
+            m = m.slice(7, m.length - 1)
+            var v = $(this).val();
+            if (m.length > 0 && v.length > 0) {
+                memos.push([m, v]);
+            }
+        });
+
+        $.ajax({
+            type: "POST",
+            url: "<?php echo APP_BASE;?>/patient/patienttoroom",
+            data: {ajax: "1", massnahmen: memos}
+        })
+    });
+
+
+    $(document).on('change', '.pat_memo', function () {
+
+        var memos = [];
+        $('.pat_memo').each(function () {
+            var m = $(this).attr('name');
+            m = m.slice(5, m.length - 1)
+            var v = $(this).val();
+            if (m.length > 0 && v.length > 0) {
+                memos.push([m, v]);
+            }
+        });
+
+        $.ajax({
+            type: "POST",
+            url: "<?php echo APP_BASE;?>/patient/patienttoroom",
+            data: {ajax: "1", memos: memos}
+        })
+    });
+
+    $(document).ready(function () {
+
+        var del_record_message = '<? echo $this->translate('confirmdeleteonerecord'); ?>';
+        init_textfields();
+        init_delete_button();
+
+        //ISPC-2810,Elena,28.01.2021
+        $('textarea.pat_theme, textarea.pat_action, textarea.pat_memo').each(function(){
+            //console.log($(this), this.scrollHeight, $(this).prop('scrollHeight'));
+            $(this).height(this.scrollHeight);
+            var max = this.scrollHeight +10;
+            $(this).css('max-height', max+ 'px');
+            $(this).css('resize', 'none');
+            var elem = $(this);
+
+            elem.on('change keyup keydown paste cut input', function() {
+                elem.height(0);
+                var max = elem.prop('scrollHeight') +10;
+                elem.css('max-height', max+ 'px');
+                elem.height(elem.prop('scrollHeight'));
+            });
+
+
+        });
+
+
+
+        $('form#wlitems').submit(function (event) {
+            return true;
+        });
+
+        $('.wl-item').on('click', '.btnDelete', function (e) {
+
+            var whichtr = $(this).closest(".wl-item");
+            confirm_and_remove(whichtr, del_record_message);
+        });
+
+        $('.wl-item').on('change', '.add_stdby_pat', function (e) {
+
+            var itemrows =  (this).closest('.wl-items');
+            var last =  $(this).closest('.wl-item');
+
+            //only clone the row,if the last input-field is changed
+            if ($(itemrows).find('.wl-item').index(last) == $(itemrows).find('.wl-item').size() - 1) {
+
+                if ($(last).find('.stdbyname').val() != "") {
+
+                    var newel = last.clone(true);  //clone the last row
+                    $(newel).find('.stdbyname').val(''); //delete value of new row
+                    $(newel).find('.radio-checkbox input:checked').removeAttr('checked'); //delete Maker ckecked
+                    //remove datepicker and reinitialize for get an new id
+                    $(newel).find('input.my_datepicker').each(function () {
+                        $(this).removeClass('hasDatepicker').datepicker('destroy');
+                        $(this).removeAttr("id");
+                        $(this).datepicker({
+                            dateFormat: 'dd.mm.yy',
+                            showOn: "focus",
+                        });
+                    });
+
+                    last.after(newel);
+                    rowmanager(); //build the list-index
+                    init_delete_button();
+
+                    $(newel).find('.radio-checkbox .normal').attr('checked', 'checked');
+
+                }
+            }
+
+        });
+
+
+       function resizeme() {
+            if (window.innerWidth > 1100) {
+                $('body>.outer').css('width', window.innerWidth - 25);
+                $('#Wrapper').css('width', window.innerWidth - 31);
+                $('#MainContent').css('width', window.innerWidth - 250);
+            } else {
+                $('body>.outer').css('width', '');
+                $('#Wrapper').css('width', '');
+                $('#MainContent').css('width', '');
+            }
+        }
+
+        $(window).resize(resizeme);
+        resizeme();
+
+
+        function resize_tb(el) {
+            $(el).height(30);
+            $(el).innerHeight($(el)[0].scrollHeight + 20);
+        }
+
+        $("#raumzuordnung textarea, #standbylisttable textarea").each(function () {
+            resize_tb(this);
+        });
+        $(document).on('keyup', "#raumzuordnung textarea, #standbylisttable textarea", function () {
+            resize_tb(this);
+        });
+
+        //class for datepicker
+        $('.my_datepicker').each(function () {
+            $(this).datepicker({
+                dateFormat: 'dd.mm.yy',
+                showOn: "focus",
+            });
+        });
+
+    });
+
+    function rowmanager() {
+
+
+        //cleanUp
+        var rowcount = 0;
+        $('.wl-item').each(function () {
+            $(this).find('input, textarea').each(function () {
+                var newname = $(this).attr('name');
+                newname = newname.replace(/\[\d+\]/, "[" + rowcount + "]");
+                $(this).attr('name', newname);
+            });
+            rowcount++;
+        });
+
+        var rowcount = 0;
+
+        $('.radio-checkbox').each(function () {
+            $(this).find('input').each(function () {
+                var newname = $(this).attr('name');
+                newname = newname.replace(/\[\d+\]/, "[" + rowcount + "]");
+                $(this).attr('name', newname);
+
+                var newid = $(this).attr('id');
+                newid = newid.replace(/\[\d+\]/, "[" + rowcount + "]");
+                $(this).attr('id', newid);
+            });
+            $(this).find('label').each(function () {
+                var newlabel = $(this).attr('for');
+                newlabel = newlabel.replace(/\[\d+\]/, "[" + rowcount + "]");
+                $(this).attr('for', newlabel);
+            });
+            rowcount++;
+        });
+    }
+
+    function init_textfields(){
+
+          var is_freetextmode = '<? echo $this->freetextmode; ?>';
+          if(is_freetextmode){
+              $('.pat_theme').removeAttr("disabled");
+              $('.pat_action').removeAttr("disabled");
+            }else{
+              $('.pat_theme').attr("disabled","disabled");
+              $('.pat_action').attr("disabled","disabled");
+          }
+    }
+
+    function init_delete_button(){
+        $('.btnDelete').not(':last').show();
+        $('.btnDelete').last().hide();
+    }
+
+    function confirm_and_remove(whichtr, message) {
+
+        jConfirm(message, '<? echo $this->translate('confirmdeletetitle'); ?>', function (r) {
+            if (r) {
+                whichtr.remove();
+            }
+        });
+    }
+
+</script>
+<?php endif;?> <!-- status == 'OCCUPATIONPLAN' || 'ASSIGNMENT'-->
+
+<?php if($this->status == 'OCCUPATIONPLAN'):?>
+<div id="printarea">
+    <h2 class="bp-h2">Belegungsplan vom <?php echo date('d.m.Y');?></h2>
+    <div class="bp-container stationliste">
+        <h2>Stationsliste</h2>
+        <ul class="right-buttons">
+            <li><button class="btnPrint" onclick="location.href='<?php echo APP_BASE;?>/patient/patienttoroom?print=1&pdf=1&rooms=1'">Stationsliste ausdrucken</button></li>
+        </ul>
+        <div class="rooms">
+            <?php foreach ($this->rooms as $room):?>
+            <?php $ipid = false;
+                   $pat=false;
+            ?>
+            <?php if(array_key_exists($room['id'], $this->loc_to_ipid)):{
+                $ipid = $this->loc_to_ipid[$room['id']];
+                $pat=$this->patients[$ipid];
+            } else:{
+                $pat=$this->patients['NOTASSIGNED'];
+            };?>
+            <?php endif;?>
+            <div class="bp-item room-item">
+                <ul class="description">
+                    <li class="room-name" data-roomid="<?php echo $room['id'];?>"><?php echo $room['bed_name'];?></li>
+                    <li class="room-patient">
+                        <?php if($pat['name'] == 'NOTASSIGNED'):?>
+                            <div class="name">(frei)</div>
+                        <?php else:?>
+                        <div class="name"><a href="<?php echo APP_BASE . $this->patient_startpage_link."?id=".$pat['epid'];?>"><b><?php echo $pat['name'];?></b><br></a>
+                                <div class="dob"><?php echo $pat['birth'];?></div>
+                                <div class="<?php echo $pat['status_colour'];?>"><?php echo $pat['status'];?></div>
+                            </div>
+                        <?php endif;?>
+                    </li>
+                    <li class="room-doctor"><?php echo $pat['doctors'];?></li>
+                    <li class="diagnose"><?php echo $pat['diaghd'].'</br>'.$pat['diagnd'];?></li>
+                    <li class="date">
+                        <div class="date"><b><?php echo $pat['discharge_date'];?></b><br>
+                            <div class="desc"><?php echo $pat['discharge_target'];?></div>
+                        </div>
+                    </li>
+                </ul>
+
+                <ul class="editable-autoresize room-editable">
+                    <li>
+                        <label>THEMA</label>
+                        <textarea rows="2" name="theme[<?php echo $pat['epid'];?>]" class="pat_theme"><?php echo $pat['theme'];?></textarea><!--ISPC-2810,Elena,28.01.2021-->
+                    </li>
+                    <li>
+                        <label>MAßNAHME</label>
+                        <textarea rows="2" name="action[<?php echo $pat['epid'];?>]"class="pat_action"><?php echo $pat['action'];?></textarea><!--ISPC-2810,Elena,28.01.2021-->
+                    </li>
+                    <li>
+                        <label>Memo</label>
+                        <textarea rows="2" name="memo[<?php echo $pat['epid'];?>]" class="pat_memo"><?php echo $pat['memo'];?></textarea><!--ISPC-2810,Elena,28.01.2021-->
+                    </li>
+                </ul>
+            </div> <!-- end div class="bp-item room-item" -->
+            <?php endforeach;?>
+        </div> <!-- end <div class="rooms">-->
+
+    </div><!-- end bp-container stationliste"-->
+
+    <!-- Verstorbene Patienten -->
+    <div class="bp-container">
+        <h2>Verstorbene Patienten der letzten 7 Tage</h2>
+        <table class="patient-list">
+            <thead>
+            <tr>
+                <th>NAME</th>
+                <th class="alt">ALTER</th>
+                <th class="verst">VERSTORBEN AM</th>
+            </tr>
+            </thead>
+
+            <tbody>
+
+            <?php foreach ($this->deathlist as $death_pat):?>
+                <tr class="separator">
+                    <td colspan="3"></td>
+                </tr>
+                <tr class="odd">
+                    <td><?php echo $death_pat['name'];?></td>
+                    <td><?php echo $death_pat['age'];?></td>
+                    <td><?php echo date('d.m.Y',strtotime($death_pat['date']));?></td>
+                </tr>
+            <?php endforeach;?>
+            </tbody>
+        </table>
+    </div>
+    <!-- // Verstorbene Patienten -->
+
+    <!-- warterliste -->
+
+    <div class="bp-container warterliste">
+
+        <h2>Warteliste</h2>
+
+        <ul class="right-buttons">
+            <li><button class="btnPrint" onclick="location.href='<?php echo APP_BASE;?>/patient/patienttoroom?print=1&pdf=1'">Drucken</button></li>
+            <li><button class="btnPatient" onclick="location.href='<?php echo APP_BASE;?>patient/patienttoroom?assign=1'">Patienten zuweisen</button></li>
+        </ul>
+    <form method="post" id="wlitems">
+        <div class="wl-items">
+            <?php foreach ($this->stdbylist as $row=>$pat):?>
+            <!-- wl-item-->
+            <div class="bp-item wl-item">
+                <ul class="wli-top">
+                    <li class="name add_stdby_pat">
+                        <label>NAME</label>
+                        <input type="text" class="stdbyname" name="stdbylist[<?php echo $row;?>][name]"
+                               value="<?php echo $pat['name'];?>">
+                    </li>
+                    <li class="age">
+                        <label>ALTER</label>
+                        <input type="text" name="stdbylist[<?php echo $row;?>][age]"
+                               value="<?php echo $pat['age'];?>">
+                    </li>
+                    <li class="priority">
+                        <label>PRIORITÄT</label>
+                        <ul class="radio-checkbox">
+                            <li><input type="radio" class="akut" value="akut" name="stdbylist[<?php echo $row;?>][prio]"  id="cb[<?php echo $row;?>]1" <?php if($pat['prio']=="akut")echo "checked";?>><label for="cb[<?php echo $row;?>]1"><span class="priority red"></span></label></li>
+                            <li><input type="radio" class="normal"value="normal" name="stdbylist[<?php echo $row;?>][prio]"  id="cb[<?php echo $row;?>]2" <?php if($pat['prio']=="normal"||$pat['prio']=="")echo "checked";?>><label for="cb[<?php echo $row;?>]2"><span class="priority yellow"></span></label></li>
+                            <li><input type="radio" class="long" value="long" name="stdbylist[<?php echo $row;?>][prio]"  id="cb[<?php echo $row;?>]3" <?php if($pat['prio']=="long")echo "checked";?>><label for="cb[<?php echo $row;?>]3"><span class="priority green"></span></label></li>
+                        </ul>
+
+
+                    </li>
+                    <li class="date">
+                        <label>Datum</label>
+                        <input type="text" name="stdbylist[<?php echo $row;?>][date]" class="my_datepicker date"
+                               value="<?php echo $pat['date'];?>" autocomplete="off">
+                    </li>
+                    <li class="date">
+                        <label>Geplant</label>
+                        <input type="text" name="stdbylist[<?php echo $row;?>][datep]" class="my_datepicker date"
+                               value="<?php echo $pat['datep'];?>" autocomplete="off">
+                    </li>
+
+                </ul>
+
+                <ul class="editable-autoresize room-editable">
+                    <li>
+                        <label>DIAGNOSE</label>
+                        <textarea name="stdbylist[<?php echo $row;?>][diag]"><?php echo $pat['diag'];?></textarea>
+                    </li>
+                    <li>
+                        <label>AKTUELLES PROBLEM</label>
+                        <textarea name="stdbylist[<?php echo $row;?>][prob]"><?php echo $pat['prob'];?></textarea>
+                    </li>
+                    <li>
+                        <label>WOHER?</label>
+                        <textarea name="stdbylist[<?php echo $row;?>][orig]"><?php echo $pat['orig'];?></textarea>
+                    </li>
+                </ul>
+
+                <button  type="button" class="btnDelete"></button>
+            </div>
+            <!--// wl-item-->
+            <?php endforeach;?>
+        </div>
+
+        <button class="btnSpeichern">Warteliste Speichern</button>
+
+        </form>
+    </div> <!-- // warterliste -->
+
+</div><!-- end printarea-->
+
+<?php endif;?> <!-- status == 'OCCUPATIONPLAN' -->
+
+<?php if( $this->status == 'ASSIGNMENT' || $this->status == 'EDITRESIDENCE' || $this->status == 'AJAX'):?>
+<div id="assignarea" class="bp-container">
+    <h2>Raumzuordnung</h2>
+
+    <?php if(isset($this->encid)):{
+        $style = '';
+    } else:{
+        $style = 'style="display:none;"';
+    };?>
+    <?php endif;?>
+
+    <ul class="right-buttons">
+        <li><button class="btnPrint" onclick="location.href='<?php echo APP_BASE;?>patient/patienttoroom?print=1&pdf=1'">Druckansicht</button></li><!-- TODO-4139,Elena,18.05.2021-->
+        <li <?php echo $style;?>><button class="btnPatient" onclick="location.href='<?php echo APP_BASE;?>patientcourse/patientcourse?id=<?php echo $this->encid?>'">Zurück zum Patienten</button></li>
+    </ul>
+    <table id="raumzuordnung" class="patient-list">
+        <thead>
+        <tr>
+            <th>RAUM</th>
+            <th class="alt">ICON</th>
+            <th class="verst">PATIENT</th>
+        </tr>
+        </thead>
+        <tbody>
+
+        <?php foreach ($this->rooms as $room):?>
+        <tr class="separator">
+            <td colspan="3"></td>
+        </tr>
+        <tr class="odd roomentry">
+            <td><?php echo $room['bed_name'];?>
+                <input type="hidden" class="roomid" value="<?php echo $room['id'];?>">
+            </td>
+            <td><div class="icon_image">
+                <img src="<?php echo APP_BASE .'icons_system/'. $room['client_id']. '/bedicons/'. $room['icon_name']; ?>"
+                     title="<?php echo $room['icon_name']; ?>" id="icon_id_<?php echo $room['icon_name']; ?>"
+                     height="32"/>
+            </div></td>
+            <td>
+                <select class="roompatient">
+                    <option value="0">(frei)</option>
+                    <?php foreach($this->patients as $ipid=>$pat):?>
+                        <?php if($pat['name'] == 'NOTASSIGNED'):?>
+                            <?php continue; ?>
+                        <?php endif;?>
+                        <option value="<?php echo $pat['epid'];?>"
+                            <?php if($this->ipid_to_loc[$ipid]==$room['id']){echo "selected";}?>>
+                                <?php echo $pat['name'];?>
+                        </option>
+                    <?php endforeach;?>
+                </select>
+            </td>
+        </tr>
+        <?php endforeach;?>
+        </tbody>
+    </table>
+</div>
+
+<?php endif;?> <!-- status == 'ASSIGNMENT' || 'EDITRESIDENCE' || 'AJAX' -->
+
+<?php if($this->status == 'PRINTROOMS' || $this->status =='PRINTALL' ):?>
+
+<style>
+    td{font-size:9pt;}
+
+</style>
+<h1>Stationsliste</h1>
+<table id="raumzuordnung_pdf" border="1" style="border:0.1px solid black;" cellpadding="2">
+    <tr nobr="true">
+        <th bgcolor="#DDDDDD" style="border:0.1px solid black;" width="2cm">Raum</th>
+        <th bgcolor="#DDDDDD" style="border:0.1px solid black;" width="6cm">Patient</th>
+        <th bgcolor="#DDDDDD" style="border:0.1px solid black;" width="4.5cm">Thema</th>
+        <th bgcolor="#DDDDDD" style="border:0.1px solid black;" width="4.5cm">Ma&szlig;nahme</th>
+        <th bgcolor="#DDDDDD" style="border:0.1px solid black;" width="4.5cm">Memo</th>
+        <th bgcolor="#DDDDDD" style="border:0.1px solid black;" width="4.5cm">Entlassdatum/-ziel</th>
+    </tr>
+    <?php foreach ($this->rooms as $room):?>
+
+    <?php $ipid = false;
+           $pat=false;
+           $filler='';?>
+    <?php if(array_key_exists($room['id'], $this->loc_to_ipid)):{
+            $ipid = $this->loc_to_ipid[$room['id']];
+            $pat=$this->patients[$ipid];
+        } else:{
+            $pat=$this->patients['NOTASSIGNED'];
+        };?>
+    <?php endif;?>
+
+    <?php if($pat['discharge_date'] != '' && $pat['discharge_target'] != ''):{
+         $filler=' / ';
+          };?>
+     <?php endif;?>
+
+    <tr nobr="true">
+        <td style="border:0.1px solid black;"><?php echo htmlspecialchars($room['bed_name']);?></td>
+        <td style="border:0.1px solid black;">
+            <?php if($pat['name'] == 'NOTASSIGNED'): ?>
+                (frei)
+            <?php else:{ ?>
+                <b><?php echo htmlspecialchars($pat['name']);?></b><br>
+                <?php echo htmlspecialchars($pat['birth']);?><br>
+                <b>Status: </b><?php echo htmlspecialchars($pat['status']);?><br>
+                <?php echo $pat['doctors'];?><br>
+                <?php echo $pat['diaghd'];?><br>
+                <?php echo $pat['diagnd'];?>
+            <?php }; ?>
+            <?php endif;?>
+        </td>
+        <td style="border:0.1px solid black;"><?php echo htmlspecialchars($pat['theme']);?></td>
+        <td style="border:0.1px solid black;"><?php echo htmlspecialchars($pat['action']);?></td>
+        <td style="border:0.1px solid black;"><?php echo htmlspecialchars($pat['memo']);?></td>
+        <td style="border:0.1px solid black;"><?php echo $pat['discharge_date'].$filler.$pat['discharge_target'];?></td>
+    </tr>
+    <?php endforeach;?>
+</table>
+
+<?php endif;?> <!-- status == 'PRINTROOMS' || 'PRINTALL' -->
+
+<?php if($this->status =='PRINTALL' ):?>
+
+<div style="page-break-before:always;"></div>
+<h1>Verstorbene Patienten der letzten 7 Tage</h1>
+<?php if (count($this->deathlist)<1):?>
+    <p style="padding:10px;">Keine Einträge.</p>
+<?php else:?>
+<table border="1" cellpadding="2">
+    <tr>
+        <th bgcolor="#DDDDDD" width="5cm" style="border:0.1px solid black;">Name</th>
+        <th bgcolor="#DDDDDD" width="4cm" style="border:0.1px solid black;">Alter</th>
+        <th bgcolor="#DDDDDD" width="4cm" style="border:0.1px solid black;">Verstorben am</th>
+    </tr>
+    <?php foreach ($this->deathlist as $death_pat):?>
+    <tr>
+        <td style="border:0.1px solid black;"><?php echo $death_pat['name'];?></td>
+        <td style="border:0.1px solid black;"><?php echo $death_pat['age'];?></td>
+        <td style="border:0.1px solid black;"><?php echo date('d.m.Y',strtotime($death_pat['date']));?></td>
+    </tr>
+    <?php endforeach;?>
+</table>
+<?php endif;?>
+
+<h1>Warteliste</h1>
+<table border="1" cellpadding="2">
+    <tr nobr="true">
+        <th bgcolor="#DDDDDD" width="5cm" style="border:0.1px solid black;">Name</th>
+        <th bgcolor="#DDDDDD" width="1cm" style="border:0.1px solid black;">Alter</th>
+        <th bgcolor="#DDDDDD" width="5.5cm" style="border:0.1px solid black;">Diagnose</th>
+        <th bgcolor="#DDDDDD" width="5.5cm" style="border:0.1px solid black;">Aktuelles Problem</th>
+        <th bgcolor="#DDDDDD" width="4.5cm" style="border:0.1px solid black;">Woher?</th>
+        <th bgcolor="#DDDDDD" width="1.8cm" style="border:0.1px solid black;">Priorität</th>
+        <th bgcolor="#DDDDDD" width="1.8cm" style="border:0.1px solid black;">Datum</th>
+        <th bgcolor="#DDDDDD" width="1.8cm" style="border:0.1px solid black;">geplant</th>
+    </tr>
+
+   <?php foreach ($this->stdbylist as $row=>$pat):?>
+    <?php if($pat['name'] != ''):?>
+        <tr nobr="true">
+            <td style="border:0.1px solid black;"><?php echo $pat['name'];?></td>
+            <td style="border:0.1px solid black;"><?php echo $pat['age'] ;?></td>
+            <td style="border:0.1px solid black;"><?php echo $pat['diag'];?></td>
+            <td style="border:0.1px solid black;"><?php echo $pat['prob'];?></td>
+            <td style="border:0.1px solid black;"><?php echo $pat['orig'];?></td>
+            <?php
+                    $color="normal";
+                    if($pat['prio']=="akut") $color="hoch";
+                    if($pat['prio']=="long") $color="mittel";
+                    ?>
+            <td style="border:0.1px solid black;"><?php echo $color;?></td>
+            <td style="border:0.1px solid black;"><?php echo $pat['date'] ;?></td>
+            <td style="border:0.1px solid black;"><?php echo $pat['datep'] ;?></td>
+        </tr>
+    <?php endif;?>
+    <?php endforeach;?>
+</table>
+
+<?php endif;?> <!-- status == 'PRINTALL' -->

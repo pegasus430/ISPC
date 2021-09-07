@@ -1,0 +1,744 @@
+<?php
+// Maria:: Migration ISPC to CISPC 08.08.2020
+#ISPC-2512PatientCharts
+$navigation = $this->navigation;
+$chart_type = $this->chart_type;
+?>
+<script>
+var pid = '<?php echo $this->pid; ?>';
+var backcol = $("#<?php echo $chart_type; ?>").css('backgroundColor');
+
+
+
+function showDatePicker(type){
+	if(type === undefined) {
+		type = 'oneday';
+	}
+	$('.view_selector').show();
+// 	var overlay = new $.ui.dialog.overlay();
+	$('.modal_overlay').show();
+	 
+	showPicker(type);
+}
+
+
+function showPicker(type, fromwhere){
+	if(type === undefined) {
+		type = 'oneday';
+	}
+	if(fromwhere === undefined) {
+		fromwhere = null;
+	}
+	$('.interval_selection').hide();
+	$('#select_'+type).show();
+	$('#selected_chart_type').val(type);
+	
+	
+	 //ISPC-2661 pct.10 Carmen 19.09.2020
+	// set dates- for when the user does not select from datepicker! 
+	//a) by now there is no change between 1,3,7 days. the chart shows always the same
+	  /* var days_back = 6;
+	  if(type == 'oneday'){
+		  days_back = 0;
+	  }else if(type == 'threedays'){
+		  days_back = 2;
+	  } else{
+		  days_back = 6;
+      }
+  
+  	var start = $('#interval_start_date').datepicker('getDate');
+    var start_dt = new Date(start);
+    start_dt.setDate(start_dt.getDate());
+    $('#interval_start_date').val($.date(start_dt));
+    $('#interval_start_date').datepicker("setDate",start_dt);
+    
+    var end = $('#interval_start_date').datepicker('getDate');
+    var enddt = new Date(end);
+    enddt.setDate(enddt.getDate() + days_back); 
+    $('#interval_end_date').val($.date(enddt));
+    $('#interval_end_date').datepicker("setDate",enddt); */
+	// --
+	var chart_view_type = type;
+	$("."+chart_view_type+'-picker').find('.ui-datepicker-current-day a').click();	
+	if(fromwhere)
+	{
+		$('.view_selector').hide();
+    	$('.modal_overlay').hide();
+		loadPage(); // navigation and charts
+	}  	  
+	//--
+}
+
+
+$.date = function(dateObject) {
+    var d = new Date(dateObject);
+    var day = d.getDate();
+    var month = d.getMonth() + 1;
+    var year = d.getFullYear();
+    if (day < 10) {
+    day = "0" + day;
+    }
+    if (month < 10) {
+    month = "0" + month;
+    }
+    var date = month + "/" + day + "/" + year;
+    
+    return date;
+};
+
+$(function() {
+
+
+
+	if($('#selected_chart_type').val() == 'oneday' || $('#selected_chart_type').val() == '12hours' || $('#selected_chart_type').val() == '4hours'){
+		$('.btnPrevMultiple').hide();
+		$('.btnNextMultiple').hide();
+
+	}
+	$(document).off('click',".modal_overlay").on('click',".modal_overlay", function(){
+		$('.view_selector').hide();
+		$('.modal_overlay').hide();
+	});
+	
+	
+  $(".cancel_btn").click(function() {
+	  $('.view_selector').hide();
+		$('.modal_overlay').hide();
+  });
+
+  
+  $(".apply_btn").click(function() {
+	 
+    //if($('#selected_from_datePicker').val()){
+    	
+    	$('.view_selector').hide();
+    	$('.modal_overlay').hide();
+		loadPage(); // navigation and charts
+   /*  } else
+    {
+    	$('.interval_selection').addClass('error_select');
+    	$('.error_info').show();
+    	
+	} */
+    
+  });
+  
+  $(".btnGotoDate").click(function() {
+	  
+	  $('#selected_chart_type').val('oneday');
+	  $('.modal_overlay').hide();
+	  var goTo = $(this).data('godate');
+
+	  $('#interval_start_date').val(goTo);
+	  $('#interval_start_date').datepicker("setDate",goTo);
+	  
+	    $('#interval_end_date').val(goTo);
+	    $('#interval_end_date').datepicker("setDate",goTo);
+	    loadPage(); // navigation and charts
+  });
+
+  $(".btnTop").click(function() {
+	  window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
+  
+	//$(".btnPrev").click(function() {
+	$(document).off('click', '.btnPrev').on('click', '.btnPrev', function(){
+		var chart_view_type = $('#selected_chart_type').val();
+
+		  var days_back = 1; // always one
+		  //ISPC-2661 pct.10 Carmen 19.09.2020
+	  	  var dateFormat = $.datepicker._defaults.dateFormat;
+	  	  //--
+		  /* 
+		  if(chart_view_type == 'oneday'){
+			  days_back = 1;
+		  }else if(chart_view_type == 'threedays'){
+			  days_back = 3;
+		  } else{
+			  days_back = 7;
+	      }
+	       */
+	      	var start = $('#interval_start_date').datepicker('getDate');
+	    
+		    var start_dt = new Date(start);
+		    //ISPC-2661 pct.10 Carmen 19.09.2020
+		  	
+		    if(chart_view_type == '12hours' || chart_view_type == '4hours')
+	    	{
+			   var start = $('#interval_start_date').val();
+			   var slicestart = start.split(" ");
+			   
+			   var d = start.substr(0,2);
+			   var m = start.substr(3,2);
+			   var y = start.substr(6,4);
+			   if(slicestart[1].length == 7)
+			   {
+			   		var h = start.substr(11,1);
+			   }
+			   else
+			   {
+				   var h = start.substr(11,2);
+			   }
+			   
+			    var start_dt = new Date(y,m-1,d,h,0,0);
+			    
+			    start_dt.setHours(start_dt.getHours() - 1);
+			    
+				startDatestr = $.datepicker.formatDate(dateFormat, start_dt) + ' ' +start_dt.getHours() + ':00:00';
+				  
+			    $('#interval_start_date').val(startDatestr);
+	     	}
+		    else
+		    {
+	   			start_dt.setDate(start_dt.getDate() - days_back);
+	   			$('#interval_start_date').val($.date(start_dt));
+	   	    	$('#interval_start_date').datepicker("setDate",start_dt);
+		    }
+		   
+	    	/* $('#interval_start_date').val($.date(start_dt));
+	    	$('#interval_start_date').datepicker("setDate",start_dt); */
+	    	//--
+	     	
+
+		    var end = $('#interval_end_date').datepicker('getDate');
+		    var enddt = new Date(end);
+		  	//ISPC-2661 pct.10 Carmen 19.09.2020
+		    if(chart_view_type == '12hours' || chart_view_type == '4hours')
+	    	{
+			   var end = $('#interval_end_date').val();
+			   var slicestart = start.split(" ");
+			   
+			   var d = end.substr(0,2);
+			   var m = end.substr(3,2);
+			   var y = end.substr(6,4);
+			   if(slicestart[1].length == 7)
+			   {
+			   		var h = end.substr(11,1);
+			   }
+			   else
+			   {
+				   var h = end.substr(11,2);
+			   }
+			   
+			    var enddt = new Date(y,m-1,d,h,0,0);
+			    
+			    enddt.setHours(enddt.getHours() - 1);
+			    endDatestr = $.datepicker.formatDate(dateFormat, enddt) + ' ' +enddt.getHours() + ':00:00';
+			    $('#interval_end_date').val(endDatestr);
+	     	}
+		    else
+		    {
+	   			 enddt.setDate(enddt.getDate() - days_back);
+
+	   		    $('#interval_end_date').val($.date(enddt));
+	   		    $('#interval_end_date').datepicker("setDate",enddt);
+		    }
+		    
+			/* 
+		    $('#interval_end_date').val($.date(enddt));
+		    $('#interval_end_date').datepicker("setDate",enddt); */
+		  //--
+			    
+		  	loadPage(); // navigation and charts
+  });
+  
+  
+  //$(".btnPrevMultiple").click(function() {
+  $(document).off('click', '.btnPrevMultiple').on('click', '.btnPrevMultiple', function(){
+	  var chart_view_type = $('#selected_chart_type').val();
+
+	  var days_back = 7;
+	  if(chart_view_type == 'oneday'){
+		  days_back = 1;
+	  }else if(chart_view_type == 'threedays'){
+		  days_back = 3;
+	  } else{
+		  days_back = 7;
+      }
+      
+      	var start = $('#interval_start_date').datepicker('getDate');
+	    var start_dt = new Date(start);
+	    start_dt.setDate(start_dt.getDate() - days_back);
+	    $('#interval_start_date').val($.date(start_dt));
+	    $('#interval_start_date').datepicker("setDate",start_dt);
+	    
+	    var end = $('#interval_end_date').datepicker('getDate');
+	    var enddt = new Date(end);
+	    enddt.setDate(enddt.getDate() - days_back); 
+	    $('#interval_end_date').val($.date(enddt));
+	    $('#interval_end_date').datepicker("setDate",enddt);
+		    
+	  	loadPage(); // navigation and charts
+  });
+  
+  	//$(".btnNextMultiple").click(function() {
+	$(document).off('click', '.btnNextMultiple').on('click', '.btnNextMultiple', function(){	  
+	  var chart_view_type = $('#selected_chart_type').val();
+
+	  var days_back = 7;
+	  if(chart_view_type == 'oneday'){
+		  days_back = 1;
+	  }else if(chart_view_type == 'threedays'){
+		  days_back = 3;
+	  } else{
+		  days_back = 7;
+      }
+      	var start = $('#interval_start_date').datepicker('getDate');
+	    var start_dt = new Date(start);
+	    start_dt.setDate(start_dt.getDate() + days_back);
+	    $('#interval_start_date').val($.date(start_dt));
+	    $('#interval_start_date').datepicker("setDate",start_dt);
+	    
+	    var end = $('#interval_end_date').datepicker('getDate');
+	    var enddt = new Date(end);
+	    enddt.setDate(enddt.getDate() + days_back); 
+	    $('#interval_end_date').val($.date(enddt));
+	    $('#interval_end_date').datepicker("setDate",enddt);
+		    
+	  	loadPage(); // navigation and charts
+  });
+  
+  
+  //$(".btnNext").click(function() {
+	$(document).off('click', '.btnNext').on('click', '.btnNext', function(){	  
+	  var chart_view_type = $('#selected_chart_type').val();
+
+	  var days_back = 1; // always one
+	  //ISPC-2661 pct.10 Carmen 19.09.2020
+  	  var dateFormat = $.datepicker._defaults.dateFormat;
+  	  //--
+	  /* 
+	  if(chart_view_type == 'oneday'){
+		  days_back = 1;
+	  }else if(chart_view_type == 'threedays'){
+		  days_back = 3;
+	  } else{
+		  days_back = 7;
+      }
+       */
+      	var start = $('#interval_start_date').datepicker('getDate');
+    
+	    var start_dt = new Date(start);
+	    //ISPC-2661 pct.10 Carmen 19.09.2020
+	  	
+	    if(chart_view_type == '12hours' || chart_view_type == '4hours')
+    	{
+		   var start = $('#interval_start_date').val();
+		   var slicestart = start.split(" ");
+		   
+		   var d = start.substr(0,2);
+		   var m = start.substr(3,2);
+		   var y = start.substr(6,4);
+		   if(slicestart[1].length == 7)
+		   {
+		   		var h = start.substr(11,1);
+		   }
+		   else
+		   {
+			   var h = start.substr(11,2);
+		   }
+		   
+		    var start_dt = new Date(y,m-1,d,h,0,0);
+		    
+		    start_dt.setHours(start_dt.getHours() + 1);
+		    
+			startDatestr = $.datepicker.formatDate(dateFormat, start_dt) + ' ' +start_dt.getHours() + ':00:00';
+			  
+		    $('#interval_start_date').val(startDatestr);
+     	}
+	    else
+	    {
+   			start_dt.setDate(start_dt.getDate() + days_back);
+   			$('#interval_start_date').val($.date(start_dt));
+   	    	$('#interval_start_date').datepicker("setDate",start_dt);
+	    }
+	   
+    	/* $('#interval_start_date').val($.date(start_dt));
+    	$('#interval_start_date').datepicker("setDate",start_dt); */
+    	//--
+     	
+
+	    var end = $('#interval_end_date').datepicker('getDate');
+	    var enddt = new Date(end);
+	  	//ISPC-2661 pct.10 Carmen 19.09.2020
+	    if(chart_view_type == '12hours' || chart_view_type == '4hours')
+    	{
+		   var end = $('#interval_end_date').val();
+		   var slicestart = start.split(" ");
+		   
+		   var d = end.substr(0,2);
+		   var m = end.substr(3,2);
+		   var y = end.substr(6,4);
+		   if(slicestart[1].length == 7)
+		   {
+		   		var h = end.substr(11,1);
+		   }
+		   else
+		   {
+			   var h = end.substr(11,2);
+		   }
+		   
+		    var enddt = new Date(y,m-1,d,h,0,0);
+		    
+		    enddt.setHours(enddt.getHours() + 1);
+		    endDatestr = $.datepicker.formatDate(dateFormat, enddt) + ' ' +enddt.getHours() + ':00:00';
+		    $('#interval_end_date').val(endDatestr);
+     	}
+	    else
+	    {
+   			 enddt.setDate(enddt.getDate() + days_back);
+
+   		    $('#interval_end_date').val($.date(enddt));
+   		    $('#interval_end_date').datepicker("setDate",enddt);
+	    }
+	    
+		/* 
+	    $('#interval_end_date').val($.date(enddt));
+	    $('#interval_end_date').datepicker("setDate",enddt); */
+	  //--
+		    
+	  	loadPage(); // navigation and charts
+  });
+  
+ 
+//   var today = new Date();
+//   var dayOfWeekStartingSundayZeroIndexBased = today.getDay(); // 0 : Sunday ,1 : Monday,2,3,4,5,6 : Saturday
+//   var mondayOfWeek = new Date(today.getFullYear(), today.getMonth(), today.getDate() - today.getDay() + 1);
+//   var sundayOfWeek = new Date(today.getFullYear(), today.getMonth(), today.getDate() - today.getDay() + 7);
+
+  $("#date").datepicker();
+  $(".gotoDate").datepicker();
+  
+  var startDate;
+  var endDate;
+
+//   var selectCurrentWeek = function() {
+//     window.setTimeout(function() {
+//       $('.week-picker').find('.ui-datepicker-current-day a').addClass('ui-state-active')
+//     }, 1);
+//   }
+  
+//   $('.week-picker').datepicker({
+//     changeMonth: true,
+//     changeYear: true,
+//     showOtherMonths: true,
+//     selectOtherMonths: true,
+//     onSelect: function(dateText, inst) {
+//       var date = $(this).datepicker('getDate');
+//       startDate = new Date(date.getFullYear(), date.getMonth(), date.getDate() - date.getDay()+1);
+//       endDate = new Date(date.getFullYear(), date.getMonth(), date.getDate() - date.getDay() + 7);
+//       var dateFormat = inst.settings.dateFormat || $.datepicker._defaults.dateFormat;
+//       $("#interval_start_date").val($.datepicker.formatDate(dateFormat, startDate, inst.settings));
+//       $("#interval_end_date").val($.datepicker.formatDate(dateFormat, endDate, inst.settings));
+//       selectCurrentWeek();
+//     },
+//     beforeShowDay: function(date) {
+//       var cssClass = '';
+//       if (date >= startDate && date <= endDate)
+//         cssClass = 'ui-datepicker-current-day';
+//       return [true, cssClass];
+//     },
+//     onChangeMonthYear: function(year, month, inst) {
+//       selectCurrentWeek();
+//     }
+//   });
+  
+  
+  
+  var selectCurrentInterval = function() {
+	  window.setTimeout(function() {
+		  $('.threedays-picker').find('.ui-datepicker-current-day a').addClass('ui-state-active')
+	  }, 1);
+  }
+  $('.threedays-picker').datepicker({
+	  changeMonth: true,
+	  changeYear: true,
+	  showOtherMonths: true,
+	  selectOtherMonths: true,
+	  onSelect: function(dateText, inst) {
+		  var date = $(this).datepicker('getDate');
+		  startDate = new Date(date.getFullYear(), date.getMonth(), date.getDate() -2); //ISPC-2661 pct.9 Carmen 14.09.2020
+		  endDate = new Date(date.getFullYear(), date.getMonth(), date.getDate()); //ISPC-2661 pct.9 Carmen 14.09.2020 
+		  
+		  var dateFormat = inst.settings.dateFormat || $.datepicker._defaults.dateFormat;
+		  $("#interval_start_date").val($.datepicker.formatDate(dateFormat, startDate, inst.settings));
+		  $("#interval_end_date").val($.datepicker.formatDate(dateFormat, endDate, inst.settings));
+		  selectCurrentInterval();
+
+		 $('#selected_from_datePicker').val($.datepicker.formatDate(dateFormat, startDate, inst.settings));
+		  
+	  },
+	  beforeShowDay: function(date) {
+		  var cssClass = '';
+		  if (date >= startDate && date <= endDate)
+			  cssClass = 'ui-datepicker-current-day';
+		  return [true, cssClass];
+	  },
+	  onChangeMonthYear: function(year, month, inst) {
+		  selectCurrentInterval();
+	  }
+  });
+
+
+
+  
+  var selectCurrentWInterval = function() {
+	  window.setTimeout(function() {
+		  $('.week-picker').find('.ui-datepicker-current-day a').addClass('ui-state-active')
+	  }, 1);
+  }
+  
+  $('.week-picker').datepicker({
+	  changeMonth: true,
+	  changeYear: true,
+	  showOtherMonths: true,
+	  selectOtherMonths: true,
+	  onSelect: function(dateText, inst) {
+		  var date = $(this).datepicker('getDate');
+		  startDate = new Date(date.getFullYear(), date.getMonth(), date.getDate() -6); //ISPC-2661 pct.9 Carmen 14.09.2020
+		  endDate = new Date(date.getFullYear(), date.getMonth(), date.getDate()); //ISPC-2661 pct.9 Carmen 14.09.2020
+		  var dateFormat = inst.settings.dateFormat || $.datepicker._defaults.dateFormat;
+		  $("#interval_start_date").val($.datepicker.formatDate(dateFormat, startDate, inst.settings));
+		  $("#interval_end_date").val($.datepicker.formatDate(dateFormat, endDate, inst.settings));
+		  selectCurrentWInterval();
+		  $('#selected_from_datePicker').val($.datepicker.formatDate(dateFormat, startDate, inst.settings));
+	  },
+	  beforeShowDay: function(date) {
+		  var cssClass = '';
+		  if (date >= startDate && date <= endDate)
+			  cssClass = 'ui-datepicker-current-day';
+		  return [true, cssClass];
+	  },
+	  onChangeMonthYear: function(year, month, inst) {
+		  selectCurrentInterval();
+	  }
+  });
+  
+  
+  $('.oneday-picker').datepicker({
+	  changeMonth: true,
+	  changeYear: true,
+	  showOtherMonths: true,
+	  selectOtherMonths: true,
+	  onSelect: function(dateText, inst) {
+		  var date = $(this).datepicker('getDate');
+		  startDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+		  endDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+		  var dateFormat = inst.settings.dateFormat || $.datepicker._defaults.dateFormat;
+		  $("#interval_start_date").val($.datepicker.formatDate(dateFormat, startDate, inst.settings));
+		  $("#interval_end_date").val($.datepicker.formatDate(dateFormat, endDate, inst.settings));
+		  
+		  $('#selected_from_datePicker').val($.datepicker.formatDate(dateFormat, startDate, inst.settings));
+	  },
+	  
+	  beforeShowDay: function(date) {
+		  var cssClass = '';
+		  if (date >= startDate && date <= endDate)
+			  cssClass = 'ui-datepicker-current-day';
+		  return [true, cssClass];
+	  }
+  });
+
+  //ISPC-2661 pct.10 Carmen 16.09.2020
+  $('.12hours-picker').datetimepicker({
+	  changeMonth: true,
+	  changeYear: true,
+	  showOtherMonths: true,
+	  selectOtherMonths: true,
+	  formatTime: "HH",
+	  timeText: 'Zeit',
+	  hourText: 'Stunde',
+	  minutetext: 'Minute',
+	  onSelect: function(dateText, inst) {
+		  var date = $(this).datetimepicker('getDate');
+		  startDate = new Date(date.getFullYear(), date.getMonth(), date.getDate(), date.getHours()-12);
+		  startDateHour = startDate.getHours();
+		 
+		  endDate = new Date(date.getFullYear(), date.getMonth(), date.getDate(), date.getHours());
+		  endDateHour = endDate.getHours();
+		
+		  var dateFormat = $.datepicker._defaults.dateFormat;
+		  startDatestr = $.datepicker.formatDate(dateFormat, startDate, inst.settings) + ' ' +startDateHour + ':00:00';
+		  endDatestr = $.datepicker.formatDate(dateFormat, endDate, inst.settings) + ' ' +endDateHour + ':00:00';
+		 
+		  $("#interval_start_date").val(startDatestr);
+		  $("#interval_end_date").val(endDatestr);
+		  
+		  $('#selected_from_datePicker').val(startDatestr);
+	  },
+	  
+	  beforeShowDay: function(date) {
+		  var cssClass = '';
+		  if (date >= startDate && date <= endDate)
+			  cssClass = 'ui-datepicker-current-day';
+		  return [true, cssClass];
+	  }
+  });
+
+  $('.4hours-picker').datetimepicker({
+	  changeMonth: true,
+	  changeYear: true,
+	  showOtherMonths: true,
+	  selectOtherMonths: true,
+	  formatTime: "HH",
+	  timeText: 'Zeit',
+	  hourText: 'Stunde',
+	  minutetext: 'Minute',
+	  onSelect: function(dateText, inst) {
+		  var date = $(this).datetimepicker('getDate');
+		  startDate = new Date(date.getFullYear(), date.getMonth(), date.getDate(), date.getHours()-4);
+		  startDateHour = startDate.getHours();
+		 
+		  endDate = new Date(date.getFullYear(), date.getMonth(), date.getDate(), date.getHours());
+		  endDateHour = endDate.getHours();
+		
+		  var dateFormat = $.datepicker._defaults.dateFormat;
+		  startDatestr = $.datepicker.formatDate(dateFormat, startDate, inst.settings) + ' ' +startDateHour + ':00:00';
+		  endDatestr = $.datepicker.formatDate(dateFormat, endDate, inst.settings) + ' ' +endDateHour + ':00:00';
+		 
+		  $("#interval_start_date").val(startDatestr);
+		  $("#interval_end_date").val(endDatestr);
+		  
+		  $('#selected_from_datePicker').val(startDatestr);
+	  },
+	  
+	  beforeShowDay: function(date) {
+		  var cssClass = '';
+		  if (date >= startDate && date <= endDate)
+			  cssClass = 'ui-datepicker-current-day';
+		  return [true, cssClass];
+	  }
+  });
+  //--
+  
+});
+</script>
+
+<?php 
+$chart_type_class = $chart_type;
+if($chart_type == "12hours" || $chart_type == "4hours"){
+    $chart_type_class = 'interval_'.$chart_type;
+} 
+?>
+<div class="date-container <?php echo $chart_type_class ;?>">
+<!-- ISPC-2661 pct.10 Carmen 15.09.2020-->
+	<?php if($chart_type == '4hours') : ?>
+	<div class="zoomasc" style="float:left; margin-left: 20px;" onClick = "var chart_type = $('#selected_chart_type').val(); zoomasc(this, chart_type)"><img src="<?php echo RES_FILE_PATH; ?>/images/zoom.png" /></div>
+	<div class="zoomdesc" style="float: left; display: none" onClick = "var chart_type = $('#selected_chart_type').val(); zoomdesc(this, chart_type)"><img src="<?php echo RES_FILE_PATH; ?>/images/zoom-in.png" /></div>
+	<?php elseif($chart_type == 'week') : ?>
+	<div class="zoomasc" style="float:left; display: none;" onClick = "var chart_type = $('#selected_chart_type').val(); zoomasc(this, chart_type)"><img src="<?php echo RES_FILE_PATH; ?>/images/zoom.png" /></div>	
+	<div class="zoomdesc" style="float: left; margin-left: 20px;" onClick = "var chart_type = $('#selected_chart_type').val(); zoomdesc(this, chart_type)"><img src="<?php echo RES_FILE_PATH; ?>/images/zoom-in.png" /></div>
+	<?php else: ?>
+	<div class="zoomasc" style="float:left; margin-left: 20px;" onClick = "var chart_type = $('#selected_chart_type').val(); zoomasc(this, chart_type)"><img src="<?php echo RES_FILE_PATH; ?>/images/zoom.png" /></div>
+	<div class="zoomdesc" style="float: left;" onClick = "var chart_type = $('#selected_chart_type').val(); zoomdesc(this, chart_type)"><img src="<?php echo RES_FILE_PATH; ?>/images/zoom-in.png" /></div>
+	<?php endif;?>
+	<div style="clear: both;"></div>
+<!-- // --> 
+	<ul>
+			<li class="first-row">
+    			<span><?php echo $navigation[$chart_type ]['month_year']; ?></span>
+    			<?php if($chart_type == '12hours' || $chart_type == '4hours') { ?>
+    				<input type="button" class="change_view"   value="<?php echo $this->translate($chart_type .'_interval')?>" onClick="showDatePicker('<?php echo $chart_type?>')">
+    			<?php } else { ?>
+    				<input type="button" class="change_view" value="<?php echo $this->translate($chart_type .'_interval')?>" onClick="showDatePicker('<?php echo $chart_type?>')">
+    			<?php } ?>
+    			
+    			
+        		<?php $last = array_pop(array_keys($navigation[$chart_type]['days']));?>
+        		<?php  foreach($navigation[$chart_type]['days'] as $k=>$day):?>
+    				<li class="day">
+    					<?php if($k == 0):?>
+    						<input type="button" value="" class="btn btnPrevMultiple" title="<?php echo $this->translate($chart_type .'_interval')?> zurück" >	<!-- ISPC-2637 Lore 22.07.2020 -->
+    						<input type="button" value="" class="btn btnPrev" title="1 Tag zurück" >  <!-- ISPC-2637 Lore 22.07.2020 -->
+    					<?php endif;?>
+    					
+    					
+    					<div class="btnGotoDate" data-godate='<?php echo date('d.m.Y',$day); ?>'> 
+    					
+    					<?php echo mb_convert_encoding(strftime('%a %d.%m.%y', $day) , 'utf8')?>
+    					</div>
+    					
+    					<?php if($k == $last):?>
+    						<input type="button" value="" class="btn btnNextMultiple" title="<?php echo $this->translate($chart_type .'_interval')?> vor">	<!-- ISPC-2637 Lore 22.07.2020 -->
+    						<input type="button" value="" class="btn btnNext" title="1 Tag vor">		<!-- ISPC-2637 Lore 22.07.2020 -->
+    					<?php endif;?>
+    				</li>
+        			
+    			<?php endforeach;?>
+    			
+    		</li>
+	</ul>
+</div>
+ 
+<div class="view_selector" style="display: none;">
+<input type="hidden" value="" id="selected_from_datePicker" >
+<h2><?php echo $this->translate('select view');?></h2>
+
+
+
+<!-- ISPC-2661 pct.10 Carmen 15.09.2020 -->
+<div class="default" style="width: 300px;">
+	<input type="button" class="change_view" id="4hours" value="<?php echo $this->translate('4_hours')?>" onClick = "$('.change_view').each(function(){$(this).css('background-color', backcol); }); showPicker('4hours')">
+	<input type="button" class="change_view" id="12hours" value="<?php echo $this->translate('12_hours')?>" onClick = "$('.change_view').each(function(){ $(this).css('background-color', backcol); }); showPicker('12hours')">
+	
+	<input type="button" class="change_view" id="oneday" value="<?php echo $this->translate('oneday_interval')?>" onClick = "$('.change_view').each(function(){ $(this).css('background-color', backcol); }); showPicker('oneday')">
+	<input type="button" class="change_view" id="threedays" value="<?php echo $this->translate('threedays_interval')?>"  onClick = "$('.change_view').each(function(){ $(this).css('background-color', backcol); }); showPicker('threedays')">
+	<input type="button" class="change_view" id="week" value="<?php echo $this->translate('week_interval')?>" onClick = "$('.change_view').each(function(){ $(this).css('background-color', backcol); }); showPicker('week')">
+	
+	<input type="button" class="change_view btnGotoDate" data-godate='<?php echo date('d.m.Y'); ?>' value="<?php echo $this->translate('goTo_today')?>">
+	<input type="button" class="change_view btnGotoDate" data-godate='<?php echo $navigation['current_admission_date']; ?>' value="<?php echo $this->translate('goTo_admission_date')?>">
+</div>
+
+<!-- <div class="zoomdesc" style="display: none;">
+	<input type="button" class="change_view" value="<?php echo $this->translate('week_interval')?>" onClick = "showPicker('week')">
+	<input type="button" class="change_view" value="<?php echo $this->translate('threedays_interval')?>"  onClick = "showPicker('threedays')">
+	<input type="button" class="change_view" value="<?php echo $this->translate('oneday_interval')?>" onClick = "showPicker('oneday')">
+	<input type="button" class="change_view" value="<?php echo $this->translate('12_hours')?>" onClick = "showPicker('12hours')">
+	<input type="button" class="change_view" value="<?php echo $this->translate('4_hours')?>" onClick = "showPicker('4hours')">
+	
+	<input type="button" class="change_view btnGotoDate" data-godate='<?php echo date('d.m.Y'); ?>' value="<?php echo $this->translate('goTo_today')?>">
+	<input type="button" class="change_view btnGotoDate" data-godate='<?php echo $navigation['current_admission_date']; ?>' value="<?php echo $this->translate('goTo_admission_date')?>">
+</div>
+
+<div class="zoomasc" style="display: none;">
+	<input type="button" class="change_view" value="<?php echo $this->translate('4_hours')?>" onClick = "showPicker('4hours')">
+	<input type="button" class="change_view" value="<?php echo $this->translate('12_hours')?>" onClick = "showPicker('12hours')">
+	<input type="button" class="change_view" value="<?php echo $this->translate('oneday_interval')?>" onClick = "showPicker('oneday')">
+	<input type="button" class="change_view" value="<?php echo $this->translate('threedays_interval')?>"  onClick = "showPicker('threedays')">
+	<input type="button" class="change_view" value="<?php echo $this->translate('week_interval')?>" onClick = "showPicker('week')">
+	
+	<input type="button" class="change_view btnGotoDate" data-godate='<?php echo date('d.m.Y'); ?>' value="<?php echo $this->translate('goTo_today')?>">
+	<input type="button" class="change_view btnGotoDate" data-godate='<?php echo $navigation['current_admission_date']; ?>' value="<?php echo $this->translate('goTo_admission_date')?>">
+</div> -->
+<!-- // -->
+<div class="interval_selection" id="select_oneday">
+	<div class="dp_view_title"><?php echo $this->translate('select_oneday')?></div>
+	<div class="datepickerSelector oneday-picker"></div>
+</div>
+<!-- ISPC-2661 pct.10 Carmen 15.09.2020 -->
+<div class="interval_selection" id="select_12hours">
+	<div class="dp_view_title"><?php echo $this->translate('select_12hours')?></div>
+	<div class="datepickerSelector 12hours-picker"></div>
+</div>
+<div class="interval_selection" id="select_4hours">
+	<div class="dp_view_title"><?php echo $this->translate('select_4hours')?></div>
+	<div class="datepickerSelector 4hours-picker"></div>
+</div>
+<!-- // -->
+<div class="interval_selection" id="select_threedays">
+	<div class="dp_view_title"><?php echo $this->translate('select_threedays')?></div>
+	<div class="datepickerSelector threedays-picker"></div>
+</div>
+<div class="interval_selection" id="select_week">
+	<div class="dp_view_title"><?php echo $this->translate('select_week')?></div>
+	<div class="datepickerSelector week-picker"></div>
+</div>
+<div class="error_info"><?php echo $this->translate('please select specific period !');?></div>
+<div class="select_view_buttons">
+	<input type="button" class="btn greyBtn cancel_btn" value="<?php echo $this->translate('Cancel_select_view')?>" />
+	<input type="button" class="btn blueBtn apply_btn" value="<?php echo $this->translate('Apply select view')?>" />
+</div>
+	
+</div>
+

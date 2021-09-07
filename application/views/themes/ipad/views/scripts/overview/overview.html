@@ -1,0 +1,798 @@
+<!-- Maria:: Migration ISPC to CISPC 08.08.2020 -->
+<?php
+$this->headScript()->appendFile(RES_FILE_PATH . '/javascript/pms/dragdiv.js');
+//$this->headScript()->appendFile(RES_FILE_PATH . '/javascript/jquery.cookie.js');
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/data_tables/datatables.min.css' );
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/data_tables/jquery.dataTables.js');
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/data_tables/fixedColumns.dataTables.min.css');
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/data_tables/dataTables.fixedColumns.min.js');
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/medicationnew.css');
+
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/page-css/overview.css');
+
+?>
+<style>
+div[id^=news_content_] a {
+		color: #0000FF;
+		font-weight:700;
+		float: none!important;
+	}
+	
+.newsdialog .ui-dialog .ui-dialog-content {
+	padding: 0px 0px 0px 10px;
+}
+.ui-accordion-header, .ui-accordion-header a {
+	display: block;
+	width: 99%;
+	color: #1B346F !important;
+	font-size: 12px;
+	height: 26px;
+}
+
+.ui-accordion-content {
+	margin-top: 0px;
+	width: 90%;
+	}
+
+.ui-accordion .ui-accordion-content-active {
+	height: auto!important;
+	background: #fff;
+}
+</style>
+<script type="text/javascript">
+	//ISPC -2300
+	$(function() {
+		$( ".accordion" ).accordion({
+			   collapsible: true
+		});
+	});
+		
+	$(document).on('click', '.news_acknoledge', function() {
+				//save news seen
+				var news_id = $(this).attr('data-news');
+				ajaxCallserver({url: appbase + 'ajax/savepopupseen?popup=news&last_news=' + news_id});
+				$(this).parent().hide();
+				$(this).parent().next().show();
+	});
+	//ISPC -2300
+	
+	function DoNav(theUrl) {
+		document.location.href = appbase + theUrl;
+	}
+	var detailscookies = <?php echo $this->detailscookies; ?>;
+
+	var show_dash_groupped="<?php echo $this->dashboard_grouped; ?>";
+
+	var pl_loading = function() {
+		$offhe = (document.getElementById('rosterdiv').offsetHeight / 2) + $('#rosterdiv').offset().top;
+		$left = (($('#rosterdiv').width()) / 2) + $('#rosterdiv').offset().left;
+		$('#rosterdiv').css('opacity', '0.3');
+		var dlist = document.getElementById('loadingdiv').style.top = $offhe + 'px';
+		document.getElementById('loadingdiv').style.left = $left + 'px';
+		document.getElementById('loadingdiv').style.visibility = 'visible';
+	}
+
+	var callBack = function(params) {
+		$('#rosterdiv').css('opacity', '1.0');
+		document.getElementById('loadingdiv').style.visibility = 'hidden';
+		document.getElementById('rosterdiv').innerHTML = params.rosterlist;
+	}
+
+	var contactcallBack = function(params) {
+
+		$('#overviewcolumn_content_item1').html('');
+		$('#overviewcolumn_content_item1').append('' + params.contactlist) + '';
+
+	}
+
+	function completetodo(todo) {
+		//ISPC - 2368
+		//ajaxCallserver({url: appbase + 'todos/completed?todo_id=' + todo.value});
+		if (todo.checked) {
+			var row_id = todo.getAttribute('rel');
+			var todoblock = true;
+			$('#contactArea').html('<iframe id="add_family_doc" frameborder="0" src="" scrolling="no" style="margin:0 auto;"></iframe>');
+
+
+			centerPopup({sr:'about:blank',ht:250,wt:450});
+
+			$('#contactArea').html('<div><?php echo $this->translate('completecomment'); ?><div align="right"><a id="popupContactClose" style="cursor:pointer;" onclick="uncheckbox(\'todochk_'+row_id+'\');closepopup()">x</a></div></div><div><textarea name="completecomment" id="completecomment"></textarea></div><div><button name="" onClick="saveCompleteComment(\''+row_id+'\','+todoblock+');"><?php echo $this->translate('submit');?></button></div>');
+
+			loadPopup();
+
+			/* $('#' + todo.value).fadeOut(500, function() {
+				$(this).remove();
+			}); */
+		}
+	}
+
+	function changestatuskrise(trafficid) {
+		ajaxCallserver({url: appbase + 'patient/changetraffic?status_id=' + document.getElementById("traffic_select" + trafficid).value + '&patienttrid=' + trafficid});
+	}
+
+	$(document).ready(function() {
+		$(".logtodo").click(function() {
+			$("#logtodo").contents().find('body').html('');
+			centerPopup({sr: "patient/todoshistory?idd=<?php echo $this->clientidoverview; ?>", ht: 400, wt: 600});
+			loadPopup();
+		});
+		$("#overviewcolumn_content_item13").tabs();
+		
+		
+		
+		$('.med_approve_rights').removeAttr('disabled','disabled');
+		
+		$('.med_approve_rights').live('click',function(e){
+			e.preventDefault();
+			var action = $(this).data('action');
+			var recordid = $(this).data('recordid');
+			var alt_id = $(this).data('alt_id');
+			var patid = $(this).data('patid');
+			var todoid = $(this).data('todoid');
+			var row_id = $(this).data('row_id');
+		
+			$('.med_approve_rights').attr('disabled','disabled');
+			
+		 	if(action && recordid && patid){
+				$.ajax({
+					type: 'POST',
+					url: 'ajax/applymedicationchanges?id='+patid+'',
+					data: {
+						todoid: todoid,
+						action: action,
+						recordid: recordid,
+						alt_id: alt_id
+					},
+					success:function(data){
+						var event_id = $('#event_done_' + row_id).val();
+						var event_tabname = $('#tabname_' + row_id).val();
+						var event_done_date = $('#done_date_' + row_id).val();
+						var filter = $('#label_filter').val();
+						$('#loading_div_'+ row_id).show();
+						//$('tr#d_row_' + row_id).effect("highlight", {}, 5000);
+						mark_event_done(event_id, event_tabname, row_id, event_done_date, filter);
+						$('.med_approve_rights').removeAttr('disabled','disabled');
+					},
+					error:function(){
+						ajax_done = 1;
+						// failed request; give feedback to user
+					}
+				});
+			} 
+		})
+
+		
+		
+		$('.pump_med_approve_rights').removeAttr('disabled','disabled');
+		
+		$('.pump_med_approve_rights').live('click',function(e){
+			e.preventDefault();
+			
+			var action = $(this).data('action');
+			var recordid = $(this).data('recordid');
+			var alt_id = $(this).data('alt_id');
+			var patid = $(this).data('patid');
+			var todoid = $(this).data('todoid');
+			var row_id = $(this).data('row_id');
+			
+			$('.med_approve_rights').attr('disabled','disabled');
+			
+		 	if(action && recordid && patid){
+				$.ajax({
+					type: 'POST',
+					url: 'ajax/applypumpmedicationchanges?id='+patid+'',
+					data: {
+						todoid: todoid,
+						action: action,
+						recordid: recordid,
+						alt_id: alt_id
+					},
+					success:function(data){
+						var event_id = $('#event_done_' + row_id).val();
+						var event_tabname = $('#tabname_' + row_id).val();
+						var event_done_date = $('#done_date_' + row_id).val();
+						var filter = $('#label_filter').val();
+						$('#loading_div_'+ row_id).show();
+						//$('tr#d_row_' + row_id).effect("highlight", {}, 5000);
+						mark_event_done(event_id, event_tabname, row_id, event_done_date, filter);
+						$('.med_approve_rights').removeAttr('disabled','disabled');
+					},
+					error:function(){
+						ajax_done = 1;
+						// failed request; give feedback to user
+					}
+				});
+			} 
+		})
+
+	});
+	function closepopup()
+	{
+		disablePopup();
+	}
+
+	$(document).ready(function() {
+		if ($('#overviewcolumn_content_20').is(':visible')) {
+			getoveralllist('1');
+		}
+
+<?php
+$user_popup_settings = $this->user_popup_settings;
+//$news_arr = $this->news_array;
+?>
+		//sapv popup
+		var sapv_data = '<?php echo count($this->sapv_verordnung_popup); ?>';
+		var sapv_pop_seen_today = '<?php if(!empty($user_popup_settings['sapv_dialog_' . $this->userid . '_' . $this->clientid]) && date('Y-m-d', strtotime($user_popup_settings['sapv_dialog_' . $this->userid . '_' . $this->clientid]['create_date'])) == date('Y-m-d')): echo '1'; else: echo '0'; endif; ?>';
+		if (sapv_data > '0' && sapv_pop_seen_today != '1') {
+			var show_sapv_popup = true;
+		} else {
+			var show_sapv_popup = false;
+		}
+
+		$('#sapv_popup_notification').dialog({
+			autoOpen: show_sapv_popup,
+			modal: true,
+			resizable: false,
+			draggable: false,
+			title: "<?php echo $this->translate('popup_sapv_title') ?>",
+			width: 600,
+			height: 350,
+			buttons: {
+				'<?php echo $this->translate('acknowledge_sapv') ?>': function() {
+					//save sapv seen for today
+					ajaxCallserver({url: appbase + 'ajax/savepopupseen?popup=sapv'});
+					$(this).dialog("close");
+				}
+			}
+		});
+		
+		//sapv no information popup - ISPC - 2125 - alerts if a verordnung is after XX days still in mode Keine Angabe
+		var sapv_noinf_data = '<?php echo count($this->sapv_verordnung_noinf_popup); ?>';
+		var sapv_pop_noinf_seen_today = '<?php if(!empty($user_popup_settings['sapv_noinf_dialog_' . $this->userid . '_' . $this->clientid]) && date('Y-m-d', strtotime($user_popup_settings['sapv_noinf_dialog_' . $this->userid . '_' . $this->clientid]['create_date'])) == date('Y-m-d')): echo '1'; else: echo '0'; endif; ?>';
+		if (sapv_noinf_data > '0' && sapv_pop_noinf_seen_today != '1') {
+			var show_sapv_noinf_popup = true;
+		} else {
+			var show_sapv_noinf_popup = false;
+		}
+
+		$('#sapv_popup_noinf_notification').dialog({
+			autoOpen: show_sapv_noinf_popup,
+			modal: true,
+			resizable: false,
+			draggable: false,
+			title: "<?php echo $this->translate('popup_sapv_title') ?>",
+			width: 600,
+			height: 350,
+			buttons: {
+				'<?php echo $this->translate('acknowledge_sapv') ?>': function() {
+					//save sapv seen for today
+					ajaxCallserver({url: appbase + 'ajax/savepopupseen?popup=sapv_noinf'});
+					$(this).dialog("close");
+				}
+			}
+		});
+
+		//ISPC - 2300 - see all news
+		//news popup
+		//var latest_news_id = '<?php if(!empty($news_arr)): echo $news_arr[0]['id']; else: echo '0'; endif; ?>';
+		//var last_seen_news = '<?php if(!empty($user_popup_settings['news_dialog_' . $this->userid . '_' . $this->clientid])): echo $user_popup_settings['news_dialog_' . $this->userid . '_' . $this->clientid]['newsid']; else: echo '0'; endif; ?>';
+		//var news_dialog_seen = '<?php if(!empty($user_popup_settings['news_dialog_' . $this->userid . '_' . $this->clientid])): echo '1'; else: echo '0'; endif; ?>';
+		var user_news_popup_settings = '<?php echo $this->user_news_popup_settings; ?>';
+		
+		/*if (latest_news_id == '0' || parseInt(latest_news_id) <= parseInt(last_seen_news))
+		{
+			var news_seen_before = true;
+		}
+		else
+		{
+			var news_seen_before = false;
+		}*/
+		
+		if (user_news_popup_settings != '1')
+		{
+			
+			var news_dialog_open = true;
+		}
+		else
+		{
+			var news_dialog_open = false;
+		}
+
+		$('#news_popup_notification').dialog({
+			//autoOpen: !news_seen_before,
+			autoOpen: news_dialog_open,
+			modal: true,
+			resizable: false,
+			draggable: false,
+			title: "<?php echo $this->translate('popup_news_title') ?>",
+			width: 650,
+			height: 500,
+			dialogClass: "newsdialog",
+			/*buttons: {
+				'<?php echo $this->translate('acknowledge_news') ?>': function() {
+					//save lastest news seen for today
+					ajaxCallserver({url: appbase + 'ajax/savepopupseen?popup=news&last_news=' + latest_news_id});
+					$(this).dialog("close");
+				}
+			}*/
+		});
+
+		//load data only if
+		$('#dashboard h2.collapse').live('click', function() {
+			if ($('#overviewcolumn_content_20').is(':visible')) {
+				getoveralllist('1', $('#label_filter').val());
+			}
+		});
+
+		$('#label_filter').live('change', function() {
+			if ($('#overviewcolumn_content_20').is(':visible')) {
+				getoveralllist('1', $(this).val());
+			}
+		});
+
+		$('#date_sort').live('change', function() {
+			if ($('#overviewcolumn_content_20').is(':visible')) {
+				getoveralllist('1', $('#label_filter').val());
+			}
+		});
+
+		$('.done_event').live('click', function() {
+			if ($(this).is(':checked')) {
+				var row_id = $(this).attr('rel');
+				//ISPC - 2368
+				$('#contactArea').html('<iframe id="add_family_doc" frameborder="0" src="" scrolling="no" style="margin:0 auto;"></iframe>');
+
+
+				centerPopup({sr:'about:blank',ht:250,wt:450});
+
+				$('#contactArea').html('<div><?php echo $this->translate('completecomment'); ?><div align="right"><a id="popupContactClose" style="cursor:pointer;" onclick="uncheckbox(\'done_event_'+row_id+'\');closepopup()">x</a></div></div><div><textarea name="completecomment" id="completecomment"></textarea></div><div><button name="" onClick="saveCompleteComment(\''+row_id+'\');"><?php echo $this->translate('submit');?></button></div>');
+
+				loadPopup();
+				
+				/* var event_id = $('#event_done_' + row_id).val();
+				var event_tabname = $('#tabname_' + row_id).val();
+				var event_done_date = $('#done_date_' + row_id).val();
+				var event_extra = $('#event_extra_' + row_id).val();
+				var filter = $('#label_filter').val();
+				$('#loading_div_'+ row_id).show();
+				var event_comment = $('#comment_' + row_id).val(); //ISPC - 2368
+				alert(event_comment);
+				//$('tr#d_row_' + row_id).effect("highlight", {}, 5000);
+				mark_event_done(event_id, event_tabname, row_id, event_done_date, filter,event_extra, event_comment); */
+				//ISPC - 2368
+			}
+		});
+
+		$('.undone_event').live('click', function() {
+			if ($(this).is(':checked')) {
+				var row_id = $(this).attr('rel');
+				var event_id = $('#event_history_id_' + row_id).val();
+
+				mark_event_undone(event_id, row_id);
+			}
+		});
+		$('.undone_old_event').live('click', function() {
+			if ($(this).is(':checked')) {
+				var row_id = $(this).attr('rel');
+				var event_id = $('#event_history_id_' + row_id).val();
+				mark_old_event_undone(event_id, row_id);
+			}
+		});
+
+
+		$('#dashboard_history').dialog({
+			autoOpen: false,
+			modal: true,
+			title: '<?php echo $this->translate('user_dashboard_history_title'); ?>',
+			draggable: false,
+			width: 800,
+			//height: 450,
+			resizable: false,
+			
+			close: function() {
+				getoveralllist('1');
+			}
+
+		});
+
+		//ISPC-2440
+		$('#last_contact_actions').dialog({
+			autoOpen: false,
+			modal: true,
+			title: '<?php echo $this->translate('last_contact_actions'); ?>',
+			draggable: false,
+			width: 650,
+			height: 550,	
+			resizable: false,
+			
+			close: function() {
+				getoveralllist('1');
+			}
+
+		});
+		
+			
+		$('#open_history').live('click', function(e) {
+			e.preventDefault();
+			var  url = '<?php echo APP_BASE; ?>overview/dashboardhistory';
+			$('#dashboard_history').load(url, function() {$('#dashboard_history').dialog('open');});
+			
+		});
+		
+		//ISPC-2440 
+		$('#icn_last_contact_action').live('click', function(e) {
+			e.preventDefault();
+			var  url = '<?php echo APP_BASE; ?>overview/lastcontacts';
+			$('#last_contact_actions').load(url, function() {$('#last_contact_actions').dialog('open');});
+			
+		});
+		$('#print_todos').live('click', function(e) {
+			e.preventDefault();
+			window.open('<?php echo APP_BASE . 'todos/printtodos?sort_order='; ?>' + $('#date_sort').val());
+		});
+	});
+	function getoveralllist(page, filter) {
+		//var url = '<?php echo APP_BASE; ?>ajax/dashboardlist';
+		if(show_dash_groupped == "1"){
+			var url = '<?php echo APP_BASE; ?>overview/dashboardlistgrouped';
+		} else{
+			var url = '<?php echo APP_BASE; ?>overview/dashboardlist';
+		}
+		var filters = '';
+		var sortdir = $('#date_sort').val();
+
+		//show a loading gif
+		//$('#dashboard_dynamic_content').html('<br/><div class="loadingdiv" align="center"><img src="<?php echo RES_FILE_PATH; ?>/images/ajax-loader.gif"><br /><?php echo $this->translate(loadingpleasewait); ?></div><br/>');
+
+
+		filters = 'label_filter=' + filter;
+
+		sort = 'sort_order=' + sortdir;
+
+		xhr = $.ajax({
+			url: url + '?' + filters + '&' + sort,
+			success: function(response) {
+				$('#dashboard_dynamic_content').html(response);
+			}
+		});
+
+		$('.dashboard_row').live({
+			mouseenter: function()
+			{
+				var row_id = $(this).attr('rel');
+				$('#overally_options_' + row_id).fadeIn();
+			},
+			mouseleave: function()
+			{
+				var row_id = $(this).attr('rel');
+				$('#overally_options_' + row_id).fadeOut(); //hide it
+			}
+		});
+	}
+
+	/*function getoverallhistorylist(page, filter) {
+		var url = '<?php echo APP_BASE; ?>ajax/dashboardhistory';
+
+		//show a loading gif
+		$('#dashboard_history_content').html('<br/><div class="loadingdiv" align="center"><img src="<?php echo RES_FILE_PATH; ?>/images/ajax-loader.gif"><br /><?php echo $this->translate(loadingpleasewait); ?></div><br/>');
+
+		xhr = $.ajax({
+			url: url,
+			success: function(response) {
+				$('#dashboard_history_content').html(response);
+			}
+		});
+	}*/
+
+	function mark_event_done(event_id, event_tabname, event_rowid, event_done_date, filter, event_extra, event_comment)
+	{
+		url = '<?php echo APP_BASE; ?>overview/dashboardlist';
+		var url_str = "";
+		
+		if(event_extra){
+			url_str = url + '?mode=done&eventid=' + event_id + '&tabname=' + event_tabname + '&donedate=' + event_done_date+ '&extra=' + event_extra+ '&event_comment=' + event_comment;
+		} else{
+			url_str = url + '?mode=done&eventid=' + event_id + '&tabname=' + event_tabname + '&donedate=' + event_done_date+ '&event_comment=' + event_comment;
+		}
+		
+		xhr = $.ajax({
+			url: url_str,
+			success: function(response) {
+				if($("#done_event_"+event_rowid).length != 0)
+				{
+				$("#done_event_"+event_rowid).closest('tr').stop().effect("highlight", {}, 2000).stop().hide();
+				}
+				else if($("#med_approv_"+event_rowid).length != 0)
+				{
+					$("#med_approv_"+event_rowid).closest('tr').stop().effect("highlight", {}, 2000).stop().hide();
+				}
+				else if($("#pump_approv_"+event_rowid).length != 0)
+				{
+				$("#pump_approv_"+event_rowid).closest('tr').stop().effect("highlight", {}, 2000).stop().hide();	
+				}
+				else if($("#med_decl_"+event_rowid).length != 0)
+				{
+					$("#med_decl_"+event_rowid).closest('tr').stop().effect("highlight", {}, 2000).stop().hide();
+				}
+				else if($("#pump_decl_"+event_rowid).length != 0)
+				{
+				$("#pump_decl_"+event_rowid).closest('tr').stop().effect("highlight", {}, 2000).stop().hide();	
+				}
+				//ISPC - 2368
+				if("#todochk_"+event_rowid.length != 0)
+				{
+					$("#todochk_"+event_rowid).closest('tr').stop().effect("highlight", {}, 2000).stop().hide();
+				}
+				//$('tr#d_row_' + event_rowid).stop().effect("highlight", {}, 2000).stop().hide();
+			}
+		});
+	}
+	function mark_event_undone(event_id, event_rowid)
+	{
+		var tabname = $('#un_tabname_' + event_rowid).val()
+
+		url = '<?php echo APP_BASE; ?>overview/dashboardlist';
+		xhr = $.ajax({
+			url: url + '?mode=undone&eventid=' + event_id + '&tabname=' + tabname,
+			success: function(response) {				
+				$("#undone_event_"+event_rowid).closest('tr').stop().effect("highlight", {}, 2000).stop().hide();
+				//$('tr#hist_row_' + event_rowid).stop().effect("highlight", {}, 2000).stop().hide();
+				$('#loading_div_'+ event_rowid).show();
+			}
+		});
+	}
+	function mark_old_event_undone(event_id, event_rowid)
+	{
+		url = '<?php echo APP_BASE; ?>overview/dashboardlist';
+		xhr = $.ajax({
+			url: url + '?mode=undone&tabname=old_todo&eventid=' + event_id,
+			success: function(response) {
+				
+				$("#undone_event_"+event_rowid).closest('tr').stop().effect("highlight", {}, 2000).stop().hide();
+				//$('tr#hist_row_' + event_rowid).stop().effect("highlight", {}, 2000).stop().hide();
+			}
+		});
+	}
+	
+	//ISPC - 2368
+	function closepopup() {
+		disablePopup();
+	}
+	
+	function saveCompleteComment(row_id, checkblock)
+	{
+		var val = "";
+		var event_id = "";
+		var event_tabname = "";
+		var event_done_date = "";
+		var event_comment = "";
+		var filter = "";
+		var event_extra = "";
+		
+		//if($("#completecomment").val().length>0) {
+		val = $("#completecomment").val();
+		if(checkblock === true)
+		{
+			$("#todochkcompletecomment_"+row_id).val(val);
+			event_id = $('#todochk_' + row_id).val();
+			event_tabname = $('#todochktabname_' + row_id).val();
+			event_done_date = $('#todochkdone_date_' + row_id).val();
+			event_comment = $('#todochkcompletecomment_' + row_id).val(); //ISPC - 2368
+		}
+		else
+		{
+			$("#completecomment_"+row_id).val(val);
+			event_id = $('#event_done_' + row_id).val();
+			event_tabname = $('#tabname_' + row_id).val();
+			event_done_date = $('#done_date_' + row_id).val();
+			event_extra = $('#event_extra_' + row_id).val();
+			filter = $('#label_filter').val();
+			$('#loading_div_'+ row_id).show();
+			event_comment = $('#completecomment_' + row_id).val(); //ISPC - 2368
+		}
+			
+			//$('tr#d_row_' + row_id).effect("highlight", {}, 5000);
+			
+		//}
+		/* else
+		{			
+			jAlert('<?php echo $this->translate('entercomment') ?>');
+		} */
+		mark_event_done(event_id, event_tabname, row_id, event_done_date, filter,event_extra, event_comment);
+		closepopup();
+	}
+	
+	function uncheckbox(chk)
+	{
+	       $('#'+chk).attr('checked',false);
+	}
+	//ISPC - 2368
+
+
+</script>
+
+<link rel='stylesheet' type='text/css' href='<?php echo RES_FILE_PATH; ?>/css/overviewtabs.css' />
+	<?php if(strlen($this->no_boxes_message) != "0"): ?>
+	<div id="dashboard_content" class="widecolumn alert_no_boxes">
+	</div>
+	<?php endif; ?>
+
+<div id="dashboard_content" class="widecolumn">
+	<?php if(in_array('20', $this->allowed_boxes)): ?>
+		<div class="dragbox" id="dashboard" >
+			<h2><?php echo $this->translate('user_dashboard'); ?></h2>
+
+			<div id="overviewcolumn_content_20" class="dragbox-content" >
+				<div id="dashboard_dynamic_content"></div>
+			</div>
+		</div>
+<?php endif; ?>
+</div>
+
+<div id="OverviewContentLeft">
+<?php echo $this->column1 ?>
+</div>
+
+<div id="OverviewContentRight">
+<?php echo $this->column2 ?>
+</div>
+
+
+<div class="clearer"></div>
+	
+<div id="loadingdiv" style="position:absolute; visibility:hidden; width:32px;height:32px; " align="center">
+	<img src="images/pageloading.gif" width="32" height="32">
+	<br />Loading...
+</div>
+<div id="popupContact">
+	<a id="popupContactClose" onclick="closepopup()">x</a>
+	<p id="contactArea">
+		<iframe id='add_family_doc' frameborder='0' src='' scrolling="yes"  style="margin:0 auto;"></iframe>
+	</p>
+</div>
+	
+<div id="backgroundPopup"></div>
+
+<div id="sapv_popup_notification">
+	<table cellspacing="0" cellpadding="0" border="0" width="100%" id="dynamic" class="datatable">
+		<thead style="font-weight: 700;">
+		<td> <strong>Name, Vorname </strong></td>
+		<td>  <strong>Von </strong></td>
+		<td>  <strong>Bis </strong></td>
+		<td></td>
+		</thead>
+		<tbody>
+			<?php
+			$pm = new PatientMaster();
+			//$patient_details = $this->sapv_patients;
+			$patient_details = $this->patients_act;
+			foreach($this->sapv_verordnung_popup as $k_sapv => $v_sapv):
+
+				if(strtotime(date('d.m.Y',strtotime($v_sapv['verordnungbis']))) < strtotime(date('d.m.Y',time())))
+					{
+						//expired long time ago
+						$translation = $this->translate('popup_expired_sapv');
+						$days_diff = $pm->getDaysDiff($v_sapv['verordnungbis'], date('d.m.Y', time()));
+						$final_translation = str_replace('[days]', $days_diff-1, $translation);
+
+						$expired = true;
+						$class = 'redtext';
+					}
+					else if(strtotime(date('d.m.Y',strtotime($v_sapv['verordnungbis']))) > strtotime(date('d.m.Y',time())))
+					{
+						//will expire soon
+						$translation = $this->translate('popup_will_expire_sapv');
+						$days_diff = $pm->getDaysDiff(date('d.m.Y', time()), $v_sapv['verordnungbis']);
+						$final_translation = str_replace('[days]', $days_diff-1, $translation);
+
+						$expired = false;
+						$class = '';
+					}
+                    else if(date('d.m.Y', strtotime($v_sapv['verordnungbis'])) == date('d.m.Y',time()))
+                    {
+                       //will expire today
+                      $final_translation = $this->translate('popup_today_expire_sapv');
+                      
+
+                      $expired = false;
+					  $class = '';
+                     }
+				?>
+				<tr id="sapv_line_<?php echo $v_sapv['id']; ?>" class="<?php echo $class; ?> row " onclick="DoNav('patientcourse/patientcourse?id=<?php echo Pms_Uuid::encrypt($patient_details[$v_sapv['ipid']]['id']); ?>')">
+						<td><?php echo $patient_details[$v_sapv['ipid']]['last_name'] . ', ' . $patient_details[$v_sapv['ipid']]['first_name']; ?></td>
+					<td><?php echo date('d.m.Y', strtotime($v_sapv['verordnungam'])); ?></td>
+					<td><?php echo date('d.m.Y', strtotime($v_sapv['verordnungbis'])); ?></td>
+						<td id="sapv_status_column"><?php echo $final_translation; ?></td>
+				</tr>
+					<tr
+						<td colspan="4" style="line-height:4px;background-color: #AED0EA;">&nbsp;</td>
+					</tr>
+						<?php endforeach; ?>
+		</tbody>
+	</table>
+</div>
+	
+	<div id="news_popup_notification" style="overflow-x:hidden; overflow-y:auto;">
+		<div class="accordion"> 
+			<?php foreach($this->news_unseen as $key_news => $value_news): ?>
+				<h3>
+					<span class="accordion_span_name">
+						<div style="float:left;"><a href="<?php echo APP_BASE; ?>news/news?id=<?php echo $value_news['id']; ?>"><b><?php echo $value_news['news_title']; ?></b></a></div>
+						<div style="float:right; padding: 0.5em;"><?php echo date('d.m.Y', strtotime($value_news['news_date'])); ?></div>
+						<br class="clear clearer" />
+					</span>
+				</h3>
+				<div id="news_content_<?php echo $value_news['id']; ?>" style="text-align: justify;  ">
+				<?php
+				//ISPC-1825 - show scroll bar on y
+						//$more_link = '<a style="float:right; color:#1B346F; font-weight:700;" href="' . APP_BASE . 'news/news?id=' . $value_news['id'] . '">' . $this->translate('readmore') . '</a>';
+
+						$allowed_tags = '<p><br><a><span><strong><em><img><h1><h2><h3><h4><h5><h6><hr>';
+						$content = strip_tags($value_news['news_content'], $allowed_tags);
+						//$content = $value_news['news_content'];
+
+						/*if(strlen($content) > 1000)
+						{
+							$content = substr($content, 0, 1000) . ' ... ' . $more_link;
+						}*/
+
+						
+						//echo '<pre></pre>';
+						//echo '<pre>'.$content.'</pre>';
+						//echo '<span style="word-wrap: break-word; border: 1px solid red;">'.$content.'</span>';
+						
+
+						echo '<span style="display: block; width: 100%; float: left;">'.$content.'</span>';
+						echo '<span style="display: block; float: right;"><input type="button" class="news_acknoledge ui-button ui-state-default ui-corner-all" data-news="'. $value_news["id"] .'" value="'. $this->translate('acknowledge_news').'"></span>';
+						echo '<span style="display: none; float: right;">'.$this->translate("Message seen").'</span>'; 
+						?>
+
+				</div>
+			<?php endforeach; ?>
+		</div>
+	</div>
+
+<div id="sapv_popup_noinf_notification">
+	<table cellspacing="0" cellpadding="0" border="0" width="100%" id="dynamic" class="datatable">
+		<thead style="font-weight: 700;">
+		<td> <strong>Name, Vorname </strong></td>
+		<td>  <strong>Von </strong></td>
+		<td>  <strong>Bis </strong></td>
+		<td></td>
+		</thead>
+		<tbody>
+			<?php
+			$pm = new PatientMaster();
+			//$patient_details = $this->sapv_noinf_patients;
+			$patient_details = $this->patients_act;
+			foreach($this->sapv_verordnung_noinf_popup as $k_noinf_sapv => $v_noinf_sapv):				
+				//still keine angabe
+				$translation = $this->translate('popup_no_information_sapv');
+				$days_diff = $pm->getDaysDiff(date('d.m.Y', time()), $v_noinf_sapv['verordnungam']);
+				$final_translation = str_replace('[days]', $days_diff-1, $translation);
+
+				$expired = true;
+				$class = 'redtext';
+			?>
+			<tr id="sapv_line_<?php echo $v_noinf_sapv['id']; ?>" class="<?php echo $class; ?> row " onclick="DoNav('patientcourse/patientcourse?id=<?php echo Pms_Uuid::encrypt($patient_details[$v_noinf_sapv['ipid']]['id']); ?>')">
+					<td><?php echo $patient_details[$v_noinf_sapv['ipid']]['last_name'] . ', ' . $patient_details[$v_noinf_sapv['ipid']]['first_name']; ?></td>
+				<td><?php echo date('d.m.Y', strtotime($v_noinf_sapv['verordnungam'])); ?></td>
+				<td><?php echo date('d.m.Y', strtotime($v_noinf_sapv['verordnungbis'])); ?></td>
+					<td id="sapv_status_column"><?php echo $final_translation; ?></td>
+			</tr>
+			<tr
+				<td colspan="4" style="line-height:4px;background-color: #AED0EA;">&nbsp;</td>
+			</tr>
+			<?php endforeach; ?>
+		</tbody>
+	</table>
+</div>
+	
+<div id="dashboard_history">
+	<!--  <div id="dashboard_history_content"></div> -->
+</div>
+
+	
+	<div id="last_contact_actions">
+		<!-- <div id="last_contact_actions_content"></div> -->
+	</div>

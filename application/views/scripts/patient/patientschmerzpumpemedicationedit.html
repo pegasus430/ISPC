@@ -1,0 +1,250 @@
+<?php $this->headScript()->appendFile(RES_FILE_PATH.'/javascript/pharmaindex/medi_pharmaindex.js?'.date('Ymd'));?>
+<?php $this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/pharmaindex/medi_pharmaindex.css?'.date('Ymd'));?>
+<script type="text/javascript">
+	var jscount = 0;
+	var jsmedcount = "0";
+	var medcount = '<?php echo $this->mcntr; ?>';
+	var jsusers = <?php echo $this->jsusers ?>;
+	var medblur = Array();
+	var isdischarged = '<?php echo $this->isdischarged ?>';
+	var healthinsuranceik = "<?php echo $this->kassen_no; ?>";
+
+	<?php if($this->show_mmi == "1"):?>
+	//used in mmi dialog
+	var active_recipe_row = null;
+
+	$(document).on('click', '.mmi_search_button', function(){
+		var receipt_field = $(this).prev().prev();
+		active_recipe_row = receipt_field;
+	});
+	
+	<?php endif; ?>
+	$(document).ready(function(){
+		<?php if($this->show_mmi == "1"):?>
+		 //INSTALL MEDIINDEX-WIDGET
+		var pi = new pharmaindex();
+//		pi.input_medname = ".medication";
+		pi.input_medname = ".med";
+		pi.input_rowparent = "tr";
+		pi.input_receipe_butt = ".mmi_search_button";
+		pi.input_to_recipe = ".to_recipe";
+		pi.mode="recipe";
+		pi.ikno = "#ikno_input";
+		pi.use_suggestions = '0';
+		pi.otcWarningSw = '0';
+
+		//PATH FOR THE AJAX SCRIPTS
+		pi.ajaxPath = "pharmaindex";
+
+		//PATH FOR THE IMAGE FOLDER
+		pi.imagePath="images/pharmaindex";
+
+		pi.callback = function(recipe){
+			var input_row = parseInt(active_recipe_row.attr('id').substr(('medication').length));
+//			console.log(active_recipe_row.attr('id'));
+//			console.log(input_row);
+			$(active_recipe_row).val(recipe);
+			$('#hidd_medication' + input_row).val('');
+			$('#edited' + input_row).val('1');
+		};
+
+		pi.install();
+		
+		$('.livesearchmedinp').live('change', function() {
+			var input_row = parseInt($(this).attr('id').substr(('medication').length));
+			reset_medications(input_row);
+		}).liveSearch({
+			url: 'pharmaindex/getproductsmedils?ik_no='+healthinsuranceik+'&sm=0&searchtext=',
+			id: 'livesearch_admission_medications',
+			aditionalWidth: '300',
+			noResultsDelay: '900',
+			typeDelay: '900',
+			returnRowId: function (input) {return parseInt($(input).attr('id').substr(('medication').length));}
+		});
+		<?php else: ?>
+		$('.livesearchmedinp').live('change', function() {
+			var input_row = parseInt($(this).attr('id').substr(('medication').length));
+			reset_medications(input_row);
+		}).liveSearch({
+			url: 'ajax/medications?q=',
+			id: 'livesearch_admission_medications',
+			aditionalWidth: '300',
+			noResultsDelay: '900',
+			typeDelay: '900',
+			returnRowId: function (input) {return parseInt($(input).attr('id').substr(('medication').length));}
+		});
+		<?php endif; ?>
+
+
+
+		$('.med_date').datepicker({
+			dateFormat: 'dd.mm.yy',
+			buttonImageOnly: true,
+			changeMonth: true,
+			changeYear: true,
+			nextText: '',
+			prevText: '',
+			onSelect: function(){
+				var input_row = parseInt($(this).attr('rel').substr(('med_date').length));
+				$('#edited' + input_row).val('1');
+
+			}
+
+		});
+
+		$(".med_date").mask("99.99.9999");
+
+		$('input.livesearchmedinp, input.med_date, input.dosage, input.med, input.comment, select.user_selector').live('change keyup', function() {
+
+			if ($(this).hasClass('livesearchmedinp')) {
+				var input_row = parseInt($(this).attr('id').substr(('medication').length)); //med name
+			} else if ($(this).hasClass('med_date')) {
+				var input_row = parseInt($(this).attr('rel').substr(('med_date').length)); //change date
+			} else if ($(this).hasClass('dosage')) {
+				var input_row = parseInt($(this).attr('id').substr(('dosage').length)); //dosage
+			} else if ($(this).hasClass('med') || $(this).hasClass('comment')) {
+				var input_row = parseInt($(this).attr('id').substr(('comment').length)); //comment
+			} else if ($(this).hasClass('user_selector')) {
+				var input_row = parseInt($(this).attr('id').substr(('verordnetvon-').length)); //comment
+			}
+
+			$('#edited' + input_row).val('1');
+		});
+
+	});
+
+	function reset_medications(input_row)
+	{
+		if($('#hidd_medication'+input_row).val()){
+			$('#hidd_medication'+input_row).val('');
+			$('#drid'+input_row).val('');
+	}
+	}
+
+//	function selectMedications(mid, row)
+//	{
+//		$('#medication'+row).val($('#medi_me_'+mid).val());
+//		$('#comment'+row).val($('#medi_comment_'+mid).val());
+//		$('#hidd_medication'+row).val($('#medi_id_'+mid).val());
+//
+//	}
+	function selectMedications(mid, row, mmi_handler)
+	{
+		$('#medication'+row).val($('#medi_me_'+mid).val());
+		if(!mmi_handler)
+		{
+			$('#comment'+row).val($('#medi_comment_'+mid).val());
+			$('#hidd_medication'+row).val($('#medi_id_'+mid).val());
+		}
+	}
+ 
+	function removeElem(ids)
+	{
+		$(ids).remove();
+	}
+
+	function delmedicationRow(did,patidencrypted)
+	{
+		if(did)
+		{
+			ajaxCallserver({
+				url:'patient/patientmedication?id='+patidencrypted+'&delid='+did+'&mid='+did+'&act=del&noredir=1' //mid for trigger when deleteing the row
+			});
+		}
+	}
+
+	function createnewschmerzpumpeedit()
+	{
+		<?php if($this->show_mmi == "1"): ?>
+			var mmi_medication_style = 'width:72%!important;';
+			var mmi_button_search = '&nbsp;<input type="button" name="mmi_search" id="mmi_search_'+medcount+'" value="<?php echo $this->translate('mmi_button');?>" class="mmi_search_button" />';
+			var mmi_dosage_style = 'width:100px!important;';
+			var mmi_selectuser_style = "width: 80px;";
+		<?php else: ?>
+			var mmi_medication_style = '';
+			var mmi_button_search = '';
+			var mmi_dosage_style = '';
+			var mmi_selectuser_style = '';
+		<?php endif; ?>
+			
+		var usrstr = "";
+		for(var i in jsusers)
+		{
+			usrstr +='<option value="'+i+'">'+jsusers[i]+'</option>';
+		}
+
+
+
+		var userdrop = '<select name="verordnetvon['+medcount+']" style="'+mmi_selectuser_style+'">'+usrstr+'</select>';
+
+		var trInnerHtml = $('<tr id="medadd'+medcount+'"><td></td><td align="left" valign="top"><input name="medication['+medcount+']" value="" id="medication'+medcount+'" type="text" class="livesearchmedinp med" style="'+mmi_medication_style+'"><input name="hidd_medication['+medcount+']" value="" id="hidd_medication'+medcount+'" type="hidden">'+mmi_button_search+'</div></td><td align="left" valign="top"><input  name="dosage['+medcount+']" id="dosage" class="dosage" value="" style="'+mmi_dosage_style+'" /></td><td></td><td align="left" valign="top">'+userdrop+'</td><td align="left" valign="top"><a href="javascript:void(0)" onclick="removeElem(\'#medadd'+medcount+'\')"><img src="images/action_delete.png" border="0" /></a></td></tr>');
+
+		$(trInnerHtml).insertBefore('#cDetails');
+
+		$('#medication'+medcount).bind('keyup keydown change paste',function(){
+			<?php if($this->show_mmi == "1"): ?>
+			$(this).live('change', function() {
+				var input_row = parseInt($(this).attr('id').substr(('medication').length));
+				reset_medications(input_row);
+			}).liveSearch({
+				url: 'pharmaindex/getproductsmedils?ik_no='+healthinsuranceik+'&sm=0&searchtext=',
+				id: 'livesearch_admission_medications',
+				aditionalWidth: '300',
+				noResultsDelay: '900',
+				typeDelay: '900',
+				returnRowId: function (input) {return parseInt($(input).attr('id').substr(('medication').length));}
+			});
+			<?php else: ?>
+			//livesearch medications ls
+			$(this).live('change', function() {
+				var input_row = parseInt($(this).attr('id').substr(('medication').length));
+				reset_medications(input_row);
+			}).liveSearch({
+				url: 'ajax/medications?q=',
+				id: 'livesearch_admission_medications',
+				aditionalWidth: '300',
+				noResultsDelay: '900',
+				typeDelay: '900',
+				returnRowId: function (input) {return parseInt($(input).attr('id').substr(('medication').length));}
+			});
+			<?php endif; ?>
+		});
+
+		medcount++;
+	}
+</script>
+
+<form enctype="multipart/form-data"  action="<?php echo $this->act; ?>" method="post" name="frmuser" id="frmuser" autocomplete="off" onsubmit="$('#btnsubmit').attr('disabled', true);" >
+<div style="display: none;">
+	<img id="calImg" src="<?php echo RES_FILE_PATH;  ?>/images/calendar.png" alt="Popup" class="trigger">
+</div>
+<?php echo $this->patientinfo ?>
+<?php echo $this->tabmenus ?>
+	<input type="hidden" name="ikno_input" id="ikno_input" value="<?php echo $this->kassen_no; ?>" />
+	<div class="tab_container">
+		<div id="TableContentOuter">
+			<table width="100%" border="0" cellspacing="0" cellpadding="0">
+
+				<tr class="schmerzpumpe">
+					<td colspan="2">
+						<br /><br />
+					</td>
+				</tr>
+				<tr class="schmerzpumpe">
+					<td style="  padding: 10px 5px 0 5px;border-top:thin dashed black;border-left: thin dashed black;border-right:thin dashed black;border-collapse: collapse;" width="23" align="left"  valign="top"><h1><?php echo $this->translate('schmerzepumpemedications'); ?></h1></td>
+				</tr>
+				<tr class="schmerzpumpe">
+				</tr>
+				<tr class="schmerzpumpe">
+					<td style="  padding: 0 5px 10px 5px;border-bottom:  thin dashed black; border-left: thin dashed black;border-right:thin dashed black;border-collapse: collapse;" align="left" valign="top">
+						<?php echo $this->schmerzepumpemedications ?>
+					</td>
+				</tr>
+				<tr>
+					<td width="23" align="left" valign="top"><input name="btnsubmut" id="btnsubmit" type="submit" class="button" value="<?php echo $this->translate('submit'); ?>"  />
+					</td>
+				</tr>
+			</table>
+		</div>
+	</div>
+</form>

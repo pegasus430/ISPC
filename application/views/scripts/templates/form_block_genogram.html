@@ -1,0 +1,733 @@
+<!--  Maria:: Migration CISPC to ISPC 22.07.2020 -->
+<?php
+    $blockname = $this->config['belongsto'];
+    $f_values = $this->f_values;
+    $all_roles=$this->contactperson_type;
+?>
+
+<?php if (! $this->pdf):?>
+
+<?php
+    $datas = $this->data;
+    $addresses = array();
+    $metaCategorys = array();
+
+
+/*
+* addNew template for each box
+*/
+
+foreach ($datas['__meta-categorys'] as $cat => $data) {
+    $id = $cat. '_addnewDialogHtml';
+    echo '<script type="text/template" id="' .$id. '" >' . $data['addnewDialogHtml'] . PHP_EOL . '</script>';
+
+    unset($data['addnewDialogHtml']);
+
+    $metaCategorys[$cat] = $data;
+}
+
+/*
+* update template for each box entry
+*/
+    foreach ($datas as $cat => $data) {
+        foreach ($data as $key=>$entry) {
+
+        if (isset($entry['editDialogHtml'])){
+            $id = $cat. '_editDialogHtml_' .$key;
+            echo '<script type="text/template" id="' .$id. '" >' . $entry['editDialogHtml'] . PHP_EOL . '</script>';
+        }
+
+        $addresses[$cat][$key] = $entry['address'];
+     }
+   }
+?>
+
+<script>
+    var memos = <?=json_encode($this->memos);?>;
+    var addresses = <?=json_encode($addresses);?>;
+    var metaCategorys = <?=json_encode($metaCategorys);?>;
+    var contactpersons = <?=json_encode($this->data["ContactPersonMaster"]);?>;
+    var contactperson_exists = <?=json_encode($this->contactperson_exist);?>;
+    var metaContactPersonMaster = <?=json_encode($this->contactperson_cat);?>;
+</script>
+
+<style>
+    #fb-genogramm th{
+        width:140px;
+        text-align:center;
+    }
+    #fb-genogramm .fb-genogramm-row td.fb-genogramm-itd{
+        height:40px; <?php //td height is min-height?>
+        text-align:center;
+        vertical-align: middle;
+        padding-bottom:12px;
+        padding-top:12px;
+    }
+
+    #fb-genogramm .fb-person{
+        border:1px solid #ccc;
+        background-color:#eee;
+        padding:3px;
+        margin:3px;
+        cursor:pointer;
+        border-radius: 3px;
+    }
+
+    #fb-genogramm .fb-person.fb-person-patient{
+        cursor:not-allowed;
+        background-color: #99CCCC;
+    }
+
+    #fb-genogramm .fb-person.fb-dragged{
+        border-style: dashed;
+    }
+    #fb-genogramm .fb-person .fb-role{
+        font-style: italic;
+    }
+    #fb-genogramm-editor{
+        display:none;
+    }
+
+    .fb-genogramm-itd-highlight{
+        background-color: #d3f1ff;
+    }
+
+    #fb-genogramm-entryeditor .content input[type="text"], .content textarea {
+        width: 360px;
+    }
+
+    #fb-genogramm-entryeditor .content label {
+        width: 140px;
+        display: inline-block;
+        vertical-align: top;
+        margin-top: 8px;
+    }
+
+    #fb-genogramm-editor #box-GenogramEntry {
+        float: left;
+        width: 280px;
+    }
+
+    #fb-genogramm-editor #box-ContactPersonMaster {
+        float: right;
+        width: 420px;
+    }
+
+    #fb-genogramm-editor .error_display_field {
+        border: red 2px solid;
+    }
+
+    #fb-genogramm-editor .error_display_area {
+        display: block;
+        width: 80%;
+        height: auto;
+        color: red;
+        border: red 2px solid;
+        padding: 10px;
+        margin: 25px 40px 25px 40px;
+    }
+
+
+    #box-GenogramEntry label {
+        width: 80px;
+        display: inline-block;
+    }
+
+    #box-GenogramEntry  .required:after {
+        content: " *";
+        color: #e32;
+        display: inline;
+    }
+
+</style>
+
+<script>
+    $(document).ready(function(){
+
+        var openelem=null;
+        var my_moved_node=null;
+
+        var label_col_mapping = init_label_col_mapping();
+
+        init_contact_person_box();
+
+        //add the fb_versorger-entryeditor
+        if($('#fb_versorger-contactform-entryeditor').length<1){
+            $('body').append('<div id="fb_versorger-contactform-entryeditor" style="display:none;"></div>');
+            $('#fb_versorger-contactform-entryeditor').append('<form></form>');
+            $('#fb_versorger-contactform-entryeditor form').append('<div class="content"></div>');
+        }
+
+        <!-- start dialog fb_versorger-clipboardcopy -->
+        if($('#fb_versorger-clipboardcopy').length<1){
+            $('body').append('<div id="fb_versorger-clipboardcopy" style="display: none">');
+            $('#fb_versorger-clipboardcopy').append('<textarea></textarea>');
+        }
+        <!-- start dialog fb_versorger-memo -->
+        if($('#fb_versorger-memo').length<1) {
+            $('body').append('<div id="fb_versorger-memo" style="display: none">');
+            $('#fb_versorger-memo').append('<form></form>');
+            $('#fb_versorger-memo form').append('<input type="hidden" name="__category" value="">');
+            $('#fb_versorger-memo form').append('<div style="width:200px;display:inline-block;margin-right:8px;"><textarea name="memo" style="height:80px;width:200px;"></textarea> </div>');
+            $('#fb_versorger-memo form').append('<div style="width:150px;display:inline-block;">' +
+                '<ul>' +
+                '<li><input name="color" value="none" type="radio"><?=$this->translate("no light");?></li>' +
+                '<li><input name="color" value="green" type="radio"><?=$this->translate("green light");?> (<img style="width:16px;vertical-align:bottom;" src="<? echo RES_FILE_PATH;?>/images/circle_green24.png">)</li>' +
+                '<li><input name="color" value="red" type="radio"><?=$this->translate("red light");?> (<img style="width:16px;vertical-align:bottom;" src="<? echo RES_FILE_PATH;?>/images/circle_red24.png">)</li>' +
+                '</ul></div>');
+            $('#fb_versorger-memo form').append('<div style="margin-top:4px;padding:4px;text-align:center;">' +
+                '<input type="button" class="fb_versorger-memo-button" value="<?=$this->translate("save changes")?>"> </div>');
+        }
+
+
+        $(document).on('click', '#box-ContactPersonMaster .takeover-button', function(){
+
+            var contactpersonValues = new Map();
+            // var entry = $(this).closest('.entry');
+            var entry;
+
+            //no entries -> nothing to takeover
+            if (!$('.entry :visible').length > 0) {
+                return;
+            }
+            //more than one entries. One is active by framework
+            else if($('.entry').find('.entryline.ui-state-active').length > 0){
+                entry = $('.entry').find('.entryline.ui-state-active').closest('.entry');
+            }
+            // only one entry. take that.
+            else{
+                entry = $('.entry');
+            }
+
+
+            //get the values for the labels
+            $(entry).find('.entryline').each(function(){
+                var label = $(this).find('label').text();
+                var value = $(this).find('.entrydetail').text()
+                contactpersonValues.set(label,value);
+            });
+
+            //find the values by label. and find the label by db-key
+            var name = (contactpersonValues.has(label_col_mapping.get("nice_name"))) ? contactpersonValues.get(label_col_mapping.get("nice_name")) : "";
+            var mobile = (contactpersonValues.has(label_col_mapping.get("cnt_mobile"))) ? contactpersonValues.get(label_col_mapping.get("cnt_mobile")) : "";
+            var phone = (contactpersonValues.has(label_col_mapping.get("cnt_phone"))) ? contactpersonValues.get(label_col_mapping.get("cnt_phone")) : "";
+            var comment = (contactpersonValues.has(label_col_mapping.get("cnt_comment"))) ? contactpersonValues.get(label_col_mapping.get("cnt_comment")) : "";
+            var role = (contactpersonValues.has(label_col_mapping.get("cnt_familydegree_id"))) ? contactpersonValues.get(label_col_mapping.get("cnt_familydegree_id")) : "";
+
+            $('#fb-genogramm-editor-name').val(name.trim());
+            $('#fb-genogramm-editor-role').val(role.trim());
+            $('#fb-genogramm-editor-comment').val(comment.trim());
+            $('#fb-genogramm-editor-phone').val(phone.trim());
+            $('#fb-genogramm-editor-mobile').val(mobile.trim());
+        });
+
+        $(document).on('click', '#fb-genogramm-add-person-butt', function(){
+            var elem=$('<div draggable="true" class="fb-person"></div>');
+
+            $(elem).append('<input type="hidden" class="fb-name-hinp" value="Neue Person">');
+            $(elem).append('<input type="hidden" class="fb-role-hinp" value="">');
+            $(elem).append('<input type="hidden" class="fb-phone-hinp" value="">');
+            $(elem).append('<input type="hidden" class="fb-mobile-hinp" value="">');
+            $(elem).append('<input type="hidden" class="fb-comment-hinp" value="">');
+            $(elem).append('<div class="fb-name">Neue Person</div>');
+            $(elem).append('<div class="fb-role"></div>');
+            $(elem).append('<div class="fb-comment"></div>');
+            $(elem).append('<div class="fb-phone"></div>');
+            $(elem).append('<div class="fb-mobile"></div>');
+
+
+            $($($('.fb-genogramm-row')[1]).find('td')[3]).append(elem);
+            $(elem).stop().css("background-color", "#ffc")
+                .animate({ backgroundColor: "#eee"}, 1000);
+        });
+
+        $(document).on('click', '#fb-genogramm .fb-person', function(){
+            var name=$(this).find('.fb-name').text();
+            var role=$(this).find('.fb-role').text();
+            var phone=$(this).find('.fb-phone-hinp').val();
+            var mobile=$(this).find('.fb-mobile-hinp').val();
+            var comment=$(this).find('.fb-comment-hinp').val();
+            if($(this).hasClass('fb-person-patient')){
+                return;
+            }
+            open_editor(name, role, phone, mobile, comment);
+            openelem=this;
+        });
+
+        $(document).on('click', '#fb-genogramm-editor-butt-ok', function(){
+
+            if(!validate_dialog())
+                return;
+
+            var name=$('#fb-genogramm-editor-name').val();
+            var role=$('#fb-genogramm-editor-role').val();
+            var phone=$('#fb-genogramm-editor-phone').val();
+            var mobile=$('#fb-genogramm-editor-mobile').val();
+            var comment=$('#fb-genogramm-editor-comment').val();
+
+            $(openelem).find('.fb-name').text(name);
+            $(openelem).find('.fb-name-hinp').val(name);
+            $(openelem).find('.fb-role').text(role);
+            $(openelem).find('.fb-role-hinp').val(role);
+
+            $(openelem).find('.fb-phone-hinp').val(phone);
+            $(openelem).find('.fb-phone').text(phone);
+            $(openelem).find('.fb-mobile-hinp').val(mobile);
+            $(openelem).find('.fb-mobile').text(mobile);
+            $(openelem).find('.fb-comment-hinp').val(comment);
+            $(openelem).find('.fb-comment').text(comment);
+
+            $('#fb-genogramm-editor').dialog('close');
+            renumerate_persons();
+            $(openelem).stop().css("background-color", "#ffc")
+               .animate({ backgroundColor: "#eee"}, 1000);
+        });
+
+        $(document).on('click', '#fb-genogramm-editor-butt-delete', function(){
+            $(openelem).remove();
+            $('#fb-genogramm-editor').dialog('close');
+            renumerate_persons();
+        });
+
+        $(document).on('dragstart', '#fb-genogramm .fb-person', function(ev){
+            my_moved_node=this;
+            ev.originalEvent.dataTransfer.setData('text/plain', 'anything');
+            $(this).addClass('fb-dragged');
+        });
+
+        $(document).on('dragend', '#fb-genogramm .fb-person', function(ev){
+            $(this).removeClass('fb-dragged');
+            my_moved_node=null;
+            $('.fb-genogramm-itd-highlight').removeClass('fb-genogramm-itd-highlight');
+        });
+
+        $(document).on('click', '#fb-genogramm-editor #fb-genogramm-editor-name', function(ev){
+
+           if($(this).val() == 'Neue Person')
+               $(this).val('');
+        });
+
+        $(document).on('dragover', '#fb-genogramm .fb-person, .fb-genogramm-row td', function(ev){
+            ev.preventDefault();
+
+            var el=$(this).parents('.fb-genogramm-itd');
+            if($(this).hasClass('fb-genogramm-itd')){
+                el=this;
+            }
+            $(el).addClass('fb-genogramm-itd-highlight');
+        });
+
+
+        $(document).on('dragleave', '#fb-genogramm .fb-person, .fb-genogramm-row td', function(ev){
+            ev.preventDefault();
+            $('.fb-genogramm-itd-highlight').removeClass('fb-genogramm-itd-highlight');
+        });
+
+        $(document).on('drop', '.fb-genogramm-row td', function(ev){
+            ev.preventDefault();
+            var target=this;
+            if($(ev.target).hasClass('.fb-person')){
+                target=ev.target;
+            }
+            if($(ev.target).parent().hasClass('.fb-person')){
+                target=$(ev.target).parent();
+            }
+            var src=my_moved_node;
+
+            var my_offset       =$(target).offset().top + ($(target).height()/2);
+            var mouse_offset    = ev.originalEvent.pageY;
+
+            if($(target).hasClass('.fb-person')) {
+                if (mouse_offset < my_offset) {
+                    $(this).before(src);
+                } else {
+                    $(this).after(src);
+                }
+            }else{
+                if (mouse_offset < my_offset) {
+                    $(this).prepend(src);
+                } else {
+                    $(this).append(src);
+                }
+
+            }
+
+            $(src).stop().css("background-color", "#ffc")
+                .animate({ backgroundColor: "#eee"}, 1000);
+
+
+            $(this).removeClass('fb-dragged');
+
+            renumerate_persons();
+            //
+
+        });
+
+        open_editor = function (name, role, phone, mobile, comment) {
+            $('#fb-genogramm-editor-name').val(name);
+            $('#fb-genogramm-editor-role').val(role);
+            $('#fb-genogramm-editor-comment').val(comment);
+            $('#fb-genogramm-editor-phone').val(phone);
+            $('#fb-genogramm-editor-mobile').val(mobile);
+            $('#fb-genogramm-editor-butt-takeover').hide();
+
+            $('#fb-genogramm-editor').dialog(
+                {
+                    title: 'Person bearbeiten',
+                    width: 780,
+                    height: 780,
+                }
+            );
+        }
+
+
+        function updateExtract(elem, extract, data, category){
+            $(elem).empty();
+            for (var i=0; i<extract.length; i++){
+                var line=$('<div class="entryline">');
+                var label=$("<label>").text(extract[i][0]);
+                var inp=$('<span class="entrydetail">').text(extract[i][1]);
+                $(line).append(label);
+                $(line).append(inp);
+                $(elem).append(line);
+            }
+
+            $(elem).append('<input type="hidden" class="hidden-json-data" value=\''+JSON.stringify(data)+'\'>');
+            $(elem).append('<input type="hidden" class="category" value="'+category+'">');
+            $(elem).append('<div class="info-button"><img src="<? echo RES_FILE_PATH;?>/images/info_med.png"> Details</div>');
+        }
+
+        var renumerate_persons=function(){
+            $('.fb-genogramm-row td').each(function(){
+                var colcode=$(this).data('colcode');
+                var pcount=0;
+                $(this).find('.fb-person').each(function(){
+                    var newname="<?php echo $blockname;?>[name][" + colcode[0] + "][" + colcode[1] + "][" + pcount + "]";
+                    $(this).find('.fb-name-hinp').attr('name', newname);
+                    var newname="<?php echo $blockname;?>[role][" + colcode[0] + "][" + colcode[1] + "][" + pcount + "]";
+                    $(this).find('.fb-role-hinp').attr('name', newname);
+                    var newname="<?php echo $blockname;?>[phone][" + colcode[0] + "][" + colcode[1] + "][" + pcount + "]";
+                    $(this).find('.fb-phone-hinp').attr('name', newname);
+                    var newname="<?php echo $blockname;?>[mobile][" + colcode[0] + "][" + colcode[1] + "][" + pcount + "]";
+                    $(this).find('.fb-mobile-hinp').attr('name', newname);
+                    var newname="<?php echo $blockname;?>[comment][" + colcode[0] + "][" + colcode[1] + "][" + pcount + "]";
+                    $(this).find('.fb-comment-hinp').attr('name', newname);
+                    pcount = pcount + 1;
+                })
+            });
+        }
+
+
+        function init_contact_person_box(){
+            //hide the empty contact-person-box, which is shown, if no contacts ar there
+            //the box doesn't works
+            if(!contactperson_exists){
+                $('.entry').hide();
+            }
+
+        }
+
+        function init_label_col_mapping(){
+
+            var label_col_mapping = new Map();
+
+            //get the labelname-col-mapping
+            for (var i = 0; i < metaContactPersonMaster.extract.length; i++) {
+                var extract = metaContactPersonMaster.extract[i];
+                label_col_mapping.set(extract['cols'][0], extract['label']);
+            }
+
+            return label_col_mapping;
+
+        };
+
+    });
+
+    function validate_dialog() {
+
+        hide_error_fields();
+
+        //check all fields
+        var a = 0;
+        var isValid = true;
+
+        a += validate_input_not_empty('#fb-genogramm-editor-name') ? 1 : 0;
+        a += validate_input_not_empty('#fb-genogramm-editor-role') ? 1 : 0;
+
+        if (a < 2) {
+            $('.error_display_area').show();
+            isValid = false;
+        }
+
+        return isValid;
+    }
+
+    function validate_input_not_empty(selector) {
+        var is_valid = true;
+
+        $(selector).each(function () {
+            var val = $(this).val();
+            if (val =='' || val == 'Bitte wählen') {
+                is_valid = false;
+                $(this).addClass('error_display_field');
+            }
+        });
+        return is_valid;
+    }
+
+    function hide_error_fields() {
+        $('.error_display_area').hide();
+        $('#fb-genogramm-editor .error_display_field').removeClass('error_display_field');
+    }
+
+</script>
+
+    <table id="fb-genogramm">
+    <tr>
+        <td style="width:35px;"></td>
+        <th>Generation d. Großeltern</th>
+        <th>Generation der Eltern</th>
+        <th>Generation des Patienten</th>
+        <th>Generation der Kinder</th>
+        <th>Generation der Enkel</th>
+    </tr>
+    <?php foreach (array('A','B') as $row):?>
+    <tr class="fb-genogramm-row">
+        <td></td>
+        <?php foreach (array(0,1,2,3,4) as $col):?>
+        <td class="fb-genogramm-itd <?php if ($row=="B") echo "fb-genogramm-sonst";?>" data-colcode="<?php echo $row . $col;?>">
+        <?php $c=0;?>
+        <?php foreach ($f_values['name'][$row][$col] as $pp):?>
+        <?php
+                        $p=array();
+                        $p['name']=$f_values['name'][$row][$col][$c];
+                        $p['role']=$f_values['role'][$row][$col][$c];
+                        $p['phone']=$f_values['phone'][$row][$col][$c];
+                        $p['mobile']=$f_values['mobile'][$row][$col][$c];
+                        $p['comment']=$f_values['comment'][$row][$col][$c];
+                        ?>
+        <?php if($p['role']=='##Patient'):?>
+        <div class="fb-person fb-person-patient">
+            <input type="hidden" class="fb-name-hinp" name="<?php echo $blockname;?>[name][<?php echo $row;?>][<?php echo $col;?>][<?php echo $c;?>]" value="<?php echo $p['name'];?>">
+            <input type="hidden" class="fb-role-hinp" name="<?php echo $blockname;?>[role][<?php echo $row;?>][<?php echo $col;?>][<?php echo $c;?>]" value="<?php echo $p['role'];?>">
+            <div class="fb-name"><?php echo $p['name'];?></div>
+        </div>
+        <?php else:?>
+        <div draggable="true" class="fb-person">
+            <input type="hidden" class="fb-name-hinp" name="<?php echo $blockname;?>[name][<?php echo $row;?>][<?php echo $col;?>][<?php echo $c;?>]" value="<?php echo $p['name'];?>">
+            <input type="hidden" class="fb-role-hinp" name="<?php echo $blockname;?>[role][<?php echo $row;?>][<?php echo $col;?>][<?php echo $c;?>]" value="<?php echo $p['role'];?>">
+            <input type="hidden" class="fb-phone-hinp" name="<?php echo $blockname;?>[phone][<?php echo $row;?>][<?php echo $col;?>][<?php echo $c;?>]" value="<?php echo $p['phone'];?>">
+            <input type="hidden" class="fb-mobile-hinp" name="<?php echo $blockname;?>[mobile][<?php echo $row;?>][<?php echo $col;?>][<?php echo $c;?>]" value="<?php echo $p['mobile'];?>">
+            <input type="hidden" class="fb-comment-hinp" name="<?php echo $blockname;?>[comment][<?php echo $row;?>][<?php echo $col;?>][<?php echo $c;?>]" value="<?php echo $p['comment'];?>">
+            <div class="fb-name"><?php echo $p['name'];?></div>
+            <div class="fb-role"><?php echo $p['role'];?></div>
+            <div class="fb-comment"><?php echo $p['comment'];?></div>
+            <div class="fb-phone"><?php echo $p['phone'];?></div>
+            <div class="fb-mobile"><?php echo $p['mobile'];?></div>
+        </div>
+        <?php endif;?>
+
+        <?php $c++;?>
+        <?php endforeach;?>
+        </td>
+        <?php endforeach;?>
+    </tr>
+    <?php if ($row=="A"):?>
+    <tr><td colspan="6" style="border-bottom:1px solid #ccc;">verwandt</td></tr>
+    <tr><td colspan="6" style="">nicht verwandt</td></tr>
+    <?php endif;?>
+    <?php endforeach;?>
+    <tr>
+        <td></td>
+        <td colspan="5" style="text-align:center;">
+
+            <input style="margin:6px;padding:5px;background-color:#beeebb" type="button" value="Person hinzufügen" id="fb-genogramm-add-person-butt">
+
+        </td>
+    </tr>
+</table>
+
+    <div id="fb-genogramm-editor">
+        <!-- edit the genogramm_entry -->
+        <div id="box-GenogramEntry" class="catdetails">
+            <table>
+        <tr>
+            <td style="width:280px;padding-top:96px;">
+                <table>
+                    <tr>
+                        <td></td>
+                        <td><input style="background-color: #fdd;margin-bottom:6px;" type="button" id="fb-genogramm-editor-butt-delete" value="Person entfernen"></td>
+                    </tr>
+                    <tr>
+                        <td><label for="fb-genogramm-editor-name" class="required">Name</label></td>
+                        <td><input type="text" id="fb-genogramm-editor-name"></td>
+                    </tr>
+                    <tr>
+                        <td><label for="fb-genogramm-editor-role" class="required">Eigenschaft</label></td>
+                        <td>
+                            <select id="fb-genogramm-editor-role">
+                                <?php foreach($all_roles as $item):?>
+                                    <option><?php echo $item;?></option>
+                                <?php endforeach;?>
+                            </select><br>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Kommentar</td>
+                        <td><input type="text" id="fb-genogramm-editor-comment"></td>
+                    </tr>
+                    <tr>
+                        <td>Telefon:</td>
+                        <td><input type="text" id="fb-genogramm-editor-phone"></td>
+                    </tr>
+                    <tr>
+                        <td>Mobil:</td>
+                        <td><input type="text" id="fb-genogramm-editor-mobile"></td>
+                    </tr>
+                    <tr>
+                        <td colspan="2" style="text-align: right;"><input style="background-color: #dfd;" type="button" id="fb-genogramm-editor-butt-takeover" value="als neue Kontaktperson übernehmen"></td>
+                    </tr>
+                    <tr>
+                        <td></td>
+                        <td><input style="background-color: #dfd;padding:7px;margin-top:12px;" type="button" id="fb-genogramm-editor-butt-ok" value="übernehmen"></td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+            <div class="error_display_area" style="display:none">
+                <?php echo $this->translate('fill_mandatory_fields'); ?>
+            </div>
+        </div>
+        <!-- edit the contact-person -->
+        <div id="tab_container_provider"><!-- necessary for working of function attachBoxAccordion() in patientdetails.js-->
+            <div id="box-ContactPersonMaster" class="catdetails fb_psy_stat">
+
+            <div class="fb_versorger-catheader active">
+                <div class="headtitle"><?php echo $this->contactperson_cat['label'];?></div>
+            </div><!-- end box header -->
+
+            <div id="listentries" class="entries fb_versorger" >
+
+                <input type="hidden" class="category" value="<?php echo $this->contactperson_cat['id'];?>">
+
+                <?php foreach ($this->data["ContactPersonMaster"] as $key => $entry): ?>
+                <div class="entry">
+                    <?php foreach($entry['extract'] as $row):?>
+                    <div class="entryline">
+                        <?php if ( ! empty($row[0])) : ?>
+                        <label><?=$row[0]?></label>
+                        <?php endif; ?>
+
+                        <span class="entrydetail">
+                                <?php if ($entry['meta']['extractEscape'] === false ): ?>
+                            <?= $row[1];?>
+                            <?php else :?>
+                            <?= nl2br($this->escape($row[1]));?>
+                            <?php endif;?>
+                            </span>
+                    </div>
+                    <?php endforeach;?>
+
+                    <input type="hidden" class="hidden-json-data" value='<?=$key;?>'>
+                    <div class="info-button"><img src="<? echo RES_FILE_PATH;?>/images/info_med.png"> Details</div>
+                </div>
+                <?php endforeach;?>
+                <div class="dontPrint">
+                    <span <?php echo $style;?> class="ibutton addbutton-contactform"><img src="<? echo RES_FILE_PATH;?>/images/btttt_plus.png"> <?php echo $this->contactperson_cat['label'];?> hinzufügen</span>
+                    <span class="ibutton memobutton"><img src="<? echo RES_FILE_PATH;?>/images/edit-icon.gif"> <?=$this->translate("Memo")?></span>
+                    <span class="ibutton takeover-button"><img src="<? echo RES_FILE_PATH;?>/images/action_add_blue.png"> Ansprechpartner übernehmen</span>
+                </div>
+
+            </div><!-- end entries-->
+        </div> <!-- end id="box-ContactPersonMaster"-->
+        </div>
+    </div>
+
+<?php endif;?>
+
+<?php if ($this->pdf && count($f_values['name']['A']) > 1) : /* if it is pdf AND there are more relatives than patient itself */?> <!-- Print-Layout-->
+<table id="fb-genogramm-pdf" nobr="true" cellpadding="5">
+    <tr nobr="true">
+        <td width="5mm"></td>
+        <th width="35mm" align="center">Generation d. Großeltern</th>
+        <th width="35mm" align="center">Generation der Eltern</th>
+        <th width="35mm" align="center">Generation des Patienten</th>
+        <th width="35mm" align="center">Generation der Kinder</th>
+        <th width="35mm" align="center">Generation der Enkel</th>
+    </tr>
+    <tr><td colspan="6">&nbsp;</td> </tr>
+    <?php
+    $secs=array();
+    foreach (array('A','B') as $row){
+        $max_c=0;
+        foreach (array(0,1,2,3,4) as $col){
+            $c=count($f_values['name'][$row][$col]);
+            if($c>$max_c){
+    $max_c=$c;
+    }
+    }
+    $cols=array();
+    foreach (array(0,1,2,3,4) as $col){
+    $ocol=array();
+    $add=$max_c - count($f_values['name'][$row][$col]);
+    for ($i=0; $i<$add; $i++){
+    $ocol[]="";
+    }
+    foreach ($f_values['name'][$row][$col] as $c=>$pp){
+
+    if($f_values['role'][$row][$col][$c]=="##Patient"){
+    $ocol[]=$f_values['name'][$row][$col][$c]. "<br>";
+    $ocol[]="##span_before";
+    }else{
+    $myval=$f_values['name'][$row][$col][$c];
+    $linecount=0;
+
+    foreach (array('role', 'comment', 'phone', 'mobile') as $vcol) {
+    if (strlen($f_values[$vcol][$row][$col][$c])) {
+    $myval = $myval . "<br>" . $f_values[$vcol][$row][$col][$c];
+    $linecount = $linecount +1;
+    }
+    }
+
+    //$ocol[]=$f_values['name'][$row][$col][$c] . "<br>" . $f_values['role'][$row][$col][$c];
+    $ocol[]=$myval;
+    $ocol[]="##span_before";
+    }
+    }
+    $cols[]=$ocol;
+    }
+    $rows=array();
+    for ($row=0; $row<$max_c*2; $row++){
+    $newrow=array();
+    foreach (array(0,1,2,3,4) as $col){
+    $newrow[]=$cols[$col][$row];
+    }
+    $rows[]=$newrow;
+    }
+    $secs[]=$rows;
+    }
+    ?>
+    <?php foreach ($secs as $secc=>$sec):?>
+    <?php foreach ($sec as $rowc=>$row):?>
+    <tr nobr="true">
+        <td></td>
+        <?php foreach ($row as $r):?>
+        <?php if($r!=="##span_before" && strlen($r)>1):?>
+        <!-- don't remove the whitespace -->
+        <td rowspan="2" style ="border:1px solid #555" align="center"><?php echo $r;?></td>
+        <?php endif;?>
+        <?php if (strlen($r)<1):?>
+        <td></td>
+        <?php endif;?>
+        <?php endforeach;?>
+    </tr>
+    <?php endforeach;?>
+    <?php if($secc==0):?>
+    <!-- don't remove the whitespace -->
+    <tr><td colspan="6" style ="border-bottom:1px solid #ccc;">verwandt</td></tr>
+    <tr><td colspan="6" style="">nicht verwandt</td></tr>
+    <?php endif;?>
+    <?php endforeach;?>
+</table>
+<?php endif;?>

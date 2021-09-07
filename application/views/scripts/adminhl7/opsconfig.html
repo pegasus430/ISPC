@@ -1,0 +1,613 @@
+<!--  Maria:: Migration CISPC to ISPC 22.07.2020 -->
+<style>
+    h2{
+        margin-top:20px;
+    }
+    div.mysection{
+        margin-left:18px;
+        width:700px;
+    }
+    select.ignored_groups,
+    select.usergroups_multiselect{
+        display:block;
+    }
+    table.ops_config tr td{
+        margin-bottom:18px;
+        padding-bottom:30px;
+    }
+    table.ops_config tr.coderow td{
+        margin-bottom:4px;
+        padding-bottom:4px;
+    }
+    #save-hoverbar-content input:hover{
+        cursor:pointer;
+    }
+</style>
+<script>
+
+    function hover_hoverbar(){
+        var h=$(window).height();
+        var w=$(window).width();
+
+        var width=$("#MainContent").width();
+        var off=$("#MainContent").offset().left;
+
+
+        $('#save-hoverbar').css('position', 'fixed');
+        $('#save-hoverbar').css('background-color', '#dddddd');
+        $('#save-hoverbar').css('top', h-70 +"px");
+        $('#save-hoverbar').css('left', off);
+        $('#save-hoverbar').css('height', 40 +"px");
+        $('#save-hoverbar').css('width', width);
+        $('#save-hoverbar').css('text-align', "center");
+        $('#save-hoverbar').css('opacity', "0.6");
+        $('#save-hoverbar').css('border-radius', "10px");
+        $('#save-hoverbar').css('border', "2px solid white");
+
+        $('#save-hoverbar-content').css('position', 'fixed');
+        $('#save-hoverbar-content').css('top', h-66 +"px");
+        $('#save-hoverbar-content').css('left', off);
+        $('#save-hoverbar-content').css('height', 40 +"px");
+        $('#save-hoverbar-content').css('width', width);
+        $('#save-hoverbar-content').css('text-align', "center");
+
+    }
+
+    $(window).on('resize', window, hover_hoverbar);
+
+    $(document).ready(function(){
+
+
+        hover_hoverbar();
+
+        function check_computetype(){
+            $('input.ops_computetype:checked').each(function(){
+                var mypar=$(this).parents('table.ops_config');
+                var x=$(this).val();
+                if(x=="weekly"){
+                    $(mypar).find('.ops_weekmodel_only').show();
+                }else{
+                    $(mypar).find('.ops_weekmodel_only').hide();
+                }
+
+            });
+        }
+        check_computetype();
+
+        $(document).on('change', 'input.ops_computetype', function(){
+            check_computetype();
+        } );
+        function populate_ops_group_select(){
+            var groups=<?echo json_encode($this->hardcoded_ops_groupnames);?>;
+            $('.usergroups_multirow').each(function(){
+                if($(this).val()!="") {
+                    groups.push($(this).val());
+                }
+            });
+
+                $('.ops_group_select').each(function(){
+                    var curr_options_count=$(this).find('option').length;
+                    if (curr_options_count==0){
+                        $(this).append('<option value=""></option>')
+                    }
+                    for (var i=0; i<groups.length; i++) {
+                        var c = $(this).find('option[value="' + groups[i] + '"]');
+                        if (c.length == 0) {
+                            $(this).append('<option value="' + groups[i] + '">' + groups[i] + '</option>')
+                        }
+                    }
+                });
+
+            $('.ops_group_select').each(function(){
+                var options=$(this).find('option');
+                for (var i=0; i<options.length; i++){
+                    var mytext=$(options[i]).text();
+                    if (i>0 && groups.indexOf(mytext)<0){
+                        $(options[i]).remove();
+                    }
+
+                }
+
+            });
+
+
+        }
+
+        populate_ops_group_select();
+
+
+
+        $(document).on('change', 'input.ops_code_code', function(){
+            var my_parent=$(this).parents('tr.coderow');
+            var empty_boxes=0;
+            var first_empty=null;
+            $(my_parent).parent().find('input.ops_code_code').each(function(){
+                if($(this).val()==""){
+                    empty_boxes++;
+                    if(first_empty==null){
+                        first_empty=this;
+                    }
+                }
+            });
+            if (empty_boxes == 0){
+                var clone=$(my_parent).clone();
+                $(clone).find('input.ops_code_code').val('');
+                $(clone).find('input.ops_code_mins').val('');
+                $(my_parent).after(clone);
+            }
+            if (empty_boxes > 1){
+                $(my_parent).remove();
+            }
+            var rowcount=0;
+
+            $(my_parent).parent().find('input.ops_code_code').each(function(){
+                var row_name=$(this).attr('name');
+                row_name=row_name.replace(/(\[\d+\])*\[(\d+)\]/, "$1[" + rowcount +"]");
+                $(this).attr('name', row_name);
+
+                $(this).parents('tr.coderow').find('input.ops_code_mins').each(function(){
+                    var n=$(this).attr('name');
+                    n=n.replace(/(\[\d+\])*\[(\d+)\]/, "$1[" + rowcount +"]");
+                    $(this).attr('name',n);
+                });
+                rowcount++;
+            });
+        });
+
+
+        $(document).on('change', 'select.usergroups_multiselect, .ignored_groups, .joined_groups', function(){
+            var all_selects = $(this).parent().children('select');
+            var empty_boxes=0;
+            var first_empty=null;
+            $(all_selects).each(function(){
+                if($(this).val()==""){
+                    empty_boxes++;
+                    if(first_empty==null){
+                        first_empty=this;
+                    }
+                }
+            });
+
+            if (empty_boxes == 0){
+                var clone=$(this).clone();
+                $(this).parent().append(clone);
+            }
+            if (empty_boxes > 1){
+                $( first_empty).remove();
+            }
+        });
+
+        $(document).on('change','input.usergroups_multirow',function(){
+            var my_parent=$(this).parents('tr');
+            var empty_boxes=0;
+            var first_empty=null;
+            $('input.usergroups_multirow').each(function(){
+                if($(this).val()==""){
+                    empty_boxes++;
+                    if(first_empty==null){
+                        first_empty=this;
+                    }
+                }
+            });
+            if (empty_boxes == 0){
+                var clone=$(this).parents('tr').clone();
+                $(clone).find('input.usergroups_multirow').val('');
+                var count=0;
+                $(clone).find('select.usergroups_multiselect').each(function(){
+                    if(count>0){
+                        $(this).remove();
+                    }
+                    count++;
+                });
+                $(my_parent).after(clone);
+            }
+            if (empty_boxes > 1){
+                $(my_parent).remove();
+            }
+            var rowcount=0;
+
+            $(document).find('input.usergroups_multirow').each(function(){
+                var row_name=$(this).attr('name');
+                row_name=row_name.replace(/\[(\d+)\]/, "[" + rowcount +"]");
+                $(this).attr('name', row_name);
+
+                $(this).parents('tr').find('select.usergroups_multiselect').each(function(){
+                    var n=$(this).attr('name');
+                    n=n.replace(/groups_custom_(\d+)/g, "groups_custom_" + rowcount);
+                    $(this).attr('name',n);
+                });
+                rowcount++;
+            });
+            populate_ops_group_select();
+        });
+
+        $(document).on('click', '#add_codegroup', function(){
+            var my_parent=$(this).parents('.mysection');
+            var clone=$($(my_parent).find('table.ops_config')[0]).clone();
+
+            var elemgroups=['.joined_groups','.ignored_groups','tr.coderow'];
+
+            $(elemgroups).each(function(){
+                    var count=0;
+                    $(clone).find(this.valueOf()).each(function(){
+                        if(count>0){
+                            $(this).remove();
+                        } else{
+                            if($(this).is('select')==false){
+                                $(this).find('input').val('');
+                            }
+                        }
+                        count++;
+                    });
+                });
+            $(this).before(clone);
+            renumerate_codegroups();
+        });
+
+        $(document).on('click', '.group_delete', function(){
+            var groups=$(this).parents('.mysection').find('table.ops_config');
+            if (groups.length >1){
+                $(this).parents('table.ops_config').remove();
+                renumerate_codegroups();
+            }
+        });
+
+        function renumerate_codegroups(){
+            var tables=0;
+            $('table.ops_config').each(function(){
+                $(this).find('input, select').each(function(){
+                    var n=$(this).attr('name');
+                    n=n.replace(/\[(\d+)\](\[\d+\])*/, "[" + tables +"]$2");
+                    $(this).attr('name', n);
+                });
+                tables++;
+            });
+            populate_ops_group_select();
+        }
+
+
+    });
+</script>
+<form method="post">
+<h1>Einstellungen für OPS-Codes</h1>
+
+<h2>Zuordnung der Berufsgruppen</h2>
+<div class="mysection">
+    <table>
+        <tr>
+            <th  style="width:200px;">OPS-Klasse</th>
+            <th  style="width:250px;">Benutzergruppe</th>
+        </tr>
+        <?php foreach ($this->hardcoded_ops_groupnames as $grp):?>
+
+            <tr>
+                <td><?echo $grp;?></td>
+                <td>
+                    <?php foreach ($this->config['groups'][$grp] as $selected_id):?>
+                        <?php if ($selected_id>0):?>
+                            <select name="groups_<?echo $grp;?>[]" class="usergroups_multiselect">
+                                <option></option>
+                                <?php foreach ($this->usergroups as $usergroup):?>
+                                    <?php
+                                    $selected="";
+                                    if($usergroup['id'] == $selected_id){
+                                       $selected="selected";
+                                    }?>
+                                    <option <?php echo $selected;?> value="<?echo $usergroup['id'];?>"><?echo $usergroup['groupname'];?></option>
+                                <?php endforeach;?>
+                            </select>
+                        <?php endif;?>
+                    <?php endforeach;?>
+
+                    <select name="groups_<?echo $grp;?>[]" class="usergroups_multiselect">
+                            <option></option>
+                        <?php foreach ($this->usergroups as $usergroup):?>
+                            <option value="<?echo $usergroup['id'];?>"><?echo $usergroup['groupname'];?></option>
+                        <?php endforeach;?>
+                    </select>
+                </td>
+
+            </tr>
+
+        <?php endforeach;?>
+
+        <?php $cgroupcount=0;?>
+
+        <?php foreach ($this->config['groupscustom'] as $cgroup=>$members):?>
+            <?php if ($cgroup!=""):?>
+                <tr>
+                    <td>
+                        <input type="text" class="usergroups_multirow" name="groups_custom_names[<?php echo $cgroupcount;?>]" value="<?php echo $cgroup;?>">
+                    </td>
+                    <td>
+                        <?php foreach ($members as $selected_id):?>
+                            <?php if ($selected_id>0):?>
+                                <select name="groups_custom_<?php echo $cgroupcount;?>[]" class="usergroups_multiselect">
+                                    <option></option>
+                                    <?php foreach ($this->usergroups as $usergroup):?>
+                                        <?php
+                                        $selected="";
+                                        if($usergroup['id'] == $selected_id){
+                                            $selected="selected";
+                                        }?>
+                                        <option <?php echo $selected;?> value="<?echo $usergroup['id'];?>"><?echo $usergroup['groupname'];?></option>
+                                    <?php endforeach;?>
+                                </select>
+                            <?php endif;?>
+                        <?php endforeach;?>
+
+                        <select name="groups_custom_<?php echo $cgroupcount;?>[]" class="usergroups_multiselect">
+                            <option></option>
+                            <?php foreach ($this->usergroups as $usergroup):?>
+                                <option value="<?echo $usergroup['id'];?>"><?echo $usergroup['groupname'];?></option>
+                            <?php endforeach;?>
+                        </select>
+                    </td>
+                </tr>
+                <?php  $cgroupcount++;?>
+            <?php endif;?>
+        <?php endforeach;?>
+
+        <tr>
+            <td>
+                <input type="text" class="usergroups_multirow" name="groups_custom_names[<?php echo $cgroupcount;?>]">
+            </td>
+            <td>
+                <select name="groups_custom_<?php echo $cgroupcount;?>[]" class="usergroups_multiselect">
+                    <option></option>
+                    <?php foreach ($this->usergroups as $usergroup):?>
+                        <option value="<?echo $usergroup['id'];?>"><?echo $usergroup['groupname'];?></option>
+                    <?php endforeach;?>
+                </select>
+            </td>
+        </tr>
+
+    </table>
+</div>
+
+<br><br><br>
+<h2>Verknüpfungen</h2>
+<div class="mysection">
+    <table>
+        <tr>
+            <td style="width:200px;">Formular-ID des Basisassessments</td>
+            <td><input type="text" name="ba_formid" style="width:60px;" value="<?php echo $this->config['ba_formid'];?>"></td>
+        </tr>
+    </table>
+</div>
+
+<br><br><br>
+<h2>Stellen</h2>
+<div class="mysection">
+    <table>
+        <tr>
+            <td style="width:200px;">Station</td>
+            <td>Erbringende OE:
+                <input type="text" name="ops_oe_station_erb1" style="width:60px;" value="<?php echo $this->config['ops_oe_station_erb1'];?>">
+                <input type="text" name="ops_oe_station_erb2" style="width:60px;" value="<?php echo $this->config['ops_oe_station_erb2'];?>"><br>
+                Anfordernde OE:
+                <input type="text" name="ops_oe_station_anf1" style="width:60px;" value="<?php echo $this->config['ops_oe_station_anf1'];?>">
+                <input type="text" name="ops_oe_station_anf2" style="width:60px;" value="<?php echo $this->config['ops_oe_station_anf2'];?>">
+                <input type="checkbox" name="ops_oe_station_klau" value="1" <?php echo ($this->config['ops_oe_station_klau'] == 1)? "checked":"";?>> überschreiben aus KLAU
+                <br>
+                Ziel aus Codegruppe
+                <input type="text" name="ops_prefcode_station" style="width:60px;" value="<?php echo $this->config['ops_prefcode_station'];?>">
+            </td>
+        </tr>
+        <tr>
+            <td>Palliativ-Dienst</td>
+            <td>Erbringende OE:
+                <input type="text" name="ops_oe_konsil_erb1" style="width:60px;" value="<?php echo $this->config['ops_oe_konsil_erb1'];?>">
+                <input type="text" name="ops_oe_konsil_erb2" style="width:60px;" value="<?php echo $this->config['ops_oe_konsil_erb2'];?>"><br>
+                Anfordernde OE:
+                <input type="text" name="ops_oe_konsil_anf1" style="width:60px;" value="<?php echo $this->config['ops_oe_konsil_anf1'];?>">
+                <input type="text" name="ops_oe_konsil_anf2" style="width:60px;" value="<?php echo $this->config['ops_oe_konsil_anf2'];?>">
+                <input type="checkbox" name="ops_oe_konsil_klau" value="1" <?php echo ($this->config['ops_oe_konsil_klau'] == 1)? "checked":"";?>> überschreiben aus KLAU
+                <br>
+                Ziel aus Codegruppe
+                <input type="text" name="ops_prefcode_konsil" style="width:60px;" value="<?php echo $this->config['ops_prefcode_konsil'];?>">
+            </td>
+        </tr>
+        <tr>
+            <td>Ambulant</td>
+            <td>Erbringende OE:
+                <input type="text" name="ops_oe_ambulant_erb1" style="width:60px;" value="<?php echo $this->config['ops_oe_ambulant_erb1'];?>">
+                <input type="text" name="ops_oe_ambulant_erb2" style="width:60px;" value="<?php echo $this->config['ops_oe_ambulant_erb2'];?>"><br>
+                Anfordernde OE:
+                <input type="text" name="ops_oe_ambulant_anf1" style="width:60px;" value="<?php echo $this->config['ops_oe_ambulant_anf1'];?>">
+                <input type="text" name="ops_oe_ambulant_anf2" style="width:60px;" value="<?php echo $this->config['ops_oe_ambulant_anf2'];?>">
+                <input type="checkbox" name="ops_oe_ambulant_klau" value="1" <?php echo ($this->config['ops_oe_ambulant_klau'] == 1)? "checked":"";?>> überschreiben aus KLAU
+                <br>
+                Ziel aus Codegruppe
+                <input type="text" name="ops_prefcode_ambulant" style="width:60px;" value="<?php echo $this->config['ops_prefcode_ambulant'];?>">
+            </td>
+        </tr>
+        <tr>
+            <td>SAPV</td>
+            <td>Erbringende OE:
+                <input type="text" name="ops_oe_sapv_erb1" style="width:60px;" value="<?php echo $this->config['ops_oe_sapv_erb1'];?>">
+                <input type="text" name="ops_oe_sapv_erb2" style="width:60px;" value="<?php echo $this->config['ops_oe_sapv_erb2'];?>"><br>
+                Anfordernde OE:
+                <input type="text" name="ops_oe_sapv_anf1" style="width:60px;" value="<?php echo $this->config['ops_oe_sapv_anf1'];?>">
+                <input type="text" name="ops_oe_sapv_anf2" style="width:60px;" value="<?php echo $this->config['ops_oe_sapv_anf2'];?>">
+                <input type="checkbox" name="ops_oe_sapv_klau" value="1" <?php echo ($this->config['ops_oe_sapv_klau'] == 1)? "checked":"";?>> überschreiben aus KLAU
+                <br>
+                Ziel aus Codegruppe
+                <input type="text" name="ops_prefcode_sapv" style="width:60px;" value="<?php echo $this->config['ops_prefcode_sapv'];?>">
+            </td>
+        </tr>
+    </table>
+    <br><br>
+    <table>
+        <tr>
+            <td style="width:200px;">Zeiten von diesen OEs nur intern vermerken.</td>
+            <td>
+                <input type="text" name="internal_oe[]" style="width:60px;" value="<?php echo $this->config['internal_oe'][0];?>"><br>
+                <input type="text" name="internal_oe[]" style="width:60px;" value="<?php echo $this->config['internal_oe'][1];?>"><br>
+                <input type="text" name="internal_oe[]" style="width:60px;" value="<?php echo $this->config['internal_oe'][2];?>"><br>
+                <input type="text" name="internal_oe[]" style="width:60px;" value="<?php echo $this->config['internal_oe'][3];?>"><br>
+            </td>
+        </tr>
+        <tr>
+            <td style="width:200px;">Alle Zeiten immer intern vermerken (z.B. weil es gibt noch keine Schnittstelle).</td>
+            <td>
+                <input type="checkbox" name="all_times_internal" value="1" <?php if($this->config['all_times_internal']) echo "checked";?>><br>
+            </td>
+        </tr>
+    </table>
+</div>
+
+<br><br><br>
+<h2>Anweisungen</h2>
+
+
+<div class="mysection">
+
+    <?php foreach ($this->config['codes'] as $codek=>$code):?>
+    <table class="ops_config">
+        <tr>
+            <td colspan="2" style="background-color:#cccccc;padding:4px;">Codegruppe
+                <span class="group_delete" style="display:inline-block; float:right; color:blue; cursor:pointer;">[Gruppe entfernen]</span>
+            </td>
+        </tr>
+        <tr>
+            <td style="width:230px;"><input name="ops_name[<?php echo $codek;?>]" type="text" value="<?php echo $code['name'];?>"></td>
+            <td><b>Bezeichnung der Codegruppe</b><br>
+
+            </td>
+        </tr>
+        <tr>
+            <td><input name="ops_only_internal[<?php echo $codek;?>]" type="checkbox" value="1" <?php echo ($code['ops_only_internal'] == true)? "checked":"";?>> Nur intern vermerken</td>
+            <td><b>Code nur intern vermerken.</b> <br>Der Code wird nicht übertragen, kann aber in ISPC für Statistiken verwendet werden.<br>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <?php foreach ($code['joined_groups'] as $grp):?>
+                    <?php if ($grp!=""):?>
+                        <select name="ops_joined_groups[<?php echo $codek;?>][]" class="ops_group_select joined_groups">
+                            <option></option>
+                            <option <?php echo "selected";?>><?php echo $grp;?></option>
+                        </select>
+                        <?php endif;?>
+                <?php endforeach;?>
+                <select name="ops_joined_groups[<?php echo $codek;?>][]" class="ops_group_select joined_groups">
+                    <option></option>
+                </select>
+            </td>
+            <td><b>Zusammengefasste Gruppen</b><br>
+                Wenn mehr als eine dieser Gruppen beteiligt war, bleibt die Anzahl der beteiligten Gruppen bei 1. Beispiel: Arzt und Pflege seien hier zusammengefasst. In einer Woche wurden Leistungen von Arzt (10Min.), Pflege(10Min.) und Sozialarbeit(10Min.) erbracht. Dann wären in dieser Woche 2 Gruppen beteiligt und 30 Minuten geleistet.
+            </td>
+        </tr>
+
+        <tr>
+            <td>
+                <?php foreach ($code['ignored_groups'] as $grp):?>
+                    <?php if ($grp!=""):?>
+                        <select name="ops_ignored_groups[<?php echo $codek;?>][]" class="ops_group_select ignored_groups">
+                            <option></option>
+                            <option <?php echo "selected";?>><?php echo $grp;?></option>
+                        </select>
+                    <?php endif;?>
+                <?php endforeach;?>
+                <select name="ops_ignored_groups[<?php echo $codek;?>][]" class="ops_group_select ignored_groups">
+                    <option></option>
+                </select>
+            </td>
+            <td>
+                <b>Nicht berücksichtigte Gruppen</b><br>
+                Diese Gruppen werden für den OPS-Code nicht berücksichtigt
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <input name="ops_includet_patient[<?php echo $codek;?>]"  <?php echo ($code['ops_includet_patient'] == true)? "checked":"";?> type="checkbox"> Zeit am Patienten<br>
+                <input name="ops_includet_angeh[<?php echo $codek;?>]"    <?php echo ($code['ops_includet_angeh'] == true)? "checked":"";?> type="checkbox"> Zeit mit Angehörigen<br>
+                <input name="ops_includet_prof[<?php echo $codek;?>]"     <?php echo ($code['ops_includet_prof'] == true)? "checked":"";?> type="checkbox"> Zeit mit Kollegen/Professionellen<br>
+                <input name="ops_includet_sys[<?php echo $codek;?>]"      <?php echo ($code['ops_includet_sys'] == true)? "checked":"";?> type="checkbox"> Zeit für Systemisches
+
+            </td>
+            <td>
+                <b>Berücksichtigte Zeiten</b><br>
+                Diese Zeiten werden für den OPS-Code berücksichtigt
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <input name="ops_case_station[<?php echo $codek;?>]"  <?php echo ($code['ops_case_station'] == true)? "checked":"";?> type="checkbox"> Station<br>
+                <input name="ops_case_konsil[<?php echo $codek;?>]"    <?php echo ($code['ops_case_konsil'] == true)? "checked":"";?> type="checkbox"> Palliativdienst<br>
+                <input name="ops_case_ambulant[<?php echo $codek;?>]"     <?php echo ($code['ops_case_ambulant'] == true)? "checked":"";?> type="checkbox"> Ambulant<br>
+                <input name="ops_case_sapv[<?php echo $codek;?>]"      <?php echo ($code['ops_case_sapv'] == true)? "checked":"";?> type="checkbox"> SAPV
+
+            </td>
+            <td>
+                <b>Anwendbar in diesen Fallarten</b><br>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <input type="radio" class="ops_computetype" name="ops_computetype[<?php echo $codek;?>]" value="weekly" <?php echo ($code['ops_computetype']!="sum_only")?"checked":"";?>> Summe Wochen
+                <br>
+                <input type="radio" class="ops_computetype" name="ops_computetype[<?php echo $codek;?>]" value="sum_only" <?php echo ($code['ops_computetype']=="sum_only")?"checked":"";?>> Summe Minuten
+            </td>
+            <td>
+                <b>Berechnungsmodell</b><br>
+            </td>
+        </tr>
+        <tr class="">
+            <td><input name="ops_goal_groups[<?php echo $codek;?>]" style="width:80px;" type="text" value="<?php echo $code['goal_groups'];?>"></td>
+            <td><b>Benötigte Gruppen</b><br>
+                Anzahl der Berufsgruppen, die  Zeit investieren müssen
+            </td>
+        </tr>
+        <tr class="ops_weekmodel_only">
+            <td><input name="ops_goal_mins[<?php echo $codek;?>]" style="width:80px;" type="text" value="<?php echo $code['goal_mins'];?>"></td>
+            <td><b>Benötigte Minuten</b><br>
+                Anzahl der Minuten, die wöchentlich investiert werden müssen
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <table>
+                    <tr>
+                        <th>Code</th>
+                        <th>Min/Wo mindestens</th>
+                    </tr>
+                    <?php $rowcount=0;?>
+                    <?php foreach($code['minutes'] as $minute):?>
+                        <tr class="coderow">
+                            <td><input class="ops_code_code" name="ops_code_code[<?php echo $codek;?>][<?php echo $rowcount;?>]" style="width:70px;" type="text" value="<?php echo $minute['name'];?>"></td>
+                            <td><input class="ops_code_mins" name="ops_code_mins[<?php echo $codek;?>][<?php echo $rowcount;?>]" style="width:90px;" type="text" value="<?php echo $minute['mins'];?>"></td>
+                        </tr>
+                        <?php $rowcount++;?>
+                    <?php endforeach;?>
+
+                    <tr class="coderow">
+                        <td><input class="ops_code_code" name="ops_code_code[<?php echo $codek;?>][<?php echo $rowcount;?>]" style="width:70px;" type="text" value=""></td>
+                        <td><input class="ops_code_mins" name="ops_code_mins[<?php echo $codek;?>][<?php echo $rowcount;?>]" style="width:90px;" type="text" value=""></td>
+                    </tr>
+                </table>
+            </td>
+            <td>
+                <b>Codetabelle</b><br>
+                ISPC wählt anhand dieser Tabelle den Code mit den meisten Minuten bzw. Wochen, die im jeweiligen Fall erreicht wurden, aus.
+            </td>
+        </tr>
+    </table>
+    <?php endforeach;?>
+
+    <div style="text-align:center"><input id="add_codegroup" type="button" value="Neue Codegruppe hinzufügen"></div>
+</div>
+
+
+<div class="mysection" style="margin-top:60px; margin-bottom:24px;">
+    <div id="save-hoverbar"></div>
+    <div id="save-hoverbar-content">
+        <input style="padding:5px; background-color:#90ee90;" type="submit" value="Diese Einstellungen Sichern">
+    </div>
+
+</div>
+
+</form>
+
+<form method="GET"><input type="hidden" name="load_default" value="1"><input type="submit" value="Default-Werte laden"></form>

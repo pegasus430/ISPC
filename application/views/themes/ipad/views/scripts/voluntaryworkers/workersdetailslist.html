@@ -1,0 +1,1607 @@
+<?php
+
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/data_tables/jquery.dataTables.js?'.date('Ymd'));
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/data_tables/dataTables.jqueryui.js?'.date('Ymd'));
+
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/data_tables/dataTables.colVis.min.js?'.date('Ymd'));
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/data_tables/dataTables.colReorder.min.js?'.date('Ymd'));
+
+
+//$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/data_tables/jquery.dataTables.css?' . date('Ymd'));
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/data_tables/dataTables.jqueryui.css?' . date('Ymd'));
+
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/data_tables/dataTables.colvis.jqueryui.css?' . date('Ymd'));
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/data_tables/dataTables.colVis.min.css?' . date('Ymd'));
+
+
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/data_tables/colReorder.jqueryui.css?' . date('Ymd'));
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/data_tables/colReorder.dataTables.min.css?' . date('Ymd'));
+
+
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/page-css/voluntary_workers.css?' . date('Ymd'));
+
+//ISPC-2616 Carmen 22.07.2020
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/data_tables/fixedColumns.dataTables.min.css?' . date('Ymd'));
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/data_tables/dataTables.fixedColumns.min.js?'.date('Ymd'));
+//--
+
+?> 
+<script type="text/javascript">
+var searchWait = 0;
+var searchWaitInterval;
+var ajreload = true; //ISPC - 2114 - archive function for vw
+	
+var referal_tab_js='';	//  ISPC-2401 10) add a VW with the new TAB "Ausbildung Ehrenamtliche" selected.  
+
+//ISPC-2560 Lore 02.03.2020
+var ref_tabb = '<?php echo $_REQUEST['referal_tab']; ?>';
+	
+$(document).ready(function() { /*------ Start $(document).ready --------------------*/
+	this.checkcheck;
+	//ISPC - 2114 - archive function for vw
+	var isarchived = '0';
+	//ISPC-2401 - ineducation function for vw
+	var ineducation = '0';
+	
+	//ISPC-2560 Lore 02.03.2020
+	if(ref_tabb == 1){
+		var isarchived = '1';
+
+		referal_tab_js = "isarchived"; 
+		var button_archive = '<input type="submit"  name="unarchive" id="unarchive"  class="archive" value="<?php echo $this->translate('unarchive')?>"  disabled="disabled" />';
+		var transferfromarchive ='<input type="hidden" id="transferfromarchive" name="transferfromarchive" value="0" />';
+		$('#archive').remove();
+		$('#transfer2archive').remove();
+		$('.export_buttons').append(button_archive);
+		$('.export_buttons').append(transferfromarchive);
+
+		$('#education').remove();
+		$('#transfer2education').remove();
+		$('#transferfromeducation').remove();
+	}
+	else if(ref_tabb ==2){
+		var ineducation = '1';	
+		
+		referal_tab_js = "ineducation"; 
+		var button_education = '<input type="submit"  name="uneducation" id="uneducation"  class="education" value="<?php echo $this->translate('uneducation')?>"  disabled="disabled" />';
+		var transferfromeducation ='<input type="hidden" id="transferfromeducation" name="transferfromeducation" value="0" />';
+		$('#education').remove();
+		$('#transfer2education').remove();
+		$('.export_buttons').append(button_education);
+		$('.export_buttons').append(transferfromeducation);
+		
+		$('#archive').remove();
+		$('#unarchive').remove();
+		$('#transfer2archive').remove();
+		$('#transferfromarchive').remove();	
+	}
+	if(ref_tabb != ""){
+  		$("#vwlisttabs").tabs({
+			selected: ref_tabb 
+		});  
+	}
+	//.
+	
+	var $tabs =$( "#vwlisttabs" ).tabs({
+		show: function(event, ui) {},
+		select: function(event, ui) {
+			var selected_tab = ui.index;
+			$("#tabs_selected_id").val(selected_tab);
+		//alert($("#tabs_selected_id").val());
+			if(ui.index == '0')
+			{ 
+				referal_tab_js = ""; 
+				isarchived = '0';
+				var button_archive = '<input type="submit"  name="archive" id="archive"  class="archive" value="<?php echo $this->translate('archive')?>"  disabled="disabled" />';
+				var transfer2archive ='<input type="hidden" id="transfer2archive" name="transfer2archive" value="0" />';
+				$('#unarchive').remove();
+				$('#transferfromarchive').remove();
+				$('.export_buttons').append(button_archive);
+				$('.export_buttons').append(transfer2archive);
+				
+				//ISPC-2401
+				ineducation= '0';
+				var button_education = '<input type="submit"  name="education" id="education"  class="education" value="<?php echo $this->translate('education')?>"  disabled="disabled" />';
+				var transfer2education ='<input type="hidden" id="transfer2education" name="transfer2education" value="0" />';
+				$('#uneducation').remove();
+				$('#transferfromeducation').remove();
+				$('.export_buttons').append(button_education);
+				$('.export_buttons').append(transfer2education);	
+				
+					if(ajreload === true)
+						{
+						var export_buttons = $('.export_buttons').clone();
+						$('.export_buttons').remove();
+						export_buttons.appendTo("#bottom_export").show();
+						vwlist.ajax.reload();
+						}
+					else
+						{
+						ajreload = true;
+						}
+				
+				
+			}
+			if (ui.index == '1')
+			{
+				referal_tab_js = "isarchived"; 
+				isarchived = '1';
+				var button_archive = '<input type="submit"  name="unarchive" id="unarchive"  class="archive" value="<?php echo $this->translate('unarchive')?>"  disabled="disabled" />';
+				var transferfromarchive ='<input type="hidden" id="transferfromarchive" name="transferfromarchive" value="0" />';
+				$('#archive').remove();
+				$('#transfer2archive').remove();
+				$('.export_buttons').append(button_archive);
+				$('.export_buttons').append(transferfromarchive);
+
+				//ISPC-2401
+				ineducation= '0';
+				$('#education').remove();
+				$('#transfer2education').remove();
+				$('#transferfromeducation').remove();
+
+					
+					if(ajreload === true)
+					{
+						var export_buttons = $('.export_buttons').clone();
+						$('.export_buttons').remove();
+						export_buttons.appendTo("#bottom_export").show();
+					vwlist.ajax.reload();
+					}
+					else
+						{
+						ajreload = true;
+						}
+			}
+			//ISPC-2401
+			if(ui.index == '2')
+			{ 
+				referal_tab_js = "ineducation"; 
+				isarchived  = '0';
+				ineducation = '1';
+				var button_education = '<input type="submit"  name="uneducation" id="uneducation"  class="education" value="<?php echo $this->translate('uneducation')?>"  disabled="disabled" />';
+				var transferfromeducation ='<input type="hidden" id="transferfromeducation" name="transferfromeducation" value="0" />';
+				$('#education').remove();
+				$('#transfer2education').remove();
+				$('.export_buttons').append(button_education);
+				$('.export_buttons').append(transferfromeducation);
+				
+				$('#archive').remove();
+				$('#unarchive').remove();
+				$('#transfer2archive').remove();
+				$('#transferfromarchive').remove();		
+					
+					if(ajreload === true)
+						{
+						var export_buttons = $('.export_buttons').clone();
+						$('.export_buttons').remove();
+						export_buttons.appendTo("#bottom_export").show();
+						vwlist.ajax.reload();
+						}
+					else
+						{
+						ajreload = true;
+						}
+			}			
+		}
+	});
+	
+	
+	<?php if($_REQUEST['isarchived']) 
+	{ ?>	
+		ajreload = false;
+		$tabs.tabs('select', <?php echo (int)$_REQUEST['isarchived']; ?>);		
+	<?php } ?>
+	
+	$(document).on('click', '.archive', function(){
+		if($(this).attr("id") == 'archive')
+		{
+			$('#transfer2archive').val('1');
+		}
+		else if($(this).attr("id") == 'unarchive')
+		{
+			$('#transferfromarchive').val('1');
+		}
+	});
+	
+	//ISPC - 2114 - archive function for vw
+	
+	//ISPC-2401
+	<?php if($_REQUEST['ineducation']) 
+	{ ?>	
+		ajreload = false;
+		$tabs.tabs('select', <?php echo (int)$_REQUEST['ineducation']; ?>);		
+	<?php } ?>
+	
+	$(document).on('click', '.education', function(){
+		if($(this).attr("id") == 'education')
+		{
+			$('#transfer2education').val('1');
+		}
+		else if($(this).attr("id") == 'uneducation')
+		{
+			$('#transferfromeducation').val('1');
+		}
+	});
+	
+	var vwlist = $('#vw_list').DataTable({
+		// ADD language
+		 "language": {
+                "url": "<?php echo RES_FILE_PATH.'/javascript/data_tables/de_language.json?'.date('Ymd')?>"
+         },
+         
+		sDom: 
+			'<"fg-toolbar ui-toolbar ui-widget-header ui-helper-clearfix ui-corner-tl ui-corner-tr"C<"#top_filters">>' +
+			'<"fg-toolbar ui-toolbar ui-widget-header ui-helper-clearfix ui-corner-tl ui-corner-tr"lfr>'+
+			't'+
+			'<"fg-toolbar ui-toolbar ui-widget-header ui-helper-clearfix ui-corner-bl ui-corner-br"<"#bottom_export">ip>',
+			
+		
+		"lengthMenu": [[10, 25, 50, -1], [10, 25, 50, "Alle"]],
+			
+		processing: true,
+ 
+
+		info: false,
+		filter: true,
+		paginate: true,
+
+		serverSide: true,
+
+		
+		"autoWidth": true,
+
+		"stateSave": true,
+
+		"scrollX": true,
+		"scrollCollapse": true,
+		
+		"stateLoadCallback": function (settings)
+		{
+			o = false;
+			
+			 $.ajax( {
+				 url: appbase+'user/loadtablepref',
+				method: "POST",
+			    "async": false,
+			    data: { page: "voluntaryworkers" },
+			    "dataType": "json",
+			    "success": function (json) {
+			        o = json;
+			    }
+			 });
+			 
+			 return o;
+		},
+		
+		
+ 		colVis: {
+			buttonText: "<?php echo $this->translate('[Change columns]');?>",
+
+			stateChange: function ( iColumn, bVisible )
+			{
+				////ISPC-2616 Carmen 03.08.2020
+				var cols_order = $.fn.dataTable.ColReorder( vwlist ).fnOrder();
+				var column_id = cols_order[iColumn];
+				//--
+				$.ajax({
+					url: appbase+'user/savetablesettings',
+					method: "POST",					
+					dataType: "json",
+					data: { page: "voluntaryworkers", column: column_id, visible: bVisible } //Carmen 03.08.2020
+					
+				});
+			},
+			exclude : [0,28], //ISPC - 2231 -p.1+2 +ISPC-2616 Carmen 24.07.2020 change from 27 to 28, because a new column was added
+			
+			sAlign:'right'
+		}, 
+		
+ 		
+		
+		
+ 		colReorder: {
+ 			realtime : false,
+ 		 	
+			<?php if($this->custom_order == "1"):?>
+			order: [<?php echo $this->columns_order;?>],
+			<?php endif;?>
+
+			fixedColumnsLeft: 1,
+			fixedColumnsRight: 1,
+			
+ 			reorderCallback: function ()
+			{
+				var cols_order = $.fn.dataTable.ColReorder( vwlist ).fnOrder();
+				
+				//ISPC-2616 Carmen 23.07.2020
+				var columnpozforname = 5;
+				//--
+				var columns_arr = new Array();
+				$(cols_order).each(function(column_order,column_id) {
+					columns_arr.push({
+						c: column_id, 
+						o: column_order 
+			        });
+					//ISPC-2616 Carmen 23.07.2020
+					if(column_id == 5)
+					{
+						columnpozforname =column_order;
+					}
+					//--
+				});
+				
+				$.ajax({
+					url: appbase+'user/savetablesettingsorder',
+					method: "POST",					
+					//dataType: "json", //ISPC-2616 Carmen 23.07.2020
+					data: { page: "voluntaryworkers", columns: JSON.stringify(columns_arr) },
+					//ISPC-2616 Carmen 23.07.2020
+					success: function() {
+						fixedColumns.s.iLeftColumns = parseInt(columnpozforname)+1;
+						vwlist.columns.adjust()
+					    .fixedColumns().relayout();
+					},
+					error: function(jqXHR, textStatus, errorThrown){
+				          alert('error');
+				      } 
+					//--
+				});
+			},
+		}, 
+		//do not add columns before 4 or 5
+		columns: [
+		          { data: "select_vw", className: "" },//0
+		          { data: "status_color", className: ""},//1
+		          { data: "hospice_association", className: ""},//2
+		          { data: "status", className: " colum_filter_status"},//3
+		          { data: "salutation", className: " colum_filter_salutation"}, //4
+		          { data: "last_name", className: " colum_filter_text"},//5
+		          { data: "first_name", className: " colum_filter_text"},//6
+		          { data: "birthdate", className: " "},//7
+		          { data: "street", className: " colum_filter_text"},//8
+		          { data: "zip", className: " colum_filter_text"},//9
+		          { data: "city", className: " colum_filter_text"},//10
+		          { data: "phone", className: " colum_filter_text"},//11
+		          { data: "mobile", className: " colum_filter_text"},//12
+		          { data: "email", className: " colum_filter_text"},//13
+		          { data: "comments", className: " colum_filter_text"},//14
+		          { data: "comments_availability", className: " colum_filter_text"},		//27    ISPC-2617 Lore 22.07.2020
+				  { data: "children", className: " colum_filter_text"},//15
+		          { data: "profession", className: " colum_filter_text"},//16
+		          { data: "appellation", className: " "},//17
+		          { data: "edication_hobbies", className: " "},//18
+		          
+		          { data: "special_skils", className: " "},//19
+		          { data: "gc_certificate_date", className: " "},//20
+		          { data: "has_car", className: " colum_filter_yes_no"}, //21
+		          { data: "patients", className: " colum_filter_text"}, //22
+		          { data: "cokoordinator", className: " " }, //23
+		          { data: "icons", className: " "}, //24
+		          { data: "image", className: " "}, //25 ISPC - 2231 -p.1
+		          { data: "change_date", className: " "}, //26 ISPC - 2231 -p.2
+		          { data: "actions", className: " " }, //27
+		          
+		          
+			],
+			
+		columnDefs: [ 
+				       	{ "targets": 0, "searchable": false, "orderable": false },
+				       	{ "targets": 1, "searchable": false, "orderable": false },
+				       	{ "targets": 4,  "visible": false, "searchable": false, "orderable": false },
+				       	{ "targets": -1, "searchable": false, "orderable": false },
+				       	{ "targets": -3, "searchable": false, "orderable": false },//image
+				       	{ "targets": -4, "searchable": false, "orderable": false }, //icons
+				       	{ "targets": -5, "searchable": false, "orderable": false } //cokoordinator
+				],
+ 		order: [[ 5, "asc" ]],
+		
+		
+ 		
+ 		
+ 		
+ 		
+ 		ajax: {
+			url:'voluntaryworkers/vwlist',
+			type: 'POST',
+		    "data": function ( d ) {
+		        d.icons_filter = $('#icons_filter').val();
+		        d.work_day_filter = $('#work_day').val();
+		        d.work_period_filter = $('#work_period').val();
+		        d.isarchived = isarchived; //ISPC - 2114 - archive function for vw
+		        d.ineducation= ineducation; //ISPC-2401 - ineducation function for vw
+		        
+		        //d.vasile = $('#extra_vasile').val(); // add extra if needed
+		    },
+			complete:function(e, s) {
+				$("body").removeClass("loading");
+			},
+			error : function(e){
+				
+			}
+		}, 
+		
+		searchDelay: 500,
+			
+		initComplete: function()
+		{
+			var filters = $('.form_filters').clone();
+			$('.form_filters').remove();
+			filters.appendTo("#top_filters").show();
+					
+			var export_buttons = $('.export_buttons').clone();
+			$('.export_buttons').remove();
+			export_buttons.appendTo("#bottom_export").show();
+			
+			
+			$('.dataTables_filter input')
+			.unbind() 
+			.bind("input", function (e) {
+				var item = $(this);
+				searchWait = 0;
+				if (this.value.length >= 2 || this.value == "") {
+					if(!searchWaitInterval) searchWaitInterval = setInterval(function(){
+						if(searchWait>=3){
+							clearInterval(searchWaitInterval);
+							searchWaitInterval = '';
+							searchTerm = $(item).val();
+							$("body").addClass("loading");
+							vwlist.search(searchTerm).draw();						
+							searchWait = 0;
+						}
+						searchWait++;;
+					},100);
+				}
+				
+			})
+			.bind("keydown", function (e) {
+				if (e.keyCode == 13){
+					//Search when user presses Enter
+					clearInterval(searchWaitInterval);
+					$("body").addClass("loading");
+					vwlist.search($(this).val()).draw();
+				}
+			
+			});
+
+			
+			var column_filer_icon = '<span class="DataTables_column_filer_icon css_right ui-icon ui-icon-search"></span>';
+			
+			//TODO-3440 Carmen 20.10.2020
+			this.api().columns('.colum_filter_yes_no').every( function (i) {
+				var column = this;
+				var select = $(column_filer_icon)
+				.insertBefore( $(".DataTables_sort_icon",column.header()) );
+			});
+				/*.on( 'click', function (event) {
+					
+					vwlist.search("", false, false);
+					$("div.column_filer_select").hide();
+					
+					$("#column_filer_select_yes_no #column_filer_operator").val($(column.header()).data("column_filer_operator"));
+            		
+					var height = $("#column_filer_select_yes_no").height() + 10;
+					
+	            	$( "#column_filer_select_yes_no" )
+	            	.css({"display":"block", "position":"absolute"})
+	            	.position({
+	                		    my: "right bottom",
+	                		   	//at: "left top",
+	                		    of: event,
+	                		    offset: "10 "+String(height),
+	                		    collision: "none"
+	            	})
+	                .show();  
+
+	                event.stopPropagation();
+	                
+	                var dialog =  $("#column_filer_select_yes_no");
+
+            		$("button.clear_filter, button.filter", dialog).off('click');
+
+            		$('button.clear_filter', dialog).on('click', function() { 
+            			//reset filters
+            			dialog.hide();
+            			$(".DataTables_column_filer_icon", column.header()).addClass('ui-icon-search').removeClass('ui-icon-zoomin');
+            			
+            			$(column.header()).data("column_filer_operator", '');
+            			
+            			if (column.search() != '') {
+            				column.search( '', true, false ).draw();
+            			}
+            			
+            		});
+            		
+            		$('button.filter', dialog).on('click', function() { 
+            			
+            			dialog.hide();
+            			$(".DataTables_column_filer_icon",column.header()).removeClass('ui-icon-search').addClass('ui-icon-zoomin');
+            						
+            			var column_filer_operator = $("#column_filer_operator", dialog).val();
+            			
+            			$(column.header()).data("column_filer_operator", column_filer_operator);
+            			
+
+            			if (column.search() != column_filer_operator) {
+            				column.search( column_filer_operator, true, false ).draw();
+            			}
+            		});
+				});
+			});*/
+			
+			
+			
+			
+			this.api().columns('.colum_filter_text').every( function (i) {
+
+				var column = this;
+				
+	            var select = $(column_filer_icon)
+	                
+	                	.insertBefore( $(".DataTables_sort_icon",column.header()) );
+			});
+	                
+	                	/*.on( 'click', function (event) {
+	                		
+                		
+	                		vwlist.search("", false, false);
+	                		$("div.column_filer_select").hide();
+	                	
+	                		
+	                		$("#column_filer_select #operator_span").text($(column.header()).text());
+                			
+	                		
+	                		$("#column_filer_select #column_filer_operator").val($(column.header()).data("column_filer_operator"));
+	                		$("#column_filer_select #column_filer_text").val($(column.header()).data("column_filer_text"));
+	                		
+	                		var height = $("#column_filer_select").height() + 10;
+
+	                		
+	                		$( "#column_filer_select" )
+	                		.css({"display":"block", "position":"absolute"})
+	                		.position({
+	                		    my: "right bottom",
+	                		   	//at: "left top",
+	                		    of: event,
+	                		    offset: "10 "+String(height),
+	                		    collision: "none"
+	                		})
+	                		.show();  
+
+	                		event.stopPropagation();
+	                		
+	                		var dialog =  $("#column_filer_select");
+	                		
+	                		$("button.clear_filter, button.filter" , dialog).off('click');
+
+	                		$('button.clear_filter', dialog).on('click', function() { 
+	                			//reset filters
+	                			dialog.hide();
+	                			$(".DataTables_column_filer_icon",column.header()).addClass('ui-icon-search').removeClass('ui-icon-zoomin');
+	                			
+	                			$(column.header()).data("column_filer_text", '');
+	                			$(column.header()).data("column_filer_operator", '');
+	                			
+	                			if (column.search() != '') {
+	                				column.search( '', true, false ).draw();
+	                			}
+	                				
+	                			
+	                		});
+	                		$('button.filter', dialog).on('click', function() { 
+	                			
+	                			                				
+	                			var val = $("#column_filer_text", dialog).val();
+	                			var val_regex = val;
+	                				                			
+	                			var column_filer_operator = $("#column_filer_operator", dialog).val();
+	                			
+	                			if (trim1(val) == '' && column_filer_operator !="is_empty") {
+                					$("#column_filer_text", dialog)
+                						.addClass('error_overlapping')
+                						.delay(1000)
+                						.queue(function(){
+                						   $(this).removeClass('error_overlapping'); 
+                						   $(this).dequeue();
+                						});
+                					
+                					return false;
+	                			}
+	                			
+	                			dialog.hide();
+	                			$(".DataTables_column_filer_icon",column.header()).removeClass('ui-icon-search').addClass('ui-icon-zoomin');
+	                			
+
+	                			switch(column_filer_operator) {
+	                				
+	                				case "equal_with":{
+	                					val_regex = '^' + trim1($.fn.dataTable.util.escapeRegex(val)) + '$';
+	                				}
+	                				break;
+	                				case "start_with":{
+	                					val_regex = '^' + trim1($.fn.dataTable.util.escapeRegex(val));
+	                				}
+	                				break;
+	                				case "contains":{
+	                					val_regex = trim1($.fn.dataTable.util.escapeRegex(val));
+	                				}
+	                				break;
+	                				case "not_equal":{
+	                					
+	                					
+	                					val_regex = '!=^' + trim1($.fn.dataTable.util.escapeRegex(val)) + '$'; // how the fk is NOT REGEXP as mysql patern?
+	                				}
+	                				break;
+	                				case "is_empty":{
+	                					val_regex = '^$';
+	                					val = '';
+	                				}
+	                				break;
+	                				
+	                					                				
+	                				
+	                			}
+
+	                			
+	                			$(column.header()).data("column_filer_text", val);
+	                			$(column.header()).data("column_filer_operator", column_filer_operator);
+	                			
+
+	                			if (column.search() != val_regex) {
+	                				column.search( val_regex, true, false ).draw();
+	                			}
+	                		});
+	                		
+	                		
+	                		
+
+	                		
+				        });
+	                
+				
+             
+            });*/
+			
+
+            this.api().columns('.colum_filter_status').every( function (i) {
+                var column = this;
+                var select = $(column_filer_icon)
+                .insertBefore( $(".DataTables_sort_icon",column.header()) );
+            });
+               /* .on( 'click', function (event) {
+                    
+                    vwlist.search("", false, false);
+                    $("div.column_filer_select").hide();
+                    
+                    $("#column_filer_select_status [name='column_filer_operator']").val($(column.header()).data("column_filer_operator"));
+                    
+                    var height = $("#column_filer_select_status").height() + 10;
+                    
+                    $( "#column_filer_select_status" )
+                    .css({"display":"block", "position":"absolute"})
+                    .position({
+                                my: "right bottom",
+                                //at: "left top",
+                                of: event,
+                                offset: "10 "+String(height),
+                                collision: "none"
+                    })
+                    .show();  
+
+                    event.stopPropagation();
+                    
+                    var dialog =  $("#column_filer_select_status");
+
+                    $("button.clear_filter, button.filter", dialog).off('click');
+
+                    $('button.clear_filter', dialog).on('click', function() { 
+                        //reset filters
+                        dialog.hide();
+                        $(".DataTables_column_filer_icon", column.header()).addClass('ui-icon-search').removeClass('ui-icon-zoomin');
+                        
+                        $(column.header()).data("column_filer_operator", '');
+                        
+                        if (column.search() != '') {
+                            column.search( '', true, false ).draw();
+                        }
+                        
+                    });
+                    
+                    $('button.filter', dialog).on('click', function() { 
+                        
+                        dialog.hide();
+                        $(".DataTables_column_filer_icon",column.header()).removeClass('ui-icon-search').addClass('ui-icon-zoomin');
+                                    
+                        var column_filer_operator = $("#column_filer_operator", dialog).val();
+                        
+                        $(column.header()).data("column_filer_operator", column_filer_operator);
+                        
+
+                        if (column.search() != column_filer_operator) {
+                            column.search( column_filer_operator, true, false ).draw();
+                        }
+                    });
+                });
+            });*/
+			vwlist.columns.adjust();
+		}
+		
+	});
+	
+	//TODO-3440 Carmen 20.10.2020
+	$(document).on( 'click', ".DataTables_column_filer_icon", function (event) {
+
+    		/* event.preventDefault();
+    		event.stopPropagation();
+    		 */
+    		var column = vwlist.column($(this).parent().parent().attr("data-column-index"));
+    		var that = $(this);
+    		if($(this).parent().parent().hasClass("colum_filter_text")) {
+    			
+    		
+    		$("div.column_filer_select").hide();
+    	
+    		
+    		$("#column_filer_select #operator_span").text($(column.header()).text());
+			
+    		
+    		$("#column_filer_select #column_filer_operator").val($(column.header()).data("column_filer_operator"));
+    		$("#column_filer_select #column_filer_text").val($(column.header()).data("column_filer_text"));
+    		
+    		var height = $("#column_filer_select").height() + 10;
+
+    		
+    		$( "#column_filer_select" )
+    		.css({"display":"block", "position":"absolute"})
+    		.position({
+    		    my: "right bottom",
+    		   	//at: "left top",
+    		    of: event,
+    		    offset: "10 "+String(height),
+    		    collision: "none"
+    		})
+    		.show();  
+
+    		//event.stopPropagation();
+    		
+    		var dialog =  $("#column_filer_select");
+    		
+    		$("button.clear_filter, button.filter" , dialog).off('click');
+
+    		$('button.clear_filter', dialog).on('click', function() { 
+    			//reset filters
+    			dialog.hide();
+    			that.addClass('ui-icon-search').removeClass('ui-icon-zoomin');
+    			
+    			$(column.header()).data("column_filer_text", '');
+    			$(column.header()).data("column_filer_operator", '');
+    			
+    			if (column.search() != '') {
+    				column.search( '', true, false ).draw();
+    			}
+    				
+    			
+    		});
+    		$('button.filter', dialog).on('click', function() { 
+    			
+    			                				
+    			var val = $("#column_filer_text", dialog).val();
+    			var val_regex = val;
+    				                			
+    			var column_filer_operator = $("#column_filer_operator", dialog).val();
+    			
+    			if (trim1(val) == '' && column_filer_operator !="is_empty") {
+					$("#column_filer_text", dialog)
+						.addClass('error_overlapping')
+						.delay(1000)
+						.queue(function(){
+						   $(this).removeClass('error_overlapping'); 
+						   $(this).dequeue();
+						});
+					
+					return false;
+    			}
+    			
+    			dialog.hide();
+    			that.removeClass('ui-icon-search').addClass('ui-icon-zoomin');
+    			
+
+    			switch(column_filer_operator) {
+    				
+    				case "equal_with":{
+    					val_regex = '^' + trim1($.fn.dataTable.util.escapeRegex(val)) + '$';
+    				}
+    				break;
+    				case "start_with":{
+    					val_regex = '^' + trim1($.fn.dataTable.util.escapeRegex(val));
+    				}
+    				break;
+    				case "contains":{
+    					val_regex = trim1($.fn.dataTable.util.escapeRegex(val));
+    				}
+    				break;
+    				case "not_equal":{
+    					
+    					
+    					val_regex = '!=^' + trim1($.fn.dataTable.util.escapeRegex(val)) + '$'; // how the fk is NOT REGEXP as mysql patern?
+    				}
+    				break;
+    				case "is_empty":{
+    					val_regex = '^$';
+    					val = '';
+    				}
+    				break;
+    				
+    					                				
+    				
+    			}
+
+    			
+    			$(column.header()).data("column_filer_text", val);
+    			$(column.header()).data("column_filer_operator", column_filer_operator);
+    			
+
+    			if (column.search() != val_regex) {
+    				column.search( val_regex, true, false ).draw();
+    			}
+    		});
+    		}
+    		
+    		if($(this).parent().parent().hasClass("colum_filter_yes_no")) {
+    			
+    			$("div.column_filer_select").hide();
+				
+				$("#column_filer_select_yes_no #column_filer_operator").val($(column.header()).data("column_filer_operator"));
+        		
+				var height = $("#column_filer_select_yes_no").height() + 10;
+				
+            	$( "#column_filer_select_yes_no" )
+            	.css({"display":"block", "position":"absolute"})
+            	.position({
+                		    my: "right bottom",
+                		   	//at: "left top",
+                		    of: event,
+                		    offset: "10 "+String(height),
+                		    collision: "none"
+            	})
+                .show();  
+
+               
+                
+                var dialog =  $("#column_filer_select_yes_no");
+
+        		$("button.clear_filter, button.filter", dialog).off('click');
+
+        		$('button.clear_filter', dialog).on('click', function() { 
+        			//reset filters
+        			dialog.hide();
+        			that.addClass('ui-icon-search').removeClass('ui-icon-zoomin');
+        			
+        			$(column.header()).data("column_filer_operator", '');
+        			
+        			if (column.search() != '') {
+        				column.search( '', true, false ).draw();
+        			}
+        			
+        		});
+        		
+        		$('button.filter', dialog).on('click', function() { 
+        			
+        			dialog.hide();
+        			that.removeClass('ui-icon-search').addClass('ui-icon-zoomin');
+        						
+        			var column_filer_operator = $("#column_filer_operator", dialog).val();
+        			
+        			$(column.header()).data("column_filer_operator", column_filer_operator);
+        			
+
+        			if (column.search() != column_filer_operator) {
+        				column.search( column_filer_operator, true, false ).draw();
+        			}
+        		});
+			
+    		}
+    		
+    		if($(this).parent().parent().hasClass("colum_filter_status"))
+    		{
+    			$("div.column_filer_select").hide();
+                
+                $("#column_filer_select_status [name='column_filer_operator']").val($(column.header()).data("column_filer_operator"));
+                
+                var height = $("#column_filer_select_status").height() + 10;
+                
+                $( "#column_filer_select_status" )
+                .css({"display":"block", "position":"absolute"})
+                .position({
+                            my: "right bottom",
+                            //at: "left top",
+                            of: event,
+                            offset: "10 "+String(height),
+                            collision: "none"
+                })
+                .show();  
+
+                event.stopPropagation();
+                
+                var dialog =  $("#column_filer_select_status");
+
+                $("button.clear_filter, button.filter", dialog).off('click');
+
+                $('button.clear_filter', dialog).on('click', function() { 
+                    //reset filters
+                    dialog.hide();
+                    that.addClass('ui-icon-search').removeClass('ui-icon-zoomin');
+                    
+                    $(column.header()).data("column_filer_operator", '');
+                    
+                    if (column.search() != '') {
+                        column.search( '', true, false ).draw();
+                    }
+                    
+                });
+                
+                $('button.filter', dialog).on('click', function() { 
+                    
+                    dialog.hide();
+                    that.removeClass('ui-icon-search').addClass('ui-icon-zoomin');
+                                
+                    var column_filer_operator = $("#column_filer_operator", dialog).val();
+                    
+                    $(column.header()).data("column_filer_operator", column_filer_operator);
+                    
+
+                    if (column.search() != column_filer_operator) {
+                        column.search( column_filer_operator, true, false ).draw();
+                    }
+                });
+    		}
+        });
+	//--
+	
+	//ISPC-2616 Carmen 23.07.2020
+	function calculatenumberofcolumntofreeze(){
+		var cols_order = [];
+		<?php if($this->custom_order == "1"):?>
+			cols_order = [<?php echo $this->columns_order;?>];
+		<?php endif; ?>
+		var columnpozforname = 5;
+
+		$(cols_order).each(function(column_order,column_id) {
+			
+			if(column_id == 5)
+			{
+				columnpozforname =column_order;
+				return false;
+			}
+		});
+
+		return parseInt(columnpozforname)+1;
+	};
+	
+	var fixedColumns = new $.fn.dataTable.FixedColumns(vwlist, {
+	    iLeftColumns: calculatenumberofcolumntofreeze()
+	});
+	//--
+ 
+	$.save_filter = function(chkbx){
+
+		var status_details = {};
+		var cnt = 0;
+		
+		$('.status_check').each(function(){
+			var name =  $(this).attr('name');
+			if($(this).is(':checked')){
+				var value  = "1";
+			}  else{
+				var value   = "0";
+			}
+			status_details[name] = value;
+			cnt++;
+		});
+		
+		
+		var array_status = JSON.stringify(status_details)
+		$.ajax({
+			url : 'voluntaryworkers/savefilter',
+			type : 'POST',
+			data : {
+				details: array_status
+			} 
+		});
+		
+		vwlist.ajax.reload();
+	}
+
+	
+	
+ 
+	$.icons_filter = function(chkbx){
+
+		var status_details = {};
+		var cnt = 0;
+		var icons_str = "0";
+		$('.icons_check').each(function(){
+			var icon_id =  $(this).val();
+
+			if($(this).is(':checked')){
+				var value  = "1";
+				 icons_str =  icons_str+","+icon_id;
+			}  
+		});
+		$('#icons_filter'). val(icons_str);
+		
+		vwlist.ajax.reload();
+	}
+	
+
+ 
+	$('#work_day').live('change', function(){
+		vwlist.ajax.reload();
+	});
+ 
+	$('#work_period').live('change', function(){
+		vwlist.ajax.reload();
+	});
+	
+	
+	$('#all-vw').live('click', function(){
+		if($(this).is(':checked')){
+			$('.vws').each(function(){
+				$(this).attr('checked', true)
+				$('.export, .print, .send_email, .archive, .education').prop('disabled',false);
+				
+			});
+		} else {
+			$('.vws').each(function(){
+				$(this).attr('checked', false)
+				
+				$('.export, .print, .send_email, .archive, .education').prop('disabled',true);
+			});
+		}
+	});
+ 
+	
+	$('.vws').live('click', function(){ // (ISPC-2138)
+		if($(this).is(':checked')){
+			$('.export, .print, .send_email, .archive, .education').prop('disabled',false);
+			
+		} else{
+	 		var vw_ids = 0;
+			$('.vws').each(function(){
+				if($(this).is(':checked')){
+					vw_ids++;
+				}  
+			});
+			
+			
+			if(vw_ids == 0){
+				// disable the export buttons
+				$('.export, .print, .send_email, .archive, .education').prop('disabled',true);
+			}
+		}
+		
+		
+	});
+	
+	
+	$('.export').prop('selectedIndex',0);
+	$('.export').val(0);
+		
+	$('.print').prop('selectedIndex',0);
+	$('.print').val(0);
+	
+	$('.export').live('change',function(){
+ 		var egenerate_value = $(this).val();
+ 		
+		var cols_order = $.fn.dataTable.ColReorder( vwlist ).fnOrder();
+		var order = $('#vw_list').DataTable().order();
+ 		var sortby =  order[0][0];
+		var sortdir =  order[0][1];
+ 		$("#sortby").val(cols_order[sortby]);
+ 		$("#sortdir").val(sortdir);
+
+		if(egenerate_value != 0 ){
+			$("#generate").val(egenerate_value);
+			$('#vwlist').submit();
+			// reset - select
+			$('.export').prop('selectedIndex',0);
+ 		}
+	});
+	
+	
+	$('.print').live('change',function(){
+ 		var pgenerate_value = $(this).val();
+ 		
+ 		var vw_ids = 0;
+		$('.vws').each(function(){
+			if($(this).is(':checked')){
+				vw_ids++;
+			}  
+		});
+ 		
+ 		if(pgenerate_value != 0 && vw_ids != 0){
+ 			
+			var cols_order = $.fn.dataTable.ColReorder( vwlist ).fnOrder();
+ 			var order = $('#vw_list').DataTable().order();
+ 			var sortby =  order[0][0];
+ 			var sortdir =  order[0][1];
+
+ 			$("#sortby").val(cols_order[sortby]);
+ 			$("#sortdir").val(sortdir);
+ 			
+			var letter_tpls = pgenerate_value.split('-');
+			var letter_template = letter_tpls[1]; 
+	
+			if(letter_template && $.isNumeric(letter_template)){
+				$("#generate").val("print_letters");
+				$("#template_id").val(letter_template);
+			} else{
+				$("#generate").val(pgenerate_value);
+			}
+			
+			if(pgenerate_value == "print_list_all_columns" || pgenerate_value == "print_list_viewable_columns" || pgenerate_value == "upcomming_birthdays" ||  pgenerate_value == "allyear_birthdays"){
+				var targetvalue = "_blank";
+				$("#vwlist").prop("target", targetvalue);
+			}
+			
+			$('#vwlist').submit();
+			// reset - select
+			$('.print').prop('selectedIndex',0);
+			
+ 		}
+		
+	});
+	
+	$('.send_email').live('click',function(){
+		this.checkcheck;
+ 		var segenerate_value = $(this).val();
+		$("#transfer2sendemail").val("1");
+		
+		var formAction = "<?php echo APP_BASE; ?>voluntaryworkers/sendemail2vws";
+		$("#vwlist").attr("action", formAction);
+		$('#vwlist').submit();
+		
+	});
+	
+	$(".confirm_button").live('click', function() {
+		$.confirmdeleteid = $(this).attr('rel');
+			jConfirm('<? echo $this->translate('confirmdeleterecord'); ?>', '<? echo $this->translate('confirmdeletetitle'); ?>', function(r) {
+			if(r)
+			{	
+				location.href = "<? echo APP_BASE ?>voluntaryworkers/deletevoluntaryworkerdet?id="+ $.confirmdeleteid;
+			}
+		});
+	});
+	
+	
+	$("select[name='vw_list_length']").live('change', function() {
+		
+		if($(this).val())
+		{
+			$.ajax({
+				url : 'ajax/saveuserpageresults',
+				type : 'POST',
+				data : {
+					page: "voluntaryworkers",
+					results: $(this).val()
+				} 
+			});
+		}
+		
+	}); 
+	
+	
+	
+});/*-- END  $(document).ready ----------- --*/
+
+function trim1 (str) {
+    return str.replace(/^\s\s*/, '').replace(/\s\s*$/, '');
+}
+
+// 		<!-- ISPC-2401 10) add a VW with the new TAB "Ausbildung Ehrenamtliche" selected.  -->
+function addVW() {
+
+	var tabb = referal_tab_js;
+	if(tabb){
+		var url = appbase+'voluntaryworkers/addvoluntaryworkerdet?referal_tab='+tabb;
+	} else{
+		var url = appbase+'voluntaryworkers/addvoluntaryworkerdet';
+	}
+	window.location = url ;
+}
+
+</script>
+<style>
+.outer {
+	width: 100% !important;
+}
+
+#Wrapper {
+	width: 100% !important;
+	min-height: 5px;
+	overflow: hidden;
+}
+
+#Wrapper .LeftDiv {
+	float: left;
+	width: 200px;
+	overflow: hidden;
+	min-height: 100px;
+}
+
+	#MainContent { 
+	 	width: 100%!important; 
+	} 
+	
+	
+body {
+	overflow-x: hidden;
+}
+
+/* ISPC-2248  VW status bar CSS update 27.08.2018  */
+#vw_list_wrapper>.fg-toolbar.ui-toolbar.ui-widget-header.ui-helper-clearfix.ui-corner-tl.ui-corner-tr:first-child
+	{
+ 	background: #ffffff; 
+	border: 0;
+}
+
+.vw_filter_item_lbl  {
+	width: 25%;
+}
+.vw_filter_item_lbl label {
+	text-transform: uppercase;
+	font-size: 14px;
+	font-weight: bold;
+	width: 100%;
+}
+.vw_filter_checkboxes {
+    margin-bottom: 10px;
+
+}
+
+.vw_filter_item {
+	width: 77px;
+	float: left;
+/*	margin-right: 10px;*/
+}
+
+.vw_filter_item input {
+	margin-right: 0;
+	margin-top: 5px;
+	margin-left: 2px;
+}
+.vw_filter_item label {
+	margin-right: 15px;
+}
+
+.vw_filter_item label img {
+    margin-top: 3px;
+}
+
+
+#top_filters {
+	float: left;
+	margin-top: 7px;
+	width: 100%;
+}
+.vw_filter_icons_div{
+	float: left;
+	width: 75%;
+}
+div.ColVis {
+/* 	float: left; */
+	margin-bottom: 0;
+}
+
+.vw_filter_icons_item  {
+
+ 	margin-bottom:2px;
+
+}
+
+
+
+
+/*NEW CSS ADDED in ISPC-2248 comment: 18.09.2018*/
+.vw_filters_block:last-child
+{ padding-top:10px; }
+
+.vw_filter_item_lbl label, .vw_filter_item_lbl
+ {
+/*      min-width:190px;   */
+    }   
+
+.vw_filter_icons_div
+{ 
+/* width:auto !important;  */
+}
+
+.vw_filter_icons_item
+{ border:0; }
+
+.vw_filter_icons_item input
+{ margin-top:7px; }
+
+.vw_filter_icons_item label img
+{ width:25px !important; height:25px !important; }
+
+.vw_filter_icons_item label
+{
+
+ 
+   float:left;   
+   width:25px !important;  
+   height:25px !important; 
+   margin-left: 5px; 
+  
+   
+} 
+
+
+/* ISPC-2248 ; end */  
+
+</style>
+	<div class="add_link">
+		<a href="javascript:void(0)" onClick="addVW()"><? echo $this->translate('addvoluntaryworker') ?></a>
+		<!-- 		<a href="voluntaryworkers/addvoluntaryworkerdet"><? echo $this->translate('addvoluntaryworker') ?></a>
+		 -->
+	</div>
+ 
+<div class="iwrapp" style="float: left; Display: block!important; width:845px;">
+<form action="" method="post" id="vwlist">
+
+<input type="hidden" name="icons_filter" id="icons_filter" value="" />
+<div id="vwlisttabs">
+	<ul>
+		<li><a href="#projects-list" rel="1" class="tabs" id="tab-0" ><?php echo $this->translate('activevoluntaries')?></a></li>
+		<li><a href="#projects-list" rel="2" class="tabs" id="tab-1" ><?php echo $this->translate('archivedvoluntaries')?></a></li>
+		<li><a href="#projects-list" rel="3" class="tabs" id="tab-2" ><?php echo $this->translate('ineducationvoluntaries')?></a></li>
+	</ul>
+	<div class="row" id="projects-list">
+		<!-- Table -->
+	  
+		  <table id="vw_list" class="table table-striped table-bordered table-hover table-condensed dataTable no-footer">
+		  	<thead>
+	
+		  		<tr>
+		  			<th><input type="checkbox" name="all-vw" value="" id="all-vw" /></th>
+		  			<th><div class="ready_box_voluntary ready_green"></div></th>
+		  			<th><?php echo $this->translate('hospice_association');?></th>
+		  			<th><?php echo $this->translate('status'); ?></th>
+		  			
+		  			<th><?php echo $this->translate('salutation');?></th>
+		  			
+		  			<th class="px80"><?php echo $this->translate('last_name');?></th>
+		  			<th class="px80"><?php echo $this->translate('first_name'); ?></th>
+		  			<th><?php echo $this->translate('birthday');?></th>
+		  			<th><?php echo $this->translate('street'); ?></th>
+		  			<th class="px60"><?php echo $this->translate('zip'); ?></th>
+		  			<th class="px80"><?php echo $this->translate('city');?></th>
+		  			<th><?php echo $this->translate('phone'); ?></th>
+		  			<th><?php echo $this->translate('mobile'); ?></th>
+		  			<th><?php echo $this->translate('email'); ?></th>
+		  			<th><?php echo $this->translate('comments'); ?></th>
+		  			<th><?php echo $this->translate('vw_availability comment'); ?></th>	<!-- ISPC-2617 Lore 22.07.2020 -->	  			
+		  			<th><?php echo $this->translate('children'); ?></th>
+		  			<th><?php echo $this->translate('profession'); ?></th>
+		  			<th><?php echo $this->translate('appellation'); ?></th>
+		  			<th><?php echo $this->translate('edication_hobbies'); ?></th>
+		  			<th><?php echo $this->translate('special_skils'); ?></th>
+		  			<th><?php echo $this->translate('gc_certificate_data'); ?></th>
+		  			<th class="px60"><?php echo $this->translate('has_car'); ?></th>
+		  			<th class="px80"><?php echo $this->translate('patients'); ?></th>
+		  			<th><?php echo $this->translate('cokoordinator'); ?></th>
+		  			<th><?php echo $this->translate('icons'); ?></th>
+		  			<!-- ISPC -2231 - p.1+2 -->
+		  			<th><?php echo $this->translate('image'); ?></th>
+		  			<th><?php echo $this->translate('last_update'); ?></th>
+		  			<!-- ISPC -2231 - p.1+2 -->
+		  			<th><?php echo $this->translate('multiple_actions'); ?></th>
+		  			
+		  		</tr>
+		  	</thead>
+		  	
+		  </table>
+	 </div>
+</div> 
+</form>
+ <div class="form_filters" id="old_filters"  style="display: none;">
+	<form action="" method="post" name="filter_search" id="filter_search" >
+			<div class="vw_filters_block">
+				<div class="vw_filter_checkboxes" >
+					<div class="vw_filter_item_lbl">
+						<label ><?php echo $this->translate('Filter by status')?></label>
+					</div>
+					<!-- ISPC-2401 pct6,7  Ancuta(12.08.2019)-->
+	                <?php foreach ($this->all_colors as $status_id => $col_status_name):?>
+						<div class="vw_filter_item">
+							<input type="checkbox" name="status_color_<?php echo $status_id?>" value="1" class="status_check"  id="status_<?php echo $status_id?>"  onclick="$.save_filter(this)"  <?php if($this->ufilter['status_color_'.$status_id] == 1): ?>  checked="checked" <?endif;?>  />
+							<label for="status_<?php echo $status_id?>" >
+								<span class="status_icon_color <?php echo  $status_id; ?>" title="<?php echo $col_status_name; ?>"></span>
+							</label>
+					   </div>
+					<?php endforeach;?>	
+				</div>
+			</div>	
+			<?php if ( count($this->client_icons) > 0 ) : ?>
+			<div class="vw_filters_block">
+				<div class="vw_filter_checkboxes" >
+					<div class="vw_filter_item_lbl">
+						<label ><?php echo $this->translate('Filter by Icons')?></label>
+					</div>
+					<div class = "vw_filter_icons_div">
+						<?php foreach($this->client_icons as $k=>$icon_details):?>	
+						<div class="vw_filter_icons_item"  id="sys_icon-<?php echo $icon_details['id']; ?>">
+							<input type="checkbox" name="icons"  value="<?php echo $icon_details['id']?>"  class="icons_check"    onclick="$.icons_filter(this)"  id="filter_<?php echo $icon_details['id']; ?>" />
+							<label for="filter_<?php echo $icon_details['id']; ?>" style="background:#<?php echo $icon_details['color']; ?>" >
+							<?php if(!empty($icon_details['image'])): ?>
+								<img src="<?php echo APP_BASE . 'icons_system/' . $icon_details['image']; ?>"   title="<?php echo $icon_details['name']; ?>"  style="width: 32px; height: 32px;"/>
+							<?php else:?>
+								<span class="vw_icon_subst">&nbsp;</span>
+							<?php endif;?>
+							</label>
+							
+						</div>
+						<?php endforeach;?>
+					</div>
+				</div>
+			</div>
+			<?php endif; ?>
+			
+			<div class="vw_filters_block">
+				<div class="vw_filter_checkboxes" >
+					<div class="vw_filter_item_lbl">
+						<label ><?php echo $this->translate('Filter by work availability')?></label>
+					</div>
+					
+						<?php $week_days_array = array(''=>'','1'=>'Montag','2'=>'Dienstag','3'=>'Mittwoch','4'=>'Donnerstag','5'=>'Freitag','6'=>'Samstag','7'=>'Sonntag');?>	
+						<?php $availability_array = array('','morning'=>'morgens','afternoon'=>'nachmittags','evening'=>'abends','night'=>'nachts','allday'=>'ganztägig');?>
+						<?php echo $this->formSelect("work_day", "", null, $week_days_array ); ?>
+						<?php echo $this->formSelect("work_period", "", null, $availability_array  ); ?>
+				</div>
+			</div>
+				
+			
+	</form>
+
+</div>
+
+
+		<div class="export_buttons">
+			<select name="export" id="export" class="export" disabled="disabled"  >
+		        <option value="0">Exportieren</option>
+		        <option value="export_xlsx">Excel(*.xlsx)</option>
+		        <option value="export_csv">Kommagetrennte Werte (*.csv)</option>
+		    </select>
+		 
+		 
+		     <select name="print" id="print"  class="print" disabled="disabled">
+		        <option value="0">Drucken</option>
+		        <option value="print_list_all_columns"> <?php echo $this->translate('Print list -all columns');?></option>
+		        <option value="print_list_viewable_columns"><?php echo $this->translate('Print list -viewable columns');?></option>
+
+		       <?php if (count($this->letter_templates) == 1):?>
+  	       			<?php foreach($this->letter_templates as $tpl_id => $tpl_value): ?>
+				 		<option value="print_letters-<?php echo $tpl_id;?>"  ><?php echo $this->translate('Print letters');?></option>
+				 	<?php endforeach; ?>
+		       <?php elseif ( count($this->letter_templates) >= 1):?>
+	       			<optgroup  label="<?php echo $this->translate('Print letters');?>" value="print_letters">
+	       			<?php foreach($this->letter_templates as $tpl_id => $tpl_value): ?>
+				 		<option value="print_letters-<?php echo $tpl_id;?>"  ><?php echo $tpl_value['title'];?></option>
+				 	<?php endforeach; ?>	
+				 	</optgroup>
+		        <?php endif;?>
+		       
+		        <option value="print_labels_3424" ><?php echo $this->translate('Print label -avery 3424');?></option>
+		        <option value="print_labels_3422" ><?php echo $this->translate('Print label -avery 3422');?></option>
+		        <option value="upcomming_birthdays" ><?php echo $this->translate('Print upcomming_birthdays');?></option>
+		        <option value="allyear_birthdays" ><?php echo $this->translate('Print allyear_birthdays');?></option>
+		        
+		    </select>
+			<input type="submit"  name="send_email" id="send_email"  class="send_email" value="Email"  disabled="disabled" />
+			
+			<!-- voluntaryworkers email history -->
+			<?php echo $this->formSubmit("send_email_history", $this->translate("Email History"), array("onclick"=>"window.location='" . APP_BASE . "voluntaryworkers/sendemail2vwshistory?email_tabs='+document.getElementById('tabs_selected_id').value; return false;")); ?>
+			<!-- ISPC - 2114 - archive function for vw -->
+			<input type="submit"  name="archive" id="archive"  class="archive" value="<?php echo $this->translate('archive')?>"  disabled="disabled" />
+			<!-- ISPC - 2114 - archive function for vw -->
+			
+			<!-- ISPC-2401 - ineducation function for vw -->
+			<input type="submit"  name="education" id="education"  class="education" value="<?php echo $this->translate('education')?>"  disabled="disabled" />
+			
+			<input type="hidden" id="sortby" name="sortby" value="" />
+			<input type="hidden" id="sortdir" name="sortdir" value="" />
+			
+			<input type="hidden" id="generate" name="generate" value="0" />
+			<input type="hidden" id="template_id" name="template_id" value="0" />
+			<input type="hidden" id="transfer2sendemail" name="transfer2sendemail" value="0" />
+			<!-- ISPC - 2114 - archive function for vw -->
+			<input type="hidden" id="transfer2archive" name="transfer2archive" value="0" />
+			<!-- ISPC - 2401 - education function for vw -->
+			<input type="hidden" id="transfer2education" name="transfer2education" value="0" />
+			
+			<input type="hidden" name="tabs" value="0" id="tabs_selected_id" />
+			<!-- ISPC - 2114 - archive function for vw -->
+			
+		</div>
+
+		<div class="icons">
+		
+		
+		</div>
+			
+			
+		<div class="column_filer_select" id="column_filer_select" style="display:none;">
+		<!-- div for columns to search text -->
+		<?php
+			$datatables_column_filter_lang = $this->translate('datatables_column_filter');
+			$val_arr = array(
+					"start_with"	=> $datatables_column_filter_lang['start_with'],
+					"contains"		=> $datatables_column_filter_lang['contains'] ,
+					"equal_with"	=> $datatables_column_filter_lang['equal_with'],
+					"not_equal"		=> $datatables_column_filter_lang['not_equal'],
+					"is_empty"		=> $datatables_column_filter_lang['is_empty']
+			);
+		?>
+			<ul class="ColVis_collection">
+				<li>
+					<label><span id="operator_span"><?php echo $datatables_column_filter_lang['operator'];?></span>
+					
+					
+					<?php echo $this->formSelect("column_filer_operator", 0, null, $val_arr); ?>
+					</label>
+				</li>
+				
+				<li>
+					<label><span><?php echo $datatables_column_filter_lang['text'];?></span> 
+					<?php echo $this->formText("column_filer_text", ""); ?>
+					</label>
+				</li>
+				
+				
+				<li class="search_butons">
+					
+					<button class="ColVis_Button ColVis_MasterButton clear_filter" ><span><?php echo $datatables_column_filter_lang['clear_filter'];?></span></button>
+					<button class="ColVis_Button ColVis_MasterButton filter" ><span><?php echo $datatables_column_filter_lang['filter'];?></span></button>
+					
+				</li>
+			</ul>
+			
+		</div>
+		
+		
+		<div class="column_filer_select" id="column_filer_select_yes_no" style="display:none;">
+		<!-- div for columns to search yes no -->
+			<ul class="ColVis_collection">
+				<li>
+					<label><span><?php echo $this->translate('has_car');?></span>
+					<?php echo $this->formSelect("column_filer_operator", 1, null, array("1"=>"Ja", "0"=>"Nein")); ?>
+					</label>
+				</li>
+				
+				
+				<li class="search_butons">
+					
+					<button class="ColVis_Button ColVis_MasterButton clear_filter" ><span><?php echo $datatables_column_filter_lang['clear_filter'];?></span></button>
+					<button class="ColVis_Button ColVis_MasterButton filter" ><span><?php echo $datatables_column_filter_lang['filter'];?></span></button>
+					
+				</li>
+			</ul>
+			
+		</div>
+		
+		<div class="column_filer_select" id="column_filer_select_status" style="display:none;">
+        <!-- div for columns to search status -->
+            <ul class="ColVis_collection">
+                <li>
+                    <label><span><?php echo $this->translate('status');?></span>
+                    <?php echo $this->formSelect("column_filer_operator", null, null, $this->all_voluntary_statuses_select); ?> //ISPC - 2231 -p.7
+                    </label>
+                </li>
+                <li class="search_butons">
+                    <button class="ColVis_Button ColVis_MasterButton clear_filter" ><span><?php echo $datatables_column_filter_lang['clear_filter'];?></span></button>
+                    <button class="ColVis_Button ColVis_MasterButton filter" ><span><?php echo $datatables_column_filter_lang['filter'];?></span></button>
+                </li>
+            </ul>
+        </div>
+	<div class="modal"><!-- Place at bottom of page --></div>		
+	

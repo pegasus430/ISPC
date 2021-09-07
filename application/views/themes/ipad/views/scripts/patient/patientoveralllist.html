@@ -1,0 +1,1357 @@
+<?php
+$this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/pagination_style.css?'.date('Ymd'));
+$this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/qtip/jquery.qtip.min.css?'.date('Ymd'));
+
+//$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/jquery.blockUI.js?'.date('Ymd'));
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/qtip/jquery.qtip.min.js?'.date('Ymd'));
+
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/chosen_v1.6.2/chosen.jquery.min.1.0.0.js');
+$this->headLink()->appendStylesheet(RES_FILE_PATH.'/javascript/chosen_v1.6.2/chosen_2016.11.18.css');
+
+?>
+<script type="text/javascript">
+
+var tabsid2string = new Array("active", "discharged","assignedpats", "standby", "standbydel", "archive", "all");
+var change_table_length = false;
+var table_length;
+
+function getoveralllist(page) {
+	var url = '<?php echo APP_BASE; ?>patient/fetchoveralllist';
+	var filters = '';
+	var sortby = $('#sortby').val();
+	var sortdir = $('#sortdir').val();
+
+	//show a loading gif
+	$('#overallpatientlist').html('<br/><div class="loadingdiv" align="center"><img src="<?php echo RES_FILE_PATH; ?>/images/ajax-loader.gif"><br /><?php echo $this->translate(loadingpleasewait); ?></div><br/>');
+
+	filters = $('#overalllist_form').serialize() + '&page=' + page;
+
+	if(sortby) {
+		filters = filters + '&ord=' + sortby;
+	}
+
+	if(sortdir) {
+		filters = filters + '&sort=' + sortdir;
+	}
+	
+	if(change_table_length === true)
+	{
+		filters = filters + '&tbl=' + table_length;
+	}
+	
+	xhr = $.ajax({
+		url : url + '?' + filters,
+		success : function(response) {
+			$('#overallpatientlist').html(response);
+			$('.memo').qtip({
+				style: {
+					name: 'cream',
+					tip: true
+				},
+				position: {
+					my: 'center right',  // Position my top left...
+					at: 'center left' // at the bottom right of...
+				},
+				show: {
+					event: 'click mouseenter'
+				},
+				hide: {
+					event: 'click'
+				}
+
+			});
+			
+			$('.tourplan_settings_qtip').qtip({
+				
+				content: { 
+					text: function(event, api) {
+						var html = $(this).parent().find(".tourplan_settings_details").html();
+						return html;
+					}				
+				},
+				prerender: false,
+				style: {
+					classes: "tourplan_qtip",
+					name: 'cream',
+					tip: true
+				},
+				position: {
+					my: 'center right',  // Position my top left...
+					at: 'center left' // at the bottom right of...
+				},
+				show: {
+					event: 'click mouseenter'
+				},
+				hide: {
+					event: 'click mouseout'
+				}
+
+			});
+			
+			$('.germination_qtip').qtip({
+				
+				content: { 
+					text: function(event, api) {
+						var html = $(this).parent().find(".qtip_details").html();
+						return html;
+					}				
+				},
+				prerender: false,
+				style: {
+					//classes: "tourplan_qtip",
+					name: 'cream',
+					tip: true
+				},
+				position: {
+					my: 'center right',  // Position my top left...
+					at: 'center left' // at the bottom right of...
+				},
+				show: {
+					event: 'click mouseenter'
+				},
+				hide: {
+					event: 'click mouseout'
+				}
+
+			});
+			
+			
+			
+			
+			$('.assigned_groups').qtip({
+				style: {
+					name: 'cream',
+					tip: true
+				},
+				position: {
+					my: 'center right',  // Position my top left...
+					at: 'center left' // at the bottom right of...
+				},
+				show: {
+					event: 'click mouseenter'
+				},
+				hide: {
+					event: 'click'
+				}
+
+			});
+			$('.allergies').qtip({
+				style: {
+					name: 'cream',
+					tip: true
+				},
+				position: {
+					my: 'center right',  // Position my top left...
+					at: 'center left' // at the bottom right of...
+				},
+				show: {
+					event: 'click mouseenter'
+				},
+				hide: {
+					event: 'click'
+				}
+
+			});
+
+		for (i = 1; i <= 29; i++) {
+			$('.col-'+i).hide();
+			$('#checkbox-'+i).hide();
+			$('#column-'+i).attr('checked', false);
+		}
+
+
+			//ISPC-2479
+			var current_tab =tabsid2string[$("#patientlisttabs").tabs('option', 'selected')];
+			$('li#li_indent_'+current_tab).addClass('withnumber');
+			$('span#p_number_'+current_tab).html($('#current_tab_count').val());
+			//-- 
+
+		//show checks when request is completed
+		var visibleCols = $('#tabcols').val();
+		var visibleColumns = new Array();
+		visibleColumns = visibleCols.split(',');
+
+		jQuery.each(visibleColumns, function(index, item){
+			$('#checkbox-'+item).show();
+			//			$('.col-'+item).show();
+		});
+
+		//select checks when request is completed
+		var cols = $('#cols').val();
+		var columns = new Array();
+		columns = cols.split(',');
+			var noCols = new Number(columns.length+3);
+		$('.paginationRow').each(function(){
+			$(this).attr('colspan', ''+noCols+'');
+		});
+
+		//TODO-3644 Ancuta 02.12.202
+		$('#toarchivebuttondiv').hide();
+		if(current_tab =="discharged"){
+			$('#toarchivebuttondiv').show();
+		}
+			
+		$('#fromarchivebuttondiv').hide();
+		if(current_tab =="archive"){
+			$('#fromarchivebuttondiv').show();
+		}
+		//--
+
+
+		jQuery.each(columns, function(index, item){
+			if(item != "99"){
+				$('#column-'+item).attr('checked', true);
+				if(jQuery.inArray(item, visibleColumns) != "-1"){
+					$('.col-'+item).show();
+					if(item == "12"){
+				$('#toarchivebuttondiv').show();
+				$('#toarchivebuttondiv').css('float', 'left'); //ISPC-2396 Carmen 08.10.2019
+				$('#toarchivebuttondiv').css('margin-right', '10px'); //ISPC-2396 Carmen 08.10.2019
+			}
+					if(item == "13"){
+				$('#fromarchivebuttondiv').show();
+				$('#fromarchivebuttondiv').css('float', 'left'); //ISPC-2396 Carmen 08.10.2019
+				$('#fromarchivebuttondiv').css('margin-right', '10px'); //ISPC-2396 Carmen 08.10.2019
+					}
+			} else {
+					$('.col-'+item).hide();
+			}
+			}
+		});
+		}
+		});
+}
+
+$(function() {
+
+	$('#adm_start').datepicker({
+		dateFormat: 'dd.mm.yy',
+		showOn: "both",
+		buttonImage: $('#calImg').attr('src'),
+		buttonImageOnly: true,
+		changeMonth: true,
+		changeYear: true,
+		nextText: '',
+		prevText: ''
+	});
+
+	$('#adm_end').datepicker({
+		dateFormat: 'dd.mm.yy',
+		showOn: "both",
+		buttonImage: $('#calImg').attr('src'),
+		buttonImageOnly: true,
+		changeMonth: true,
+		changeYear: true,
+		nextText: '',
+		prevText: ''
+	});
+	$('#dis_start').datepicker({
+		dateFormat: 'dd.mm.yy',
+		showOn: "both",
+		buttonImage: $('#calImg').attr('src'),
+		buttonImageOnly: true,
+		changeMonth: true,
+		changeYear: true,
+		nextText: '',
+		prevText: ''
+	});
+	$('#dis_end').datepicker({
+		dateFormat: 'dd.mm.yy',
+		showOn: "both",
+		buttonImage: $('#calImg').attr('src'),
+		buttonImageOnly: true,
+		changeMonth: true,
+		changeYear: true,
+		nextText: '',
+		prevText: ''
+	});
+
+	$('#apply').click(function() {
+		//reset pages and sorting
+		$('#sortby').val('');
+		$('#sortdir').val('');
+		$('#current_page').val('');
+		getoveralllist();
+		return false;
+
+	});
+
+	$('.checkcolumns').click(function(){
+		$('#savecols').val('1');
+		getoveralllist();
+		return false;
+	});
+	$('.overallpages').live('click',function(){
+		getoveralllist($(this).attr('rel'));
+	});
+
+	$('.overallsort').live('click',function(){
+		$('#sortby').val($(this).attr('rel'));
+		$('#sortdir').val($(this).attr('title'));
+		$('#current_page').val('');
+		getoveralllist();
+	});
+
+
+	$("#patientlisttabs").bind("tabsselect", function(event, ui) {
+		xhr.abort(); //added abort of previous request...causing columns misbehaving when changing tabs
+		$('#sortby').val('ln')//change sort to defaul value "ln"
+		//var tabsid2string = new Array("active", "discharged","assignedpats", "standby", "standbydel", "archive", "all");
+		$('#f_status').val(tabsid2string[ui.index]);
+		$('#savecols').val('0'); //reset save method each time a tab is changed
+		//reset filters when changing tabs
+		$(':input','#overalllist_form')
+			.not(':button, :submit, :reset, :hidden, .checkcolumns, select[name=f_dob_start], select[name=f_dob_end], input[name="icon_sys[]"], input[name="icon_cust[]"], .icon_input')
+			.val('')
+			.removeAttr('checked')
+			.removeAttr('selected');
+		$('select[name=f_dob_start] option:last-child').attr('selected', true);
+		$('select[name=f_dob_end] option:first-child').attr('selected', true);
+
+		$('td#filters_row input[type=checkbox]').removeAttr('checked');
+		if(ui.index == 1 && $('#paneln').is(':visible')) {
+			$('#deadafterdischarge').show();
+			$('#f_deadafterdischarge').val('1');
+		}
+		else {
+			$('#deadafterdischarge').hide();
+		}
+		//load list
+		getoveralllist();
+
+	});
+	
+	$(document).on('change', '.table_length', function() {
+		xhr.abort();
+		$('#sortby').val('ln')//change sort to defaul value "ln"
+		change_table_length = true;
+		
+		$('#f_status').val(tabsid2string[$("#patientlisttabs").tabs('option', 'selected')]);
+		$('#savecols').val('0'); //reset save method each time a tab is changed
+		//reset filters when changing tabs
+		$(':input','#overalllist_form')
+			.not(':button, :submit, :reset, :hidden, .checkcolumns, select[name=f_dob_start], select[name=f_dob_end], input[name="icon_sys[]"], input[name="icon_cust[]"], .icon_input')
+			.val('')
+			.removeAttr('checked')
+			.removeAttr('selected');
+		$('select[name=f_dob_start] option:last-child').attr('selected', true);
+		$('select[name=f_dob_end] option:first-child').attr('selected', true);
+		
+		$('td#filters_row input[type=checkbox]').removeAttr('checked');
+		table_length = $(this).find(':selected').attr('data-tbl');
+		
+		getoveralllist();
+	});
+	
+	getoveralllist(1);
+});
+
+$(document).ready(function() {
+	
+	$('#print_select').prop('disabled', true);
+	
+	//TODO-3644  Ancuta 02.12.2020
+	$('#archive').prop('disabled', true);
+	$('#activate').prop('disabled', true);
+	//--
+	
+	checkcheck();
+	$('.patients_chk').live('click',function(){
+		checkcheck();
+	});
+	
+	$("#paneln").hide();
+	$('#toarchivebuttondiv, #fromarchivebuttondiv').hide();
+
+	$(".btn-slide-n_p").live('click',function(){
+		$("#paneln").slideToggle("slow");
+		$(this).toggleClass("active");
+		if($(this).hasClass('active'))
+		{
+			var li = $('#tab-1').closest('li');
+			if(li.hasClass('ui-state-active')) {
+				$('#deadafterdischarge').show();
+				if($('#f_deadafterdischarge').val() != '1')
+				{
+						$('#f_deadafterdischarge').val('1');
+				}
+				
+			}
+			else {
+				$('#deadafterdischarge').hide();
+			}
+		}
+		else
+		{
+			var li = $('#tab-1').closest('li');
+			if(li.hasClass('ui-state-active')) {
+				$('#f_deadafterdischarge').val('');
+				$('#f_deadafterdischarge').removeAttr('checked');
+				getoveralllist();
+			}
+		}
+		return false;
+	});
+	$(".btn-slide-n_p").addClass('ui-state-default ui-corner-bottom');
+	$( "#patientlisttabs" ).tabs();
+
+
+	<?php if(isset($this->last_page2tab)):?>
+		var last_page2tab = "<?php echo $this->last_page2tab;?>";
+	
+		$.map(tabsid2string, function(tab_name,tab_index) {
+			if(last_page2tab == tab_name){
+				$( "#patientlisttabs" ).tabs('select', tab_index);
+			}
+		});
+	<?php endif;?>
+
+	$('#chk_all_patients').live('click', function(){
+		
+		if($(this).is(':checked')){
+			$('.patients_chk').each(function(){
+				$(this).attr('checked', true)
+				$('#print_select').prop('disabled', false);
+				//TODO-3644  Ancuta 02.12.2020
+				$('#archive').prop('disabled', false);
+				$('#activate').prop('disabled', false);
+				//--
+			});
+		} else {
+			$('.patients_chk').each(function(){
+				$('#print_select').prop('disabled', true);
+				//TODO-3644  Ancuta 02.12.2020
+				$('#archive').prop('disabled', true);
+				$('#activate').prop('disabled', true);
+				//-- 
+		 
+				$(this).attr('checked', false)
+			});
+		}
+	});
+ 
+	
+	$('.print').live('change',function(){
+ 		var pgenerate_value = $(this).val();
+ 		
+ 		if(pgenerate_value != 0){
+ 			$("#generate").val(pgenerate_value);
+		 
+			
+			if(pgenerate_value == "print_list_all_columns" || pgenerate_value == "print_list_viewable_columns"
+				|| pgenerate_value == "export_xlsx_all" || pgenerate_value == "export_xlsx_viewable"		
+			){
+				$("#patient_overalllist").attr("action", '');
+			}
+
+			
+			//var sh_form_arr = pgenerate_value.split('_');
+			//var month = sh_form_arr[1];
+			var form_arr = pgenerate_value.split('_');
+			var month = form_arr[1];
+			//if( sh_form_arr[0]=="printshforms" && month.length > 0 ){
+			if(month.length > 0 ){
+				/* $("#sh_month").val(month);
+				$("#generate_sh").val(1); */
+				
+				$("#form_month").val(month);
+				$("#generate_form").val(1);
+				
+				if(form_arr[0]=="printshforms")
+				{
+		 			var formAction = "<?php echo APP_BASE; ?>patientformnew/shbulkfiles";
+				}
+				else if(form_arr[0]=="printrpforms")
+				{
+					var formAction = "<?php echo APP_BASE; ?>patientformnew/patientactionsbulkfiles";
+				}
+				else if(form_arr[0]=="printshformsfilled") //ISPC-2426 Carmen 06.11.2019
+				{
+					var formAction = "<?php echo APP_BASE; ?>patientformnew/shbulkfilledfiles";
+				}
+				
+				//var formAction = "<?php echo APP_BASE; ?>patientformnew/shbulkfiles";
+				$("#patient_overalllist").attr("action", formAction);
+				
+			} 
+			
+
+			
+			$('#patient_overalllist').submit();
+			// reset - select
+			$('.print').prop('selectedIndex',0);
+			
+ 		}
+		
+	});
+	
+
+
+	$('#archive').live('click', function(e){
+		e.preventDefault();	
+	
+		//TODO-3644 Ancuta 02.12.2020
+		var patients_chk = $('.patients_chk:checked');
+		if(patients_chk.length == 0 ){
+			return;
+		} 
+		//--
+		
+		jConfirm('<?php echo $this->translate("confirm_move_archive"); ?>', '<?php echo $this->translate("confirmdeletetitle"); ?>', function(r) {
+			if(r){
+				
+				//TODO-3644 Ancuta 02.12.2020
+				//var archivArray = $('.archiv:checked').map(function(){ return $(this).val();}).get().join(",");
+				var archivArray = $('.patients_chk:checked').map(function(){ return $(this).val();}).get().join(",");
+				// -- 
+				
+				if ( ! checkclientchanged()){
+					return false;
+				}
+				$.ajax({
+					type: 'post',
+// 					url: 'patient/dischargepatientlist',
+// 					data: 'flg=archiv&ids=' + archivArray,
+					url: 'patient/patientoveralllist',
+					data: 'send2archive=1&archiv_ids=' + archivArray,
+					success: function() {
+						$('.patients_chk:checked').each(function(){
+
+							var rowid = $(this).attr("rel");
+
+							$('#row-'+rowid).hide("slow");
+							$('#row-'+rowid).remove();
+
+						});
+					}
+				});
+			} else {
+ 
+			}
+		});
+	});
+
+	$('#activate').live('click', function(e){
+		
+		e.preventDefault();
+		//TODO-3644 Ancuta 02.12.2020
+		var patients_chk = $('.patients_chk:checked');
+		if(patients_chk.length == 0 ){
+			return;
+		} 
+		//--
+		
+		//var archivArray = $('.activate:checked').map(function(){ return $(this).val(); }).get().join(",");
+		//TODO-3644 Ancuta 02.12.2020
+		var archivArray = $('.patients_chk:checked').map(function(){ return $(this).val(); }).get().join(",");
+
+		jConfirm('<?php echo $this->translate('confirm_move_discharged'); ?>', '<?php echo $this->translate('confirmdeletetitle'); ?>', function(r) {
+			if(r){
+				$.ajax({
+					type: 'post',
+// 					url: 'patient/archivepatientlist',
+// 					data: 'flg=archiv&ids=' + archivArray,
+					url: 'patient/patientoveralllist',
+					data: 'send2discharge=1&ids=' + archivArray,
+					success: function() {
+						$('.patients_chk:checked').each(function(){
+							var rowid = $(this).attr("rel");
+							$('#row-'+rowid).hide("slow");
+							$('#row-'+rowid).remove();
+							
+ 
+						});
+					}
+				});
+			} else {
+ 
+			}
+		});
+	});
+
+	$('#all-archiv').live('click', function(){
+		if($(this).is(':checked')){
+			$('.archiv').each(function(){
+				$(this).attr('checked', true)
+			});
+		} else {
+			$('.archiv').each(function(){
+				$(this).attr('checked', false)
+			});
+		}
+	});
+	$('#all-activate').live('click', function(){
+		if($(this).is(':checked')){
+			$('.activate').each(function(){
+				$(this).attr('checked', true)
+			});
+		} else {
+			$('.activate').each(function(){
+				$(this).attr('checked', false)
+			});
+		}
+	});
+
+	$('#standby_readmission').live('click', function (e){
+		e.preventDefault();
+
+		if($('#adm_date').val()){
+			if ( ! checkclientchanged()){
+				return false;
+			}
+			$('#standby_readmission').attr("disabled", true);
+			$('#readm').submit();
+		} else {
+			alert('geben Sie bitte die Aufnahmetermin.');
+		}
+
+	});
+
+	$("input:checkbox.sapv_k").click(function(){
+		$("input:checkbox.sapv_k").not($(this)).removeAttr("checked");
+		$(this).attr("checked", $(this).attr("checked"));
+
+		var curent_id = $(this).attr('alt');
+
+		if($(this).is(':checked')){
+			$('#icon-sys-value-'+curent_id).attr('checked', true);
+		} else {
+			$('#icon-sys-value-'+curent_id).attr('checked', false);
+		}
+
+		if($(this).is(':checked')){
+			$('#icon-sys-status-'+curent_id+'-1').attr('checked', true);
+		} else {
+			$('#icon-sys-status-'+curent_id+'-1').attr('checked', false);
+		}
+
+	});
+	
+	$("input:checkbox.diagno_act").click(function(){
+		$("input:checkbox.diagno_act").not($(this)).removeAttr("checked");
+		$(this).attr("checked", $(this).attr("checked"));
+
+		var curent_id = $(this).attr('alt');
+
+		if($(this).is(':checked')){
+			$('#icon-sys-value-'+curent_id).attr('checked', true);
+		} else {
+			$('#icon-sys-value-'+curent_id).attr('checked', false);
+		}
+
+		if($(this).is(':checked')){
+			$('#icon-sys-status-'+curent_id+'-1').attr('checked', true);
+		} else {
+			$('#icon-sys-status-'+curent_id+'-1').attr('checked', false);
+		}
+
+	});	
+
+	$("input:checkbox.maintenancestage").click(function(){
+		$("input:checkbox.maintenancestage").not($(this)).removeAttr("checked");
+		$(this).attr("checked", $(this).attr("checked"));
+
+		var curent_id = $(this).attr('alt');
+
+		if($(this).is(':checked')){
+			$('#icon-sys-value-'+curent_id).attr('checked', true);
+		} else {
+			$('#icon-sys-value-'+curent_id).attr('checked', false);
+		}
+
+		if($(this).is(':checked')){
+			$('#icon-sys-status-'+curent_id+'-1').attr('checked', true);
+		} else {
+			$('#icon-sys-status-'+curent_id+'-1').attr('checked', false);
+		}
+
+	});
+	
+	/* ISPC-2420 */
+	$("input:checkbox.demstepcare").click(function(){
+		$("input:checkbox.demstepcare").not($(this)).removeAttr("checked");
+		$(this).attr("checked", $(this).attr("checked"));
+
+		var curent_id = $(this).attr('alt');
+
+		if($(this).is(':checked')){
+			$('#icon-sys-value-'+curent_id).attr('checked', true);
+		} else {
+			$('#icon-sys-value-'+curent_id).attr('checked', false);
+		}
+
+		if($(this).is(':checked')){
+			$('#icon-sys-status-'+curent_id+'-1').attr('checked', true);
+		} else {
+			$('#icon-sys-status-'+curent_id+'-1').attr('checked', false);
+		}
+
+	});
+	
+	
+
+	$("input:checkbox.sys_icons").click(function(){
+		$(this).attr("checked", $(this).attr("checked"));
+
+		var curent_id = $(this).attr('alt');
+		if($('#hicon-sys-value-'+curent_id)){
+			if($(this).is(':checked')){
+				$('#hicon-sys-value-'+curent_id).attr('checked', true);
+			} else {
+				$('#hicon-sys-value-'+curent_id).attr('checked', false);
+			}
+		}
+		if($('#hicon-sys-status-'+curent_id)){
+			if($(this).is(':checked')){
+				$('#hicon-sys-status-'+curent_id).attr('checked', true);
+			} else {
+				$('#hicon-sys-status-'+curent_id).attr('checked', false);
+			}
+		}
+	});
+
+	$("input:checkbox.patient_status").click(function(){
+		$("input:checkbox.patient_status").not($(this)).removeAttr("checked");
+		$(this).attr("checked", $(this).attr("checked"));
+
+		var curent_id = $(this).attr('alt');
+		if($('#icon-sys-value-'+curent_id)){
+			if($(this).is(':checked')){
+				$('#icon-sys-value-'+curent_id).attr('checked', true);
+			} else {
+				$('#icon-sys-value-'+curent_id).attr('checked', false);
+			}
+		}
+		if($('#icon-sys-status-'+curent_id)){
+			if($(this).is(':checked')){
+				$('#icon-sys-status-'+curent_id).attr('checked', true);
+			} else {
+				$('#icon-sys-status-'+curent_id).attr('checked', false);
+			}
+		}
+	});
+
+	$('.icon_label').mouseover(function() {
+		  $('.blues').append($(this).attr('id'));
+		}).mouseout(function(){
+			$('.blues').empty();
+	});
+	
+	
+	$("#f_doctor, #f_pflegedienste, #f_user, #f_location").chosen({
+		multiple:0,
+		"search_contains": true,
+		no_results_text: '<?php echo $this->translate('noresultfound'); ?>'
+
+	});
+	
+	document.title = '<?php echo $this->translate("patientlist"); ?>';
+	
+	//ISPC-2396 Carmen 08.10.2019
+	$(document).on('click', '#clientpatienticons', function(event) {
+		
+		var patientarray = $('.patients_chk:checked').map(function(){ return $(this).val();}).get().join(",");
+		
+		if(patientarray == '')
+		{
+			jAlert("<?php echo $this->translate('no patient selected'); ?>");
+			return false;
+		}
+		
+		if ( ! checkclientchanged()) {
+			return false;
+		}
+		
+		var url = appbase+'patient/getclientpatienticons';
+		
+		xhr = $.ajax({
+			type: 'post',
+			url : url,
+			data:{
+				pids: patientarray
+			},
+			//dataType: 'string',
+			success : function(response) {
+				if(response != "")
+				{
+					$('.patient_icons').html(response);
+					$('.patient_icons').dialog('open');
+				}
+				else
+				{
+					jAlert("<?php echo $this->translate('no icons to be deleted'); ?>");
+				}
+			}
+		});
+	});
+	
+	$( ".patient_icons" ).dialog({
+		autoOpen: false,
+		resizable: false,
+		title: "<?php echo $this->translate('2396 - patient icons ')?>",
+		height: 380,
+		width: 450,
+		modal: true,
+		open: function() {
+			$(this).dialog( "option", "buttons", 
+					[ 
+						{
+							text: "<?php echo $this->translate('save')?>", 
+							"class": 'cancelButtonClass',
+							click: function() {
+								
+								var patientarray = $('.patients_chk:checked').map(function(){ return $(this).val();}).get().join(",");
+								var iconspatientarray = $('.todelete_icon:checked').map(function(){ return $(this).val();}).get().join(",");
+							
+								if(iconspatientarray == '')
+								{
+									jAlert("<?php echo $this->translate('no icons to be deleted selected'); ?>");
+									return false;
+								}
+								
+								$.ajax({
+									type: 'post',
+//				 					url: 'patient/dischargepatientlist',
+//				 					data: 'flg=archiv&ids=' + archivArray,
+									url: 'patient/patientoveralllist',
+									data: { 
+										deletepatienticons : 1,
+										pat_ids : patientarray,
+										icons_ids : iconspatientarray
+									},
+									success: function() {
+										$('.patients_chk:checked').each(function(){
+											$(this).prop('checked', false);
+										});
+										location.href = location.href;
+									}
+								});
+								
+								$( this ).dialog( "close" );
+								
+							}
+						},
+						{
+							text: "<?php echo $this->translate('cancel')?>", 
+							"class": 'cancelButtonClass',
+							click: function() {
+								$( this ).dialog( "close" );
+							}
+						}
+				]
+			);
+		},
+		close: function() {
+			
+		}
+
+	});
+	
+});
+
+
+function checkcheck(){
+	var patients_chk = $('.patients_chk:checked');
+	if(patients_chk.length > 0 ){
+		$('#print_select').prop('disabled', false);
+	} else{
+		$('#print_select').prop('disabled', true);
+	}
+}
+
+
+
+function DoNav(theUrl){
+	$('.modal').live('click', function(){
+		var values = getQueryParams(theUrl);
+
+		$('#id').val(values['id']);
+		$('#activated').val(values['activate']);
+		$('#last_discharge').val(values['last_discharge']);
+
+		
+		$('#adm_date').datepicker({
+	        dateFormat: 'dd.mm.yy',
+			showOn: "both",
+			buttonImage: $('#calImg').attr('src'),
+			buttonImageOnly: true,
+			changeMonth: true,
+			changeYear: true,
+			nextText: '',
+			prevText: '',
+	        minDate: values['last_discharge'],
+	        maxDate: '<?php echo date('d.m.Y'); ?>'
+		});
+		
+		
+
+		centerPopup({sr:"inline",ht:400,wt:450});
+		loadPopup();
+	});
+}
+function deleteconfirm(id,row) {
+	jConfirm('<?php echo $this->translate('confirmdeleterecord_standby'); ?>', '<?php echo $this->translate('confirmdeletetitle'); ?>', function(r) {
+		if(r){
+// 			$.get("patient/patientstandbylist?id="+id+"&remove=1", function(response) {
+			$.get("patient/patientoveralllist?id="+id+"&send2standbydeleted=1", function(response) {
+				$('#row-'+row).hide('slow');
+				$('#row-'+row).remove();
+			});
+		}
+	});
+	return false;
+}
+function deletereconfirm(id, row) {
+	jConfirm('<?php echo $this->translate('confirmreactivaterecord'); ?>', '<?php echo $this->translate('confirmdeletetitle'); ?>', function(r) {
+		if(r) {
+// 			$.get("patient/patientstandbydischargelist?id="+id+"&activate=1", function(response) {
+			$.get("patient/patientoveralllist?id="+id+"&send2standby=1", function(response) {
+				$('#row-'+row).hide('slow');
+				$('#row-'+row).remove();
+			});
+		}
+	});
+
+	return false;
+}
+function getQueryParams( val ) {
+        //Use the window.location.search if we don't have a val.
+        var query = val || window.location.search;
+        query = query.split('?')[1]
+        var pairs = query.split('&');
+        var retval = {};
+        var check = [];
+        for( var i = 0; i < pairs.length; i++ ) {
+                check = pairs[i].split('=');
+                retval[decodeURIComponent(check[0])] = decodeURIComponent(check[1]);
+        }
+
+        return retval;
+}
+</script>
+<style type="text/css">
+.ui-tabs .ui-tabs-nav li {
+	border-bottom-width: 10px;
+}
+
+.ui-tabs .ui-tabs-nav li a {
+	float: left;
+	text-decoration: none;
+	padding: 0.5em 0.5em;
+}
+
+
+
+
+
+/* ISPC-2138 */
+.outer{
+		width: 100%!important;
+		
+	}
+#Wrapper {
+	width: 100%!important;
+       min-height: 5px;
+       overflow: hidden;
+   
+}
+   #Wrapper .LeftDiv {
+       float: left;
+       width: 200px;
+       overflow: hidden;
+       min-height: 100px;
+   }
+   
+#MainContent { 
+       width: auto!important;
+       display: block; /*default display for div */
+       float: none;/*default float for div*/
+       
+       padding-left:10px;
+       padding-right:30px;
+       
+       min-height: 100px;
+       overflow: hidden;
+}
+body {
+    overflow-x: hidden;
+}
+</style>
+<div class="listfilters">
+ <div id="CalImg" style="display: none;">
+	<img id="calImg" src="<?php echo RES_FILE_PATH;  ?>/images/calendar.png" alt="Popup" class="trigger left" style="margin-top:5px;">
+</div>
+<div id="patientlisttabs">
+	<ul style="clear: none; height: 32px;">
+		<li><a href="#paneln" rel="1" class="tabs" id="tab-0" ><?php echo $this->translate('activepatients')?></a></li>
+		<li><a href="#paneln" rel="2" class="tabs" id="tab-1" ><?php echo $this->translate('dischargedpatients')?></a></li>
+		<li><a href="#paneln" rel="7" class="tabs" id="tab-7" ><?php echo $this->translate('overallassignedpatients')?></a></li>
+		<li><a href="#paneln" rel="3" class="tabs" id="tab-2" ><?php echo $this->translate('standby')?></a></li>
+		<li><a href="#paneln" rel="6" class="tabs" id="tab-6" ><?php echo $this->translate('overallstandbydischargepatientlist')?></a></li>
+		<li><a href="#paneln" rel="4" class="tabs" id="tab-3" ><?php echo $this->translate('archivedpatients')?></a></li>
+		<li><a href="#paneln" rel="5" class="tabs" id="tab-4" ><?php echo $this->translate('allpatients')?></a></li>
+	</ul>
+	<div id="paneln" class="ui-helper-reset  ui-widget-header ui-corner-all" style="  float: left; background: #eeeeee; display: block;">
+	<div class="filtertable" >
+		<form id="overalllist_form">
+		<table border="0" cellspacing="10" cellpadding="10" style="width:99%;">
+			<tr>
+		  		<td class="tdlabel"><?php echo $this->translate('keyword')?></td>
+				<td colspan="2" class="lnamefilter lefttdrows">
+					<input type="text" name="f_keyword" value="" id="keyword" style="width:240px" />
+				</td>
+				<td class="tdlabel bottomtdrows"><span><?php echo $this->translate('columnspatientlist')?></span>
+				</td>
+			</tr>
+			<tr>
+				<td class="tdlabel"><?php echo $this->translate('dateofbirth')?></td>
+				<td colspan="2"  class="lefttdrows ldateofbirth">
+					<select name="f_dob_start"><?php  $yearRange = 150;
+    				$thisYear = date('Y');
+    				$startYear = ($thisYear - $yearRange);
+    				foreach (range($thisYear, $startYear) as $year) {
+    					$selected = "";
+						if($year == $startYear) { $selected = " selected"; }
+    						echo '<option' . $selected . '>' . $year . '</option>';
+    				}?></select>
+				<label><?php echo $this->translate('bis')?>:</label>
+					<select name="f_dob_end"><?php  $yearRange = 150;
+    				$thisYear = date('Y');
+    				$startYear = ($thisYear - $yearRange);
+    				foreach (range($thisYear, $startYear) as $year) {
+    					$selected = "";
+						if($year == $thisYear) { $selected = " selected"; }
+    						echo '<option' . $selected . '>' . $year . '</option>';
+    				}?></select>
+				</td>
+				<td rowspan="5" style="width: auto;" class="ip_columnslists">
+					<?php
+						$allColumns = $this->allColumns;
+
+						foreach($allColumns as $kcol=>$vcol){
+							$x = (in_array($kcol, $columnsIdsArray))? 'checked="checked"' : "";
+
+ 							if($this->user2location == "0" && $kcol == "25"){
+							
+							} else {
+							echo '<div class="checkboxdiv colcheckdivs" style="display: none;" id="checkbox-'.$kcol.'"><input type="checkbox" value="'.$kcol.'" name="columns[]" class="checkcolumns" id="column-'.$kcol.'" '.$x.'/> <label for="column-'.$kcol.'" id="columnlabels">'.$this->translate($vcol['columnName']).'</label> </div>';
+						}
+						}
+					?>
+					<input type="hidden" value="0" name="savecols" id="savecols" />
+				</td>
+			</tr>
+			<tr>
+				<td class="tdlabel"><?php echo $this->translate('location')?></td>
+				<td colspan="2" class="locationfilter lefttdrows">
+					<?php echo $this->formSelect('f_location',$this->location_id, array('style'=>'','class'=>'Location'), $this->locationarray) ?>
+				</td>
+			</tr>
+
+			<tr>
+				<td class="tdlabel">Behandelt von</td>
+				<td colspan="2" class="locationfilter lefttdrows">
+					<?php echo $this->formSelect('f_user',$this->user_id, array('style'=>'','class'=>'Location'), $this->userarray) ?>
+				</td>
+			</tr>
+			
+			<?php if(count($this->pflegedienstsarray)>1):?>
+			<tr>
+				<td class="tdlabel"><?php echo $this->translate('nursing')?></td>
+				<td colspan="2" class="locationfilter lefttdrows">
+					<?php echo $this->formSelect('f_pflegedienste',$this->nursing, array('style'=>'','class'=>'pflegedienst'), $this->pflegedienstsarray) ?>
+				</td>
+			</tr>
+			<?php endif;?>
+
+           <?php if(count($this->fdoctor)>1):?>
+			<tr>
+				<td class="tdlabel"><?php echo $this->translate('familydoctor')?></td>
+				<td colspan="2" class="locationfilter lefttdrows">
+					<?php echo $this->formSelect('f_doctor',$this->first_name, array('style'=>'','class'=>'pflegedienst'), $this->fdoctor) ?>
+				</td>
+			</tr>
+			<?php endif;?>
+			
+			<tr id="deadafterdischarge" style="display: none;">
+				<td class="tdlabel"><?php echo $this->translate('deadafterdischarge')?></td>
+				<td colspan="2" class="locationfilter lefttdrows">
+				
+					<input type="checkbox" value="1" name="f_deadafterdischarge" id="f_deadafterdischarge"/>
+				
+				</td>
+			</tr>
+
+			<!--system icons filters-->
+			<tr>
+				<td class="tdlabel lefttdrows" colspan="3">
+					<?php echo $this->translate('system_icons');  ?>
+				</td>
+			</tr>
+			<tr>
+				<td colspan="3" align="center" class="lefttdrows filtericonbar" id="filters_row">
+				<?php
+
+
+				foreach($this->system_icons_list as $k_sys_icn=>$v_sys_icn):  ?>
+					<?php if(($v_sys_icn['function'] != 'get_patients_status' &&  $v_sys_icn['function'] != 'get_sapv_patients' && $v_sys_icn['id'] != '2' && $v_sys_icn['id'] != '70' && $v_sys_icn['id'] != '71' && $v_sys_icn['function'] != 'go_to_visitform') || ($this->wlpermission && $v_sys_icn['id'] == '2' && $v_sys_icn['function'] != 'go_to_visitform')):  //exclude patient status icon from filter ?>
+					<div class="system_icon_filters" >
+						<label for="icon-sys-<?php  echo $v_sys_icn['id'];  ?>" class="icon_label" style="background:#<?php if($v_sys_icn['custom']['color']): echo $v_sys_icn['custom']['color']; else: echo $v_sys_icn['color']; endif;?>;">
+							<?php if(!empty($v_sys_icn['custom']['image'])): ?>
+							<img src="<?php echo APP_BASE . 'icons_system/' . $v_sys_icn['custom']['image']; ?>" title="<?php echo $this->translate($v_sys_icn['name']);  ?>" >
+							<?php elseif(!empty($v_sys_icn['image'])): ?>
+							<img src="<?php echo APP_BASE . 'icons_system/' . $v_sys_icn['image']; ?>" title="<?php echo $this->translate($v_sys_icn['name']);  ?>" >
+							<?php else: ?>
+							<p>&nbsp;</p>
+							<?php endif; ?>
+						</label>
+						<input type="checkbox" value="<?php echo $v_sys_icn['id']; ?>" name="icon_sys[]" id="icon-sys-<?php  echo $v_sys_icn['id'];  ?>" alt="<?php  echo $v_sys_icn['id'];  ?>"class="icon_input sys_icons">
+						<input type="checkbox" value="" name="icon_sys_value[]" id="hicon-sys-value-<?php  echo $v_sys_icn['id'];  ?>" style="display:none;">
+						<input type="checkbox" value="" name="icon_sys_status[]" id="hicon-sys-status-<?php  echo $v_sys_icn['id'];  ?>" style="display:none;">
+
+					</div>
+					<?php elseif($v_sys_icn['function'] == 'get_patients_status'):  ?>
+					<br />
+					<br />
+					<br />
+					<!--RED ICON-->
+					<div class="system_icon_filters" >
+						<label for="icon-sys-traf-<?php  echo $v_sys_icn['id'];  ?>-3" class="icon_label" style="background:#<?php if($v_sys_icn['custom']['color']): echo $v_sys_icn['custom']['color']; else: echo $v_sys_icn['color']; endif;?>;">
+							<?php if(!empty($v_sys_icn['image'])): ?>
+								<img src="<?php echo APP_BASE . 'icons_system/' . IconsMaster::traffic_light_icons($v_sys_icn['image'], '3'); ?>" title="<?php echo $this->translate($v_sys_icn['name']);  ?>" >
+							<?php else: ?>
+								<p>&nbsp;</p>
+							<?php endif; ?>
+						</label>
+						<input type="checkbox" value="<?php echo $v_sys_icn['id']; ?>" name="icon_sys[]" id="icon-sys-traf-<?php  echo $v_sys_icn['id'];  ?>-3" alt="<?php  echo $v_sys_icn['id'];  ?>-3" class="icon_sys_input icon_input patient_status">
+						<input type="checkbox" value="patient_status_icon" name="icon_sys_value[]" id="icon-sys-value-<?php  echo $v_sys_icn['id'];  ?>-3" class="icon_sys_input icon_input patient_status" style="display:none;">
+						<input type="checkbox" value="3" name="icon_sys_status[]" id="icon-sys-status-<?php  echo $v_sys_icn['id'];  ?>-3" class="icon_sys_input icon_input patient_status" style="display:none;">
+
+					</div>
+					<!--YELLOW ICON-->
+					<div class="system_icon_filters">
+						<label for="icon-sys-traf-<?php  echo $v_sys_icn['id'];  ?>-2" class="icon_label"  style="background:#<?php if($v_sys_icn['custom']['color']): echo $v_sys_icn['custom']['color']; else: echo $v_sys_icn['color']; endif;?>;">
+							<?php if(!empty($v_sys_icn['image'])): ?>
+								<img src="<?php echo APP_BASE . 'icons_system/' . IconsMaster::traffic_light_icons($v_sys_icn['image'], '2'); ?>" title="<?php echo $this->translate($v_sys_icn['name']);  ?>" >
+							<?php else: ?>
+								<p>&nbsp;</p>
+							<?php endif; ?>
+						</label>
+						<input type="checkbox" value="<?php echo $v_sys_icn['id']; ?>" name="icon_sys[]" id="icon-sys-traf-<?php  echo $v_sys_icn['id'];  ?>-2" alt="<?php  echo $v_sys_icn['id'];  ?>-2" class="icon_sys_input icon_input patient_status">
+						<input type="checkbox" value="patient_status_icon" name="icon_sys_value[]" id="icon-sys-value-<?php  echo $v_sys_icn['id'];  ?>-2" class="icon_sys_input icon_input patient_status" style="display:none;">
+						<input type="checkbox" value="2" name="icon_sys_status[]" id="icon-sys-status-<?php  echo $v_sys_icn['id'];  ?>-2" class="icon_sys_input icon_input patient_status" style="display:none;">
+
+					</div>
+					<!--GREEN  ICON-->
+					<div class="system_icon_filters">
+						<label for="icon-sys-traf-<?php  echo $v_sys_icn['id'];  ?>-1" class="icon_label"  style="background:#<?php if($v_sys_icn['custom']['color']): echo $v_sys_icn['custom']['color']; else: echo $v_sys_icn['color']; endif;?>;">
+							<?php if(!empty($v_sys_icn['image'])): ?>
+								<img src="<?php echo APP_BASE . 'icons_system/' . IconsMaster::traffic_light_icons($v_sys_icn['image'], '1'); ?>" title="<?php echo $this->translate($v_sys_icn['name']);  ?>" >
+							<?php else: ?>
+								<p>&nbsp;</p>
+							<?php endif; ?>
+						</label>
+						<input type="checkbox" value="<?php echo $v_sys_icn['id']; ?>" name="icon_sys[]" id="icon-sys-traf-<?php  echo $v_sys_icn['id'];  ?>-1" alt="<?php  echo $v_sys_icn['id'];  ?>-1" class="icon_sys_input icon_input patient_status">
+						<input type="checkbox" value="patient_status_icon" name="icon_sys_value[]" id="icon-sys-value-<?php  echo $v_sys_icn['id'];  ?>-1" class="icon_sys_input icon_input patient_status" style="display:none;">
+						<input type="checkbox" value="1" name="icon_sys_status[]" id="icon-sys-status-<?php  echo $v_sys_icn['id'];  ?>-1" class="icon_sys_input icon_input patient_status" style="display:none;">
+
+					</div>
+
+					<?php endif;  ?>
+
+				<?php endforeach;  ?>
+				<?php $system_sub_icons_list = $this->system_sub_icons_list; ?>
+					<?php foreach($system_sub_icons_list[6] as $k_sub_icons => $v_sub_icons ):  ?>
+						<div class="system_icon_filters">
+							<label for="icon-sys-<?php  echo $v_sub_icons['id'];  ?>" class="icon_label"  style="background:#<?php if($v_sub_icons['custom']['color']): echo $v_sub_icons['custom']['color']; else: echo $v_sub_icons['color']; endif;?>">
+								<?php if(!empty($v_sub_icons['custom']['image'])): ?>
+								<img src="<?php echo APP_BASE . 'icons_system/' . $v_sub_icons['custom']['image']; ?>" title="<?php echo $this->translate($v_sub_icons['name']);  ?>" >
+								<?php elseif(!empty($v_sub_icons['image'])): ?>
+								<img src="<?php echo APP_BASE . 'icons_system/' . $v_sub_icons['image']; ?>" title="<?php echo $this->translate($v_sub_icons['name']);  ?>" >
+								<?php else: ?>
+								<p>&nbsp;</p>
+								<?php endif; ?>
+							</label>
+						<input type="checkbox" value="6" name="icon_sys[<?php  echo $v_sub_icons['id'];  ?>]" id="icon-sys-<?php  echo $v_sub_icons['id'];  ?>" alt="<?php  echo $v_sub_icons['id'];  ?>" class="icon_input icon_sys_input patient_status">
+							<input type="checkbox" value="<?php echo $v_sub_icons['name']; ?>" name="icon_sys_value[<?php  echo $v_sub_icons['id'];  ?>]" id="icon-sys-value-<?php  echo $v_sub_icons['id'];  ?>" class="icon_input" style="display:none;">
+						<input type="checkbox" value=" " name="icon_sys_status[]" id="icon-sys-status-<?php  echo $v_sub_icons['id'];  ?>-1" class="icon_sys_input icon_input patient_status" style="display:none;">
+
+						</div>
+						<?php endforeach;  ?>
+					
+					<br style="clear: both" />
+					
+					
+					<?php foreach($system_sub_icons_list[3] as $k_sub_icons => $v_sub_icons ):  ?>
+					<?php if(!$this->wlpermission):  ?>
+					<div class="system_icon_filters">
+						<label for="icon-sys-<?php  echo $v_sub_icons['id'];  ?>" class="icon_label"  style="background:#<?php if($v_sub_icons['custom']['color']): echo $v_sub_icons['custom']['color']; else: echo $v_sub_icons['color']; endif;?>;">
+							<?php if(!empty($v_sub_icons['custom']['image'])): ?>
+							<img src="<?php echo APP_BASE . 'icons_system/' . $v_sub_icons['custom']['image']; ?>" title="<?php echo $this->translate($v_sub_icons['name']);  ?>" >
+							<?php elseif(!empty($v_sub_icons['image'])): ?>
+							<img src="<?php echo APP_BASE . 'icons_system/' . $v_sub_icons['image']; ?>" title="<?php echo $this->translate($v_sub_icons['name']);  ?>" >
+							<?php else: ?>
+							<p>&nbsp;</p>
+							<?php endif; ?>
+						</label>
+						<input type="checkbox" value="3" name="icon_sys[<?php  echo $v_sub_icons['id'];  ?>]" id="icon-sys-<?php  echo $v_sub_icons['id'];  ?>" alt="<?php  echo $v_sub_icons['id'];  ?>" class="icon_input icon_sys_input sapv_k">
+						<input type="checkbox" value="<?php echo $v_sub_icons['name']; ?>" name="icon_sys_value[<?php  echo $v_sub_icons['id'];  ?>]" id="icon-sys-value-<?php  echo $v_sub_icons['id'];  ?>" class="icon_input sapv_k" style="display:none;">
+						<input type="checkbox" value=" " name="icon_sys_status[]" id="icon-sys-status-<?php  echo $v_sub_icons['id'];  ?>-1" class="icon_sys_input icon_input patient_status" style="display:none;">
+
+					</div><?php if($k_sub_icons%3 == '2'):?><br style="clear: both" /><?php endif; ?>
+					<?php endif; ?>
+				<?php endforeach;  ?>
+
+					<?php if($this->diagno_act_permission):  ?>
+						<?php foreach($system_sub_icons_list[43] as $k_sub_icons => $v_sub_icons ):  ?>
+							<div class="system_icon_filters">
+								<label for="icon-sys-<?php  echo $v_sub_icons['id'];  ?>" class="icon_label"  style="background:#<?php if($v_sub_icons['custom']['color']): echo $v_sub_icons['custom']['color']; else: echo $v_sub_icons['color']; endif;?>;">
+									<?php if(!empty($v_sub_icons['custom']['image'])): ?>
+									<img src="<?php echo APP_BASE . 'icons_system/' . $v_sub_icons['custom']['image']; ?>" title="<?php echo $this->translate($v_sub_icons['name']);  ?>" >
+									<?php elseif(!empty($v_sub_icons['image'])): ?>
+									<img src="<?php echo APP_BASE . 'icons_system/' . $v_sub_icons['image']; ?>" title="<?php echo $this->translate($v_sub_icons['name']);  ?>" >
+									<?php else: ?>
+									<p>&nbsp;</p>
+									<?php endif; ?>
+								</label>
+								<input type="checkbox" value="43" name="icon_sys[<?php  echo $v_sub_icons['id'];  ?>]" id="icon-sys-<?php  echo $v_sub_icons['id'];  ?>" alt="<?php  echo $v_sub_icons['id'];  ?>" class="icon_input icon_sys_input diagno_act">
+								<input type="checkbox" value="<?php echo $v_sub_icons['name']; ?>" name="icon_sys_value[<?php  echo $v_sub_icons['id'];  ?>]" id="icon-sys-value-<?php  echo $v_sub_icons['id'];  ?>" class="icon_input diagno_act" style="display:none;">
+								<input type="checkbox" value=" " name="icon_sys_status[]" id="icon-sys-status-<?php  echo $v_sub_icons['id'];  ?>-1" class="icon_sys_input icon_input patient_status" style="display:none;">
+		
+							</div> 
+						<?php endforeach;  ?>
+					<?php endif; ?>
+					
+							<div class="clearer"></div>
+								<?php foreach($system_sub_icons_list[56] as $k_sub_icons => $v_sub_icons ):  ?>
+								<div class="system_icon_filters">
+									<label for="icon-sys-<?php  echo $v_sub_icons['id'];  ?>" class="icon_label"  style="background:#<?php if($v_sub_icons['custom']['color']): echo $v_sub_icons['custom']['color']; else: echo $v_sub_icons['color']; endif;?>;" id="<?php echo $this->translate($v_sub_icons['name']);  ?>" >
+										<?php if(!empty($v_sub_icons['custom']['image'])): ?>
+										<img src="<?php echo APP_BASE . 'icons_system/' . $v_sub_icons['custom']['image']; ?>" title="<?php echo $this->translate($v_sub_icons['name']);  ?>" >
+										<?php elseif(!empty($v_sub_icons['image'])): ?>
+										<img src="<?php echo APP_BASE . 'icons_system/' . $v_sub_icons['image']; ?>" title="<?php echo $this->translate($v_sub_icons['name']);  ?>" >
+										<?php else: ?>
+										<p>&nbsp;</p>
+										<?php endif; ?>
+									</label>
+									<input type="checkbox" value="56" name="icon_sys[<?php  echo $v_sub_icons['id'];  ?>]" id="icon-sys-<?php  echo $v_sub_icons['id'];  ?>" alt="<?php  echo $v_sub_icons['id'];  ?>" class="icon_input icon_sys_input maintenancestage">
+									<input type="checkbox" value="<?php echo $v_sub_icons['name']; ?>" name="icon_sys_value[<?php  echo $v_sub_icons['id'];  ?>]" id="icon-sys-value-<?php  echo $v_sub_icons['id'];  ?>" class="icon_input maintenancestage" style="display:none;">
+									<input type="checkbox" value=" " name="icon_sys_status[]" id="icon-sys-status-<?php  echo $v_sub_icons['id'];  ?>-1" class="icon_sys_input icon_input patient_status" style="display:none;">
+								</div>
+								<?php endforeach;  ?>
+							<!-- ISPC-2420-->
+							<?php if($this->demstepcare_status_permission):  ?>	
+								<div class="clearer"></div>
+								<?php
+								foreach($this->system_icons_list as $k_sys_icn=>$v_sys_icn):  ?>
+									<?php if($v_sys_icn['id'] == '70' || $v_sys_icn['id'] == '71'):  ?>
+									<div class="system_icon_filters" >
+										<label for="icon-sys-<?php  echo $v_sys_icn['id'];  ?>" class="icon_label" style="background:#<?php if($v_sys_icn['custom']['color']): echo $v_sys_icn['custom']['color']; else: echo $v_sys_icn['color']; endif;?>;"  id="<?php echo $this->translate($v_sys_icn['name']);  ?>">
+											<?php if(!empty($v_sys_icn['custom']['image'])): ?>
+											<img src="<?php echo APP_BASE . 'icons_system/' . $v_sys_icn['custom']['image']; ?>" title="<?php echo $this->translate($v_sys_icn['name']);  ?>" >
+											<?php elseif(!empty($v_sys_icn['image'])): ?>
+											<img src="<?php echo APP_BASE . 'icons_system/' . $v_sys_icn['image']; ?>" title="<?php echo $this->translate($v_sys_icn['name']);  ?>" >
+											<?php else: ?>
+											<p>&nbsp;</p>
+											<?php endif; ?>
+										</label>
+										<input type="checkbox" value="<?php echo $v_sys_icn['id']; ?>" name="icon_sys[]" id="icon-sys-<?php  echo $v_sys_icn['id'];  ?>" alt="<?php  echo $v_sys_icn['id'];  ?>"class="icon_input sys_icons demstepcare">
+										<input type="checkbox" value="" name="icon_sys_value[]" id="hicon-sys-value-<?php  echo $v_sys_icn['id'];  ?>" style="display:none;">
+										<input type="checkbox" value="" name="icon_sys_status[]" id="hicon-sys-status-<?php  echo $v_sys_icn['id'];  ?>" style="display:none;">
+									</div>
+									<?php endif;  ?>
+								<?php endforeach;  ?>
+							<?php endif; ?>	
+								
+								
+								
+					
+					
+				</td>
+			</tr>
+			
+			
+			
+			
+		<!--custom icons filters-->
+		<?php if($this->custom_icons_list):  ?>
+			<tr>
+				<td class="tdlabel lefttdrows" colspan="3">
+					<?php echo $this->translate('custom_icons');  ?>
+				</td>
+				<td class="bottomtdrows"></td>
+
+			</tr>
+			<tr>
+				<td colspan="3" align="center" class="lefttdrows filtericonbar">
+				<?php $ci='1'; foreach($this->custom_icons_list as $k_cust_icn=>$v_cust_icn):  ?>
+					<div class="system_icon_filters" >
+						<label for="icon-cust-<?php  echo $v_cust_icn['id'];  ?>" class="icon_label"  style="background:#<?php echo $v_cust_icn['color']; ?>">
+							<?php if(!empty($v_cust_icn['image'])): ?>
+							<img src="<?php echo APP_BASE . 'icons_system/' . $v_cust_icn['image']; ?>" title="<?php echo $v_cust_icn['name'];  ?>"/>
+							<?php else: ?>
+							<a title="<?php echo $v_cust_icn['name'];  ?>" style="width: 25px; height: 25px;display: block;"></a>
+							<?php endif; ?>
+						</label>
+						<input type="checkbox" value="<?php echo $v_cust_icn['id']; ?>" name="icon_cust[]" id="icon-cust-<?php  echo $v_cust_icn['id'];  ?>"  class="icon_input">
+
+					</div>
+				<?php if($ci == '5'):  ?><br /><br /><br /><?php endif;  ?>
+				<?php $ci++; endforeach;  ?>
+				</td>
+
+			</tr>
+			<?php endif;  ?>
+
+			<tr>
+				<td colspan="3" align="center" class="lefttdrows">
+					<input type="hidden" value="" name="f_status" id="f_status" />
+					<input type="submit" name="apply" id="apply" class="ui-button ui-widget ui-state-default ui-corner-all ui-button-text-only" value="<?php echo $this->translate('submitfilter')?>" />
+				</td>
+
+			</tr>
+
+		</table>
+		<table>
+			<tr>
+				<td></td>
+				<td></td>
+				<td></td>
+				<td></td>
+			</tr>
+		</table>
+</form>
+</div>
+</div>
+<p class="slide_p"><a href="#" id="searchlink" class="btn-slide-n_p"><?php echo $this->translate('slidefilter')?></a></p>
+
+<div id="overallpatientlist">
+<!-- content loaded by AJAX request -->
+</div>
+
+</div>
+
+</div>
+<div id="popupContact" style="width:280px; height: 100px;">
+	<a id="popupContactClose">x</a>
+	<h1>Patient wird aktiviert am</h1>
+	<p id="contactArea">
+	<form action="" name="readm" id="readm">
+	    <input type="hidden" name="id" id="id" value="" />
+	    <input type="hidden" name="activated" id="activated" value="" />
+			<input type="hidden" name="last_discharge" id="last_discharge" value="" />
+<!-- 			<input type="text" name="adm_date" id="adm_date" value="<?php echo $this->today_date; ?>" style="float: left;"/> -->
+			<input type="text" name="adm_date" id="adm_date" value="<?php echo date('d.m.Y', time()); ?>" readonly="readonly" autofocus="false" />
+		 	 <?php echo $this->formSelect('adm_time_h', date('H', time()), array('class'=>'time_sel'), $this->hours); ?>
+			 <?php echo $this->formSelect('adm_time_m', date('i', time()), array('class'=>'time_sel'), $this->minutes); ?>
+			
+			
+			<input type="submit"  id="standby_readmission" value="Aufnahme" />
+		</div>
+
+	</form>
+
+	</p>
+</div>
+<div id="backgroundPopup"></div>
+<div class="patient_icons"></div>

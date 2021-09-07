@@ -1,0 +1,337 @@
+ <!--  Maria:: Migration CISPC to ISPC 22.07.2020 -->
+ 
+<?php echo $this->patientinfo;?>
+<?php echo $this->tabmenus;?>
+<style>
+
+    .extraops_row td{
+        padding:2px;
+        border-bottom:1px solid #ccc;
+    }
+    .extraops_time{
+        width:32px;
+    }
+    .extraops_mins{
+        width:24px;
+    }
+    .extraops_date{
+        width:60px;
+    }
+
+    .extraops_user{
+        width:120px;
+    }
+    .extraops_table th{
+        padding:2px;
+        border-bottom:1px solid #000;
+    }
+    .extraops_delete{
+        vertical-align: middle;
+        cursor:pointer;
+    }
+
+    .extraops_extramin_col{
+        width:32px;
+        background-color:#ffffcc;
+    }
+    .extraops_extramin_col input{
+        width:24px;
+    }
+</style>
+
+<script>
+
+    var extraops_datepickerconf={
+        dateFormat: 'dd.mm.yy',
+        buttonImageOnly: true,
+        changeMonth: true,
+        changeYear: true,
+        nextText: '',
+        prevText: '',
+        maxDate: '+28D',
+        minDate:'-300D',
+    };
+
+    var extraops_timepickerconf={
+        onSelect : function(time_value) {
+            $(this).focus();
+            $("#time_changed").val("1");
+            return false;
+        },
+        minutes : {
+            interval : 5
+        },
+        showPeriodLabels : false,
+        rows : 4,
+        hourText : 'Stunde',
+        minuteText : 'Minute'
+
+    };
+
+    function extraops_renumeraterows(){
+        var rowcount=0;
+        $('.extraops_row').each(function(){
+            $(this).find('input, select').each(function(){
+                var myname=$(this).attr('name');
+                myname = myname.replace(/\[\d+\]/, "["+rowcount+"]");
+                $(this).attr('name', myname);
+            });
+            rowcount++;
+            console.log(rowcount);
+        });
+    }
+    function extraops_addrow(){
+        var newel=$('.extraops_row').last().clone();
+
+        $('.extraops_table').append(newel);
+
+        $(newel).find('input, select').each(function(){
+            $(this).val('');
+            $(this).css('background-color','');
+            if($(this).hasClass('extraops_mode')){
+                $(this).val('add');
+            }
+            if($(this).hasClass('extraops_checked')){
+                $(this).val(0);
+            }
+            if($(this).hasClass('extraops_date')){
+
+                $(this).removeAttr('id');
+                $(this).removeClass('hasDatepicker');
+                $(this).datepicker(extraops_datepickerconf);
+            }
+            if($(this).hasClass('extraops_time')){
+                $(this).removeAttr('id');
+                $(this).removeClass('hasTimepicker');
+                $(this).timepicker(extraops_timepickerconf);
+            }
+            if($(this).hasClass('extraops_caseid')){
+                $(this).val('<?php echo $this->caseid;?>');
+            }
+        });
+
+        extraops_renumeraterows();
+
+    }
+    function extraops_deleterow(butt){
+        var row=$(butt).parents('.extraops_row');
+        if($('.extraops_row').length<2){
+            extraops_addrow();
+        }
+
+        if ($(row).find('.extraops_mode').val() == "old"){
+            $(row).find('input.extraops_mode').val('del');
+            $(row).hide();
+        }else{
+            $(row).remove();
+        }
+        extraops_renumeraterows();
+
+    }
+
+    function extraops_checkrow(row){
+        var fdate_elem=$(row).find('input.extraops_date');
+        var ftime_elem=$(row).find('input.extraops_time');
+        var fmins_elem=$(row).find('input.extraops_mins');
+        var fgroup_elem=$(row).find('select.extraops_group');
+
+        var fdate=fdate_elem.val();
+        var ftime=ftime_elem.val();
+        var fmins=fmins_elem.val();
+        var fgroup=fgroup_elem.val();
+
+        $(row).find('input, select').each(function(){
+            $(this).css('background-color','');
+        });
+
+        var empty=0;
+        var sum=0;
+        $(row).find('.extraops_extramin_col input').each(function(){
+
+            if ($(this).val()==""){
+                empty++;
+            }else{
+                sum=parseInt($(this).val()) + sum;
+            }
+        });
+        var mustsum=parseInt($(row).find('.extraops_mins').val());
+        var missing=mustsum-sum;
+        if(empty==1){
+            if(missing>=0 && mustsum>0){
+                $(row).find('.extraops_extramin_col input').each(function(){
+                    if ($(this).val()==""){
+                        $(this).val(missing);
+                    }
+                });
+            }
+        }else{
+            if(mustsum>0 && missing==0){
+                $(row).find('.extraops_extramin_col input').each(function(){
+                    if ($(this).val()==""){
+                        $(this).val(missing);
+                    }
+                });
+            }
+        }
+
+
+        var errors=[];
+
+        if (fgroup=="Bitte Auswählen"){
+            errors.push(fgroup_elem);
+        }
+
+        if (String(parseInt(fmins)) != fmins || parseInt(fmins)<1){
+            errors.push(fmins_elem);
+        }
+
+        var myRegexp = /(\d\d):(\d\d)/g;
+        var timeparts=myRegexp.exec(ftime)
+
+        if(timeparts==null || timeparts.length!=3 || parseInt(timeparts[1])>23 || parseInt(timeparts[2])>59){
+            errors.push(ftime_elem);
+        }
+
+        var myRegexp = /(\d\d)\.(\d\d)\.(20\d\d)/g;
+        var dateparts=myRegexp.exec(fdate)
+
+        if(dateparts==null || dateparts.length!=4 || parseInt(dateparts[1])>31 || parseInt(dateparts[2])>12){
+            errors.push(fdate_elem);
+        }
+
+        var sum=0;
+        $(row).find('.extraops_extramin_col input').each(function(){
+            sum=sum+parseInt($(this).val());
+
+        });
+        if(parseInt(fmins) != sum){
+            $(row).find('.extraops_extramin_col input').each(function(){
+                errors.push(this);
+            });
+        }
+
+
+
+        $(errors).each(function(elem){
+            $(this).css('background-color','#fcc');
+        });
+
+        if(errors.length>0){
+            $(row).find('.extraops_checked').val(0);
+        }else{
+            $(row).find('.extraops_checked').val(1);
+        }
+        $actva=$(row).find('.extraops_mode').val();
+    }
+
+
+
+    $(document).on('change', '#extraops_caseselect', function(){
+        var caseid=$('#extraops_caseselect').val();
+        document.location.href= "<?php echo APP_BASE;?>patient/extraopsleistungen?id=<?php echo $this->encid;?>&caseid=" + caseid;
+        });
+    $(document).on('change','.extraops_row input, .extraops_row select', function(){
+        extraops_checkrow($(this).parents('tr.extraops_row'));
+    });
+
+    $(document).ready(function(){
+        $('.extraops_date').datepicker(extraops_datepickerconf);
+        $('.extraops_time').timepicker(extraops_timepickerconf);
+    });
+
+</script>
+
+<div>
+    <h1>Leistungen außerhalb der Patientendokumentation</h1>
+</div>
+<br><br>
+<div>
+    <h2>Fall auswählen</h2>
+    <select id="extraops_caseselect">
+        <?php if ($this->caseid == $case['case_id']):?><option>Auswählen</option><?php endif;?>
+        <?php foreach (array_reverse($this->cases) as $case):?>
+
+            <option <?php if ($this->caseid == $case['id']) echo "selected";?> value="<?php echo $case['id'];?>"><?php echo $case['case_number'];?></option>
+        <?php endforeach;?>
+    </select>
+</div>
+
+<br><br>
+
+<?php if ($this->caseid>0):?>
+<div>
+    <form method="POST">
+    <h2>Liste der Leistungen </h2>
+    <table class="extraops_table">
+        <tr>
+            <th>Datum</th>
+            <th>Beginn</th>
+            <th>Minuten</th>
+            <th>Min. Pat.</th>
+            <th>Min. Ang.</th>
+            <th>Min. Pro.</th>
+            <th>Min. Sys.</th>
+            <th>Berufsgruppe</th>
+            <th>Erbracht durch</th>
+            <th>Beschreibung</th>
+            <th></th>
+        </tr>
+
+        <?php
+        $row=0;
+        $this->leistungen[]=array('is_new'=>1,);
+        ?>
+        <?php foreach ($this->leistungen as $leistung):?>
+            <tr class="extraops_row">
+                <td>
+                    <input class="extraops_caseid" type="hidden" name="extraops[<?php echo $row;?>][caseid]" value="<?php echo $this->caseid;?>">
+                    <input class="extraops_dbid" type="hidden" name="extraops[<?php echo $row;?>][dbid]" value="<?php echo $leistung['id'];?>">
+                    <input class="extraops_checked" type="hidden" name="extraops[<?php echo $row;?>][checked]">
+                    <input class="extraops_mode" type="hidden" name="extraops[<?php echo $row;?>][mode]" value="<?php if(isset($leistung['is_new'])){echo "add";}else{echo "old";}?>">
+                    <input class="extraops_date" type="text" name="extraops[<?php echo $row;?>][done_date]" value="<?php if(strtotime($leistung['done_date'])>strtotime('2016-01-01')) echo date('d.m.Y',strtotime($leistung['done_date']));?>">
+                </td>
+                <td><input class="extraops_time" type="text" name="extraops[<?php echo $row;?>][time]" value="<?php  if(strtotime($leistung['done_date'])>strtotime('2016-01-01')) echo date('H:i',strtotime($leistung['done_date']));?>"> Uhr</td>
+                <td><input class="extraops_mins" type="text" name="extraops[<?php echo $row;?>][mins]" value="<?php echo $leistung['mins'];?>"></td>
+
+                <td class="extraops_extramin_col"><input class="extraops_mins_patient" type="text" name="extraops[<?php echo $row;?>][mins_patient]" value="<?php echo $leistung['mins_patient'];?>"></td>
+                <td class="extraops_extramin_col"><input class="extraops_mins_angehoerige" type="text" name="extraops[<?php echo $row;?>][mins_angehoerige]" value="<?php echo $leistung['mins_angehoerige'];?>"></td>
+                <td class="extraops_extramin_col"><input class="extraops_mins_profi" type="text" name="extraops[<?php echo $row;?>][mins_profi]" value="<?php echo $leistung['mins_profi'];?>"></td>
+                <td class="extraops_extramin_col"><input class="extraops_mins_systemisch" type="text" name="extraops[<?php echo $row;?>][mins_systemisch]" value="<?php echo $leistung['mins_systemisch'];?>"></td>
+
+                <td>
+                    <select class="extraops_group" name="extraops[<?php echo $row;?>][done_group]">
+                            <option>Bitte Auswählen</option>
+                        <?php foreach ($this->opsconfig['groups'] as $group=>$foo):?>
+                            <option <?php if($group == $leistung['done_group']) echo "selected";?>><?php echo $group;?></option>
+                        <?php endforeach;?>
+                    </select>
+                </td>
+                <td><input class="extraops_user" type="text" name="extraops[<?php echo $row;?>][done_name]" value="<?php echo $leistung['done_name'];?>"></td>
+                <td><input class="extraops_memo" type="text" name="extraops[<?php echo $row;?>][memo]" value="<?php echo $leistung['memo'];?>"></td>
+                <td><img onclick="extraops_deleterow(this);" class="extraops_delete" src="<? echo RES_FILE_PATH;?>/images/action_delete.png"></td>
+            </tr>
+            <?php $row=$row+1;?>
+        <?php endforeach;?>
+
+    </table>
+        <input type="button" value="Neue Zeile hinzufügen" onclick="extraops_addrow();">
+
+        <div style="text-align: right;margin-right:8px;">
+<br><br><br>
+            <?php if ($this->sendbutt):?>
+        <input type="submit" value="Liste speichern" style="padding:8px; margin:8px;background-color: #9e9">
+            <?php else:?>
+                Keine Rechte zum Ändern der Liste.
+            <?php endif;?>
+        </div>
+    </form>
+</div>
+
+<?php endif;?>
+
+
+
+<pre>
+
+
+</pre>

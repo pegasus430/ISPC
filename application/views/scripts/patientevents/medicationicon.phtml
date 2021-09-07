@@ -1,0 +1,846 @@
+<?php
+#ISPC-2512PatientCharts 
+$color_map = $this->color_map;
+$color_map_js = $this->color_map_js;
+
+$medication_data = $this->medication_data;
+?>
+
+<style>
+.bulk_dosage{
+	cursor: cursor;
+	border-radius:4px;
+}
+
+.bulk_dosage:hover{
+	background-color:#00A2FF!important;
+	color:#fff;
+	cursor: cursor;
+}
+
+.bulk_highlight{
+	background-color:#00A2FF!important;
+	color:#fff;
+	cursor: cursor;
+}
+.fook{
+    border: 1px solid blue;
+}
+/* ISPC-2914,Elena,10.05.2021 */
+.given_another_time{
+    align-self: flex-end;
+    margin-left: -10px;
+}
+ 
+.ui-datepicker,
+#ui-datepicker-div
+{
+    z-index: 2110!important;
+}
+</style>
+<script type="text/javascript">
+var colormap = <?php echo $color_map_js; ?>;
+
+var pid = '<?php echo $_REQUEST['id']; ?>';
+
+$(document).ready(function(){
+    //ISPC-2914,Elena,10.05.2021
+    if($('#medication_dosage_view_modal').length > 0){
+        //console.log('> 0');
+        var elm= $('#medication_dosage_view_modal').parent('.ui-dialog');
+        var wdth = $('#medication_dosage_view_modal').find('.diagno_icon_list').width() + 20;
+        //console.log('width', wdth);
+        $(elm).animate({
+            width: wdth
+        });
+        $('#medication_dosage_view_modal').animate({
+            width: wdth
+        });
+
+    }
+
+    $(document).on('click', '.bulk_dosage', function() {
+
+    	var medication_type = $(this).data('medication_type');
+    	var dosage_interval = $(this).data('dosage_time');
+    	var time_indent = $(this).data('time_indent');
+
+
+    	$('.'+medication_type+time_indent).each(function(){
+    			$( this ).addClass( "foo" );
+        	})
+    	
+    });
+
+// $(document).on('hover', '.bulk_dosage', function() {
+    
+    $('.bulk_dosage')
+    	.hover(function() {
+         	var medication_type = $(this).data('medication_type');
+        	var dosage_interval = $(this).data('dosage_time');
+        	var time_indent = $(this).data('time_indent');
+            
+         	$('.'+medication_type+time_indent).each(function(){
+    			$( this ).toggleClass( "bulk_highlight" );
+        	})
+        })
+        .on('click', function() {
+        	var medication_type = $(this).data('medication_type');
+        	var dosage_interval = $(this).data('dosage_time');
+        	var time_indent = $(this).data('time_indent');
+
+        	$('.'+medication_type+time_indent).each(function(){
+        			$( this ).addClass( "foo" );
+            	})
+
+            	
+            $('#medication_dosage_interaction_bulk_modal')
+            .data('medication_type', medication_type)
+            .data('dosage_time_interval', dosage_interval)
+            .dialog('open');
+            	
+            	
+        });
+    //ISPC-2914,Elena,10.05.2021
+    $('.dose.givenow, .dose.given').on('click', function(){
+        var that =  $(this);
+        console.log('medi',that.data());
+        var given = that.data('given');
+        var dosage_status = '';
+        if(given.dosage_status !== undefined){
+            dosage_status = given.dosage_status;
+        }
+        var dosage = that.data('dosage');
+        if(given.dosage !== undefined){
+            dosage = given.dosage;
+        }
+        var dosage_date = that.data('dosage_date');
+        if(given.dosage_date !== undefined){
+            dosage_date = given.dosage_date;
+        }
+        var entry_id = 0;
+        if(given.entry_id != undefined){
+            entry_id = given.entry_id;
+        }
+        var documented_info = '';
+        if(given.documented_info != undefined){
+            documented_info = given.documented_info;
+        }
+        var not_given_reason = '';
+        if(given.not_given_reason != undefined){
+            not_given_reason = given.not_given_reason;
+        }
+        var time_interval = that.data('dosage_time_interval');
+        if(time_interval == null){
+            time_interval = that.data('time_interval');
+        }
+        var given_time_interval = time_interval;
+        if(given.dosage_date != undefined){
+            try{
+                var aDate = split(given.dosage_date, ' ');
+                if(aDate[1] !== undefined && aDate[1] !== null){
+                    given_time_interval = aDate[1];
+                }
+            }catch(exp1){
+
+            }
+        }
+
+        var drugplan_id = that.data('drugplan_id');
+            if(given.drugplan_id != undefined){
+                drugplan_id = given.drugplan_id;
+            }
+
+        $( "#medication_dosage_interaction_modal" )
+            .data('drugplan_id', drugplan_id )
+            .data('cocktail_id', '0')
+            .data('medication_name', that.data('medication') )
+            .data('dosage_unit', that.data('dosage_unit') )
+            .data('dosage_status', that.data('dosage_status') )
+            .data('time_schedule', that.data('time_schedule') )
+
+            .data('entry_id', 			entry_id)
+            .data('dosage_status', 		dosage_status)
+            .data('dosage', 				dosage )
+            .data('dosage_date', 			dosage_date )
+            .data('dosage_time_interval',  time_interval )
+            .data('documented_info', 		documented_info )
+            .data('not_given_reason', 		not_given_reason)
+
+            .data('md_source', 'button').dialog( "open" );
+
+    }
+    )
+
+
+
+        
+        
+
+
+
+        
+        
+        
+        //TODO-4142 Ancuta 25.05.2021: Start 
+		$('#medication_dosage_interaction_modal').dialog({
+			autoOpen: false,
+			modal: true,
+			width: 750,
+			height: 500,
+			title:  "Medication",
+			dialogClass: "charts_modal",
+			open: function(){
+				//ISPC-2517
+				if(($('#patient-main-add-modal').length && $('#patient-main-add-modal').hasClass('ui-dialog-content') && $('#patient-main-add-modal').dialog('isOpen'))  || typeof loadPage != 'function'|| (typeof loadPage == 'function' && $(this).data('md_source') == 'icon'))
+				{
+					$('#med_save_go_back').show();
+				}
+				else
+				{				
+					$('#med_save_go_back').hide();
+				}
+				//--
+				jQuery('.ui-widget-overlay').on('click', function () {
+					$('#medication_dosage_interaction_modal').dialog('close');
+				});				
+
+				$('.modal_loading_div', this).show();
+				
+			
+	           var dosageData = {
+	        		   drugplan_id: $(this).data('drugplan_id'),
+	        		   cocktail_id: $(this).data('cocktail_id'),
+	        		   entry_id: $(this).data('entry_id'),
+	        		   medication_name: $(this).data('medication_name'),
+	        		   time_schedule: $(this).data('time_schedule'),
+	        		   dosage_status: $(this).data('dosage_status'),
+	        		   dosage: $(this).data('dosage'),
+	        		   dosage_unit: $(this).data('dosage_unit'),
+	        		   dosage_date: $(this).data('dosage_date'),
+	        		   dosage_time_interval: $(this).data('dosage_time_interval'),
+	        		   documented_info: $(this).data('documented_info'),
+	        		   not_given_reason: $(this).data('not_given_reason'),
+				};
+	           
+	           
+	           if(dosageData.dosage_status != '' && dosageData.dosage_status !== null)
+		   		{
+		   			if($(this).parent().find('.delbutton').is(":hidden"))
+					{
+		   				$(this).parent().find('.delbutton').show();
+					}
+		   		}
+		   		else
+		   		{
+		   			$(this).parent().find('.delbutton').hide();
+		   		}
+				
+				var url = 'patientevents/events?action=show_form&form=dosage_interaction&medication_type='+$(this).data('medication_type');
+				
+				$.ajax({
+					type: 'POST',
+					data: dosageData,
+					url: url,
+					
+					success:function(data){
+						
+						$('#medication_dosage_interaction_modal').html(data);
+						
+						$('.time')
+						.timepicker({
+							minutes: {
+								interval: 5
+							},
+							showPeriodLabels: false,
+							rows: 4,
+							//ISPC-2661 Carmen
+		        			timeOnlyTitle: translate('Choose Time'),
+		        			timeText: 'Zeit',
+		        			closeText: 'Ende',
+		        			//--
+							hourText: 'Stunde',
+							minuteText: 'Minute'
+						})
+						.mask("99:99");
+						
+						$( ".date" ).datepicker({
+							dateFormat: 'dd.mm.yy',
+							showOn: "both",
+							buttonImage: $('#calImg').attr('src'),
+							buttonImageOnly: true,
+							changeMonth: true,
+							changeYear: true,
+							nextText: '',
+							prevText: '',
+							maxDate: '0',
+						}).mask("99.99.9999");
+						
+						$( "#dosage_date" ).datepicker({
+							dateFormat: 'dd.mm.yy',
+							changeMonth: true,
+							changeYear: true,
+							nextText: '',
+							prevText: '',
+							maxDate: '0',
+						}).mask("99.99.9999");
+					},
+					error:function(){
+						
+					}
+				});
+			},
+			buttons:[
+					//delete button
+					{
+						'class' : "delbutton leftButton",
+						text : 'Eintrag löschen',
+						click : function() {
+						var that = $(this).data('that');
+						var md_source = $(this).data('md_source');
+						
+						var pid = "<?php echo $_REQUEST['id']; ?>";
+						
+						var time_sched = $(this).data('time_schedule');
+						
+						var formdata = $('.dosage_interaction').map(function() {
+							
+							var formset = {};
+							$(this).find(':input').each(function() {				    		
+								
+								if(this.type == 'radio' && $(this).is(":checked"))
+								{
+									formset[this.name] = $(this).val();
+								}
+								else if(this.type != 'radio')
+								{
+									formset[this.name] = $(this).val();
+								}
+							});
+							return formset;
+						}).get();
+						
+						var set_data  = formdata[0];
+						set_data['dosage_time_interval'] = $(this).data('dosage_time_interval');
+						set_data['medication_name'] = $(this).data('medication_name');
+							
+						jConfirm(translate('[Are you sure you want to delete this?]'), translate('confirmdeletetitle'), function(r) {
+						    if(r) {	
+						    	
+						    	console.log(that);
+								$.ajax({
+									 type: 'POST',
+									 url: 'patientevents/events?action=save_form&form=dosage_interaction_save&subaction=delete&patid='+pid,
+									 data: set_data,
+									 success:function(data){
+										 $('#medication_dosage_interaction_modal').dialog("close");
+										 if( md_source == 'icon')
+										 {
+												if(time_sched == '1')
+												{
+													if(that.hasClass('<?php echo $color_map["given"]; ?>'))
+													{
+														that.removeClass('<?php echo $color_map["given"]; ?>');
+													}
+													else if(that.hasClass('<?php echo $color_map["given_different_dosage"]; ?>'))
+													{
+														that.removeClass('<?php echo $color_map["given_different_dosage"]; ?>');
+													}
+													else if(that.hasClass('<?php echo $color_map["not_taken_by_patient"]; ?>'))
+													{
+														that.removeClass('<?php echo $color_map["not_taken_by_patient"]; ?>');
+													}
+													else if(that.hasClass('<?php echo $color_map["not_given"]; ?>'))
+													{
+														that.removeClass('<?php echo $color_map["not_given"]; ?>');
+													}
+												
+													setTimeout(function () {
+														that.removeClass('given');
+														that.addClass('givenow');
+													}, 1500);
+												}
+										 }
+										 
+										 if (typeof loadPage == 'function' && md_source == 'charts') { 
+												loadPage(); 
+											}
+											else
+											{
+											}
+												 
+									 }
+								 });
+						    }
+						});
+							
+						},
+						
+					},
+					
+					{
+					click: function(){
+						
+
+						var md_source = $(this).data('md_source');
+						
+						var pid = "<?php echo $_REQUEST['id']; ?>";
+						
+						var that = $(this).data('that');
+						
+						var time_sched = $(this).data('time_schedule');
+						
+						var formdata = $('.dosage_interaction').map(function() {
+							
+							var formset = {};
+							$(this).find(':input').each(function() {				    		
+								
+								if(this.type == 'radio' && $(this).is(":checked"))
+								{
+									formset[this.name] = $(this).val();
+								}
+								else if(this.type != 'radio')
+								{
+									formset[this.name] = $(this).val();
+								}
+							});
+							return formset;
+						}).get();
+						
+						var set_data  = formdata[0];
+						set_data['dosage_time_interval'] = $(this).data('dosage_time_interval');
+						set_data['medication_name'] = $(this).data('medication_name');
+
+							$.ajax({
+								type: 'POST',
+								url: 'patientevents/events?action=save_form&form=dosage_interaction_save&patid='+pid,
+								data: set_data,
+								success:function(data){
+									$('#medication_dosage_interaction_modal').dialog("close");
+									
+									if( md_source == 'icon')
+									{
+										if(time_sched == '1')
+										{
+											if(that.hasClass('<?php echo $color_map["given"]; ?>'))
+											{
+												that.removeClass('<?php echo $color_map["given"]; ?>');
+											}
+											else if(that.hasClass('<?php echo $color_map["given_different_dosage"]; ?>'))
+											{
+												that.removeClass('<?php echo $color_map["given_different_dosage"]; ?>');
+											}
+											else if(that.hasClass('<?php echo $color_map["not_taken_by_patient"]; ?>'))
+											{
+												that.removeClass('<?php echo $color_map["not_taken_by_patient"]; ?>');
+											}
+											else if(that.hasClass('<?php echo $color_map["not_given"]; ?>'))
+											{
+												that.removeClass('<?php echo $color_map["not_given"]; ?>');
+											}
+											
+											if(typeof set_data.dosage_status !== 'undefined')
+											{
+											if(that.hasClass('givenow') && set_data.dosage_status != 'not_given')
+											{
+												that.removeClass('givenow');
+												that.addClass('given');
+											}
+											else if(that.hasClass('given') && set_data.dosage_status == 'not_given')
+											{
+												that.removeClass('given');
+												that.addClass('notgiven');
+											}
+											else if(that.hasClass('notgiven') && set_data.dosage_status != 'not_given')
+											{
+												that.removeClass('notgiven');
+												that.addClass('given');
+											}												
+											
+											var colormap = <?php echo $color_map_js; ?>;											
+											that.addClass(colormap[set_data.dosage_status]);
+										}
+									}
+									else
+									{
+										setTimeout(function () {												
+											that.removeClass('givenow');
+											that.addClass('given');
+										}, 400);
+										setTimeout(function () {												
+											that.removeClass('given');
+											that.addClass('givenow');
+										}, 1500);
+									}
+								}
+								
+								if (typeof loadPage == 'function' && md_source == 'charts') { 
+									loadPage(); 
+								}
+								else
+								{
+								}
+								 
+							}
+						});
+				},
+				text: translate('save')
+			},
+			{
+				click: function(){
+					
+
+					var md_source = $(this).data('md_source');
+					
+					var md_type = $(this).data('medication_type');
+					
+					var pid = "<?php echo $_REQUEST['id']; ?>";
+					
+					var that = $(this).data('that');
+					
+					var time_sched = $(this).data('time_schedule');
+					
+					var formdata = $('.dosage_interaction').map(function() {
+						
+						var formset = {};
+						$(this).find(':input').each(function() {				    		
+							
+							if(this.type == 'radio' && $(this).is(":checked"))
+							{
+								formset[this.name] = $(this).val();
+							}
+							else if(this.type != 'radio')
+							{
+								formset[this.name] = $(this).val();
+							}
+						});
+						return formset;
+					}).get();
+					
+					var set_data  = formdata[0];
+					set_data['dosage_time_interval'] = $(this).data('dosage_time_interval');
+					set_data['medication_name'] = $(this).data('medication_name');
+					
+						$.ajax({
+							type: 'POST',
+							url: 'patientevents/events?action=save_form&form=dosage_interaction_save&patid='+pid,
+							data: set_data,
+							success:function(data){
+								$('#medication_dosage_interaction_modal').dialog("close");
+								if($('#patient-main-add-modal').length && $('#patient-main-add-modal').hasClass('ui-dialog-content') && $('#patient-main-add-modal').dialog('isOpen'))
+ 								{
+									$('#medication_dosage_view_modal').dialog("close");
+									$('#patient-main-add-modal').dialog("close");
+								}
+								
+								if(md_source == 'icon')
+								{
+									if(time_sched == '1')
+									{
+										if(that.hasClass('<?php echo $color_map["given"]; ?>'))
+										{
+											that.removeClass('<?php echo $color_map["given"]; ?>');
+										}
+										else if(that.hasClass('<?php echo $color_map["given_different_dosage"]; ?>'))
+										{
+											that.removeClass('<?php echo $color_map["given_different_dosage"]; ?>');
+										}
+										else if(that.hasClass('<?php echo $color_map["not_taken_by_patient"]; ?>'))
+										{
+											that.removeClass('<?php echo $color_map["not_taken_by_patient"]; ?>');
+										}
+										else if(that.hasClass('<?php echo $color_map["not_given"]; ?>'))
+										{
+											that.removeClass('<?php echo $color_map["not_given"]; ?>');
+										}
+										
+										if(typeof set_data.dosage_status !== 'undefined')
+										{
+											if(that.hasClass('givenow') && set_data.dosage_status != 'not_given')
+											{
+												that.removeClass('givenow');
+												that.addClass('given');
+											}
+											else if(that.hasClass('given') && set_data.dosage_status == 'not_given')
+											{
+												that.removeClass('given');
+												that.addClass('notgiven');
+											}
+											else if(that.hasClass('notgiven') && set_data.dosage_status != 'not_given')
+											{
+												that.removeClass('notgiven');
+												that.addClass('given');
+											}												
+											
+											var colormap = <?php echo $color_map_js; ?>;											
+											that.addClass(colormap[set_data.dosage_status]);
+										}
+									}
+									else
+									{
+										setTimeout(function () {												
+												that.removeClass('givenow');
+												that.addClass('given');
+										}, 400);
+										setTimeout(function () {												
+											that.removeClass('given');
+											that.addClass('givenow');
+										}, 1500);
+									}
+								}
+								
+								if (typeof loadPage == 'function' && md_source == 'charts') { 
+									loadPage();
+								}
+								else
+								{
+									//window.location.reload(true);
+									// go to charts Ancuta 05.06.2020
+									window.location.href = appbase + 'charts/overview?id='+pid+'#vital_signs_chart';
+								}
+							}
+						});
+				},
+				text: translate('save and go back to chart'),
+				'id' : 'med_save_go_back'
+			},
+			{
+				click: function(){
+					
+					$('#medication_dosage_interaction_modal').dialog("close");
+				},
+				text: translate('cancel'),
+			}
+		]
+	});
+        
+	$(document).on('click', '.dose, .onedose', function() {	
+			var givenData = $(this).data('given');
+			
+			if(givenData != '')
+			{
+				$('#medication_dosage_interaction_modal')
+				.data('drugplan_id', givenData.drugplan_id )
+				.data('cocktail_id', givenData.cocktail_id)
+				.data('medication_type', $(this).data('medication_type'))
+				.data('medication_name', $(this).data('medication'))
+                .data('dosage_status', givenData.dosage_status )
+                .data('entry_id', givenData.entry_id )
+                .data('dosage', givenData.dosage )
+                .data('dosage_date', givenData.dosage_date )
+                .data('dosage_time_interval', givenData.dosage_time_interval )
+                .data('dosage_unit', '' )
+                .data('documented_info', givenData.documented_info )
+                .data('not_given_reason', givenData.not_given_reason)
+                .data('time_schedule', $(this).data('time_schedule'))
+				.data('md_source', 'icon').data('that', $(this)).dialog('open');
+			}
+			else
+			{
+				$('#medication_dosage_interaction_modal')
+				.data('drugplan_id', $(this).data('drugplan_id'))
+				.data('cocktail_id', $(this).data('cocktail_id'))
+				.data('medication_type', $(this).data('medication_type'))
+				.data('medication_name', $(this).data('medication'))
+				.data('entry_id', '0')
+				.data('dosage_unit', '')
+				.data('dosage_status', '')
+                .data('dosage_time_interval', $(this).data('dosage_time_interval'))
+                .data('dosage', $(this).data('dosage'))
+                .data('dosage_date', $(this).data('dosage_date'))
+                .data('documented_info', '')
+                .data('not_given_reason', '')
+                .data('time_schedule', $(this).data('time_schedule'))
+				.data('md_source', 'icon').data('that', $(this)).dialog('open');
+			}
+		});
+		// TODO-4142 Ancuta 25.05.2021: END 
+	
+});
+	
+
+
+</script>      <!--  ISPC-2786 Cristi.C 11.01.2021 -->
+				<table  class="diagno_icon_list"  width="100%">
+				<tbody>				
+					<?php foreach($medication_data as $medication_type => $medication_details): ?>
+						<?php if($medication_type != "Q"): ?>
+						<tr>
+							<td colspan="2">
+							<?php	if($medication_details['interval']) {
+							
+							?>
+										<div class="modern-tab-content modern-active_content medikation">
+										<div class="header">
+											<h1><?php echo $this->translate('medication_type_' . $medication_type); ?></h1>
+											<ul class="dosage-time">
+												<?php $time = 1;foreach($medication_details['interval'] as $kt => $vt) { ?>
+													<li class="time bulk_dosage" data-medication_type="<?php echo $medication_type; ?>" data-dosage_time="<?php echo $vt['time']; ?>" data-time_indent="<?php echo str_replace(':','',$vt['time']); ?>" ><?php echo $vt['time']; ?></li>
+													<?php $time++; if($time > 12) { break; } ?>
+												<?php } unset($medication_details['interval']); ?>
+												<!--  ISPC-2786 Cristi.C 11.01.2021 -->
+												<li class="verordnet">						
+														<?php echo $this->translate('prescribedby'); ?>
+												</li>
+											</ul>
+										</div>
+								
+									<?php foreach($medication_details as $kdrug => $detail_drug): ?>
+										<!-- medi repeating element -->
+										<ul class="medi-element">
+											<li class="medi">
+												<span class="desc"><?php echo $detail_drug['medications']; ?></span>
+												<span class="comment"><?php echo $detail_drug['comments']; ?></span>
+												<?php if(!empty($detail_drug['indications'])):?>
+													<?php if(!empty($detail_drug['indications']['color']) ): ?>
+														<span class="status" style="color:#<?php echo $detail_drug['indications']['color']; ?>"><div style="background:#<?php echo $detail_drug['indications']['color']; ?>"></div><?php echo $detail_drug['indications']['name']; ?></span>
+													<?php endif;?>													
+												<?php endif;?>																							
+											</li>
+											<?php $time = 1; foreach($detail_drug['dosage'] as $kt => $vt) {
+												if($vt['value'] != '')
+												{
+													if($vt['given'] != '0') {
+ 														//ISPC-2583 Carmen 27.04.2020				
+														if($vt['given']['dosage_status_color'] != $color_map['not_given']) {				
+														?>
+															<li class="dose given   <?php echo $medication_type.str_replace(':','',$kt); ?> <?php echo $vt['given']['dosage_status_color']; ?>" data-given = "<?php echo htmlspecialchars(json_encode($vt['given'])); ?>" data-cocktail_id = "" data-medication="<?php echo $detail_drug['medications']; ?>" data-time_schedule = "1" data-medication_type="<?php echo $medication_type; ?>"><?php echo $vt['value']; ?></li>
+															<?php $time++; if($time > 12) { break; } ?>
+														<?php } else { ?>
+															<li class="dose notgiven   <?php echo $medication_type.str_replace(':','',$kt); ?> <?php echo $vt['given']['dosage_status_color']; ?>" data-given = "<?php echo htmlspecialchars(json_encode($vt['given'])); ?>" data-cocktail_id = "" data-medication="<?php echo $detail_drug['medications']; ?>" data-time_schedule = "1" data-medication_type="<?php echo $medication_type; ?>"><?php echo $vt['value']; ?></li>
+															<?php $time++; if($time > 12) { break; } ?>
+													<?php }
+													//-- 
+													} else { ?>
+														<li class="dose givenow   <?php echo $medication_type.str_replace(':','',$kt); ?>" data-given = "" data-cocktail_id = "" data-drugplan_id = "<?php echo $kdrug; ?>" data-dosage_time_interval="<?php echo $kt; ?>" data-medication="<?php echo $detail_drug['medications']; ?>" data-dosage = "<?php echo $vt['value']; ?>" data-dosage_date="<?php echo date('d.m.Y', time()); ?>" data-time_schedule = "1" data-medication_type="<?php echo $medication_type; ?>"><?php echo $vt['value']; ?></li>
+														<?php  $time++; if($time > 12) { break; } ?>
+												<?php } }
+												else { ?>
+													<li class="dose   <?php echo $medication_type.str_replace(':','',$kt); ?>" data-cocktail_id = "" data-drugplan_id = "<?php echo $kdrug; ?>" data-dosage_time_interval="<?php echo $kt; ?>" data-medication="<?php echo $detail_drug['medications']; ?>" data-medication_type="<?php echo $medication_type; ?>"><?php echo $vt['value']; ?></li>
+													<?php  $time++; if($time > 12) { break; } ?>
+											<?php } } ?>	
+													<!--  ISPC-2786 Cristi.C 11.01.2021 -->
+													<li class="verordnet">							
+														<span class="comment"><?php echo $detail_drug['verordnetvon']; ?></span>
+													</li>
+										</ul>
+									<?php endforeach; ?>
+									
+									<!--// medi repeating element -->
+								</div>
+															
+							<?php } else { ?>
+								<div class="modern-tab-content modern-active_content medikation">
+									<div class="header">
+										<h1><?php echo $this->translate('medication_type_' . $medication_type); ?></h1>
+										<ul class="onedosehead">
+											<? if($medication_type == "N" || $medication_type == "KM"): ?>
+											<li class="bulk_dosage" data-medication_type="<?php echo $medication_type; ?>"  data-time_indent="0000" ><?php echo $this->translate('dosage'); ?></li>
+											<?php else: ?>
+											<li> <?php echo $this->translate('dosage'); ?></li>
+											<?php endif; ?>
+											<? if($medication_type == "N" || $medication_type == "KM"): ?>
+												<li class="interval"><?php echo $this->translate('Interval for dosage'); ?></li>
+											<?php endif; ?>
+											<!--  ISPC-2786 Cristi.C 11.01.2021 -->
+											<li class="verordnet">			
+														<?php echo $this->translate('prescribedby'); ?>
+											</li>
+										</ul>
+									</div>
+							
+								<?php foreach($medication_details as $kdrug => $detail_drug): ?>
+									<!-- medi repeating element -->
+									<ul class="medi-element">
+										<li class="medi">
+											<span class="desc"><?php echo $detail_drug['medications']; ?></span>
+											<span class="comment"><?php echo $detail_drug['comments']; ?></span>
+											<?php if(!empty($detail_drug['indications'])):?>
+												<?php if(!empty($detail_drug['indications']['color']) ): ?>
+													<span class="status" style="color:#<?php echo $detail_drug['indications']['color']; ?>"><div style="background:#<?php echo $detail_drug['indications']['color']; ?>"></div><?php echo $detail_drug['indications']['name']; ?></span>
+												<?php endif;?>
+											<?php endif;?>											
+										</li>
+										
+										<? if($medication_type == "N" || $medication_type == "KM"): ?>
+											<? 
+											if($detail_drug['dosage']['dosage']['value'] != '')
+											{
+												if($detail_drug['dosage']['given'] == '1'): ?>
+													<li class="onedose given addinfo    <?php echo $medication_type.'0000'; ?>" data-given = "" data-cocktail_id = "" data-drugplan_id = "<?php echo $kdrug; ?>" data-medication="<?php echo $detail_drug['medications']; ?>" data-dosage = "<?php echo $detail_drug['dosage']['dosage']; ?>" data-time_schedule = "0"><?php echo $detail_drug['dosage']['dosage']; ?></li>
+												<?php else: ?>
+													<li class="onedose givenow addinfo <?php echo $medication_type.'0000'; ?>" data-given = "" data-cocktail_id = "" data-drugplan_id = "<?php echo $kdrug; ?>" data-medication="<?php echo $detail_drug['medications']; ?>" data-dosage = "<?php echo $detail_drug['dosage']['dosage']; ?>" data-dosage_date="<?php echo date('d.m.Y', time()); ?>" data-time_schedule = "0" data-dosage_time_interval="" data-medication_type="<?php echo $medication_type; ?>"><?php echo $detail_drug['dosage']['dosage']; ?></li>
+												<?php endif; ?>
+											 <?php } else { ?>	
+												<li class="onedose"></li>
+											<?php } ?>
+											<li class="onedose"><?php echo $detail_drug['dosage_interval']; ?></li>
+										<?php else: ?>
+											<li class="onedose"><?php echo $detail_drug['dosage']['dosage']; ?></li>
+										<?php endif; ?>
+										<!--  ISPC-2786 Cristi.C 11.01.2021 -->
+										<li class="verordnet">							
+														<span class="comment"><?php echo $detail_drug['verordnetvon']; ?></span>
+										</li>
+									</ul>
+									<!--// medi repeating element -->
+								<?php endforeach; ?>
+								</div>							
+							<?php } ?>
+						</td>
+					</tr>	
+					<?php else:?>
+						<tr>
+							<td colspan="2">
+								<div class="modern-tab-content modern-active_content medikation">
+									<div class="header">
+										<h1><?php echo $this->translate('medication_type_' . $medication_type); ?></h1>
+										<ul class="onedosehead">
+											<li><?php echo $this->translate('dosage'); ?></li>
+											
+										</ul>
+									</div>
+									<?php foreach($medication_details as $cocktail => $cocktail_medications): ?>
+								<?php foreach($cocktail_medications['medications'] as $k => $description): ?>
+								
+									<!-- medi repeating element -->
+									<ul class="medi-element">
+										<li class="medi">
+											<span class="desc"><?php echo $description; ?></span>
+											<?php if(!empty($cocktail_medications['indications'])):?>
+												<?php if(!empty($cocktail_medications['indications'][$k]['color']) ): ?>
+													<span class="status" style="color:#<?php echo $cocktail_medications['indications'][$k]['color']; ?>"><div style="background:#<?php echo $cocktail_medications['indications'][$k]['color']; ?>"></div><?php echo $cocktail_medications['indications'][$k]['name']; ?></span>
+												<?php endif;?>
+											<?php endif;?>
+										</li>
+										<li class="onedose"><?php echo $cocktail_medications['dosage'][$k]; ?></li>
+										
+										</ul>
+									
+									<!--// medi repeating element -->
+										
+								<?php endforeach; ?>
+								<ul class="medi-element">
+									<li style="width: 100%;"><b><?php echo $this->translate("comments");?>: </b><?php echo $cocktail_medications['cocktail_details']['comment']; ?></li>
+								</ul>
+								<ul class="medi-element">
+									<li style="width: 100%;"><b><?php echo $this->translate("Flussrate");?>: </b><?php echo $cocktail_medications['cocktail_details']['flussrate']; ?></li>
+								</ul>
+								<?php if($cocktail_medications['cocktail_details']['bolus'] != '')
+								{ ?>
+									<ul class="medi-element">
+										<li class="onedose givenow" data-given = "" data-cocktail_id = "<?php echo $cocktail; ?>" data-drugplan_id = "" data-medication="<?php echo 'PUMPE'; ?>" data-dosage = "<?php echo $cocktail_medications['cocktail_details']['bolus']; ?>" data-dosage_date="<?php echo date('d.m.Y', time()); ?>" data-time_schedule = "0" data-dosage_time_interval="" style="width: 100%;" data-medication_type="<?php echo $medication_type; ?>"><b><?php echo $this->translate("Bolus");?>: </b><?php echo $cocktail_medications['cocktail_details']['bolus']; ?></li>
+									</ul>
+								<?php } else { ?>
+									<ul class="medi-element">
+										<li class="onedose" style="width: 100%;" data-medication_type="<?php echo $medication_type; ?>"><b><?php echo $this->translate("Bolus");?>: </b></li>
+									</ul>
+								<?php } ?>	
+							<?php endforeach; ?>
+							</div>
+							</td>
+						</tr>
+					<?php endif;?>
+				<?php endforeach; ?>
+			</tbody>
+		</table>

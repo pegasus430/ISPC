@@ -1,0 +1,267 @@
+<?php
+$cats_to_cat=array(
+    'medic'=>'actual',
+    'iv'=>'isivmed',
+    'bedarfs'=>'isbedarfs',
+    'pumpe'=>'isschmerzpumpe'
+);
+?>
+<?php
+$cat_to_capt=array(
+    'medic'=>'Medikation',
+    'iv'=>'i.v. / s.c. Medikation',
+    'bedarfs'=>'Bedarfsmedikation'
+);
+?>
+<script>
+    var medisyncwidget=function() {
+        var medisyncwidget_data = <?php echo json_encode($this->drugs);?>;
+        var cats_to_cat={
+            medic:'actual',
+            iv:'isivmed',
+            bedarfs:'isbedarfs',
+            pumpe:'isschmerzpumpe'
+        };
+
+        <?php if(count($this->drugs)>0 && $this->done==false):?>
+        $('#medisync_wrap').dialog({width:'840', height:'500', title:'Übertragene Medikamente einfügen'});
+        <?php endif;?>
+
+        $(document).on('click', '#medisync_mutebutton', function(){
+            $('#medisync_wrap').dialog('close');
+            $.get( "<?php echo APP_BASE;?>ajax/marksyncmedpacketdone", {syncid:"<?php echo $this->syncid;?>",});
+        });
+
+        $(document).on('click', '.medisyncwidget_takeover', function () {
+            var rd=$(this).attr('related_drug');
+            rd=rd.split(';');
+            var mycat=cats_to_cat[rd[0]];
+            var myrow=rd[1];
+
+            var medcount = $("#new_line_"+mycat).val();
+            create_new_line(mycat,medcount);
+
+            var mymed_appendix="_" + mycat +"_"+medcount;
+            var mymedic=medisyncwidget_data[rd[0]][myrow];
+            $('#concentration'+mymed_appendix).val(mymedic['concentration']).change();
+            $('#medication'+mymed_appendix).val(mymedic['medication']).change();
+            $('#drug'+mymed_appendix).val(mymedic['drug']).change();
+            $('textarea[name=\'medication_block['+mycat+'][comments]['+medcount+']\']').val(mymedic['comments']);
+
+            var selects=['unit','indication', 'dosage_form',  'type'];
+
+            for (var i=0; i<selects.length; i++){
+                var q='#'+selects[i]+mymed_appendix;
+                q='select[name=\'medication_block['+mycat+']['+selects[i]+']['+medcount+']\']';
+                $(q).find('option').each(function(){
+                    if (mymedic[selects[i]] == $(this).text()){
+                        $(this).parents('select').val($(this).val()).change();
+                    }
+                });
+            }
+
+            if(mycat =="actual") {
+                var myrow = $('#medication' + mymed_appendix).parents('tr');
+                var dosage_cells = $(myrow).find('div.dosage_firstrow_div');
+                var dosage = mymedic['dosage'];
+                dosage = dosage.split('-');
+                for (var i = 0; i < dosage.length; i++) {
+                    $(dosage_cells[i]).find('input').val(dosage[i]).change();
+                }
+            }else{
+                $('input[name=\'medication_block['+mycat+'][dosage]['+medcount+']\']').val(mymedic['dosage']);
+            }
+
+
+            var h=$('#medisync_wrap').height();
+            $('html, body').animate({
+                scrollTop: $('#medication' + mymed_appendix).parents('tr').offset().top -h -60
+            }, 1000);
+
+            $('#medisync_wrap').dialog("widget").animate({
+                top: $('#medication' + mymed_appendix).parents('tr').offset().top -h -50
+            }, 1000);
+
+            $(this).parents('tr').find('td').animate({'background-color':'#afb',},100);
+
+        });
+
+        $(document).on('click', '.medisyncwidget_pumpe_takeover', function () {
+            var rd=$(this).attr('related_drug');
+            rd=rd.split(';');
+            var mycat=cats_to_cat[rd[0]];
+            var myrow=rd[1];
+            var medication_type="isschmerzpumpe";
+
+
+
+            var mymedicpump=medisyncwidget_data[rd[0]][myrow];
+
+            var pumpe_type = "pca";
+            if(pumpe_type != 0 && number_of_pumps < max_pumpe)
+            {
+                number_of_pumps++;
+                create_new_pumpe(pumpe_type,number_of_pumps);
+            }
+
+
+            var pumpe_number = number_of_pumps;
+            var first_mymed_appendix="";
+
+            var first_row=true;
+            for(var pm in mymedicpump) {
+                var mymedic = mymedicpump[pm];
+                if (pm !== "meta") {
+                    var medcount = parseInt(pm) + 1;
+
+                    if (!first_row) {
+                        create_new_sh_line(medication_type, medcount, pumpe_number, pumpe_type);
+                    } else {
+                        first_row = false;
+                    }
+
+
+                    var mymed_appendix = "_" + mycat + "_" + pumpe_number + "_" + medcount;
+                    if(first_mymed_appendix=="")first_mymed_appendix=mymed_appendix;
+                    $('#concentration_sh' + mymed_appendix).val(mymedic['concentration']).change();
+                    $('#medication' + mymed_appendix).val(mymedic['medication']).change();
+                    $('#drug' + mymed_appendix).val(mymedic['drug']).change();
+                    $('#dosage_sh' + mymed_appendix).val(mymedic['dosage']).change();
+                    var selects = ['unit', 'indication'];
+
+                    for (var i = 0; i < selects.length; i++) {
+                        var q = '#' + selects[i] + mymed_appendix;
+                        q = 'select[name=\'medication_block[' + mycat + '][' + pumpe_number + '][' + selects[i] + '][' + medcount + ']\']';
+                        $(q).find('option').each(function () {
+                            if (mymedic[selects[i]] == $(this).text()) {
+                                $(this).parents('select').val($(this).val()).change();
+                            }
+                        });
+                    }
+
+                }
+            }
+
+            var h = $('#medisync_wrap').height();
+
+            $('html, body').animate({
+                scrollTop: $('#medication' + first_mymed_appendix).parents('tr').offset().top - h - 60
+            }, 1000);
+
+            $('#medisync_wrap').dialog("widget").animate({
+                top: $('#medication' + first_mymed_appendix).parents('tr').offset().top - h - 50
+            }, 1000);
+
+            var mymeta=mymedicpump['meta'];
+            $('textarea[name=\'medication_block[isschmerzpumpe]['+pumpe_number+'][cocktail][description]\']').val(mymeta['description']).change();
+            $('input[name=\'medication_block[isschmerzpumpe]['+pumpe_number+'][cocktail][flussrate]\']').val(mymeta['flussrate']).change();
+            $('input[name=\'medication_block[isschmerzpumpe]['+pumpe_number+'][cocktail][carrier_solution]\']').val(mymeta['carrier_solution']).change();
+            $('input[name=\'medication_block[isschmerzpumpe]['+pumpe_number+'][cocktail][bolus]\']').val(mymeta['bolus']).change();
+            $('input[name=\'medication_block[isschmerzpumpe]['+pumpe_number+'][cocktail][max_bolus]\']').val(mymeta['max_bolus']).change();
+            $('input[name=\'medication_block[isschmerzpumpe]['+pumpe_number+'][cocktail][sperrzeit]\']').val(mymeta['sperrzeit']).change();
+
+            var q='select[name=\'medication_block[isschmerzpumpe]['+pumpe_number+'][cocktail][pumpe_medication_type]\']';
+            $(q).find('option').each(function(){
+                if (mymeta['pumpe_medication_type'] == $(this).text()){
+                    $(this).parents('select').val($(this).val()).change();
+                }
+            });
+
+        });
+    }();
+</script>
+
+<div id="medisync_wrap" style="display:none;">
+
+<p>
+    <?php echo $this->message;?>
+</p>
+<p><input type="button" style="background-color:#fbb;" id="medisync_mutebutton" value="Diesen Medikationsplan nicht wieder einblenden."></p>
+<p style="text-align:right;margin-bottom:8px;">
+    Datum des übertragenen Medikationsplans: <?php echo $this->date;?>
+</p>
+
+<?php $tdstyle="border:1px solid #ccc;padding:1px;";?>
+<?php foreach ($this->drugs as $cat=>$drugs):?>
+    <b><?php echo $cat_to_capt[$cat];?></b><br>
+    <?php if ($cat!="pumpe"):?>
+        <table class="datatable" border="1" style="margin:2px 0px 12px 0px;">
+            <tr>
+                <th style="width:140px;">Medikament</th>
+                <th style="width:140px;">Wirktsoff</th>
+                <th style="width:100px;">Dosierung</th>
+                <th style="width:40px;">Einheit</th>
+                <th style="width:120px;">Kommentar</th>
+                <th style="width:80px;"></th>
+            </tr>
+            <?php foreach ($drugs as $drugno=>$drug):?>
+                <tr>
+                    <td><?php echo htmlspecialchars($drug['medication']);?></td>
+                    <td><?php echo htmlspecialchars($drug['drug']);?></td>
+                    <td><?php echo htmlspecialchars($drug['dosage']);?></td>
+                    <td><?php echo htmlspecialchars($drug['unit']);?></td>
+                    <td><?php echo htmlspecialchars($drug['comments']);?></td>
+                    <td><input type="button" value="übernehmen" class="medisyncwidget_takeover" related_drug="<?php echo $cat;?>;<?php echo $drugno;?>"></td>
+                </tr>
+
+            <?php endforeach;?>
+        </table>
+    <?php else:?>
+        <?php foreach ($drugs as $pno=>$pumpe):?>
+            <b>Pumpe / PCA /Perfursor</b><input type="button" class="medisyncwidget_pumpe_takeover" related_drug="pumpe;<?php echo $pno;?>" value="übernehmen"> <br>
+            <table class="datatable" border="1" style="margin:2px 0px 12px 0px;">
+                <tr>
+                    <th style="width:140px;">Medikament</th>
+                    <th style="width:140px;">Wirktsoff</th>
+                    <th style="width:100px;">Dosierung</th>
+                    <th style="width:40px;">Einheit</th>
+                </tr>
+                <?php foreach ($pumpe as $drugno=>$drug):?>
+                    <?php if ($drugno==="meta") continue;?>
+                    <tr>
+                        <td><?php echo htmlspecialchars($drug['medication']);?></td>
+                        <td><?php echo htmlspecialchars($drug['drug']);?></td>
+                        <td><?php echo htmlspecialchars($drug['dosage']);?></td>
+                        <td><?php echo htmlspecialchars($drug['unit']);?></td>
+                    </tr>
+                <?php endforeach;?>
+                <tr>
+                    <th>Kommentar</td>
+                    <td colspan="3"><?php echo $pumpe['meta']['description']?></td>
+                </tr>
+                <tr>
+                    <th>Applikationsweg</td>
+                    <td colspan="3"><?php echo $pumpe['meta']['pumpe_medication_type']?></td>
+                </tr>
+                <tr>
+                    <th>Flussrate </td>
+                    <td colspan="3"><?php echo $pumpe['meta']['flussrate']?></td>
+                </tr>
+                <tr>
+                    <th>Trägerlösung</td>
+                    <td colspan="3"><?php echo $pumpe['meta']['carrier_solution']?></td>
+                </tr>
+                <tr>
+                    <th>Bolus</td>
+                    <td colspan="3"><?php echo $pumpe['meta']['bolus']?></td>
+                </tr>
+                <tr>
+                    <th>Max. Bolus</td>
+                    <td colspan="3"><?php echo $pumpe['meta']['max_bolus']?></td>
+                </tr>
+                <tr>
+                    <th>Sperrzeit</td>
+                    <td colspan="3"><?php echo $pumpe['meta']['sperrzeit']?></td>
+                </tr>
+            </table>
+        <?php endforeach;?>
+    <?php endif;?>
+
+<?php endforeach;?>
+</div>
+
+<?php if(count($this->drugs)>0):?>
+    <p style="margin-bottom:120px;cursor:pointer;color:blue;" onclick="$('#medisync_wrap').dialog({width:'840', height:'500', title:'Übertragene Medikamente einfügen'});">
+        Übertragene Medikamente anzeigen
+    </p>
+<?php endif;?>

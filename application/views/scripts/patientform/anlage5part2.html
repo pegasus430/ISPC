@@ -1,0 +1,275 @@
+<?php
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/page-css/anlage5part2.css?' . date('Ymd'));
+
+echo $this->patientinfo;
+echo $this->tabmenus;
+
+//IE Freaking hack
+$url = APP_BASE . "patientform/anlage5part2?" . $_SERVER['QUERY_STRING'];
+if (str_replace("&period=" . $_REQUEST['period'] . "", "", $url))
+{
+	$finalJsUrl = str_replace("&period=" . $_REQUEST['period'] . "", "", $url);
+}
+else
+{
+	$finalJsUrl = $url;
+}
+
+$periods_selector = $this->periods_selector;
+
+$patient_details = $this->patient_details;
+
+//grid data
+$grid_data = $this->grid_data;
+
+//wizard data
+$wizard_data = $this->wizard_data;
+$current_period_weeks = $this->current_period_weeks;
+$predefined_diagnosis = $this->predefined_diagnosis;
+$master_data_grouped = $this->master_data_grouped;
+
+
+?>
+<script>
+	var isdischarged = "<? echo $this->isdischarged ?>";
+	var validated = true;
+
+	$(document).ready(function() {
+
+		$('form').submit(function() {
+			setTimeout(function() {
+				$('input[type=submit]').attr('disabled', true)
+			}, 150);
+			setTimeout(function() {
+				$('input[type=submit]').attr('disabled', false)
+			}, 22000);
+		});
+
+		$('#select_all').live('click', function(){
+			$('.medi_enabler').attr('checked', $(this).is(':checked'));
+		})
+
+
+		$('#wizard').dialog({
+			title: '<?php echo $this->translate('medication_wizard'); ?>',
+			modal:true,
+			autoOpen:false,
+			width:650,
+			height:450,
+			resizable: false,
+			draggable: false,
+			open: function(){
+				//reset all checkboxes and selects
+				$('div#wizard input[type=checkbox]:not(.active)').attr('checked', false)
+				$('div#wizard input[type=text]').val('');
+				$('div#wizard select').val('');
+			},
+			buttons: {
+				"<?php echo $this->translate('add_medications'); ?>": function() {
+										
+					$(document).userSession().checksession('abort', function(result) { // new function
+						if(result === false) {
+							event.stopImmediatePropagation(); //stop going forward
+						} else {
+							$('#validated').val('1');
+							$('.medi_enabler').each(function(){
+								if($(this).is(':checked'))
+								{
+									var id = $(this).attr('id');
+									var exploded_id = id.split('-');
+									var medi_id = exploded_id[1];
+		
+									if($('#medi_row-'+medi_id).val() == '0') {
+										$('#validated').val('0');
+									}
+								}
+							});
+		
+		
+							if($('#validated').val() == '1'){
+								$(this).dialog("close");
+								$('#wizard_form').submit();
+							} else {
+								alert('<?php echo $this->translate('you_must_select_symptoms'); ?>')
+							}
+						} 
+					});
+					
+					
+				},
+				"<?php echo $this->translate('cancel'); ?>": function() {
+					$(this).dialog("close");
+				}
+			}
+		});
+
+		$('.open_modal').click(function(){
+			$('#wizard').dialog('open');
+			return false;
+		});
+
+	});
+	function changeMonth(data){
+		if(data != '-1'){
+			var url = "<?php echo $finalJsUrl; ?>&period="+data;
+			$(location).attr('href',url);
+		}
+	}
+</script>
+<div style="display: none;"><img id="calImg" src="<? echo RES_FILE_PATH; ?>/images/calendar.png" alt="Popup" class="trigger"></div>
+<input type="hidden" value="0" id="validated" name="validated" />
+
+<form id="anlage5part2" method="POST" action="">
+	<h4> Anlage 5 (Teil 2) </h4>
+	<br />
+	<p>zur Vereinbarung über die spezialisierte ambulante Palliativversorgung von unheilbar erkrankten Menschen im häuslichen Umfeld</p>
+	<br />
+	<h3>Verlaufsbogen Nr.</h3>
+	<button name="open_modal" id="open_modal" class="open_modal"><?php echo $this->translate('open_wizard');  ?></button>
+	<br />
+	<div id="period_sel_bar">
+	<?php
+
+	if(strlen($_REQUEST['period'])>'0')
+	{
+		$sel_value = $_REQUEST['period'];
+	}
+	else
+	{
+		$sel_value = (count($periods_selector)-2);
+	}
+
+	if (count($periods_selector) > 0)
+	{
+		echo '<select name="period" id="period" onChange="changeMonth(this.value);">';
+
+		foreach ($periods_selector as $k_period => $v_period)
+		{
+
+			if ($sel_value == $k_period)
+			{
+				$selected = 'selected="selected"';
+			}
+			else
+			{
+				$selected = '';
+			}
+			echo '<option value="' . $k_period . '" ' . $selected . ' >' . $v_period . '</option>';
+		}
+
+		echo "</select>";
+	}
+	else
+	{
+		echo end($periods_selector);
+	}
+	?>
+	</div>
+	<table border="0" class="datatable" style="width:100%;border: 0px solid #fff;">
+		<tbody>
+			<tr>
+				<td colspan="4" class="noborders">&nbsp;</td>
+			</tr>
+			<tr>
+				<td class="noborders"><h4>Name, Vorname des Versicherten:</h4></td>
+				<td class="noborders"> <?php echo $patient_details['last_name'].', '.$patient_details['first_name'];  ?></td>
+				<td class="noborders"><h4>KV-Nummer / Geburtsdatum: </h4></td>
+				<td class="noborders"><?php echo $this->hi_number_dob;  ?></td>
+			</tr>
+		</tbody>
+	</table>
+
+
+	<br />
+	<?php foreach($master_data_grouped as $k_md_g => $v_md_g):  ?>
+	<table class="datatable" id="grid">
+			<!--table header-->
+			<tr>
+				<th style="width:140px;">&nbsp;</th>
+				<?php foreach($v_md_g as $k_md => $v_md):  ?>
+				<th>
+					<?php if($k_md=='0'): echo $this->translate('start_medications'); else: echo $this->translate('week').$k_md; endif;  ?>
+					<p><?php echo date('d.m.Y', strtotime($v_md['start'])).' - '.date('d.m.Y', strtotime($v_md['end']));  ?></p>
+				</th>
+				<?php endforeach;  ?>
+			</tr>
+
+		<?php foreach($predefined_diagnosis as $k_diagnosis => $v_diagnosis):  ?>
+			<!--table body-->
+			<tr>
+				<td><?php echo $v_diagnosis;  ?></td>
+				<?php foreach($v_md_g as $k_data => $v_data):  ?>
+					<?php if(count($v_data['medi'][$k_diagnosis]['medication'])):  ?>
+						<td>
+							<textarea id="edit_anlage_medi_<?php echo $v_data['medi'][$k_diagnosis]['id']; ?>" name="edit_anlage_medi[<?php echo $v_data['medi'][$k_diagnosis]['id']; ?>]" class="textarea_table"><?php echo $v_data['medi'][$k_diagnosis]['medication'];  ?></textarea>
+						</td>
+					<?php else:  ?>
+						<td style="width:102px; height: 105px;">
+							&nbsp;
+						</td>
+					<?php endif;  ?>
+
+				<?php endforeach;  ?>
+			</tr>
+		<?php endforeach;  ?>
+	</table>
+	<?php endforeach;  ?>
+
+	<input type="submit" name="save" id="btnsubmit" value="<?php echo $this->translate('save'); ?>" />
+	<input type="submit" name="pdf" value="<?php echo $this->translate('generate_pdf'); ?>" class="btnsubmit_usersessions"/>
+</form>
+<button name="open_modal" id="open_modal"  class="open_modal"><?php echo $this->translate('open_wizard');  ?></button>
+
+<div id="wizard">
+	<form id="wizard_form" name="wizard" method="POST" action="">
+	<table class="datatable" style="border-collapse: initial;width:100%;margin-top: 10px;">
+		<?php foreach($wizard_data as $k_wizard => $v_wizard):  ?>
+			<tr>
+				<th colspan="2" class="header_row_left">
+					<?php if($k_wizard == '0'): echo $this->translate('start_medications').': '; else: echo $this->translate('week').' '.($k_wizard).': ';  endif; ?>
+				</th>
+				<th colspan="2" class="header_row_right">
+					<?php if($k_wizard == '0'): ?><input type="checkbox" name="select_all" value="1" id="select_all" /> <?php endif; ?>
+					<?php echo date('d.m.Y', strtotime($v_wizard['start'])).' - '.date('d.m.Y', strtotime($v_wizard['end']));  ?>
+				</th>
+			</tr>
+			<?php if(count($v_wizard['medi'])>'0'):  ?>
+				<?php foreach($v_wizard['medi'] as $k_medi => $v_medi):  ?>
+				<tr>
+					<td style="width:80%">
+						<?php echo $v_medi['pd_medication_name'];  ?>
+						<input type="hidden" name="medi_name[<?php echo $v_medi['pd_id'];  ?>]" value="<?php echo $v_medi['pd_medication_name']; ?>" />
+					</td>
+					<td style="width:35%">
+						<?php echo $v_medi['pd_dosage'];  ?>
+						<input type="hidden" name="medi_dosage[<?php echo $v_medi['pd_id'];  ?>]" value="<?php echo $v_medi['pd_dosage'];  ?>" />
+						<input type="hidden" name="medi_date[<?php echo $v_medi['pd_id'];  ?>]" value="<?php echo date('Y-m-d', strtotime($v_medi['create_date_week']));  ?>" />
+					</td>
+					<td>
+						<input type="checkbox" value="1" name="medi[<?php echo $v_medi['pd_id'];  ?>]" id="medi-<?php echo $v_medi['pd_id'];  ?>" class="medi_enabler <?php if($v_medi['active_medi'] == '1'): //used to disable audo uncheck on modal open?>active<?php endif; ?>" <?php if($v_medi['active_medi'] == '1'):?>checked="checked"<?php endif; ?> />
+					</td>
+					<td>
+						<?php
+							echo '<select name="medi_row['.$v_medi['pd_id'].']" id="medi_row-'.$v_medi['pd_id'].'" style="width:150px;">';
+							echo '<option value="0">' .$this->translate('select_symptom_row').'</option>';
+							foreach ($predefined_diagnosis as $k_diag => $v_diag)
+							{
+								echo '<option value="' . $k_diag . '">' . $v_diag . '</option>';
+							}
+							echo '</select>';
+						?>
+					</td>
+				</tr>
+				<?php endforeach;  ?>
+			<?php else:  ?>
+			<tr>
+				<td colspan="4" style="text-align: center;">
+					<?php echo $this->translate('no_medis_in_this_week');  ?>
+				</td>
+			</tr>
+			<?php endif;  ?>
+		<?php endforeach;  ?>
+	</table>
+	</form>
+
+</div>

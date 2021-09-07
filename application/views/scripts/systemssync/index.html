@@ -1,0 +1,355 @@
+<?php if($this->show_connectionselection):?>
+    <?php if(count($this->connection_names)>0):?>
+    <h1>Verbindung wählen</h1>
+    <div>
+        <?php foreach ($this->connection_names as $conn):?>
+            <div>
+                <form method="post">
+                    <input type="hidden" name="conn_id" value="<?php echo $conn->id;?>">
+                    <input type="submit" value="<?php echo $conn->name;?>">
+                </form>
+            </div>
+        <?php endforeach;?>
+    </div>
+    <?php endif;?>
+    <?php if(count($this->connection_names)==0):?>
+        <h1>Es wurden  keine Verbindungen konfiguriert</h1>
+    <?php endif;?>
+
+    <?php if ($this->usertype==="SA"):?>
+        <div style="margin-top:24px;margin-left:4px;">
+            <h2>Neue Verbindung konfigurieren</h2>
+            <p><i>Diese Box sieht nur der wahre Administrator!</i></p>
+            <div style="margin-left:4px;">
+                <form method="post">
+                    <table>
+                        <tr>
+                            <td style="width:160px;">Id <br></td>
+                            <td><input name="id" type="text"><br><i>(muss auf beiden Seiten identisch und eindeutig sein)</i></td>
+                        </tr>
+                        <tr>
+                            <td>angezeigter Name</td>
+                            <td><input name="name" type="text"></td>
+                        </tr>
+                        <tr>
+                            <td>Adresse</td>
+                            <td><input name="url" type="text" style="width:300px;">/Systemssync/index</td>
+                        </tr>
+                        <tr>
+                            <td>User</td>
+                            <td><input name="user" type="text"></td>
+                        </tr>
+                        <tr>
+                            <td>Password</td>
+                            <td><input name="pass" type="text"></td>
+                        </tr>
+                        <tr>
+                            <td></td>
+                            <td><input name="change_connection_setup" type="submit" value="Speichern"></td>
+                        </tr>
+                    </table>
+                </form>
+            </div>
+        </div>
+    <?php endif;?>
+
+<?php endif;?>
+
+<?php if(!$this->show_connectionselection):?>
+
+    <table>
+        <tr>
+            <td style="font-size:18px;font-weight:bold;color:#555;">Verbindung zu&nbsp;</td>
+            <td style="font-size:26px;font-weight:bold;color:#115;text-decoration:underline;"><?php echo $this->conn_name;?></td>
+        </tr>
+        <tr>
+            <td></td>
+            <td style="padding-top:6px;">
+                <?php if (count($this->connection_names)>1):?>
+                    <a style="color:#3599ff;" href="Systemssync/index">andere Verbindung wählen</a>
+                <?php endif;?>
+            </td>
+            <td></td>
+        </tr>
+    </table>
+
+   <br>
+    <div style="margin-top:24px; margin-left:4px;">
+<h2>Patienten, die synchronisiert werden</h2>
+    <div style="margin-left:6px;">
+<style>
+    #syssync_pats td,
+    #systemssync_patquicksearch_results td{
+        padding:1px;
+        border:1px solid lightgrey;
+        border-collapse: collapse;
+    }
+
+    #syssync_pats th,
+    #systemssync_patquicksearch_results th{
+        background-color: #b2bdd6;
+        font-weight:bold;
+        padding:2px;
+        border:1px solid lightgrey;
+        border-collapse: collapse;
+    }
+</style>
+        <script>
+            $(document).on('click','.systemssync_transmit_button', function(){
+                $('#systemssync_transmitdlg').empty();
+                $('#systemssync_transmitdlg').dialog('open');
+                $('#systemssync_transmitdlg').append('<img src="<?php echo RES_FILE_PATH;?>/images/loading1.gif">')
+                var form=$(this).parents('form');
+                var tr=$(this).parents('tr');
+                $.post('Systemssync/index', $(form).serialize(), function(data){
+                    $('#systemssync_transmitdlg').empty();
+                    $('#systemssync_transmitdlg').append(data);
+                    if(data=="Die Übertragung war erfolgreich."){
+                        var x=$(tr).find('td');
+                        $(x[2]).html('eben gesendet');
+                    }
+                })
+            });
+            $(document).ready(function(){
+                $('#systemssync_transmitdlg').dialog({
+                    autoOpen: false,
+                    modal: true,
+                    title: 'Daten übertragen',
+                });
+            });
+
+        </script>
+        <div id="systemssync_transmitdlg" style="text-align:center; padding:10px;">
+
+        </div>
+<?php if (count($this->patients)<1):?>
+    <p>Es gibt keine Patienten, die synchronisiert werden.</p>
+
+<?php else:?>
+
+    <table id="syssync_pats">
+        <tr>
+            <th style="width:200px;">Name</th>
+            <th style="width:120px;">letzte Empfangene</th>
+            <th style="width:120px;">letzte Gesendete</th>
+            <th style="width:120px;"></th>
+            <th style="width:120px;"></th>
+        </tr>
+    <?php foreach ($this->patients as $patient):?>
+        <tr>
+            <td><?php echo $patient['name'];?></td>
+            <td style="text-align:center;"> <?php echo ($patient['last_received'] > 0 ?  date('d.m.Y H:i',strtotime($patient['last_received'])) :  '-')?></td>
+            <td style="text-align:center;"> <?php echo ($patient['last_sent'] > 0 ?  date('d.m.Y H:i',strtotime($patient['last_sent'])) :  '-')?></td>
+            <td style="text-align:center;"><form method="post"><input type="hidden" name="conn_id" value="<?php echo $this->conn_id;?>"><input type="hidden" name="patid" value="<?php echo $patient['id'];?>"><input type="hidden" name="transmit" value="1"><input type="button" class="systemssync_transmit_button" value="jetzt übertragen"></form></td>
+            <td style="text-align:center;"><form method="post"><input type="hidden" name="conn_id" value="<?php echo $this->conn_id;?>"><input type="hidden" name="patid" value="<?php echo $patient['id'];?>"><input type="submit" name="remove" value="aus Liste entfernen"></form></td>
+        </tr>
+    <?php endforeach;?>
+    </table>
+        </div>
+
+<?php endif;?>
+    </div>
+<div style="margin-top:30px; margin-left:4px;">
+
+    <h2>Neuen Patienten verbinden</h2>
+    <div style="margin-left:6px;">
+    <div>Suchen: <input id="systemssync_patquicksearch" name="q" type="text" style="width:300px;"></div>
+
+    <table id="systemssync_patquicksearch_results"></table>
+
+    <script>
+        var systemssync_patsrcobj=
+        {
+            active:false,
+            xhr:null,
+            call:function(obj){
+                console.log(this.active);
+                if(this.active){
+                    this.xhr.abort();
+                }
+                this.active=true;
+                var q=$(obj).val();
+                $('#systemssync_patquicksearch_results').empty();
+                $('#systemssync_patquicksearch_results').append("<tr><td style='text-align:center;width:300px;'><img src='<?php echo RES_FILE_PATH;?>/images/loading1.gif'></td></tr>");
+                this.xhr=$.get( "ajax/patientsearch",{q:q, json:1}, function( data ) {
+                    $('#systemssync_patquicksearch_results').empty();
+                    var json = jQuery.parseJSON(data);
+                    var count=0;
+                    $(json).each(function(d){
+                        count++;
+                        $('#systemssync_patquicksearch_results').append("<tr class='result'><td>"+this.last_name+"</td><td>"+this.first_name+"</td><td>"+this.birthd+"</td><td><form method='post'><input type='hidden' name='conn_id' value='<?php echo $this->conn_id;?>'> <input type='hidden' name='patid' value='"+this.id+"'><input name='create_link' type='submit' class='systemssync_create_connection' value='Übertragung einrichten'></form></td></tr>");
+                    });
+                    if (count>0){
+                        $('#systemssync_patquicksearch_results').prepend("<tr><th style='width:240px;'>Name</th><th style='width:200px;'>Vorname</th><th style='width:100px;'>Geburtsdatum</th><th></th></tr>");
+                    }
+                });
+            }
+
+        }
+
+        $(document).on('keyup', '#systemssync_patquicksearch', function(){
+            systemssync_patsrcobj.call(this);
+        });
+    </script>
+    </div>
+</div>
+
+    <div style="margin-top:24px;margin-left:4px;">
+        <h2>Diese Verlaufseinträge dürfen versendet werden</h2>
+
+        <div style="margin-left:6px;">
+            <p>Hier wird festgelegt, welche Verlaufseinträge versendet werden. <br>
+                Und für hier ankommende Verlaufseinträge kann ausgewählt werden, welche Einträge übernommen werden sollen.<br>
+                Damit Verlaufseinträge hier erscheinen, muss im Partnersystem das Versenden aktiviert werden und hier muss das Empfangen aktiviert werden.
+            </p>
+        <form method="post">
+            <input type="hidden" name="conn_id" value="<?php echo $this->conn_id;?>">
+
+            <style>
+
+                #systemssync_cs_list th{
+                    background-color: #b2bdd6;
+                    font-weight:bold;
+                    padding:3px;
+                    border:1px solid lightgrey;
+                    border-collapse: collapse;
+                }
+                #systemssync_cs_list td{
+                    padding:1px;
+                    border:1px solid lightgrey;
+                    border-collapse: collapse;
+                }
+            </style>
+
+        <table id="systemssync_cs_list">
+            <tr>
+                <th>Kürzel</th>
+                <th>Beschreibung</th>
+                <th>Empfangen</th>
+                <th>Senden</th>
+            </tr>
+            <?php foreach ($this->course_shortcuts as $short):?>
+                <tr>
+                    <td><?php echo $short['shortcut'];?></td>
+                    <td><?php echo $short['course_fullname'];?></td>
+                    <td style="text-align:center;"><input type="checkbox" name="cs_receive[]" value="<?php echo $short['shortcut'];?>" <?php if (in_array($short['shortcut'],$this->allowed_cs_receive)){echo "checked";}?>></td>
+                    <td style="text-align:center;"><input type="checkbox" name="cs_send[]" value="<?php echo $short['shortcut'];?>"<?php if (in_array($short['shortcut'],$this->allowed_cs_send)){echo "checked";}?>></td>
+                </tr>
+            <?php endforeach;?>
+            <tr>
+                <td colspan="4" style="text-align:right;padding:9px;">
+                    <input type="submit" name="config_sync_shortcuts" value="Diese Liste speichern">
+                </td>
+            </tr>
+        </table>
+
+        </form>
+        </div>
+    </div>
+
+    <div style="margin-top:24px;margin-left:4px;">
+        <h2>Verbindung testen</h2>
+        <div style="margin-left:4px;">
+                <p>Hier kann schnell getestet werden, ob das System auf der anderen Seite erreichbar ist und die Verbindung funktioniert.</p>
+                <script>
+                    $(document).on('click','.systemssync_transmit_button', function(){
+                        $('#systemssync_transmitdlg').empty();
+                        $('#systemssync_transmitdlg').dialog('open');
+                        $('#systemssync_transmitdlg').append('<img src="<?php echo RES_FILE_PATH;?>/images/loading1.gif">')
+                        var form=$(this).parents('form');
+                        $.post('Systemssync/index', $(form).serialize(), function(data){
+                            $('#systemssync_transmitdlg').empty();
+                            $('#systemssync_transmitdlg').append(data);
+                        })
+                    });
+
+                </script>
+
+                <form method="post">
+                    <input type="hidden" name="conn_id" value="<?php echo $this->conn_id;?>">
+                    <input type="hidden" name="droptest" value="1">
+                    <input type="button" class="systemssync_transmit_button" value="Verbindung testen">
+                </form>
+
+        </div>
+    </div>
+
+
+
+
+
+
+
+<?php if ($this->usertype==="SA"):?>
+    <div style="margin-top:24px;margin-left:4px;">
+        <h2>Verbindung konfigurieren</h2>
+        <p><i>Diese Box sieht nur der wahre Administrator!</i></p>
+        <div style="margin-left:4px;">
+            <form method="post">
+                <input type="hidden" name="conn_id" value="<?php echo $this->conn_id;?>">
+            <table>
+                <tr>
+                    <td style="width:160px;">Id <br></td>
+                    <td><input name="id" type="text" value="<?php echo $this->connectionconfig->id;?>"><br><i>(muss auf beiden Seiten identisch und eindeutig sein)</i></td>
+                </tr>
+                <tr>
+                    <td>angezeigter Name</td>
+                    <td><input name="name" type="text" value="<?php echo $this->connectionconfig->name;?>"></td>
+                </tr>
+                <tr>
+                    <td>Adresse</td>
+                    <td><input name="url" type="text" style="width:300px;" value="<?php echo $this->connectionconfig->url;?>">/Systemssync/index</td>
+                </tr>
+                <tr>
+                    <td>User</td>
+                    <td><input name="user" type="text" value="<?php echo $this->connectionconfig->user;?>"></td>
+                </tr>
+                <tr>
+                    <td>Password</td>
+                    <td><input name="pass" type="text" value="<?php echo $this->connectionconfig->pass;?>"></td>
+                </tr>
+                <tr>
+                    <td>ID des lokalen Benutzers</td>
+                    <td><input name="localuserid" type="text" value="<?php echo $this->connectionconfig->localuserid;?>"><br><i>(Dieser Benutzer sollte zB Fremdsystem heißen.)</i></td>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td>
+                        <input name="change_connection_setup" type="submit" value="Änderungen übernehmen">
+                        <br><br>
+                        <input name="change_connection_setup_new" type="submit" value="Als neue Verbindung speichern">
+                    </td>
+                </tr>
+            </table>
+            </form>
+            <table>
+                <tr>
+                    <td style="width:160px;">Weitere Tools</td>
+                    <td>
+                        <script>
+                            $(document).on('click','#systemssync_hiddentools_opener',function(){
+                                $(this).hide();
+                                $('#systemssync_hiddentools').show();
+                            });
+                        </script>
+                        <span id="systemssync_hiddentools_opener">anzeigen</span>
+                        <div id="systemssync_hiddentools" style="display:none;background-color:red;padding:24px;">
+                            <form method="post">
+                                <input type="hidden" name="conn_id" value="<?php echo $this->conn_id;?>">
+                                <input type="submit" name="systemtools_clearall" value="Alle Daten_logs vergessen: Alte Daten würden dann wieder neu übertragen.">
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+            <form method="post">
+
+            </form>
+
+        </div>
+    </div>
+<?php endif;?>
+
+
+
+<?php endif;?>

@@ -1,0 +1,958 @@
+<?php
+/*
+$this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/pagination_style.css?'.date('Ymd'));
+$this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/qtip/jquery.qtip.min.css?'.date('Ymd'));
+$this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/page-css/member_style.css?'.date('Ymd'));
+
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/jquery.blockUI.js?'.date('Ymd'));
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/qtip/jquery.qtip.min.js?'.date('Ymd'));
+*/
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/chosen_v1.6.2/chosen.jquery.js');
+$this->headLink()->appendStylesheet(RES_FILE_PATH.'/javascript/chosen_v1.6.2/chosen_2016.09.22.css');
+
+?>
+<script type="text/javascript">
+$(document).ready(function() { 
+	
+	var url = '<?php echo APP_BASE; ?>member/fetchonemember';
+	var types = [];
+	types['person'] = '<?php echo $this->translate('person_type')?>';
+	types['company'] = '<?php echo $this->translate('company_type')?>';
+	types['family'] = '<?php echo $this->translate('family_type')?>';
+	
+	var auto_member_number = [];
+	auto_member_number[0] = "Nein";
+	auto_member_number[1] = "Ja";
+	
+	var all_members = [];
+	var gender = [];
+	<?php
+	if(is_array($this->genders))foreach($this->genders as $k=>$v){
+		echo "gender['".$k."'] = '". $v ."'" . PHP_EOL;
+	}	
+	?>
+	var statuses = [];
+	<?php
+	if(is_array($this->statuses))foreach($this->statuses as $k=>$v){
+		echo "statuses['".$v['id']."'] = '". $v['status'] ."'" . PHP_EOL;
+	}	
+	?>
+	
+	var ReferalTabs = [];
+	ReferalTabs['members'] = translate('member_registered_as_members');
+	ReferalTabs['donors'] = translate('member_registered_as_donors');
+	
+	$("input:text").prop("readonly", true);
+	
+	$(".merge_table tbody tr").each(function(){
+		$("input:radio:eq(0)", this).change(function(){
+			var $tr = $(this).parent().parent();
+			
+			$("td:eq(0), td:eq(1)", $tr).addClass('yellow_bg_for_td');
+			$("td:eq(2), td:eq(3)", $tr).removeClass('yellow_bg_for_td');
+			
+			if ('membership_history' == $($tr).attr('id')){
+				$(".membership_history:eq(1) td", $tr).removeClass('yellow_bg_for_td');
+				$(".c3, .c4", $tr).removeClass('yellow_bg_for_td');
+				$(".c1, .c2", $tr).addClass('yellow_bg_for_td');
+			}
+			
+		});
+		$("input:radio:eq(1)", this).change(function(){
+			var $tr = $(this).parent().parent();
+			$("td:eq(2), td:eq(3)", $tr).addClass('yellow_bg_for_td');
+			$("td:eq(0), td:eq(1)", $tr).removeClass('yellow_bg_for_td');
+			
+			if ('membership_history' == $($tr).attr('id')){
+				$(".membership_history:eq(0) td", $tr).removeClass('yellow_bg_for_td');
+				$(".c1, .c2", $tr).removeClass('yellow_bg_for_td');
+				$(".c3, .c4", $tr).addClass('yellow_bg_for_td');
+			}
+			  
+		});
+	});
+	
+	var left_type = '';
+	
+	$( "#member_left" ).change(function() {
+		var $value = $(this).val();
+		$(".merge_table tbody").show();
+		$("#submitdiv").show();
+		$(".merge_table tbody tr").each(function(){$("input:radio:eq(0)", this).val($value).prop('checked', true);});
+		$(".merge_table tbody td").removeClass('yellow_bg_for_td');
+		$(".merge_table tbody tr").each(function(){$("td:eq(0), td:eq(1)", this).addClass('yellow_bg_for_td');});
+		
+		$.ajax({
+		  type: "POST",
+		  url: url,
+		  data: {"id":$(this).val()},
+		  dataType:'json'
+		})
+		.success(function(data){
+			left_type = data['type'];
+			all_members[$value] = data;
+			if (right_type==left_type) {
+				$('#type').hide();
+			}
+			else if(right_type!=''){
+				jConfirm('<? echo $this->translate('member_merge_confirm_different_types'); ?>', 
+			 			'<? echo $this->translate('confirmdeletetitle'); ?>',
+			 			function(r) {
+						if(r)
+						{
+							$('#type').show();
+						}else{
+							left_type='';
+							$("#member_left").val('0');
+							$(".merge_table tbody tr").each(function(){$("input:text:eq(0)", this).val("");});
+							$(".merge_table tbody tr").each(function(){$("input:radio:eq(0)", this).val("0");});
+							return false;
+						}
+				});				
+			}
+			
+			if(left_type!='family'){
+				$(".member_family").each(function(){
+					$("input", this).prop('checked', false).attr('disabled',true).prop('checked', false);
+					$("td", this).removeClass('yellow_bg_for_td');
+				});
+			}else{
+				$(".member_family").each(function(){
+					$("input", this).attr('disabled',false);
+					$("input:radio:eq(0)", this).prop('checked', true);
+				});
+			}
+								
+			if (right_type=='company' || left_type=='company') {$('#member_company').show();}
+			else {$('#member_company').hide();}
+			
+			if (right_type=='family' || left_type=='family'){
+				$("td:eq(0), td:eq(1), td:eq(2), td:eq(3)", $('.member_family')).removeClass('disabled_bg_for_td');
+				$('.member_family').show();	
+			}
+			else {$('.member_family').hide();}
+														
+			if ("family_child" in data){
+				var $family_child = data["family_child"];
+				delete data["family_child"];
+				$.each($family_child, function(index) {
+					if (index == 'gender'){$family_child[index] = gender[$family_child[index]];}
+					$("tr#family_child_"+index+" input:text:eq(0)").val($family_child[index]);
+				});
+			}else{
+				$(".member_family").each(function(){
+					$("input:text:eq(0)", this).val("");
+				});
+			}
+
+			$.each(data, function(index) {
+				if (index == 'gender'){data[index] = gender[data[index]];}
+				else if (index == 'status'){data[index] = statuses[data[index]];}
+				else if (index == 'type'){data[index] = types[data[index]];}
+				else if (index == 'auto_member_number'){data[index] = auto_member_number[data[index]];}	
+				else if (index == 'MemberReferalTab'){ data[index] = ReferalTabs[data[index]['referal_tab']];}	
+				
+				if (index == 'membership_history'){
+					$("tr#"+index+" span:eq(0)").html(data[index]);
+				}else{
+					$("tr#"+index+" input:text:eq(0)").val(data[index]);
+				}
+        	});
+		});
+	});
+	
+	var right_type = '';
+	$( "#member_right" ).change(function() {
+		var $value = $(this).val();
+		$(".merge_table tbody tr").each(function(){$("input:radio:eq(1)", this).val($value);});	
+		$.ajax({
+		  type: "POST",
+		  url: url,
+		  data: {"id":$(this).val()},
+		  dataType:'json'
+		})
+		.success(function(data){
+			right_type = data['type'];
+			all_members[$value] = data;
+			if (right_type==left_type) {
+				$('#type').hide();
+			}
+			else if(left_type!=''){
+				jConfirm('<? echo $this->translate('member_merge_confirm_different_types'); ?>', 
+			 			'<? echo $this->translate('confirmdeletetitle'); ?>',
+			 			function(r) {
+						if(r)
+						{
+							$('#type').show();
+						}else{
+							right_type = '';
+							$("#member_right").val('0');
+							$(".merge_table tbody tr").each(function(){$("input:text:eq(1)", this).val("");});
+							$(".merge_table tbody tr").each(function(){$("input:radio:eq(1)", this).val("0");});
+							return false;
+						}
+				});				
+			}
+		
+			if(right_type!='family'){
+				$(".member_family").each(function(){
+					$("input:text:eq(1)", this).attr('disabled',true);
+					$("input:radio:eq(1)", this).prop('checked', false).attr('disabled',true);
+					$("td:eq(2) ,td:eq(3)", this).removeClass('yellow_bg_for_td');
+				});
+			}else if(right_type =='family' && left_type =='family' ){
+				$(".member_family").each(function(){
+					$("input:text", this).attr('disabled',false);
+					$("input:radio:eq(1)", this).prop('checked', false).attr('disabled',false);
+					$("input:radio:eq(0)", this).prop('checked', true).attr('disabled',false);
+					$("td:eq(2) ,td:eq(3)", this).removeClass('yellow_bg_for_td');
+					$("td:eq(0) ,td:eq(1)", this).addClass('yellow_bg_for_td');
+				});
+			}
+			
+			
+			
+			if (right_type=='company' || left_type=='company') {$('#member_company').show();}
+			else {$('#member_company').hide();}
+			
+			if (right_type=='family' || left_type=='family'){
+				$("td:eq(0), td:eq(1), td:eq(2), td:eq(3)", $('.member_family')).removeClass('disabled_bg_for_td');
+				$('.member_family').show();
+			}
+			else {$('.member_family').hide();}
+														
+			if ("family_child" in data){
+				var $family_child = data["family_child"];
+				delete data["family_child"];
+				$.each($family_child, function(index) {
+					if (index == 'gender'){$family_child[index] = gender[$family_child[index]];}
+					$("tr#family_child_"+index+" input:text:eq(1)").val($family_child[index]);
+				});
+			}else{
+				$(".member_family").each(function(){
+					$("input:text:eq(1)", this).val("");
+				});
+			}
+				
+			$.each(data, function(index) {
+				if (index == 'gender'){data[index] = gender[data[index]];}
+				else if (index == 'status'){data[index] = statuses[data[index]];}
+				else if (index == 'type'){data[index] = types[data[index]];}
+				else if (index == 'auto_member_number'){data[index] = auto_member_number[data[index]];}
+				else if (index == 'MemberReferalTab'){ data[index] = ReferalTabs[data[index]['referal_tab']];}	
+				
+				if (index == 'membership_history'){
+					$("tr#"+index+" span:eq(1)").html(data[index]);
+				}else{
+					$("tr#"+index+" input:text:eq(1)").val(data[index]);
+				}
+        	});
+			
+		});
+	});	
+	
+	$("input[name=type]").change(function(){
+		var val = $(this).val();
+		
+		if (val!=0 && val in all_members){
+			if (all_members[val]["type"] != "<?php echo $this->translate('family_type'); ?>"){
+				$(".member_family").each(function(){
+					$("input", this).attr('disabled',true).prop('checked', false);
+					$("td:eq(0), td:eq(1), td:eq(2), td:eq(3)", this).removeClass('yellow_bg_for_td').addClass('disabled_bg_for_td');
+				});
+			}
+			else{
+				$(".member_family").each(function(){
+					$("input", this).attr('disabled',false);
+				});
+				if (left_type == 'family'){
+					$(".member_family").each(function(){
+						$("td:eq(0), td:eq(1)", this).removeClass('disabled_bg_for_td').addClass('yellow_bg_for_td');
+						$("td:eq(2), td:eq(3)", this).removeClass('disabled_bg_for_td').removeClass('yellow_bg_for_td');
+						$("input:radio:eq(0)", this).prop('checked', true);
+					});
+				}else if (right_type == 'family'){
+					$(".member_family").each(function(){
+						$("td:eq(2), td:eq(3)", this).removeClass('disabled_bg_for_td').addClass('yellow_bg_for_td');
+						$("td:eq(0), td:eq(1)", this).removeClass('disabled_bg_for_td').removeClass('yellow_bg_for_td');
+						$("input:radio:eq(1)", this).prop('checked', true);
+					});
+				}
+			}		
+		}
+		
+		if (right_type == 'family' || left_type == 'family'){
+			$('.member_family').show();
+		} 
+		else{
+			$('.member_family').hide();
+		}
+	});
+	
+	
+		
+	 $('#member_left, #member_right').chosen({
+		//placeholder_text_single: "<?php echo $this->translate('please select'); ?>",
+		multiple:0,
+		"search_contains": true,
+		no_results_text: "<?php echo $this->translate('noresultfound'); ?>"
+	}); 
+	
+});
+	
+function member_merge() {
+  		
+	jConfirm('<? echo $this->translate('member_merge_confirm'); ?>', '<? echo $this->translate('confirmdeletetitle'); ?>', function(r) {
+			if(r)
+			{	
+				document.merge_form.action = "member/mergemember";
+				document.merge_form.submit();
+			}else{
+				$("#btnsubmit").prop( 'disabled', false );
+			}
+		
+	});
+	
+	return false;
+	
+  } 
+
+	
+</script>
+<style>
+	.merge_table{}
+	.merge_table td{
+		text-align:left; 
+		vertical-align:bottom  !important
+	}
+	.merge_table label{
+		display:block
+	}
+	.yellow_bg_for_td{
+		background-color: #ffffe0;
+	}
+	.disabled_bg_for_td{
+		background-color: #f3f3f3;
+	}
+</style>
+
+<div class="back_list">
+	<a href="member/memberslist">&laquo; <?php echo $this->translate('members_list') ?></a>
+</div>
+
+<fieldset>
+
+	<legend><?php echo $this->translate("member_merge") ?></legend>
+
+
+<form action="" method="post" name="merge_form" id="merge_form" onsubmit="return member_merge();">
+
+<div class="err"><?php echo $this->error_merged ?></div>
+
+	
+	<table class="datatable merge_table" border="1" colspacing=1 cellpaging=2 style="border-collapse: collapse;">
+		<thead>
+			<tr>
+				<td colspan=2>
+					<?php echo $this->translate('please select')."&nbsp"; echo $this->formSelect('member_left',  0, array("id"=>"member_left" ), $this->members) ?>
+				</td>
+				<td colspan=2>
+					<?php echo $this->translate('please select')."&nbsp"; echo $this->formSelect('member_right',  0, array("id"=>"member_right"), $this->members) ?>
+				</td>
+				
+			</tr>
+		</thead>
+		<tbody style="display:none">
+			<tr id="type">
+				<td>
+					<label><?php echo $this->translate('type') ?></label>
+					<input class="w300" type="text">
+				</td>
+				<td>
+					<input type="radio" name="type" value=0>
+				</td>				
+				<td>
+					<input type="radio" name="type" value=0>
+				</td>
+				<td>
+					<label><?php echo $this->translate('type') ?></label>
+					<input class="w300" type="text">
+				</td>
+			</tr>					
+			<tr id="member_company">
+				<td>
+					<label><?php echo $this->translate('member_company') ?></label>
+					<input class="w300" type="text">
+				</td>
+				<td>
+					<input type="radio" name="member_company">
+				</td>				
+				<td>
+					<input type="radio" name="member_company">
+				</td>
+				<td>
+					<label><?php echo $this->translate('member_company') ?></label>
+					<input class="w300" type="text">
+				</td>
+			</tr>					
+			<tr id="title">
+				<td>
+					<label><?php echo $this->translate('title') ?></label>
+					<input class="w300" type="text">
+				</td>
+				<td>
+					<input type="radio" name="title">
+				</td>				
+				<td>
+					<input type="radio" name="title">
+				</td>
+				<td>
+					<label><?php echo $this->translate('title') ?></label>
+					<input class="w300" type="text">
+				</td>
+			</tr>
+			<tr id="salutation">
+				<td>
+					<label><?php echo $this->translate('salutation') ?></label>
+					<input class="w300" type="text">
+				</td>
+				<td>
+					<input type="radio" name="salutation">
+				</td>				
+				<td>
+					<input type="radio" name="salutation">
+				</td>
+				<td>
+					<label><?php echo $this->translate('salutation') ?></label>
+					<input class="w300" type="text">
+				</td>
+			</tr>				
+			<tr id="salutation_letter">
+				<td>
+					<label><?php echo $this->translate('salutation_letter') ?></label>
+					<input class="w300" type="text">
+				</td>
+				<td>
+					<input type="radio" name="salutation_letter">
+				</td>				
+				<td>
+					<input type="radio" name="salutation_letter">
+				</td>
+				<td>
+					<label><?php echo $this->translate('salutation_letter') ?></label>
+					<input class="w300" type="text">
+				</td>
+			</tr>				
+			<tr id="first_name">
+				<td>
+					<label><?php echo $this->translate('firstname') ?></label>
+					<input class="w300" type="text">
+				</td>
+				<td>
+					<input type="radio" name="first_name">
+				</td>				
+				<td>
+					<input type="radio" name="first_name">
+				</td>
+				<td>
+					<label><?php echo $this->translate('firstname') ?></label>
+					<input class="w300" type="text">
+				</td>
+			</tr>			
+			<tr id="last_name">
+				<td>
+					<label><?php echo $this->translate('lastname') ?></label>
+					<input class="w300" type="text">
+				</td>
+				<td>
+					<input type="radio" name="last_name">
+				</td>				
+				<td>
+					<input type="radio" name="last_name">
+				</td>
+				<td>
+					<label><?php echo $this->translate('lastname') ?></label>
+					<input class="w300" type="text">
+				</td>
+			</tr>	
+			<tr id="birthd">
+				<td>
+					<label><?php echo $this->translate('birthd') ?></label>
+					<input class="w300" type="text">
+				</td>
+				<td>
+					<input type="radio" name="birthd">
+				</td>				
+				<td>
+					<input type="radio" name="birthd">
+				</td>
+				<td>
+					<label><?php echo $this->translate('birthd') ?></label>
+					<input class="w300" type="text">
+				</td>
+			</tr>	
+			<tr id="gender">
+				<td>
+					<label><?php echo $this->translate('gender') ?></label>
+					<input class="w300" type="text">
+				</td>
+				<td>
+					<input type="radio" name="gender">
+				</td>				
+				<td>
+					<input type="radio" name="gender">
+				</td>
+				<td>
+					<label><?php echo $this->translate('gender') ?></label>
+					<input class="w300" type="text">
+				</td>
+			</tr>
+			
+			<!-- Family block START-->
+			
+	
+			<tr class="member_family" id="family_child_title">
+				<td>
+					<label><?php echo $this->translate('family_type')." ".$this->translate('title') ?></label>
+					<input class="w300" type="text">
+				</td>
+				<td>
+					<input type="radio" name="family_child[title]">
+				</td>				
+				<td>
+					<input type="radio" name="family_child[title]">
+				</td>
+				<td>
+					<label><?php echo $this->translate('family_type')." ".$this->translate('title') ?></label>
+					<input class="w300" type="text">
+				</td>
+			</tr>
+			<tr class="member_family" id="family_child_salutation">
+				<td>
+					<label><?php echo $this->translate('family_type')." ".$this->translate('salutation') ?></label>
+					<input class="w300" type="text">
+				</td>
+				<td>
+					<input type="radio" name="family_child[salutation]">
+				</td>				
+				<td>
+					<input type="radio" name="family_child[salutation]">
+				</td>
+				<td>
+					<label><?php echo $this->translate('family_type')." ".$this->translate('salutation') ?></label>
+					<input class="w300" type="text">
+				</td>
+			</tr>				
+			<tr class="member_family" id="family_child_salutation_letter">
+				<td>
+					<label><?php echo $this->translate('family_type')." ".$this->translate('salutation_letter') ?></label>
+					<input class="w300" type="text">
+				</td>
+				<td>
+					<input type="radio" name="family_child[salutation_letter]">
+				</td>				
+				<td>
+					<input type="radio" name="family_child[salutation_letter]">
+				</td>
+				<td>
+					<label><?php echo $this->translate('family_type')." ".$this->translate('salutation_letter') ?></label>
+					<input class="w300" type="text">
+				</td>
+			</tr>				
+			<tr class="member_family" id="family_child_first_name">
+				<td>
+					<label><?php echo $this->translate('family_type')." ".$this->translate('firstname') ?></label>
+					<input class="w300" type="text">
+				</td>
+				<td>
+					<input type="radio" name="family_child[first_name]">
+				</td>				
+				<td>
+					<input type="radio" name="family_child[first_name]">
+				</td>
+				<td>
+					<label><?php echo $this->translate('family_type')." ".$this->translate('firstname') ?></label>
+					<input class="w300" type="text">
+				</td>
+			</tr>			
+			<tr class="member_family" id="family_child_last_name">
+				<td>
+					<label><?php echo $this->translate('family_type')." ".$this->translate('lastname') ?></label>
+					<input class="w300" type="text">
+				</td>
+				<td>
+					<input type="radio" name="family_child[last_name]">
+				</td>				
+				<td>
+					<input type="radio" name="family_child[last_name]">
+				</td>
+				<td>
+					<label><?php echo $this->translate('family_type')." ".$this->translate('lastname') ?></label>
+					<input class="w300" type="text">
+				</td>
+			</tr>	
+			<tr class="member_family" id="family_child_birthd">
+				<td>
+					<label><?php echo $this->translate('family_type')." ".$this->translate('birthd') ?></label>
+					<input class="w300" type="text">
+				</td>
+				<td>
+					<input type="radio" name="family_child[birthd]">
+				</td>				
+				<td>
+					<input type="radio" name="family_child[birthd]">
+				</td>
+				<td>
+					<label><?php echo $this->translate('family_type')." ".$this->translate('birthd') ?></label>
+					<input class="w300" type="text">
+				</td>
+			</tr>	
+			<tr class="member_family" id="family_child_gender">
+				<td>
+					<label><?php echo $this->translate('family_type')." ".$this->translate('gender') ?></label>
+					<input class="w300" type="text">
+				</td>
+				<td>
+					<input type="radio" name="family_child[gender]">
+				</td>				
+				<td>
+					<input type="radio" name="family_child[gender]">
+				</td>
+				<td>
+					<label><?php echo $this->translate('family_type')." ".$this->translate('gender') ?></label>
+					<input class="w300" type="text">
+				</td>
+			</tr>
+			
+			
+			<!-- Family block END-->
+			
+			
+			<tr id="street1">
+				<td>
+					<label><?php echo $this->translate('street') ?></label>
+					<input class="w300" type="text">
+				</td>
+				<td>
+					<input type="radio" name="street1">
+				</td>				
+				<td>
+					<input type="radio" name="street1">
+				</td>
+				<td>
+					<label><?php echo $this->translate('street') ?></label>
+					<input class="w300" type="text">
+				</td>
+			</tr>	
+			<tr id="street2">
+				<td>
+					<label><?php echo $this->translate('street2') ?></label>
+					<input class="w300" type="text">
+				</td>
+				<td>
+					<input type="radio" name="street2">
+				</td>				
+				<td>
+					<input type="radio" name="street2">
+				</td>
+				<td>
+					<label><?php echo $this->translate('street2') ?></label>
+					<input class="w300" type="text">
+				</td>
+			</tr>	
+			<tr id="zip">
+				<td>
+					<label><?php echo $this->translate('zip') ?></label>
+					<input class="w300" type="text">
+				</td>
+				<td>
+					<input type="radio" name="zip">
+				</td>				
+				<td>
+					<input type="radio" name="zip">
+				</td>
+				<td>
+					<label><?php echo $this->translate('zip') ?></label>
+					<input class="w300" type="text">
+				</td>
+			</tr>	
+			<tr id="city">
+				<td>
+					<label><?php echo $this->translate('city') ?></label>
+					<input class="w300" type="text">
+				</td>
+				<td>
+					<input type="radio" name="city">
+				</td>				
+				<td>
+					<input type="radio" name="city">
+				</td>
+				<td>
+					<label><?php echo $this->translate('city') ?></label>
+					<input class="w300" type="text">
+				</td>
+			</tr>	
+			<tr id="country">
+				<td>
+					<label><?php echo $this->translate('country') ?></label>
+					<input class="w300" type="text">
+				</td>
+				<td>
+					<input type="radio" name="country">
+				</td>				
+				<td>
+					<input type="radio" name="country">
+				</td>
+				<td>
+					<label><?php echo $this->translate('country') ?></label>
+					<input class="w300" type="text">
+				</td>
+			</tr>
+			<tr id="phone">
+				<td>
+					<label><?php echo $this->translate('phone') ?></label>
+					<input class="w300" type="text">
+				</td>
+				<td>
+					<input type="radio" name="phone">
+				</td>				
+				<td>
+					<input type="radio" name="phone">
+				</td>
+				<td>
+					<label><?php echo $this->translate('phone') ?></label>
+					<input class="w300" type="text">
+				</td>
+			</tr>	
+			<tr id="mobile">
+				<td>
+					<label><?php echo $this->translate('mobile') ?></label>
+					<input class="w300" type="text">
+				</td>
+				<td>
+					<input type="radio" name="mobile">
+				</td>				
+				<td>
+					<input type="radio" name="mobile">
+				</td>
+				<td>
+					<label><?php echo $this->translate('mobile') ?></label>
+					<input class="w300" type="text">
+				</td>
+			</tr>
+			<tr id="fax">
+				<td>
+					<label><?php echo $this->translate('fax') ?></label>
+					<input class="w300" type="text">
+				</td>
+				<td>
+					<input type="radio" name="fax">
+				</td>				
+				<td>
+					<input type="radio" name="fax">
+				</td>
+				<td>
+					<label><?php echo $this->translate('fax') ?></label>
+					<input class="w300" type="text">
+				</td>
+			</tr>	
+			<tr id="email">
+				<td>
+					<label><?php echo $this->translate('email') ?></label>
+					<input class="w300" type="text">
+				</td>
+				<td>
+					<input type="radio" name="email">
+				</td>				
+				<td>
+					<input type="radio" name="email">
+				</td>
+				<td>
+					<label><?php echo $this->translate('email') ?></label>
+					<input class="w300" type="text">
+				</td>
+			</tr>	
+			<tr id="website">
+				<td>
+					<label><?php echo $this->translate('website') ?></label>
+					<input class="w300" type="text">
+				</td>
+				<td>
+					<input type="radio" name="website">
+				</td>				
+				<td>
+					<input type="radio" name="website">
+				</td>
+				<td>
+					<label><?php echo $this->translate('website') ?></label>
+					<input class="w300" type="text">
+				</td>
+			</tr>	
+			<tr id="vw_id">
+				<td>
+					<label><?php echo $this->translate('voluntary_referance') ?></label>
+					<input class="w300" type="text">
+				</td>
+				<td>
+					<input type="radio" name="vw_id">
+				</td>				
+				<td>
+					<input type="radio" name="vw_id">
+				</td>
+				<td>
+					<label><?php echo $this->translate('voluntary_referance') ?></label>
+					<input class="w300" type="text">
+				</td>
+			</tr>	
+			<tr id="status">
+				<td>
+					<label><?php echo $this->translate('status') ?></label>
+					<input class="w300" type="text">
+				</td>
+				<td>
+					<input type="radio" name="status">
+				</td>				
+				<td>
+					<input type="radio" name="status">
+				</td>
+				<td>
+					<label><?php echo $this->translate('status') ?></label>
+					<input class="w300" type="text">
+				</td>
+			</tr>	
+			<tr id="profession">
+				<td>
+					<label><?php echo $this->translate('member_profession') ?></label>
+					<input class="w300" type="text">
+				</td>
+				<td>
+					<input type="radio" name="profession">
+				</td>				
+				<td>
+					<input type="radio" name="profession">
+				</td>
+				<td>
+					<label><?php echo $this->translate('member_profession') ?></label>
+					<input class="w300" type="text">
+				</td>
+			</tr>	
+			<tr id="auto_member_number">
+				<td>
+					<label><?php echo $this->translate('auto_member_number') ?></label>
+					<input class="w300" type="text">
+				</td>
+				<td>
+					<input type="radio" name="auto_member_number">
+				</td>				
+				<td>
+					<input type="radio" name="auto_member_number">
+				</td>
+				<td>
+					<label><?php echo $this->translate('auto_member_number') ?></label>
+					<input class="w300" type="text">
+				</td>
+			</tr>	
+			<tr id="member_number">
+				<td>
+					<label><?php echo $this->translate('member_number') ?></label>
+					<input class="w300" type="text">
+				</td>
+				<td>
+					<input type="radio" name="member_number">
+				</td>				
+				<td>
+					<input type="radio" name="member_number">
+				</td>
+				<td>
+					<label><?php echo $this->translate('member_number') ?></label>
+					<input class="w300" type="text">
+				</td>
+			</tr>	
+			<tr id="memos">
+				<td>
+					<label><?php echo $this->translate('memos') ?></label>
+					<input class="w300" type="text">
+				</td>
+				<td>
+					<input type="radio" name="memos">
+				</td>				
+				<td>
+					<input type="radio" name="memos">
+				</td>
+				<td>
+					<label><?php echo $this->translate('memos') ?></label>
+					<input class="w300" type="text">
+				</td>
+			</tr>				
+			<tr id="comments">
+				<td>
+					<label><?php echo $this->translate('comments') ?></label>
+					<input class="w300" type="text">
+				</td>
+				<td>
+					<input type="radio" name="comments">
+				</td>				
+				<td>
+					<input type="radio" name="comments">
+				</td>
+				<td>
+					<label><?php echo $this->translate('comments') ?></label>
+					<input class="w300" type="text">
+				</td>
+			</tr>				
+			
+			
+			<tr id="membership_history">
+				<td class="c1">
+					<span></span>
+				</td>
+				<td class="c2">
+					<input type="radio" name="membership_history">
+				</td>				
+				<td class="c3">
+					<input type="radio" name="membership_history">
+				</td>
+				<td class="c4">
+					<span></span>
+				</td>
+			</tr>	
+			
+			
+			<tr id="MemberReferalTab">
+				<td class="c1">
+					<label><?php echo $this->translate('member_register_referal_tab') ?></label>
+					<input class="w300" type="text">
+				</td>
+				<td class="c2">
+					<input type="radio" name="member_referal_tab">
+				</td>				
+				<td class="c3">
+					<input type="radio" name="member_referal_tab">
+				</td>
+				<td class="c4">
+					<label><?php echo $this->translate('member_register_referal_tab') ?></label>
+					<input class="w300" type="text">
+				</td>
+			</tr>	
+			
+			
+			
+		</tbody>
+		
+	</table>
+		
+	
+	
+
+
+ 
+
+
+<div id="submitdiv" style="display:none">
+		<label for="btnsubmit" id="lbl_btnSubmit"></label>
+		<input type="submit" name="btnsubmit" id="btnsubmit" class="button save_form_btn" tabindex="30" value="<?php echo $this->translate('submit') ?>">
+</div>
+</form>
+	</fieldset>
+
+

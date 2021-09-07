@@ -1,0 +1,171 @@
+<style type="text/css">
+
+	#performoperation .error {
+		display: block;
+		margin: 0px 0 5px 5px;
+		width: auto;
+		height: auto;
+		color: #900;
+		float:none;
+	}
+</style>
+<?php 
+	$selected_user = $this->selected_user;
+
+?>
+
+<script type="text/javascript">
+	$(function() {
+		$('.loadingdiv').hide();
+		
+		$('#select_user').live('change',function(){
+			var user = $(this).val()
+			if(user != "-1"){
+				location.href = "<?php echo APP_BASE.'medication/btmstatus?user="+user+"';  ?>";
+				$('.loadingdiv').show();
+			} else{
+				redirect();
+			}
+		});
+		
+		
+		$('.delete_link').live('click', function(){
+			var doc_id = $(this).attr('id');
+			var user_id = $(this).attr('rel');
+			
+			   jConfirm('<?php echo $this->translate('confirmdeleterecord'); ?>', '', function(r) {
+					if(r)
+					{
+	 					location.href = "<?php echo APP_BASE.'medication/btmstatusfile?user="+user_id+"&delid="+doc_id+"';  ?>";
+					}
+			});
+			return false;
+			
+		})
+		
+	});
+	function redirect() {
+		window.location.href = "<?php echo APP_BASE; ?>medication/btmstatus";
+	}
+	
+</script>
+<?php if($this->clientid != 0): ?>
+	<div>
+		<a class="back_link" href="medication/btmbuch">&laquo; <?php echo $this->translate('BTM') ?></a>
+	</div>
+	<br/>&nbsp;<br/>
+	<div>
+		<h1> <?php echo $this->translate('BTM status') ?></h1>
+	</div>
+	
+	<br/>&nbsp;<br/>
+	<form name="user_status"  id="user_status" action="" method="post">
+	<div>
+	<label><?php echo $this->translate('Select user for btm status')?></label>
+	<select name="select_user" id="select_user">
+		<option value="-1"><?php echo $this->translate("selectuser")?></option>
+		<?php foreach($this->btm_users as $uid=>$udata):?>
+			<option value="<?php echo $uid ?>" <?php if($selected_user == $uid):?>   selected="selected" <?php endif; ?> > <?php echo $udata['fullname']?></option>
+		<?php endforeach;?>
+	</select>
+	</div>
+	
+	
+	<?php if(strlen($selected_user) > 0 && $selected_user != "-1"): ?>
+		<fieldset>
+			<div id="loading" class="loadingdiv" align="center"><img src="images/pageloading.gif"><br />	<?php echo $this->translate('loadingpleasewait'); ?></div>
+			<div class="btm_user_title" style="display: block; float: left; width: 100%; colot: #000000; font-weight: 800; margin:10px 0 15px 0;">
+				<?php echo $this->btm_users[$selected_user]['username']?>, <?php echo $this->client_team_name; ?>
+			</div>
+			<table class="datatable">
+				<tr>
+					<th width="90%"><?php echo $this->translate('btm medication name')?></th>
+					<th width="10%"><?php echo $this->translate('user medication amout')?></th>
+				</tr>
+			<?php foreach($this->user_medication as $med_id =>$med_data):?>
+				<tr>
+					<td><?php echo $med_data['name']; ?> </td>
+					<td>
+						<?php echo $med_data['users'][$med_id][$selected_user] ; ?>
+					</td>
+				</tr>
+			<?php endforeach; ?>
+			</table>
+			<br/>
+			<div>
+				<input type="submit" name="generate_pdf"  value="<?php echo $this->translate('generatepdf')?>" />
+			</div>
+		</fieldset>
+	<? endif;?>
+<br/>
+	<fieldset>
+		<legend><?php echo $this->translate('status_files_history'); ?></legend>
+		<table width="85%" border="0" align="left" cellpadding="0" cellspacing="0" class="datatable" id="listpatientfiles_contenttable">
+			<tr>
+				<th align="left" valign="top" width="15%"><strong><?php echo $this->translate('generated_by'); ?></strong></th>
+				<th align="left" valign="top" width="15%"><strong><?php echo $this->translate('generated_for'); ?></strong></th>
+				<th height="20" align="left" valign="top" width="15%"><strong><?php echo $this->translate('date'); ?></strong></th>
+				<th align="left" valign="top" width="15%"><strong><?php echo $this->translate('deletes'); ?></strong></th>
+			</tr>
+			<?php
+				$filetypearray = array("zip" => "zip.png", "msword" => "word.png", "vnd.openxmlformats-officedocument.wordprocessingml.document" => "word.png", "docx" => "word.png", "excel" => "excel.png", "xls" => "excel.png", "XLSX" => "excel.png", "vnd.openxmlformats-officedocument.spreadsheetml.sheet" => "excel.png", "pdf" => "pdf.png", "txt" => "text.png", "text" => "text.png", "plain" => "text.png", "vnd.ms-powerpoint" => "powerpoint.png", "vnd.openxmlformats-officedocument.presentationml.presentation" => "powerpoint.png", "jpeg" => "file-jpg.png", "jpg" => "file-jpg.png", "gif" => "file-gif.png");
+			?>
+			<? if(!empty($this->status_files)):?>
+			<?php foreach($this->status_files as $keyf => $fileData):
+
+					$filetype = strtoupper($fileData['file_type']);
+					$file_type = $filetypearray[$fileData['file_type']];
+			?>
+				<?php 
+					
+					$user_id = '';
+					if($_REQUEST['user'])
+					{
+						$user_id = "user=".$_REQUEST['user'].'&';
+					}
+					$generated_by  = $this->all_user_array[$fileData['create_user']]['user_title'].' '.$this->all_user_array[$fileData['create_user']]['last_name'].', '.$this->all_user_array[$fileData['create_user']]['first_name']; 
+					$generated_for  = $this->all_user_array[$fileData['recordid']]['name']; 
+					if($fileData['isdeleted'] == 1):
+						$title_generated_by = "<i><strike>" . $generated_by . "</strike></i>";
+						$title_generated_for = "<i><strike>" . $generated_for . "</strike></i>";
+						$delete=  '<i>'.date("d.m.Y H:i", strtotime($fileData['change_date'])).'</i>'; 
+						$create_date =  '<i>'.date("d.m.Y H:i", strtotime($fileData['create_date'])).'</i>'; 
+						$prefix = " - " . $this->translate('deleted');
+					else:
+						$title_generated_by  = '<a href="'.APP_BASE.'medication/btmstatusfile?doc_id=' . $fileData['id']. '&tab='.$fileData['tabname'].'">' . $generated_by . '</a>';
+						$title_generated_for  = '<a href="'.APP_BASE.'medication/btmstatusfile?doc_id=' . $fileData['id']. '&tab='.$fileData['tabname'].'">' . $generated_for . '</a>';
+						$delete = '<a href="javascript: void(0);" id="'.$fileData['id'].'" rel="'.$fileData['recordid'].'" class="delete_link"><img src="' . RES_FILE_PATH . '/images/action_delete.png" border="0" /></a>';
+						$create_date =  date("d.m.Y H:i", strtotime($fileData['create_date'])); 
+						$prefix = "";
+					endif;
+				?>
+			
+				<tr class="row">
+					<td align="left" valign="top"><?php echo $title_generated_by; ?></td>
+					<td align="left" valign="top"><?php echo $title_generated_for ?></td>
+					<td height="20" align="left" valign="top"><?php echo $create_date; ?></td>
+					<td align="left" valign="top"><?php echo $delete; ?></td>
+				</tr>
+			<?php endforeach; ?>
+			<? else: ?>
+				
+				<? if(strlen($_REQUEST['user']) > 0 ): ?>
+				<?php $data_generated_for  = $this->all_user_array[$_REQUEST['user']]['name'];?>
+				<tr>
+					<td colspan="4"> <?php echo $this->translate('No data generated for selected user');?>:<? echo $data_generated_for;?>
+				</tr>
+				<? else :?>
+				<tr>
+					<td colspan="4"> <?php echo $this->translate('No pdf generated');?>
+				</tr>
+				<? endif; ?>
+				
+			<? endif; ?>
+		</table>
+	
+	</fieldset>
+	</form>
+	 
+<?php else: ?>
+	<div><span class="err"><? echo $this->translate('selectclient');?></span></div>
+<?php endif; ?>

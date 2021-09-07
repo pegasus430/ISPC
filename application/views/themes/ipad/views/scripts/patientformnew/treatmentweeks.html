@@ -1,0 +1,280 @@
+ 
+<link rel='stylesheet' type='text/css' href='<?php echo RES_FILE_PATH; ?>/css/page-css/treatmentweeks.css' />
+<script type="text/javascript">
+ 
+	$(document).ready(function () {
+		checkcheck();
+		$('.selected_weeks').live('click',function(){
+			checkcheck();
+		});
+		
+		$('#show_hide').click(function(){
+			if($('.history').is(":visible")){
+				$('#show_hide').addClass('show');
+				$('#show_hide').removeClass('hide');
+				$('.history').hide();
+			} else{
+				$('#show_hide').addClass('hide');
+				$('#show_hide').removeClass('show');
+				$('.history').show();
+			}
+		});
+			if($('#client_Error_msg').is(":visible")){
+				$('#client_Error_msg').addClass('mesage_block');
+				setTimeout(function() {
+					$('.mesage_block').hide();
+				}, 1500);
+			}
+
+		
+		$('#save_transfer2anlage5').click(function(event) {
+			event.preventDefault();
+			$(document).userSession().checksession('abort', function(result) {
+				if(result === false) {
+					event.stopImmediatePropagation(); //stop going forward
+				} else {
+					$('#transfer2anlage5').val(1);
+					$('#treatemnt_weeks').submit();
+				}
+			});
+		});
+		
+
+	$('form').submit(function() {
+			setTimeout(function() {
+				$('input[type=submit]').attr('disabled', true);
+			}, 150);
+
+			setTimeout(function() {
+				$('input[type=submit]').attr('disabled', false);
+			}, 11000);
+		});
+
+	});
+	
+	function checkcheck(){
+		var boxes = $('.selected_weeks:checked');
+		if(boxes.length > 0 ){
+			$('input[type=submit]').attr('disabled', false);
+		} else{
+			$('input[type=submit]').attr('disabled', true);
+		}
+	}
+	
+</script>
+<?php echo $this->patientinfo; ?>
+<?php echo $this->tabmenus; ?>
+<?php 
+$weeks_by_anlage5 = $this->weeks_by_anlage5;
+$saved_bra_anlage_5 = $this->saved_bra_anlage_5;
+$anlage5_weeks = $this->anlage5_weeks;
+$weeks_data = $this->weeks_data;
+$hopital_days = 0;
+ ?>
+<div class="tab_container">
+<?if($this->error_message):?>
+<div id="client_Error_msg" class="<? echo $this->message_type;?>"><?php echo $this->error_message ?></div>
+<?php endif;?>
+
+
+
+<? if(!empty($this->saved_bra_anlage_5) && $show_box == true):?>
+<a href="javascript:void(0)" class="anlage_link" id="show_hide"><? echo $this->translate(' + Show / Hide generated Anlage 5')?></a>
+<div class="history" style="display: none">
+<fieldset>
+	<legend><? echo $this->translate('Generated Anlage 5')?></legend>
+	
+	<table class="anlage_5_table">
+		<tr>
+			<th><? echo $this->translate('#')?></th>
+			<th><? echo $this->translate('Anlage 5 period')?></th>
+			<th><? echo $this->translate('included weeks')?></th>
+			<th><? echo $this->translate('create_by')?></th>
+			<th><? echo $this->translate('create_date')?></th>
+			<th><? echo $this->translate('actions')?></th>
+		</tr>
+		
+		<? $i = 1; foreach($saved_bra_anlage_5 as $k=>$anlage_data):?>
+		<tr <?php if($anlage_data['status'] == "1"):?> class="invoiced" <?php endif;?> >
+			<td><?php echo $i;?></td>
+			<td><? echo date('d.m.Y',strtotime($anlage_data['start_date']))?> - <? echo date('d.m.Y',strtotime($anlage_data['end_date']))?></td>
+			<td>
+			<? if($anlage5_weeks[$anlage_data['id']]):?>
+				<table class="nobrdr">
+					<? foreach($anlage5_weeks[$anlage_data['id']] as $k=>$week):?>
+						<tr><td><?php echo date('d.m.Y',strtotime($week['start_date']))?> - <?php echo date('d.m.Y',strtotime($week['end_date']))?> </td></tr>
+					<? endforeach?>
+				</table>
+				<?php endif;?>
+			</td>
+			<td><? echo $this->users_data[$anlage_data['create_user']]; ?></td>
+			<td><? echo date('d.m.Y H:i',strtotime($anlage_data['create_date'])); ?></td>
+			<td>
+				<?php if($anlage_data['status'] != "1"):?>
+				<a href="<?php echo APP_BASE;?>patientformnew/braanlage5?id=<?php echo $_REQUEST['id'];?>&anlage_id=<?php echo $anlage_data['id']?>"  >
+					<img src="<?php echo RES_FILE_PATH; ?>/images/edit.png" alt="edit" >
+				</a> 
+				<? else:?>
+				 - 
+				<? endif; ?>
+			</td>
+		</tr>	
+		<? $i++;endforeach;?>
+	</table>
+</fieldset>
+</div> 
+<? endif; ?>
+
+<form name="treatemnt_weeks" id="treatemnt_weeks" action="<?php echo APP_BASE;?>patientformnew/braanlage5?id=<?php echo $_REQUEST['id'];?>" method="POST">
+
+<?php if(empty($weeks_data['sapv'])): ?>
+	<span class="no-data"><?php echo $this->translate('no bilable weeks of treatment')?></span>
+<?php endif;?>
+
+
+<?php foreach($weeks_data['sapv'] as $week_nr => $week_details ):?>
+
+<?php 
+	if(!empty($weeks_data['kh'][$week_nr]) && count($weeks_data['kh'][$week_nr]) >= 2){
+		$hopital_days =  count($weeks_data['kh'][$week_nr]);
+	} else{
+		$hopital_days = 0;
+	}
+
+	$week_period = $week_details[0].'-'.end($week_details);
+?>
+<div class="week">
+	<div class="week_block">
+		<table class="week_table  table_border w_100percentage">
+			<tr <?php if(in_array($week_period,$this->invoiced_period_weeks)):?> class="invoiced"<?php endif;?>>
+				<td class="week_dates" > <? echo $week_details[0]?> - <? echo end($week_details);?></td>
+				<td class="week_dates" ><?php if($hopital_days > 0):?> (<?php echo $hopital_days;?> Krh Tage) <? endif; ?></td>
+				<td>
+					<input type="checkbox" id="week_nr_<?php echo $week_nr;?>" value="<?php echo $week_nr;?>" name="weeks[]" class="selected_weeks">
+					<input type="hidden"  name="invoice[<?php echo $week_nr; ?>][start_date]" value="<?php echo $week_details[0]?>"/>
+					<input type="hidden"  name="invoice[<?php echo $week_nr; ?>][end_date]" value="<?php echo end($week_details)?>"/>
+					<input type="hidden"  name="invoice[<?php echo $week_nr; ?>][hospital_days]" value="<?php echo $hopital_days?>"/>
+				</td>
+			</tr>
+		</table>
+	
+		<table class="week_table table_border w_100percentage">
+		<?php if($week_nr == "0"):?>
+			<tr>
+				<td><input type="checkbox" value="PCT01" name="invoice[<?php echo $week_nr; ?>][products][]" id="PCT01_<?php echo $week_nr; ?>" <? if(in_array("PCT01",array_values($weeks_data['bra'][$week_nr]))):?> checked="checked" <?php endif;?> /></td>
+				<td><label for="PCT01_<?php echo $week_nr; ?>">PCT01</label></td>
+				
+				<td><input type="checkbox" value="PCT02"  name="invoice[<?php echo $week_nr; ?>][products][]" id="PCT02_<?php echo $week_nr; ?>" <? if(in_array("PCT02",array_values($weeks_data['bra'][$week_nr]))):?> checked="checked" <?php endif;?>/></td>
+				<td><label for="PCT02_<?php echo $week_nr; ?>">PCT02</label></td>
+				
+				<td><input type="checkbox" value="PCT05"  name="invoice[<?php echo $week_nr; ?>][products][]" id="PCT05_<?php echo $week_nr; ?>" <? if(in_array("PCT05",array_values($weeks_data['bra'][$week_nr]))):?> checked="checked" <?php endif;?> /></td>
+				<td><label for="PCT05_<?php echo $week_nr; ?>">PCT05</label></td>
+				
+				<td><input type="checkbox" value="PCT06"  name="invoice[<?php echo $week_nr; ?>][products][]" id="PCT06_<?php echo $week_nr; ?>" <? if(in_array("PCT06",array_values($weeks_data['bra'][$week_nr]))):?> checked="checked" <?php endif;?> /></td>
+				<td><label for="PCT06_<?php echo $week_nr; ?>">PCT06</label></td>
+			</tr>
+		<?php else: ?>
+			<tr>
+				<td width="4%"><input type="checkbox" value="PCT05"  name="invoice[<?php echo $week_nr; ?>][products][]" id="PCT05_<?php echo $week_nr; ?>" <? if(in_array("PCT05",array_values($weeks_data['bra'][$week_nr]))):?> checked="checked" <?php endif;?> /></td>
+				<td width="96%" colspan="7"><label for="PCT05_<?php echo $week_nr; ?>">PCT05</label></td>
+			</tr>
+		
+		<?php endif;?>	
+		</table>
+			 
+		<table class="week_table  w_100percentage">
+			<tr>
+				<td class=" table_border">
+					<table class="week_table w_100percentage" >
+						<tr>
+							<td><input type="checkbox" value="PCT03a" name="invoice[<?php echo $week_nr; ?>][products][]" id="PCT03a_<?php echo $week_nr; ?>" <? if(in_array("PCT03a",array_values($weeks_data['bra'][$week_nr]))):?> checked="checked" <?php endif;?> /></td>
+							<td><label for="PCT03a_<?php echo $week_nr; ?>">PCT03a</label></td>
+							
+							<td><input type="checkbox" value="PCT04a"  name="invoice[<?php echo $week_nr; ?>][products][]" id="PCT04a_<?php echo $week_nr; ?>" <? if(in_array("PCT04a",array_values($weeks_data['bra'][$week_nr]))):?> checked="checked" <?php endif;?> /></td>
+							<td><label for="PCT04a_<?php echo $week_nr; ?>">PCT04a</label></td>
+						</tr>
+					</table>
+				</td>
+				<td class=" table_border">
+					<table  class="week_table w_100percentage">
+						<tr>
+							<td><input type="radio" value="0"  name="invoice[<?php echo $week_nr; ?>][doctor_weg]"  id="doctor_weg0_<?php echo $week_nr; ?>"/></td>
+							<td><label for="doctor_weg0_<?php echo $week_nr; ?>">Weg0</label></td>
+							
+							<td><input type="radio" value="1" name="invoice[<?php echo $week_nr; ?>][doctor_weg]" id="doctor_weg1_<?php echo $week_nr; ?>"></td>
+							<td><label for="doctor_weg1_<?php echo $week_nr; ?>">Weg1</label></td>
+							
+							<td><input type="radio" value="2" name="invoice[<?php echo $week_nr; ?>][doctor_weg]" id="doctor_weg2_<?php echo $week_nr; ?>"></td>
+							<td><label for="doctor_weg2_<?php echo $week_nr; ?>">Weg2</label></td>
+							
+							<td><input type="radio" value="3"  name="invoice[<?php echo $week_nr; ?>][doctor_weg]" id="doctor_weg3_<?php echo $week_nr; ?>"></td>
+							<td><label for="doctor_weg3_<?php echo $week_nr; ?>">Weg3</label></td>
+						</tr>
+					</table>
+				</td>
+			</tr>
+	 
+			<tr>
+				<td class=" table_border">
+					<table  class="week_table w_100percentage">
+						<tr>
+						
+							<td><input type="checkbox" value="PCT03b"  name="invoice[<?php echo $week_nr; ?>][products][]" id="PCT03b_<?php echo $week_nr; ?>" <? if(in_array("PCT03b",array_values($weeks_data['bra'][$week_nr]))):?> checked="checked" <?php endif;?> /></td>
+							<td><label for="PCT03b_<?php echo $week_nr; ?>">PCT03b</label></td>
+							
+							<td><input type="checkbox" value="PCT04b"  name="invoice[<?php echo $week_nr; ?>][products][]" id="PCT04b_<?php echo $week_nr; ?>" <? if(in_array("PCT04b",array_values($weeks_data['bra'][$week_nr]))):?> checked="checked" <?php endif;?> /></td>
+							<td><label for="PCT04b_<?php echo $week_nr; ?>">PCT04b</label></td>
+						</tr>
+					</table>
+				</td>
+				<td class=" table_border">
+					<table class="week_table w_100percentage" >
+						<tr>
+							<td><input type="radio" value="0" name="invoice[<?php echo $week_nr; ?>][nurse_weg]" id="nurse_weg0_<?php echo $week_nr; ?>"/></td>
+							<td><label for="nurse_weg0_<?php echo $week_nr; ?>">Weg0</label></td>
+							
+							<td><input type="radio" value="1" name="invoice[<?php echo $week_nr; ?>][nurse_weg]" id="nurse_weg1_<?php echo $week_nr; ?>"></td>
+							<td><label for="nurse_weg1_<?php echo $week_nr; ?>">Weg1</label></td>
+							
+							<td><input type="radio" value="2" name="invoice[<?php echo $week_nr; ?>][nurse_weg]" id="nurse_weg2_<?php echo $week_nr; ?>"></td>
+							<td><label for="nurse_weg2_<?php echo $week_nr; ?>">Weg2</label></td>
+							
+							<td><input type="radio" value="3" name="invoice[<?php echo $week_nr; ?>][nurse_weg]" id="nurse_weg3_<?php echo $week_nr; ?>"></td>
+							<td><label for="nurse_weg3_<?php echo $week_nr; ?>">Weg3</label></td>
+						</tr>
+					</table>
+				</td>
+			</tr>
+		</table>
+	</div>
+	
+	<?php if($weeks_by_anlage5[$week_period]):?>
+	<div class="week_anlage5_block">
+		<table class="week_table w_100percentage">
+			<?php $nr[$week_nr] = 1; ?>
+			
+			<?php foreach($weeks_by_anlage5[$week_period] as $anlage_id):  ?>
+			<tr <?php if($saved_bra_anlage_5[$anlage_id]['status'] == "1" ):?>  class="invoiced" <?php endif; ?> >
+				<td>
+					<a href="<?php echo APP_BASE;?>patientformnew/braanlage5?id=<?php echo $_REQUEST['id'];?>&anlage_id=<?php echo $anlage_id?>">#<?php echo $nr[$week_nr]; ?> Anlage 5: <? echo date('d.m.Y',strtotime($saved_bra_anlage_5[$anlage_id]['start_date']))?> - <? echo date('d.m.Y',strtotime($saved_bra_anlage_5[$anlage_id]['end_date']))?> 
+					<!-- (<? foreach($anlage5_weeks[$anlage_id] as $k=>$week):?><?php echo date('d.m.Y',strtotime($week['start_date']))?> - <?php echo date('d.m.Y',strtotime($week['end_date']))?>;<? endforeach?>)-->
+					</a> 
+					<a href="<?php echo APP_BASE;?>patientformnew/braanlage5?id=<?php echo $_REQUEST['id'];?>&anlage_id=<?php echo $anlage_id?>">(erstellt: <? echo date('d.m.Y H:i',strtotime($saved_bra_anlage_5[$anlage_id]['create_date']))?>)</a></td>
+			</tr>
+			<?php $nr[$week_nr]++; ?>
+			<?php endforeach; ?>
+		</table>
+	</div>
+	<?php endif;?>
+ 
+</div>
+<? endforeach;?>
+
+
+
+	<div class="buttons_div">
+	<input type="hidden" name="transfer2anlage5" id="transfer2anlage5"  value="" />
+		<input type="submit" name="save_transfer2anlage5" id="save_transfer2anlage5" value="<?php echo $this->translate('create anlage 5'); ?>"  class="btnsubmit_usersessions"/>&nbsp;&nbsp;
+	</div>
+</form>
+</div>

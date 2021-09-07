@@ -1,0 +1,299 @@
+<script>
+var langurl = appbase + 'javascript/data_tables/de_language.json';
+var tablesource_ops = <?php echo json_encode($this->opsdata); ?>;
+
+// ISPC-2654 Carmen 07.10.2020
+$(document).off('click',"#add_single_ops").on('click', '#add_single_ops', function(){
+	/* if($(this).data('entry_id')){
+		$('#ops_modal').data('recid', $(this).data('entry_id')).dialog('open');
+
+	} else{ */
+		$('#ops_modal').data('recid', '').data('subaction', 'edit').dialog('open');
+	//}
+});
+
+$(document).ready(function(){
+	$(document).off('click',".delete_ops").on('click', '.delete_ops', function(){
+		
+		if($(this).data('entry_id')){
+			$('#ops_modal').data('recid', $(this).data('entry_id')).data('subaction', 'delete').dialog('open');
+
+		} else{
+			//$('#ops_modal').dialog('open');
+		}
+	});
+	
+	$(document).off('click',".edit_ops").on('click', '.edit_ops', function(){
+	
+	if($(this).data('entry_id')){
+		$('#ops_modal').data('recid', $(this).data('entry_id')).data('subaction', 'edit').dialog('open');
+
+	} else{
+		$('#ops_modal').dialog('open');
+	}
+});
+
+	window.selectOpscode = function(opscode_key, opscode_value)
+    {
+        console.log(opscode_key);
+        $('#opscode_0').val(opscode_key);
+        $('#operation').val(opscode_value);
+        $('#hidd_opscode').val($('#opscode_key__' + opscode_key).val());
+        //$('#opscode').val(($('#opscode_key__' + opscode_key).val()));
+
+
+    }
+
+$('#ops_modal').dialog({
+    autoOpen: false,
+    modal: true,
+    width: 620,
+   	height: 400,
+   	title:  translate('add_new_ops'),
+   	dialogClass: "ops",
+   	
+   	open: function(){
+
+   		if($(this).data('recid'))
+   		{
+   			var url = 'patientdiagnosis/tabsevents?id='+pid+'&action=show_form&form=ops_add&recid='+$(this).data('recid');
+   		}
+   		else
+   		{
+   			var url = 'patientdiagnosis/tabsevents?id='+pid+'&action=show_form&form=ops_add';
+   		}
+   		
+   		if($(this).data('subaction') == 'delete')
+   		{ 
+   			var buttons = $('#ops_modal').dialog('option', 'buttons');
+   			buttons[0].click.apply($('#ops_modal'));
+   			$('#ops_modal').dialog('close');
+   		}
+   		else
+   		{
+   		
+	   		$.ajax({
+				type: 'POST',
+				url: url,
+	
+				success:function(data){
+	
+					$('#ops_modal').html(data);
+	 
+					$('.time')
+	        		.timepicker({
+	        			minutes: {
+	        				interval: 5
+	        			},
+	        			showPeriodLabels: false,
+	        			rows: 4,
+	        			//ISPC-2661 Carmen
+	        			timeOnlyTitle: translate('Choose Time'),
+	        			timeText: 'Zeit',
+	        			closeText: 'Ende',
+	        			//--
+	        			hourText: 'Stunde',
+	        			minuteText: 'Minute'
+	        		})
+	        		.mask("99:99");
+			   		
+			   		$( ".date" ).datepicker({
+						dateFormat: 'dd.mm.yy',
+						showOn: "button",
+						buttonImage: $('#calImg').attr('src'),
+						buttonImageOnly: true,
+						changeMonth: true,
+						changeYear: true,
+						nextText: '',
+						prevText: '',
+						maxDate: '0',
+					}).mask("99.99.9999");
+	
+			   		$('.livesearchopscode').live('change', function() {	
+	                    var input_row = parseInt($(this).attr('id').substr(('opscode').length));
+	                    var this_id = $(this).attr('id');
+	                    //reset_medications(input_row);
+	                }).liveSearch({
+	                    url: 'ajax/opscode?q=',
+	                    id: 'livesearch_opscode',
+	                    aditionalWidth: '0',
+	                    noResultsDelay: '900',
+	                    typeDelay: '900',
+	                    returnRowId: function (input) {return parseInt($(input).attr('id').substr(('opscode').length));}
+	                });
+	
+				},
+				error:function(){
+					
+				}
+			});
+   		}
+   	},
+    buttons:[
+		
+	{
+		click: function(){
+
+			if($(this).data('subaction') == 'delete')
+			{
+				var url = 'patientdiagnosis/tabsevents?id='+pid+'&action=save_form&form=opssave&subaction='+$(this).data('subaction')+'&patid='+pid+'&recid='+$(this).data('recid');
+			}
+			else
+			{
+				var url = 'patientdiagnosis/tabsevents?id='+pid+'&action=save_form&form=opssave&subaction='+$(this).data('subaction')+'&patid='+pid;
+			}
+			 $.ajax({
+				 type: 'POST',
+				 url: url,
+				 data: $('.ops_from_add').serialize(),
+				 success:function(data){
+					 $('#tabs-2').empty();
+					 $('#tabs-2').html(data);
+					 $('#ops_modal').dialog("close");
+					 $('.modal_success_msg').show();
+						setTimeout(function () {
+							$('.modal_success_msg').hide();
+							},1000);
+				 }
+			 });	
+			
+		},
+		text: translate('save')
+	},
+	
+	{
+		click: function(){
+	
+			$('#ops_modal').dialog('close');
+		},
+		text: translate('cancel'),
+	}
+    ]
+});
+		
+$('#table_ops').DataTable({
+	// ADD language
+	 "language": {
+           "url": langurl
+    },
+
+	"sDom"://'<"fg-toolbar ui-toolbar ui-widget-header ui-helper-clearfix ui-corner-tl ui-corner-tr"lfr>'+
+		't',//+
+		//'<"fg-toolbar ui-toolbar ui-widget-header ui-helper-clearfix ui-corner-bl ui-corner-br"<"#bottom_export">ip>',
+	// la sDom - este sa zic - declarat tablelu(t) - cu header - search, paginare(p)
+
+		
+	//"lengthMenu": [[15, 25, 50, 100], [15, 25, 50, 100]],
+		
+	"processing": true,
+
+	"info": false,
+	"filter": false,
+	"paginate": false,
+	"destroy": true,
+
+	//"serverSide": true,
+	"autoWidth": false,
+	"stateSave": false,
+	"scrollX": false,
+	"scrollCollapse": true,
+	
+	//"sAjaxSource" : window.location.href,
+	"data": tablesource_ops,
+	
+	/* "fnServerData" : function(sSource, aoData, fnCallback, oSettings) {
+
+		if (oSettings.jqXHR) {
+			oSettings.jqXHR.abort();
+		}
+		
+		var _sorting = oSettings.aaSorting[0];		
+		
+		aoData.push({
+			"name" : "length",
+			"value" : oSettings._iDisplayLength
+		});
+		aoData.push({
+			"name" : "start",
+			"value" : oSettings._iDisplayStart
+		});
+
+		oSettings.jqXHR = $.ajax({
+			"dataType" : 'json',
+			"type" : "POST",
+			"url" : sSource,
+			"data" : aoData,
+			"success" : fnCallback
+		});
+	}, */
+	
+	"columns": [
+	          {
+	        	  title: translate('opscoded'),
+	        	  data: "opscode",
+	        	  className: "",
+	        	  "width": "75px"
+	          },
+	          {
+	        	  title: translate('operation'),
+	        	  data: "operation",
+	        	  className: "",
+	        	  "width": "60px"
+	          },
+	          {
+	        	  title: translate('operation_place'),
+	        	  data: "operation_place",
+	        	  className: "",
+	        	  "width": "100px"
+	          },
+	          {
+	        	  title: translate('operation_date'),
+	        	  data: "operation_date",
+	        	  className: "",
+	        	  "width": "65px"
+	          },
+	          {
+	        	  title: translate('operation_comment'),
+	        	  data: "operation_comment",
+	        	  className: "",
+	        	  "width": "65px"
+	          },
+	          {
+	        	  title: translate('actions'),
+	        	  data: "actions",
+	        	  className: "",
+	        	  "width": "52px"
+	          }
+		],
+		
+	"columnDefs": [
+	          { "targets": -1, "searchable": false, "orderable": false},
+			],
+	"order": [[0, "asc"]],
+	
+});
+
+});
+
+
+
+
+
+</script>
+<br/>
+<!-- <h4>OPS-STatus</h4> -->
+<!-- <span>Hier bitte multiresistente Erreger eintragen, die aufgetreten sind.</span> -->
+
+<table id="table_ops"></table>
+
+
+
+<button id="add_single_ops" class="new_entry_button"> 
+<img src="<?php echo RES_FILE_PATH ?>/images/btttt_plus.png" style="display: block; float: left; margin-right: 5px;"/>
+<span><?php echo $this->translate('add_ops'); ?></span>
+</button>
+
+<div id="ops_modal" class=" ">
+	<div class=" "></div>
+	<!-- load form -->
+</div>

@@ -1,0 +1,237 @@
+<div id="listvalidlocation_validdetail" class="grid">
+	<table id="listvalidlocation_content_table" class="PatientDetail_datatable" width="100%" align="left" border="0" cellpadding="5" cellspacing="0">
+		<tbody>
+			<tr>
+				<th align="left" valign="top" class="thlocationsel"><strong><? echo $this->translate('location'); ?></strong></th>
+				<th align="left" valign="top" class="thvaliddate"><strong><? echo $this->translate('validfrom'); ?></strong></th>
+				<th align="left" valign="top"  class="thvaliddate"><strong><? echo $this->translate('validtill'); ?></strong></th>
+
+				<th width="" align="left" valign="top"><strong><? echo $this->translate('delete'); ?></strong></th>
+			</tr>
+		<gridrow>
+      <phpscript>
+		$count++;
+		$counta = $count - 1;
+		$previd = $view->prevarr[$count - 2]['id'];
+		$locations_stations = $view->locations_stations;
+		$location_comment= $view->translate('comment');
+		$display_comment_div = 'display:block';
+
+		if ($previd == "")
+		{
+			$previd = 0;
+		}
+
+		$validfrom = "";
+		$validtill = "";
+		if ($valid_from != '0000-00-00 00:00:00' && $valid_from != "")
+		{
+			$validfrom = date('d.m.Y', strtotime($valid_from));
+		}
+
+
+		if ($valid_till != '0000-00-00 00:00:00' && $valid_till != "")
+		{
+			$validtill = date('d.m.Y', strtotime($valid_till));
+		}
+
+		$location = $master_location['location'];
+		$telefon = $master_location['phone1'];
+		
+		
+		$pid = $_GET['id'];
+
+		if (!empty($telefon))
+		{
+			$stylecontactphone = "display:block;";
+		}
+		else
+		{
+			$stylecontactphone = "display:none;";
+		}
+		if ($location_id == "0" & $discharge_location == 1)
+		{
+			$loc = '<span class="ent">Entlassen</span>' . $view->formSelect('location_id[]', $location_id, array('style' => 'display: none', 'class' => 'Location', 'onChange' => 'checkLocationStatus(this); checkLocationStation(this); getLocationPhone(this);'), $view->locaarray);
+			$loc .= '<input type="hidden" class="isdischarged" name="is_discharged[]" value="1" />';
+			
+			$display_comment_div = 'display:none';
+		}
+		else
+		{
+			$excluded = $view->excluded_arr;
+
+			if (in_array($location_id, $excluded))
+			{
+				$array_locations = $view->locaarray;
+				$array_locations_ex = $view->locaarray_ex;
+
+				$array_locations_final = $array_locations + $array_locations_ex;
+
+			}
+			else
+			{
+				$array_locations_final = $view->locaarray;
+			}
+
+
+			// ISPC-2612 Ancuta 27.06.2020
+			$follower2patient = $view->follower2patient;
+			if(!empty($follower2patient[$id])){
+				$array_locations_final = $array_locations_final + $follower2patient[$id];
+			}
+			//--
+
+			$loc = $view->formSelect('location_id[]', $location_id, array('style' => 'width:150px;', 'class' => 'Location', 'alt' => $id, 'onChange' => 'checkLocationStatus(this);  checkLocationStation(this); getLocationPhone(this);'), $array_locations_final);
+			$loc .= '<input type="hidden" class="isdischarged" name="is_discharged[]" value="0" />';
+			
+			$display_comment_div = 'display:block';
+		}
+		
+		if ($reason == 4)
+		{
+			$conds_reason = "block";
+		}
+		else
+		{
+			$conds_reason = "none";
+		}
+		$reason = $view->formSelect('reason[]', $reason, null, $view->reasons);
+		$hospdoc = $view->formSelect('hospdoc[]', $hospdoc, null, $view->hospdocs);
+		$transport = $view->formSelect('transport[]', $transport, null, $view->transports);
+
+		$location_type = $master_location['location_type'];
+		if ($location_type == 1)
+		{
+			$conds = "block";
+		}
+		else
+		{
+			$conds = "none";
+		}
+		
+		$real_contact_number = $view->real_contact_number;
+		$reasonlable = $view->translate('locationreason');
+		$locationdoctor = $view->translate('locationdoctor');
+		$transportation = $view->translate('transportation');
+		if (!empty($real_contact_number) & $real_contact_number == $telefon)
+		{
+			$xx = 'checked="checked"';
+		}
+		else
+		{
+			$xx = '';
+		}
+		if ($newr == "1")
+		{
+			$trClass = 'class="new"';
+			$nVal = 1;
+		}
+		else
+		{
+			$trClass = '';
+			$nVal = 0;
+		}
+
+		//location stations!!!
+		$locationstations = $view->translate('locationstations');
+		$locationstations_select = $view->translate('select_station');
+		if($locations_stations[$location_id])
+		{
+			$station_conds = "block";
+			$stations = '<select name="station_select[]" id="station_select'.$location_id.'" class="station_select">';
+			$stations .= '<option value="0" >' . $locationstations_select . '</option>';
+			foreach ($locations_stations[$location_id] as $station_item)
+			{
+				if ($station == $station_item['id'])
+				{
+					$st_selected = 'selected="selected"';
+				}
+				else
+				{
+					$st_selected = '';
+				}
+
+				$stations .= '<option value="' . $station_item['id'] . '"  ' . $st_selected . '  >' . $station_item['station'] . '</option>';
+			}
+			$stations .= '</select>';
+		}
+		else
+		{
+			$station_conds = "none";
+			$stations = '<input type="hidden" name="station_select[]" value="0" id="station_select'.$location_id.'" class="station_select" />';
+		}
+		
+		$newRowInput = '<input type="hidden" value="' . $nVal . '" name="newr[]" id="newr' . $count . '"/>';
+		
+
+	 
+		 	 
+		 $hospdoc_line = '';
+		 $transport_line = '';
+		 if ( ! isset($view->client_modules['168']) || $view->client_modules['168'] == 0){
+		 	$hospdoc_line = '<label>'.$locationdoctor.'</label><div class="clearer"></div>'.$hospdoc.'<div class="clearer"></div>';
+		 	$transport_line = '<label>'.$transportation.'</label><div class="clearer"></div>'.$transport.'<div class="clearer"></div>';
+		 }
+		
+		
+      </phpscript>
+			<tr [[trClass]] alt="[[count]]-[[location_type]]" class="locationContainer">
+			<!-- ISCP-2782 Cristi.C  -->
+				<td align="left" height="20" valign="top">
+					<div style="display:none;" class="loading_locations" id="loading_location_[[id]]"><img src="<?php echo APP_BASE.'/images/loading.gif'?>" width="15px" /></div>
+					[[loc]][[newRowInput]]
+					<div class="clearer"></div>
+					<input type="hidden"  name="location_type[]" id="location_type-[[id]]" class="location_type" value="[[location_type]]" />
+					<!-- location - hospital details  -->
+					<div id="extradiv[[id]]" style="display:[[conds]];" class="extradiv ">
+						<input name="ppid[]" type="hidden"   value="[[id]]" class="locid" />
+						<label>[[reasonlable]]</label><div class="clearer"></div>[[reason]]  <div class="clearer"></div>
+						<div class="extrareason[[id]]"  id="extrareason" style="display:[[conds_reason]];" >
+							<input type="text" class="old_rns reasontxt[[id]]" name="reason_txt[]" value="[[reason_txt]]" />
+						</div>
+						[[hospdoc_line]]
+						[[transport_line]]
+						
+					</div>
+					<!-- location Stations  -->
+					<div id="stationdiv[[id]]" style="display:[[station_conds]];" class="stationdiv ">
+						<input name="ppid[]" type="hidden"   value="[[id]]" class="locid" />
+						<label>[[locationstations]]</label>
+						<div class="clearer"></div>
+						[[stations]]
+						<div class="clearer"></div>
+					</div>
+					
+					<!-- location comment  -->
+					<div id="commentdiv[[id]]" style="[[display_comment_div]]" class="commentdiv">
+						<!-- <label>[[location_comment]]</label> -->
+						
+						<input type="text" class="comment[[id]]" name="comment[]" value="[[comment]]" style="width:100%" placeholder="[[location_comment]]"/>	
+					</div>
+					
+						
+					<input type="hidden" name="phone1[]" class="phone" value="[[telefon]]">
+					<a class="listPatiAddLink"><span class="addLocationText"><?php echo $this->translate('location_add_buton'); ?></span><img src="[[res_file_path]]/images/pacient_location_img/add.svg"></a>
+				</td>
+				<td align="left" valign="top" class="tddateloc">
+					<input name="valid_from[]"  type="text" class="patLocLiTxt validDatepic patLocValidFrom" value="[[validfrom]]" />
+				</td>
+				<td align="left" valign="top">
+					<input name="valid_till[]" type="text" class="patLocLiTxt validDatepic patLocValidTill" value="[[validtill]]" />
+				</td>
+
+				<td align="left" valign="top"><a href="#[[id]]" class="removeRows"><img src="[[res_file_path]]/images/pacient_location_img/close.svg" /></a>
+					<span class="Locerror" style="position:relative;"></span>
+					<input name="lid[]" type="hidden"  id="" value="[[id]]" class="LocationId" /><input name="previd[]" type="hidden"  id="" value="[[previd]]" class="PrevId" />
+
+				</td>
+			</tr>
+	      </gridrow>
+        </tbody>
+  </table>
+</div>
+
+
+
+
+

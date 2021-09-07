@@ -1,0 +1,566 @@
+<?php // $this->headScript()->appendFile(PUBLIC_PATH.'/javascript/jquery.blockUI.js'); ?>
+<?php //$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/jquery.blockUI.js'); ?>
+<?php
+$memo_patient = trim(strip_tags($this->memo));
+
+$whitebox_patient = trim(strip_tags($this->whitebox));						//ISPC-2837 Lore 12.04.2021
+$use_whitebox = $this->ModulePrivileges['1007']; //IM-5 whitebox			//ISPC-2837 Lore 12.04.2021
+
+?>
+
+<?php if($this->print == 1) : ?>
+<style>
+
+.icons_td #icon_bar{
+
+}
+.patient_icon_cell {
+	width: 32px;
+	float: left;
+}
+.custom_icon_assigned {
+	width: 35px;
+	float: left;
+	border: 1px solid #000000;
+}
+.patient_icon_cell img{
+	width: 30px;
+}
+
+#assign_custom_icon,.patient_icon_cell_right {
+	display: none;
+}
+.colbold{
+	width: 20%
+}
+#memo_container {
+	border: 1px solid #000000;
+	background: #fdffc2;
+}
+#patient_details_print table td{
+/* 	border: 1px solid #1a1a1a;  */
+}
+
+/* normaly hidden boxes on html that are js toggled, must be shown as open in pdf*/ 
+.display_on_pdf{
+	display:block!important;
+	border:none;
+}
+.display_off_pdf{
+	display:none!important;
+}
+
+.pcp_pi_user_info,
+.pcp_assigned_doc_line{
+	padding:1px!important;
+	margin:0!important;
+}
+
+</style>
+<?php endif;?>
+
+<?php 
+
+/*echo $this->print_target;
+
+echo  "<br/>";
+echo  APP_BASE;
+echo  "<br/>";
+echo  PUBLIC_PATH;
+*/
+if($this->print_target == "pdf"){
+
+	$path_icons = PUBLIC_PATH.'/';
+	$path_images = PUBLIC_PATH.'/';
+
+} else{
+
+	$path_icons = APP_BASE;
+	$path_images = APP_BASE;
+}
+?>
+
+<div id="patient_details_print">
+	<table border="0" cellpaddding="0" cellspacing="0">
+	
+		<!-- ROW 1 - Patient Name and EPID	 -->
+		<tr>
+			<td valign="top" class="colbold ">
+				<strong><?php echo $this->translate("name"); ?></strong>
+			</td>
+			<td valign="top" class="">
+				<?php echo trim($this->last_name . ", " . $this->first_name); ?> (<?php echo $this->age; ?>)
+			</td>
+			<td></td>
+			<td valign="top" class="colbold ">
+				<strong><?php echo $this->translate("patientnumber"); ?></strong>
+			</td>
+
+			<td valign="top" class="">
+				<?php echo $this->epid; ?>
+			</td>
+		</tr>
+		
+		
+		<!-- ROW 2 - Patient Birth  and LAST UPDATE 	 -->
+		<tr>
+			<td valign="top" class="colbold ">
+				<strong><?php echo $this->translate("birthd"); ?></strong>
+			</td>
+			<td valign="top" class="">
+				<?php echo $this->birthd; ?>
+			</td>
+			<td></td>
+			<td valign="top" class="colbold ">
+				<strong><?php echo $this->translate("lastupdate"); ?></strong>
+			</td>
+			<td valign="top" class="">
+				<?php echo $this->last_update; ?> (<?php if($this->lastupdateuser_lname)
+				{
+					echo trim($this->lastupdateuser_tname . " ". $this->lastupdateuser_lname . ", " . $this->lastupdateuser_fname);
+				}
+				else
+				{
+					echo "-";
+				} ?>)
+			</td>
+		</tr>
+		
+		
+				
+		<!-- ROW 3 - Treated by  and Admission date  	 -->
+		<tr>
+			<td valign="top" class="colbold" rowspan="2">
+				<strong><?php echo $this->translate('treateddby'); ?></strong>
+			</td>
+			
+			<td valign="top" class=""  rowspan="2">
+			<?php echo $this->usergrid; ?>
+			</td>
+			
+			<td class="" rowspan="2"></td>
+
+
+			<td valign="top" class="colbold"><strong><?php echo $this->translate('recording'); ?></strong>
+			</td>
+			
+			<td valign="top" class="">
+				<?php echo trim($this->user_tname . " " . $this->user_lname . ", " . $this->user_fname); ?>
+			</td>
+		</tr>
+		
+		
+		<!-- ROW 3b - Treated by  and Admission date  	 -->
+		<tr>
+			<td valign="top" class="colbold"><strong><?php echo $this->translate('admission_date'); ?></strong>
+			</td>
+
+			<td valign="top" class="">
+				<?php echo date("d.m.Y H:i",strtotime($this->admission_date)); ?>
+			</td>
+		</tr>
+		 
+		 
+		 
+		 
+		<!-- ROW 4 - Uberwiesen -->
+		<?php if(!empty($this->referred_name)) : ?>
+		<tr>
+			<td valign="top" class="colbold ">
+			
+			</td>
+			<td valign="top" class="">
+				
+			</td>
+			<td></td>
+			<td valign="top" class="colbold ">
+				<strong><?php echo $this->translate('transferring'); ?></strong>
+			</td>
+			<td valign="top" class="">
+				<?php echo trim($this->referred_name); ?>
+			</td>
+		</tr>
+		<?php endif; ?>
+        
+        
+        
+        
+       <!-- ROW 5 - Location(Aufenthaltsort) and SAPV end (Verordnung bis)	 -->
+       <?php if(!empty($this->location) ||  ! empty($this->verordnungbis) || ! empty($this->verordnung_expired) ) : ?>
+		<tr>
+		<?php if(!empty($this->location)) : ?>
+			<td valign="top" class="colbold "><strong><?php echo $this->translate("location"); ?></strong></td>
+			<td valign="top" class=" lineHeightBig"><?php echo $this->location ?>
+			<?php
+			if(!empty($this->locstreet))
+			{
+				$loc_str .= '<br/>' . $this->locstreet;
+				$geo_str .= $this->locstreet;
+			}
+			
+			if(!empty($this->loczip))
+			{
+				$loc_str .= '<br/>' . $this->loczip;
+				$geo_str .= ',' . $this->loczip;
+			}
+
+			if(!empty($this->loccity))
+			{
+				$loc_str .= '&nbsp;' . $this->loccity;
+				$geo_str .= ',' . $this->loccity;
+			}
+			if(!empty($this->loccity))
+			{
+				echo '' . $loc_str . '';
+			}
+			else
+			{
+				echo $loc_str;
+			}
+
+			if($this->station == '1')
+			{
+				echo "<br />" . $this->station_name;
+			}
+			?>
+			
+			<?php if(!empty($this->loccomment)):?>
+				<div class="location_comment"><?php echo $this->loccomment;?></div>
+			<?php endif;?>
+			</td>
+		<?php else: ?>
+			<td></td>
+			<td></td>
+		<?php endif; ?>
+        
+        <td></td>
+        
+		<?php if($this->verordnungbis != "-" && ! empty($this->verordnungbis))  { ?>   
+            <td valign="top" class="colbold"><strong><?= $this->translate('verordnungbis'); ?></strong></td>
+            <td valign="top"><?= $this->verordnungbis; ?>
+                <br/>
+                <?= $this->patinfoverordnet; ?>
+                <br/>
+                <?php if(trim($this->sapvstatus) != "") { ?>
+                    <span class="redtext"><?php echo "Verordnung " . $this->sapvstatus ?></span>
+                <?php } ?>
+            </td>
+            
+        <?php } elseif( $this->verordnung_expired !== false && ! empty($this->verordnung_expired)) { ?>
+            <td valign="top" class="colbold redtext" color="#FF0000"><strong><?=$this->translate('verordnungbis'); ?></strong></td>
+            <td valign="top" class="redtext" color="#FF0000"><?=$this->verordnung_expired['verordnungbis']; ?><br/><?=$this->verordnung_expired['patinfoverordnet'] ?></td>
+        
+        <?php } else { ?>
+            <td></td>
+            <td></td>
+        <?php } ?>      
+                    
+		</tr>
+		<?php endif; ?>
+
+
+		
+	  <!-- ROW 6 - Contact Personname(Vorsorgevollmacht) 	and therapy (Vorausschauende Therapieplanung ) -->
+		<tr>
+			<?php if($this->contactpersonname != "no"){?>
+				<td valign="top" class="colbold ">
+					<strong>Vorsorgevollmacht</strong>
+				</td>
+				<td valign="top" class="">
+					<!-- ISPC-2590,elena,22.10.2020 -->
+					<?php foreach($this->contactpersonname as $cpname): ?>
+					<?php echo $cpname; ?><br>
+					<?php endforeach;?>
+				</td>
+			<?php } else { ?> 
+				<td valign="top" class="colbold ">&nbsp;</td>
+				<td valign="top" class=""></td> 
+			<?php } ?>
+			<td></td>
+			<?php if($this->therapy == 1){?>
+				<td valign="top" class="colbold  redtext">
+					<strong>Vorausschauende Therapieplanung</strong>
+				</td>
+				<td valign="top">
+					<?php if (strlen($this->therapy_texts) > 0):?>
+						<?php echo $this->therapy_texts;?>
+					<?php endif;?>
+				</td>
+			<?php } else { ?> 
+				<td valign="top" class="colbold ">&nbsp;</td>
+				<td valign="top" class="">&nbsp;</td> 
+			<?php } ?>
+		</tr>
+		
+		
+		<!-- ROW 7 - Pflegedienst -->
+		<?php if($this->pflegedienste != ""): ?>
+		<tr>
+			<td valign="top" class="colbold">
+				<strong><?php echo $this->translate('Pflegedienst'); ?></strong>
+			</td>
+
+			<td valign="top" class="">
+				<ul class="pfle_headerlist">
+					<?php echo $this->pflegedienste ?>
+				</ul>
+			</td>
+			<td class=""></td>
+
+			<td valign="top" class=" redtext"> </td>
+
+			<td valign="top" class=" redtext"> </td>
+        </tr>
+		<?php endif; ?>
+        
+        
+        
+		<!-- ROW 8 - Contact Personname(Gesetzlicher Betreuer) ) -->
+		<?php if($this->legalguardianname != "no"): ?>        
+		<tr>
+			<td valign="top" class="colbold ">
+				<strong>Gesetzlicher Betreuer</strong>
+			</td>
+
+			<td valign="top" class="">
+				<!-- ISPC-2590,elena,22.10.2020 -->
+				<?php foreach($this->legalguardianname as $lgname): ?>
+				<?php echo $lgname ?><br>
+				<?php endforeach; ?>
+			</td>
+
+			<td class=""></td>
+			
+			<td valign="top" class=" redtext"></td>
+			<td valign="top" class=" redtext"></td>
+        </tr>
+        <?php endif; ?>
+        
+        
+        
+        
+        <!-- ROW 9 - Contact Person  PHONE  -->
+		<tr>
+		<?php if ( ! empty($this->PatientContactphone_table)) : ?>
+			<td valign="top" class="colbold "><strong><?php echo $this->translate('contact_number'); ?></strong></td>
+			<td valign="top" class=""><?php echo $this->PatientContactphoneGrid; ?></td>
+			
+		<?php elseif( ! $this->has_PatientContactphone && ! empty($this->real_contact_number)) : ?>
+			
+			<td valign="top" class="colbold "><strong><?php echo $this->translate('contact_number'); ?></strong></td>
+			
+			<?php if($this->kontactnumbertype == "2") { ?>
+			<td valign="top" class="">
+			    <?php echo $this->fullname_cnt; ?>  <?php if(!empty($this->custody_cnt)) {echo '( '.$this->custody_cnt.' )'; } ?> <br />
+				<?php echo $this->real_contact_number; ?><br />
+				<?php echo $this->kontactnumber2; ?><br/>
+				<?php echo $this->comment_cnt; ?>
+			</td>
+			<?php } else { ?>
+			<td valign="top" class="">
+				<?php echo $this->real_contact_number; ?><br />
+			</td>
+			<?php } ?>
+		<?php else : ?> 
+			<td valign="top" class="colbold "></td>
+			<td valign="top" class=""></td> 
+		<?php endif;	?>
+		
+			<td class=""></td>
+			<td valign="top" class=" redtext"></td>
+			<td valign="top" class=" redtext"></td>
+		</tr>
+			
+			
+			
+		
+		 <!-- ROW 10 - VOLLVERSORGUNG  -->
+		<?php if($this->vollversorgung == 1): ?>
+			<tr>
+				<td valign="top" colspan="3" class="colbold "><br/><span style="color: #1B346F;">VOLLVERSORGUNG ( <?php echo $this->nr . '.'; ?> Tag)</span></td>
+				<td valign="top" class="colbold "></td>
+				<td valign="top" class="">
+				</td>
+			</tr>
+		<?php endif; ?>
+		
+		
+		
+		
+		<!-- ROW 11 - C Cave - from verlauf  -->
+		<tr>
+			<td class="patheaderrow4" colspan="5">
+				<?php echo $this->ptheader; ?>
+			</td>
+		</tr>
+<!-- 		########################################################## -->
+<!-- 		##################### ICONS ########################## -->
+<!-- 		########################################################## -->
+<?php if($this->print_target != "pdf"):?>
+		<tr>
+			<td class="patheaderrow5 icons_td" colspan="5"  style="height: 50px!important; display: none;" <?php if($_REQUEST['nc'] == "1"): ?> style="display: none;"<?endif;?>>			
+			<?php
+				$system_icon_data = $this->system_icon_data;
+			?>
+			<?php echo $this->translate('status_icon_label'); ?><br/>
+			<table>
+				<tr>
+					<td width="8%"  >
+						<!--display system icons-->
+						<?php foreach($this->system_icon_details as $k_icon_det => $v_icon_det):?>
+							<?php if(!empty($system_icon_data[$k_icon_det][$this->ipid]['show'])): //status icon ?>
+								<?php $patient_image = $system_icon_data[$k_icon_det][$this->ipid]['show']['image'];?>
+								<span  class="patient_icon_cell"  style="background-color:#<?php echo $system_icon_data[$k_icon_det][$this->ipid]['show']['color']; ?>" id="sys_icon-<?php echo $k_icon_det; ?>">
+									<?php if(!empty($system_icon_data[$k_icon_det][$this->ipid]['show']['image'])): ?>
+										<img src="<?php echo $path_icons . 'icons_system/' . $system_icon_data[$k_icon_det][$this->ipid]['show']['image']; ?>" class="<?php echo $readmit_pat_dialog; ?>" title="<?php echo $this->translate($system_icon_data[$k_icon_det][$this->ipid]['show']['name']); ?>" />
+									<?php else: ?>
+										<b>&nbsp;</b> 
+									<?php endif; ?>
+								</span>
+							<?php endif; ?>
+						<?php endforeach; ?>
+</td>
+<td width="70%">
+					<!--add btm prefix for both (column_middle and _full)-->
+				<div id="new_icons" class="table_column column_middle<?php if($this->system_icon_details['24']['visible'] != '1'): ?>_full<?php endif; ?><?php if($this->btm_perm == '1' && $this->has_btm_permission == '1'): ?>_btm<?php endif; ?> <?php if($this->patient_sys_icons[0] != '24' && (count($this->patient_sys_icons) > '0' || count($this->patient_icons_details) > '0' || count($this->custom_icon_details) > '0')): echo ' ';	else: echo 'no_border';	endif; ?>">
+	<table>
+	<tr>
+	<?php foreach($this->system_icon_details as $k_icon_details => $v_icon_details): ?>
+		<?php if($v_icon_details['visible'] == '1'): ?>
+			<?php if($k_icon_details == "3"): ?>
+			<td>
+				<div class="patient_icon_cell" style="background:#<?php echo $system_icon_data[$k_icon_details]['last'][$this->ipid]['color']; ?>" id="sys_icon-<?php echo $k_icon_details; ?>">
+					<?php if(!empty($system_icon_data[$k_icon_details]['last'][$this->ipid]['image'])): ?>
+						<img src="<?php echo $path_icons . 'icons_system/' . $system_icon_data[$k_icon_details]['last'][$this->ipid]['image']; ?>" title="<?php echo $this->translate($system_icon_data[$k_icon_details]['last'][$this->ipid]['name']); ?>" />
+					<?php else: ?>
+						<b>&nbsp;</b>
+					<?php endif; ?>
+				</div>
+			</td>	
+			<?php elseif($k_icon_details != '6' && $v_icon_details['function'] != 'go_to_visitform' && $k_icon_details != '42' && $k_icon_details != '43'): ?>
+				<?php $homecare_icon = array_values($system_icon_data[$k_icon_details]['master_homes'][$this->ipid]); ?>
+				<?php $physio_icon = array_values($system_icon_data[$k_icon_details]['master_physio'][$this->ipid]); ?>
+				<td>
+				<div class="patient_icon_cell<?php if($v_icon_details['function'] == 'go_to_visitform'): ?>_right<?php endif; ?> <?php if($k_icon_details != '5' && $k_icon_details != '33' && $v_icon_details['function'] != 'go_to_visitform' && $v_icon_details['function'] != 'sgbv_icon'): echo 'tabs_table'; endif; ?> <?php if($v_icon_details['function'] == 'get_patient_vital_signs'): ?> vital_signs_icon <?php endif; ?> " style="background:#<?php echo $v_icon_details['color']; ?>" id="sys_icon-<?php echo $k_icon_details; ?>">
+					<?php if(!empty($system_icon_data[$k_icon_details]['master_pflege'][$this->ipid]['logo'])): ?>
+						<img src="<?php echo $path_icons . 'icons_system/' . $system_icon_data[$k_icon_details]['master_pflege'][$this->ipid]['logo']; ?>" title="<?php echo $this->translate($v_icon_details['name']); ?>" />
+					<?php elseif(!empty($system_icon_data[$k_icon_details]['patient_supplier_data'][$this->ipid]['logo'])): ?>	
+						<img src="<?php echo $path_icons . 'icons_system/' . $system_icon_data[$k_icon_details]['patient_supplier_data'][$this->ipid]['logo']; ?>" title="<?php echo $this->translate($v_icon_details['name']); ?>" />		
+					<?php elseif(!empty($homecare_icon[0]['logo'])): ?>
+						<img src="<?php echo $path_icons . 'icons_system/' . $homecare_icon[0]['logo']; ?>" title="<?php echo $this->translate($v_icon_details['name']); ?>" />
+					<?php elseif(!empty($physio_icon[0]['logo'])): ?>
+						<img src="<?php echo $path_icons . 'icons_system/' . $physio_icon[0]['logo']; ?>" title="<?php echo $this->translate($v_icon_details['name']); ?>" />
+					<?php elseif(!empty($v_icon_details['image'])): ?>
+						<img src="<?php echo $path_icons . 'icons_system/' . $v_icon_details['image']; ?>" title="<?php echo $this->translate($v_icon_details['name']); ?>" />
+					<?php else: ?>
+						<b>&nbsp;</b>
+					<?php endif; ?>
+				</div>
+				</td>
+			<?php elseif( $k_icon_details == '42'): ?>
+			<?php /* ISPC-1775,ISPC-1678 */ ?>
+					<? $register_data = $system_icon_data[42]['register_status'][$this->ipid];?>
+					<td>
+					<div class="patient_icon_cell" style="background:#<?php echo $v_icon_details['color']; ?>" id="sys_icon-<?php echo $k_icon_details; ?>">
+						<?php if(!empty($v_icon_details['image'])): ?>
+							<img src="<?php echo $path_icons . 'icons_system/' . $v_icon_details['image']; ?>" class="<?php echo $register_data['status'];?>" title="<?php echo $this->translate($v_icon_details['name']); ?>" />
+						<?php else: ?>
+							<b>&nbsp;</b>
+						<?php endif; ?>
+					</div>
+					</td>
+			<?php elseif($k_icon_details == '43' && $this->diagno_act_module == "1"):?>
+				<td>
+				<div class="patient_icon_cell" style="background:#<?php echo $system_icon_data[$k_icon_details]['last_diagno_act'][$this->ipid]['color']; ?>" id="sys_icon-<?php echo $k_icon_details; ?>">
+					<?php if(!empty($system_icon_data['43']['last_diagno_act'][$this->ipid]['image'])): ?>
+						<img src="<?php echo $path_icons . 'icons_system/' . $system_icon_data[$k_icon_details]['last_diagno_act'][$this->ipid]['image']; ?>" title="<?php echo $this->translate($system_icon_data[$k_icon_details]['last_diagno_act'][$this->ipid]['name']); ?>" />
+					<?php else: ?>
+						<b>&nbsp;</b>
+					<?php endif; ?>
+				</div>
+				</td>			
+			<?php elseif($k_icon_details == '56' ):?>
+				<td>
+				<div class="patient_icon_cell" style="background:#<?php echo $system_icon_data[$k_icon_details]['current_maintenancestage'][$this->ipid]['color']; ?>" id="sys_icon-<?php echo $k_icon_details; ?>">
+					<?php if(!empty($system_icon_data['56']['current_maintenancestage'][$this->ipid]['image'])): ?>
+						<img src="<?php echo $path_icons . 'icons_system/' . $system_icon_data[$k_icon_details]['current_maintenancestage'][$this->ipid]['image']; ?>" title="<?php echo $this->translate($system_icon_data[$k_icon_details]['current_maintenancestage'][$this->ipid]['name']); ?>" />
+					<?php else: ?>
+						<b>&nbsp;</b>
+					<?php endif; ?>
+				</div>
+				</td>			
+			<?php endif; ?>
+		<?php endif; // ICON VISIBILE  ?>
+	<?php endforeach; ?>
+	<!--display patient custom icons -->
+	<?php foreach($this->patient_icons_details as $k_pat_icon => $v_pat_icon): ?>
+		<td>
+		<div class="patient_icon_cell custom_icon_assigned" style="height: 32px; background:#<?php echo $v_pat_icon['color']; ?>" id="assigned_custom_icon-<?php echo $v_pat_icon['id']; ?>" title="<?php echo $v_pat_icon['name']; ?>">
+		<?php if(!empty($v_pat_icon['image'])): ?>
+			<img src="<?php echo $path_icons . 'icons_system/' . $v_pat_icon['image']; ?>" title="<?php echo $this->translate($v_pat_icon['name']); ?>" />
+		<?php else: ?>
+		<b>&nbsp;<br/>&nbsp;</b>
+		<?php endif; ?>
+		</div>
+		</td>
+	<?php endforeach; ?>
+	</tr>
+	</table>
+					</div>
+					</td>
+ 
+	<td width="20%">
+	<table >
+	<tr>
+		<?php if($this->btm_perm == '1' && $this->has_btm_permission == '1'): ?>
+		<td>
+		<div class="patient_icon_cell">
+			<img src="<?php echo $path_images; ?>images/btm.jpg"  width="28px" align="center"/>
+		</div>
+		</td>
+		<?php endif; ?>
+		<td>
+		<div class="patient_icon_cell">
+			<img src="<?php echo $path_images; ?>images/addressbook.png"  width="28px" align="center"/>
+		</div>
+		</td>
+		<td>
+		
+		<div class="patient_icon_cell">
+			<img src="<?php echo $path_images; ?>images/calendar_big.png"  width="28px" align="center"/>
+		</div>
+		</td>
+	</tr>
+	</table>	
+						
+		</td>
+		</tr></table></td>
+		</tr>
+	<?php endif; ?>	
+	</table>
+
+<?php if($this->permission_level != '0'): ?>
+			<table  >
+			<tr>
+			<td width="5%"></td>
+			<td width="90%" style="border: 1px solid #000000;">
+				<span <?php if($this->permission_level == '1'): ?>id="patient_memo"<?php endif; ?> class="editText" ><?php if($memo_patient): ?><?php echo $this->memo; ?><?php else: ?><?php echo $this->translate('empty_memo'); ?><?php endif; ?></span>
+			</td>
+			</tr>
+			
+			<!-- ISPC-2837 Lore 12.04.2021 -->	
+			<?php if($use_whitebox): ?>
+				<tr><td width="5%"></td><td width="90%"></td></tr>
+				<tr>
+					<td width="5%"></td>
+					<td width="90%" style="border: 1px solid #000000;">
+						<span <?php if($this->permission_level == '1'): ?>id="patient_whitebox"<?php endif; ?> class="editText" ><?php if($whitebox_patient): ?><?php echo $this->whitebox; ?><?php else: ?><?php echo $this->translate('empty_whitebox'); ?><?php endif; ?></span>
+					</td>
+				</tr>
+
+			<?php endif; ?>
+			<!-- //.  -->
+			
+			</table>
+	<?php endif; ?>
+</div>

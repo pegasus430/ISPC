@@ -1,0 +1,271 @@
+<?php
+$patientdetails = $this->patientdetails;
+$period_days = $this->period_days;
+$shortcuts = $this->shortcuts;
+$master_data = $this->master_data;
+$national_holidays = $this->national_holidays;
+$group_list = $this->group_list;
+$actions_details = $this->sgbv_actions_details;
+$client_details = $this->client_details;
+?>
+<link rel='stylesheet' type='text/css' href='<?php echo RES_FILE_PATH; ?>/css/page-css/socialcoderecord.css' />
+<?php
+	//IE Freaking hack
+	$url = APP_BASE . "invoice/socialcoderecord?" . $_SERVER['QUERY_STRING'];
+	if (str_replace("&list=" . $_REQUEST['list'] . "", "", $url))
+	{
+		$finalJsUrl = str_replace("&list=" . $_REQUEST['list'] . "", "", $url);
+	}
+	else
+	{
+		$finalJsUrl = $url;
+	}
+?>
+<script type="text/javascript" >
+	$(function() {
+		$('form').submit(function() {
+			setTimeout(function () {$('input[type=submit]').attr('disabled', true);}, 150);
+			setTimeout(function () {$('input[type=submit]').attr('disabled', false);}, 11000);
+		});	 				
+	});
+	function changeMonth(data){
+		var url = "<?php echo $finalJsUrl; ?>&list="+data;
+		$(location).attr('href',url);
+	}
+</script>
+<?php echo $this->patientinfo ?>
+<?php echo $this->tabmenus ?>
+
+<table id="document_details">
+	<tr>
+		<td style="width:510px;">
+			<h1><?php echo $this->translate('performance_record')  ?></h1>
+		</td>
+		<td style="width:200px;font-size: 8pt;line-height: 110%;">			
+			<?php echo $client_details['team_name'];  ?><br />
+			<?php echo $client_details['street1'];  ?> <?php echo $client_details['street2'];  ?><br />
+			<?php echo $client_details['postcode'];  ?> <?php echo $client_details['city'];  ?><br />
+			<?php echo $client_details['phone'];  ?><br />
+			<?php echo 'IK: '.$client_details['institutskennzeichen'];  ?><br />
+			<?php echo 'BSNR: '.$client_details['betriebsstattennummer'];  ?><br />
+
+		</td>
+	</tr>
+	<tr>
+		<td style="text-align: left;" colspan="2"><?php echo $this->translate('period_of_time');  ?>: <?php if($this->first_active_day != "0000-00-00 00:00:00" && date('Y-m-d', strtotime($this->first_active_day)) != '1970-01-01' ): echo $this->first_active_day; endif; ?> - <?php if($this->last_active_day != "0000-00-00 00:00:00" && date('Y-m-d', strtotime($this->last_active_day)) != '1970-01-01'): echo $this->last_active_day; endif; ?></td>
+	</tr>
+	<tr>
+		<td style="text-align: left;" colspan="2"><?php echo $this->translate('page_no');  ?>: 1</td>
+	</tr>
+</table>
+
+
+<?php echo $this->months_selector;  ?>
+<table id="patient_healthinsurance_details" class="datatable_new">
+	<tr>
+		<td class="left_col"><b><?php echo $this->translate('sgbv_client');?></b></td>
+		<td><b><?php echo $this->translate('krankenkasse_details');?></b></td>
+		<td class="right_col" colspan="2" width="40%"><b><?php echo $this->translate('sgbv_doctor');?></b></td>
+	</tr>
+	<tr>
+		<td class="left_col">
+			<?php echo $patientdetails['last_name'].', '.$patientdetails['first_name'];  ?><br />
+			<?php echo $patientdetails['street1'].'<br/> '.$patientdetails['zip'].' '.$patientdetails['city']; ?>
+		</td>
+		<td>			
+			<?php echo $this->hi_subdiv_address;  ?>
+		</td>
+		<td class="right_col" colspan="2"></td>
+	</tr>
+	<tr>
+		<td id="clear_td">
+			<table id="inside_table" class="inside_table">
+				<tr>
+					<td id="clear_td">
+						<?php echo $this->translate('shtbirthd')?>: <?php echo $patientdetails['birthd'] ?><br/>
+						<?php echo $this->translate('pflegestufe2pflegegrade')?>:<?php echo  $this->patient_pflegestufe; ?>
+					</td>
+					<td id="clear_td">
+						&nbsp;<?php echo $this->translate('versnr')?>: <?php echo $this->insurance_no; ?><br/>						
+					</td>
+				</tr>
+			</table>
+		</td>
+		<td>
+			<?php echo $this->translate('krankenkasse_ik')?>: <?php echo $this->health_insurance_ik ?><br/>
+			<?php echo $this->translate('krankenkasse_nr')?>: <?php echo $this->health_insurance_kassenr; ?>
+		</td>
+		<td width="20%" colspan>
+			Beleg-Nr: <?php echo $this->unique_id;  ?><br />
+			Grundlage: § 37.2 SGB V
+		</td>
+	</tr>
+</table>
+<table  class="datatable_new">
+	<tr>
+		<th style="text-align:left;width: 190px;">Leistungen <br />&nbsp;</th>
+		<td rowspan="99" id="container" valign="top">
+		<div style="overflow: auto; height: auto;width: 550px; float: left;" >
+			<table id="performance" class="datatable_new" width="2000px">
+
+				<tr>
+					<th><?php echo $this->translate('sgbv_operation');  ?></th>
+					<?php foreach($period_days as $day): $day_type = date('w', strtotime($day)); ?>
+					<th class="<?php if($day_type == 0 || $day_type == 6):  ?> weekend <?php endif; ?> <?php if(in_array(strtotime($day), $national_holidays)): ?> holliday<?php endif;?>">
+						<?php echo date('d', strtotime($day));  ?>
+						<?php echo strftime('%a', strtotime($day));  ?>
+					</th>
+					<?php endforeach;  ?>
+				</tr>
+
+				<?php if( !empty($master_data)):?>
+
+				<?php foreach($master_data as $k_day_group => $data):  ?>
+				<?php foreach($data['actions'] as $k_group_id => $group_data):  ?>
+					<?php foreach($group_data as $k_action_id => $action_data):  ?>
+
+
+					<!-- List action  -->
+					<tr>
+						<td class="inside_container_cell"><?php echo $k_day_group;  ?></td>
+
+						<?php foreach($action_data as $k_day => $action_details): $k_day_type = date('w', strtotime($k_day)); ?>
+							<td class="inside_container_cell <?php if($k_day_type == 0 || $k_day_type == 6):  ?> weekend <?php endif; ?> <?php if(in_array(strtotime($k_day), $national_holidays)): ?> holliday<?php endif;?>">
+								<?php if(!empty($action_data)):  ?>
+									<?php if(!empty($action_details)):  ?>
+										<?php echo $action_details['qty'];  ?>
+										<?php
+											$totals['actions'][$k_day_group][$k_group_id][$k_action_id] += $action_details['qty'];
+										?>
+									<?php else:  ?>
+										&nbsp;
+									<?php endif;  ?>
+								<?php endif;  ?>
+							</td>
+
+						<?php endforeach;  ?>
+					</tr>
+
+					<?php endforeach;  ?>
+
+
+					<!-- List group of previous action  -->
+					<tr>
+						<td class="inside_container_cell"><?php echo $k_day_group;  ?></td>
+						<?php foreach($data['group'][$k_group_id] as $k_day => $v_group_day):  $k_day_type = date('w', strtotime($k_day));?>
+						<td class="inside_container_cell  <?php if($k_day_type == 0 || $k_day_type == 6):  ?> weekend <?php endif; ?> <?php if(in_array(strtotime($k_day), $national_holidays)): ?> holliday<?php endif;?>">
+							<?php if(!empty($v_group_day)):  ?>
+							<?php echo count($v_group_day); ?>
+							<?php
+								$totals['groups'][$k_day_group][$k_group_id] += count($v_group_day);
+							?>
+							<?php else:  ?>
+								&nbsp;
+							<?php endif;  ?>
+						</td>
+						<?php endforeach;  ?>
+					</tr>
+
+
+					<!-- Holiday/Sunday Bonus Line  -->
+					<tr>
+						<td class="inside_container_cell"><?php echo $k_day_group;  ?> </td>
+						<?php foreach($data['bonus'][$k_group_id] as $k_day => $v_group_day): $k_day_type = date('w', strtotime($k_day)); ?>
+						<td class="inside_container_cell  <?php if($k_day_type == 0 || $k_day_type == 6):  ?> weekend <?php endif; ?> <?php if(in_array(strtotime($k_day), $national_holidays)): ?> holliday<?php endif;?>">
+							<?php if(!empty($v_group_day)):  ?>
+								<?php // echo count($v_group_day);  ?>
+								<?php echo $v_group_day['qty_h'];  ?>
+							<?php
+								$totals['bonus'][$k_day_group][$k_group_id]['qty_h'] += $v_group_day['qty_h'];
+							?>
+							<?php else:  ?>
+								&nbsp;
+							<?php endif;  ?>
+						</td>
+					<?php endforeach;  ?>
+					</tr>
+					<!-- Night Bonus Line  -->
+					<?php if($k_day_group == 'Z'):  ?>
+					<tr>
+						<td class="inside_container_cell"><?php echo $k_day_group;  ?> </td>
+						<?php foreach($data['bonus'][$k_group_id] as $k_day => $v_group_day): $k_day_type = date('w', strtotime($k_day)); ?>
+						<td class="inside_container_cell  <?php if($k_day_type == 0 || $k_day_type == 6):  ?> weekend <?php endif; ?> <?php if(in_array(strtotime($k_day), $national_holidays)): ?> holliday<?php endif;?>">
+							<?php if(!empty($v_group_day)):  ?>
+								<?php // echo count($v_group_day);  ?>
+								<?php echo $v_group_day['qty_n'];  ?>
+							<?php
+								$totals['bonus'][$k_day_group][$k_group_id]['qty_n'] += $v_group_day['qty_n'];
+							?>
+							<?php else:  ?>
+								&nbsp;
+							<?php endif;  ?>
+						</td>
+					<?php endforeach;  ?>
+					</tr>
+					<?php endif;  ?>
+					<tr class="empty_rows">
+						<td></td>
+						<?php foreach($data['bonus'][$k_group_id] as $k_day => $v_group_day):  ?>
+						<td ></td>
+						<?php endforeach;  ?>
+					</tr>
+
+				<?php endforeach;  ?>
+
+				<?php endforeach;  ?>
+			</table>
+		</div>
+
+		</td>
+		<th>Anzahl</th>
+	</tr>
+		<?php foreach($master_data as $k_day_group => $data):  ?>
+			<?php foreach($data['actions'] as $k_group_id => $group_data):  ?>
+				<!-- Actions Line  -->
+				<?php foreach($group_data as $k_action_id => $action_data):  ?>
+				<tr>
+
+					<td class="shortcuts"><?php echo $actions_details[$k_action_id];  ?></td>
+					<td class="sums"><?php if($totals['actions'][$k_day_group][$k_group_id][$k_action_id] > 0): echo $totals['actions'][$k_day_group][$k_group_id][$k_action_id]; else: echo '0'; endif;  ?></td>
+
+				</tr>
+				<?php endforeach;  ?>
+
+
+				<!-- List group of previous action  -->
+				<tr>
+					<td class="shortcuts"><?php echo $group_list[$k_group_id]['groupname'];  ?></td>
+					<td class="sums"><?php if($totals['groups'][$k_day_group][$k_group_id] > 0): echo $totals['groups'][$k_day_group][$k_group_id]; else: echo '0'; endif;  ?></td>
+				</tr>
+
+
+				<!-- Holiday/Sunday Bonus Line  -->
+				<tr>
+					<td class="shortcuts"><?php echo $this->translate('sgbv_bonus_line');  ?></td>
+					<td class="sums"><?php if($totals['bonus'][$k_day_group][$k_group_id]['qty_h'] > 0): echo $totals['bonus'][$k_day_group][$k_group_id]['qty_h']; else: echo '0'; endif;  ?></td>
+				</tr>
+				<!-- Night Bonus Line  -->
+				<?php if($k_day_group == 'Z'):  ?>
+				<tr>
+					<td class="shortcuts"><?php echo $this->translate('sgbv_night_bonus_line');  ?></td>
+					<td class="sums"><?php if($totals['bonus'][$k_day_group][$k_group_id]['qty_n'] > 0): echo $totals['bonus'][$k_day_group][$k_group_id]['qty_n']; else: echo '0'; endif;  ?></td>
+				</tr>
+				<?php endif;  ?>
+				<tr class="empty_rows">
+					<td class="shortcuts"></td>
+					<td class="sums"></td>
+				</tr>
+			<?php endforeach;  ?>
+		<?php endforeach;  ?>
+
+		<?php else:?>
+					<tr><td colspan="3"><?php echo $this->translate('No Data To display');?></td></tr>
+				<?php endif;?>
+		<tr class="no_borders">
+		<td></td>
+		<td></td>
+		</tr>
+</table>
+<form action="" method="post" name="" >
+	<input type="submit" value="<?php echo $this->translate('generatepdf'); ?>" name="pdf" class="bigbutton ui-state-default ui-corner-all submit" />
+</form>

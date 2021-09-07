@@ -1,0 +1,871 @@
+<!-- Maria:: Migration ISPC to CISPC 08.08.2020 -->
+<?php
+$this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/pagination_style.css');
+$this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/qtip/jquery.qtip.min.css');
+$this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/page-css/member_style.css');
+
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/jquery.blockUI.js');
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/qtip/jquery.qtip.min.js');
+
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/data_tables/jquery.dataTables.js');
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/data_tables/dataTables.jqueryui.js');
+
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/data_tables/dataTables.colVis.min.js');
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/data_tables/dataTables.colReorder.min.js');
+
+
+//$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/data_tables/jquery.dataTables.css');
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/data_tables/dataTables.jqueryui.css');
+
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/data_tables/dataTables.colvis.jqueryui.css');
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/data_tables/dataTables.colVis.min.css');
+
+
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/data_tables/colReorder.jqueryui.css');
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/data_tables/colReorder.dataTables.min.css');
+
+
+$current_referal_tab = ""; // this is for adding new member button only
+
+if ( isset($_GET['tab']) && "donors" == $_GET['tab'] ) {
+	$current_referal_tab = "donors";
+} else {
+	$current_referal_tab = "members"; 
+}
+
+
+//active
+//inactive
+
+//ISPC-2069 Ancuta 07.09.2020
+// TODO-3668
+if($this->show_print_jobs == 1 ){
+	$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/data_tables/jquery.dataTables.js?'.date('Ymd'));
+	$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/data_tables/dataTables.jqueryui.js?'.date('Ymd'));
+	$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/data_tables/dataTables.jqueryui.css?' . date('Ymd'));
+	$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/views/member/printjobinfo.js');
+}
+
+//-- 
+?>
+<style>
+	.dataTables_scrollBody thead{
+/* 		display:none; */
+	}
+	.dataTables_filter{padding:5px!important;}
+</style>
+
+
+<script type="text/javascript">
+var vwlist = {};
+var tabsid2string = new Array("active", "inactive","donors");
+var searchWait = 0;
+var searchWaitInterval;
+// ISPC-2606, elena, 19.10.2020
+var backObj = null;
+var columns_order = [[ 2, "asc" ]];
+	
+function dTable(){
+	var tabsid2string = new Array("active", "inactive","donors");
+	var colOrder = {};
+	var $clone = $('#vw_list').clone();
+	$($clone)
+			.append( "<input type='hidden' value='"+$(this).attr('rel')+"' name='custom_icons["+$(this).attr('rel')+"]'/>" )
+			.attr('id', 'vw_list_clone')
+			.insertAfter('#vw_list');
+	($clone).show();
+	
+	var vwlist = $('#vw_list_clone').DataTable({
+		// ADD language
+		 "language": {
+                "url": "<?php echo RES_FILE_PATH.'/javascript/data_tables/de_language.json?'.date('Ymd')?>"
+         },
+        
+		sDom: 
+			//'<"fg-toolbar ui-toolbar ui-widget-header ui-helper-clearfix ui-corner-tl ui-corner-tr"<"#top_filters">C>' +
+			'<"fg-toolbar ui-toolbar ui-widget-header ui-helper-clearfix ui-corner-tl ui-corner-tr"Clfr>'+
+			't'+
+			'<"fg-toolbar ui-toolbar ui-widget-header ui-helper-clearfix ui-corner-bl ui-corner-br"<"#bottom_export">ip>',
+			
+		
+		"lengthMenu": [[10, 25, 50, -1], [10, 25, 50, "All"]],
+			
+		processing: true,
+ 		
+		"fnDrawCallback": function ( oSettings ) {
+			$(oSettings.nTHead).show();
+		},
+
+		info: false,
+		filter: true,
+		paginate: true,
+
+		serverSide: true,
+		'responsive': false,
+		
+		"autoWidth": true,
+
+		"stateSave": true,
+
+		"scrollX": true,
+		"scrollCollapse": true,
+		
+		"stateLoadCallback": function (settings)
+		{
+			o = false;
+			var tab =  $("#memberlist_tabs").tabs('option', 'selected');
+			if (tab === null || typeof(tab)==='object') {tab=0;}
+			 $.ajax( {
+				 url: appbase+'user/loadtablepref',
+				method: "POST",
+			    "async": false,
+			    data: { page: "member" ,  'tab' :  tab},
+			    "dataType": "json",
+			    "success": function (json) {
+					if (typeof(json) === 'object' && !$.isEmptyObject(json)){
+						colOrder = json.colOrder;
+					}
+			        o = json;
+			    }
+			 });
+			 
+			 return o;
+		},
+		
+		
+ 		colVis: {
+			buttonText: "<?php echo $this->translate('[Change columns]');?>",
+			//"showAll": "Show all",
+			stateChange: function ( iColumn, bVisible )
+			{
+				var new_col_idx = -1;
+				try{
+					var oSettings = vwlist.settings()[0];
+					new_col_idx = oSettings.aoColumns[iColumn]._ColReorder_iOrigCol;		
+				}
+				finally{
+					if (new_col_idx == -1){
+						new_col_idx = iColumn;
+					}
+				}
+				
+				var tab =  $("#memberlist_tabs").tabs('option', 'selected');
+				
+				$.ajax({
+					url: appbase+'user/savetablesettings',
+					method: "POST",					
+					dataType: "json",
+					data: { page: "member", column: new_col_idx, visible: bVisible, 'tab' :  tab}
+					
+				});
+			},
+			exclude : [0, <?=(count($this->allColumns)+1);?>],
+			
+			sAlign : 'left',
+		}, 
+		
+ 		
+		
+		
+ 		colReorder: {
+ 			realtime : false,
+
+			fixedColumnsLeft: 1,
+			fixedColumnsRight: 1,
+			
+ 			reorderCallback: function ()
+			{
+				var cols_order = $.fn.dataTable.ColReorder( vwlist ).fnOrder();
+							
+				var columns_arr = new Array();
+				$(cols_order).each(function(column_order,column_id) {
+					columns_arr.push({
+						c: column_id, 
+						o: column_order 
+			        });
+				});
+				var tabsid2string = new Array("active", "inactive","donors");
+				var tab =  $("#memberlist_tabs").tabs('option', 'selected');
+				
+				$.ajax({
+					url: appbase+'user/savetablesettingsorder',
+					method: "POST",					
+					dataType: "json",
+					data: { 'tab': tab , page: "member", columns: JSON.stringify(columns_arr) }
+					
+				});
+			}
+			
+		}, 
+		
+		columns: [
+		
+			
+		          { data: "select_member", className: "select_member", "name":"select_member", "searchable": false, "orderable": false },
+		          
+			<?php foreach($this->allColumns as $column) : ?> 
+			   <?php $searchable_orderable = ""; if (in_array($column['columnName'], array('select_member', 'salutation','image', 'icon_row' ))) { $searchable_orderable = '"searchable": false, "orderable": false'; } ?>
+			
+			   { data: "<?=$column['columnName']?>", "className": "<?=$column['columnName']?>", "name":"<?=$column['columnName']?>", <?=$searchable_orderable?>},
+			<?php endforeach; ?>
+			
+		          { data: "actions", className: " ", name:"actions", "searchable": false, "orderable": false} 
+			],
+			
+			
+		columnDefs: [ 
+		//moved into columns the searchable and orderable for 1, -1, -2
+				       	//{ "targets": "select_member", "searchable": false, "orderable": false },
+				       //	{ "targets": 1, "searchable": true, "orderable": false },
+				       //	{ "targets": 4,  "visible": false, "searchable": false, "orderable": false },
+				       //	{ "targets": 4,  "visible": false, "searchable": false, "orderable": false },
+				      	
+				      	//{ "targets": -2, "searchable": false, "orderable": false },
+				       	//{ "targets": -1, "searchable": false, "orderable": false }
+				],
+				
+ 		order: columns_order, //ISPC-2606, elena, 19.10.2020
+		
+		
+ 		
+ 		
+ 		
+ 		
+ 		ajax: {
+			url:'member/fetchlistdatatables',
+			type: 'POST',
+		    "data": function ( d ) {
+				var tab =  $("#memberlist_tabs").tabs('option', 'selected');
+				d.tab = tabsid2string[tab];
+
+				d.f_dob_start =  $('#f_dob_start').val();
+				d.f_dob_end =  $('#f_dob_end').val();
+		        d.icons_filter = $('#icons_filter').val();
+				
+		    },
+			complete: function (data, text) {
+         		$('#vw_list_clone').show();
+				$("body").removeClass("loading");
+     		},
+			error : function(e){
+				
+			}
+			
+			
+		}, 
+		searchDelay: 500,
+			
+		initComplete: function(oSettings)
+		{
+			
+			// @TODO: move this reorder so it dosen't get re-called every time table is reloaded 
+			if (typeof(colOrder) === 'object' && !$.isEmptyObject(colOrder)){
+				try{
+					$(this).DataTable().colReorder.order( colOrder );
+				}catch(e){}
+			}
+
+			var export_buttons = $('.export_buttons').clone();
+			export_buttons.appendTo("#bottom_export").show();
+			
+			$('.dataTables_filter input')
+			.unbind() 
+			.bind("input", function (e) {
+				var item = $(this);
+				searchWait = 0;
+				if (this.value.length >= 2 || this.value == "") {
+					if(!searchWaitInterval) searchWaitInterval = setInterval(function(){
+						if(searchWait>=3){
+							clearInterval(searchWaitInterval);
+							searchWaitInterval = '';
+							searchTerm = $(item).val();
+							$("body").addClass("loading");
+							vwlist.search(searchTerm).draw();						
+							searchWait = 0;
+						}
+						searchWait++;;
+					},100);
+				}
+				
+			})
+			.bind("keydown", function (e) {
+				if (e.keyCode == 13){
+					//Search when user presses Enter
+					clearInterval(searchWaitInterval);
+					$("body").addClass("loading");
+					vwlist.search($(this).val()).draw();
+				}
+			
+			});
+			
+		}
+		
+	});
+	
+
+	// @TODO: move this event inside the dataTable initialization
+	$('#vw_list_clone').on( 'length.dt', function ( e, settings, len ) {
+		var tab =  $("#memberlist_tabs").tabs('option', 'selected');
+		$.ajax({
+			url: appbase+'user/savetablesettingslength',
+			method: "POST",					
+			dataType: "json",
+			data: { 'tab': tab , page: "member", length: len }			
+		});
+	});
+
+	
+	
+	return vwlist;
+}
+	
+	
+$(document).ready(function() { /*------ Start $(document).ready --------------------*/
+	
+	// set default tab on pageload
+	if(!Array.prototype.indexOf){
+		Array.prototype.indexOf = function(val){
+			var i = this.length;
+			while (i--) {
+				if (this[i] == val) return i;
+			}
+			return -1;
+		} 
+	}
+	var tabs_index = 0;
+	<?php
+		if (isset($_GET['tab'])) :
+			echo "tabs_index = tabsid2string.indexOf('".htmlspecialchars($_GET['tab'])."');";
+		endif;
+	?>
+	if (tabs_index == -1){
+		tabs_index = 0;
+	}
+	var $tabs = $( "#memberlist_tabs" ).tabs({
+		selected: tabs_index,		
+	});
+		
+	<?php
+		if (isset($_GET['tab']) && "donors"==$_GET['tab']) :
+	?>
+	  $( "#tab-0" ).remove();
+	  $( "#tab-1" ).remove();
+	  // Refresh the tabs widget
+	  $( "#memberlist_tabs" ).tabs( "refresh" );
+	<?php
+		endif;
+	?>
+
+	//ISPC-2606, elena, 19.10.2020
+	<?php if(isset($_GET['fromedit']) && intval($_GET['fromedit']) == 1): ?>
+	console.log('data for back exists');
+	try{
+	backObj = JSON.parse('<?php echo $_COOKIE['back_list']; ?>');
+	}catch(ex){
+		//json not wellformed or doesn't exist
+	}
+	if(backObj.pageorder !== undefined && backObj.pageorder !== null && backObj.pageorder !== ''){
+		columns_order = backObj.pageorder;
+		//console.log(pageorder);
+	}
+
+	if(backObj.f_dob_start !== undefined && backObj.f_dob_start !== null && backObj.f_dob_start !== ''){
+	$('#f_dob_start').val(backObj.f_dob_start);
+	}
+	if(backObj.f_dob_end !== undefined && backObj.f_dob_end !== null && backObj.f_dob_end !== ''){
+		$('#f_dob_end').val(backObj.f_dob_end);
+	}
+
+
+<?php endif; ?>
+	
+	vwlist = dTable();
+
+
+	
+	
+ 
+	$.icons_filter = function(chkbx){
+
+		var status_details = {};
+		var cnt = 0;
+		var icons_str = "0";
+		$('.icons_check').each(function(){
+			var icon_id =  $(this).val();
+
+			if($(this).is(':checked')){
+				var value  = "1";
+				 icons_str =  icons_str+","+icon_id;
+			}  
+		});
+		$('#icons_filter'). val(icons_str);
+		
+		vwlist.ajax.reload();
+	}
+
+	 //ISPC-2606, elena, 19.10.2020
+	 //simulate enter, if search value exists
+	if(backObj !== null && backObj.search !== undefined && backObj.search !== null && typeof backObj.search === 'string'){
+console.log('search exists');
+		setTimeout(function(){
+			$('input[type=search]').val(backObj.search);
+			var e = $.Event('keyup');
+			e.keyCode= 13;
+
+			$('input[type=search]').trigger(e);
+	},500);
+
+	}
+	var firstLoad = 1;
+
+	vwlist.on('search.dt', function () {
+	console.log ('searched');
+	if(firstLoad == 1){
+	console.log(firstLoad);
+	firstLoad++;
+	if(backObj !== null && backObj.page !== undefined && backObj.page.page !== undefined){
+	console.log('backobj', backObj);
+	setTimeout(function(){
+	console.log('page', backObj.page.page);
+	vwlist.page(backObj.page.page).draw('page');
+	},1500);
+
+	}
+	}
+
+
+} );
+
+	//go to page after all options were applied
+	if(backObj !== null && backObj.page !== undefined && backObj.page.page !== undefined){
+	console.log('backobj', backObj);
+	setTimeout(function(){
+	vwlist.page(backObj.page.page).draw('page')
+	},1500);
+
+	}
+
+
+
+	
+	$("#f_dob_start, #f_dob_end").change(function(){
+		if ($("#f_dob_start").val() != '' && $("#f_dob_end").val() != ''){
+			vwlist.ajax.reload();
+		}
+	});
+	
+	$("#paneln").hide();
+	
+	$('.export').prop('selectedIndex',0);
+	$('.export').val(0);
+		
+	$('.print').prop('selectedIndex',0);
+	$('.print').val(0);
+	
+	
+	$(".btn-slide-n_p").live('click',function(){
+		$("#paneln").slideToggle("slow");
+		$(this).toggleClass("active");
+		return false;
+	});
+	$(".btn-slide-n_p").addClass('ui-state-default ui-corner-bottom');
+	
+	
+	$('.export').live('change',function(){
+ 		var egenerate_value = $(this).val();
+ 		
+ 		if(egenerate_value != 0 ){
+			
+			var tab =  $("#memberlist_tabs").tabs('option', 'selected');
+			//$("#page").val("member_"+tabsid2string[tab]);
+			$("#tab").val(tab);
+			
+			$("#generate").val(egenerate_value);
+			$('#members_list').submit();
+			// reset - select
+			$('.export').prop('selectedIndex',0);
+ 		}
+	});
+	
+	
+	$('.print').live('change',function(){
+ 		var pgenerate_value = $(this).val();
+ 		
+ 		if(pgenerate_value != 0){
+ 			
+ 			var cols_order = vwlist.colReorder.order();
+ 			var order = vwlist.order();
+ 		    var sortby = order[0][0];
+ 		    var sortdir = order[0][1];
+ 		    $("#sortby").val(cols_order[sortby]);
+ 		    $("#sortdir").val(sortdir);
+ 		    $('<input>').attr({
+ 			    type: 'hidden',
+ 			    id: 'sortby',
+ 			    name: 'sortby',
+ 			   value : sortby
+ 			}).appendTo('#members_list');
+ 		    $('<input>').attr({
+ 			    type: 'hidden',
+ 			    id: 'sortdir',
+ 			    name: 'sortdir',
+ 			    value : sortdir
+ 			}).appendTo('#members_list');
+ 		   
+ 		   
+ 		   
+			var letter_tpls = pgenerate_value.split('-');
+			var letter_template = letter_tpls[1]; 
+	
+			if(letter_template && $.isNumeric(letter_template)){
+				$("#generate").val("print_letters");
+				$("#template_id").val(letter_template);
+			} else{
+				$("#generate").val(pgenerate_value);
+			}
+			
+			
+			if(pgenerate_value == "print_list_all_columns" || pgenerate_value == "print_list_viewable_columns" ||  pgenerate_value == "upcomming_birthdays" ||  pgenerate_value == "allyear_birthdays"){
+				var targetvalue = "_blank";
+				$("#members_list").prop("target", targetvalue);
+			}
+			
+			var tab =  $("#memberlist_tabs").tabs('option', 'selected');
+			//$("#page").val("member_"+tabsid2string[tab]);
+			$("#tab").val(tab);
+			
+
+			$('#members_list').submit();
+			// reset - select
+			$('.print').prop('selectedIndex',0);
+			
+ 		}
+		
+	});
+	
+	$('.send_email').live('click',function(){
+ 		var segenerate_value = $(this).val();
+		$("#transfer2sendemail").val("1");
+		
+		var tab =  $("#memberlist_tabs").tabs('option', 'selected');
+		//$("#page").val("member_"+tabsid2string[tab]);
+		$("#tab").val(tab);
+		
+		var formAction = "<?php echo APP_BASE; ?>member/sendemail2members";
+		$("#members_list").attr("action", formAction);
+		$('#members_list').submit();
+		
+	});
+	
+ 
+	$('#all-members').live('click', function(){
+		if($(this).is(':checked')){
+			$('.members').each(function(){
+				$(this).attr('checked', true)
+			});
+		} else {
+			$('.members').each(function(){
+				$(this).attr('checked', false)
+			});
+		}
+	});
+	
+	
+	
+	
+	$('#memberlist_tabs').bind('tabsshow', function(event, ui) { 
+
+		vwlist.clear();
+		vwlist.destroy();
+		$('#vw_list_clone').remove();
+
+		vwlist = dTable();
+
+	});
+	//ISPC-2606, elena, 19.10.2020
+	$('#vw_list_clone tr td a').live('click', function(e){
+		if(!$(this).hasClass('memberlist_link')){ // TODO-3581 Ancuta  09.11.2020
+ 		    e.preventDefault();
+
+			//console.log(e.target); 
+			var href = $(e.target).attr('href');
+			//console.log(href);
+			var d = {};
+				var tab =  $("#memberlist_tabs").tabs('option', 'selected');
+				d.tab = tabsid2string[tab];
+
+				d.f_dob_start =  $('#f_dob_start').val();
+				d.f_dob_end =  $('#f_dob_end').val();
+				d.icons_filter = $('#icons_filter').val();
+				d.page = vwlist.page.info();
+				d.pageorder = vwlist.order();
+				var inputsearch = $('input[type=search]').val();
+				d.search = inputsearch;
+				//console.log(d);
+				$('#back_list').val(JSON.stringify(d));
+				$('#to_member').attr('action', href);
+				$('#to_member').submit();
+
+		}
+	});
+
+
+
+	
+	
+});/*-- END  $(document).ready ----------- --*/
+
+	
+function deleteconfirm(id) {
+	jConfirm('<?php echo $this->translate('confirmdeleterecord'); ?>', '<?php echo $this->translate('confirmdeletetitle'); ?>', function(r) {
+		if(r) {
+			$.get("member/memberslist?id="+id+"&setisdelete=1", function(response) {
+				var whichtr = $("#delete_"+id).closest("tr");
+				whichtr.hide('slow');
+				whichtr.remove();
+			});
+		}
+	});
+
+	return false;
+}
+</script>
+
+<!-- inline css TODO-1258: members table full width  -->
+<style>
+    .outer{
+        width: 100%!important;
+        
+    }
+    #Wrapper {
+        width: 100%!important;
+        min-height: 5px;
+        overflow: hidden;
+    
+    }
+    #Wrapper .LeftDiv {
+        float: left;
+        width: 200px;
+        overflow: hidden;
+        min-height: 100px;
+    }
+    
+    #MainContent { 
+        width: auto!important;
+        display: block; /*default display for div */
+        float: none;/*default float for div*/
+        
+        padding-left:10px;
+        padding-right:30px;
+        
+        min-height: 100px;
+        overflow: hidden;
+    }
+    body {
+        overflow-x: hidden;
+    }
+</style>
+
+
+<div class="add_link" style="float: none;">
+	<a href="member/addmember?referal_tab=<?php echo $current_referal_tab; ?>"><?php echo  $this->translate('Add member')?></a>
+</div>
+
+
+<div id="familydoctorlist_deleteMsg" class="err"><?php echo $this->delete_message ?><?php echo $this->error_message ?></div>
+
+<?php
+	if (!isset($_GET['tab']) || "donors" != $_GET['tab']) :
+?>
+<div class="members_total">
+<label><?php echo $this->translate('total_member_count:') ?> </label>
+<span><?php echo $this->member_count['total']; ?></span>
+</div>
+<!-- ISPC-2401 pct 14 Lore -->
+<div >
+<label><?php echo $this->translate('Aktiv:') ?> </label>
+<span><?php echo $this->member_count['active']; ?></span>
+</div>
+<div><label><?php echo $this->translate('Family members:') ?> </label>
+<span><?php echo $this->member_count['member_family']; ?></span>
+</div>
+
+<?php
+	endif;
+?>
+
+<div style="clear:both;"></div>
+<!-- ISPC-2606,elena, 19.10.2020 -->
+<form method="post" id="to_member">
+	<input type="hidden" id="back_list" name="back_list" >
+</form>
+
+<div id="memberlist_tabs">
+	<ul>
+		<li><a href="#paneln" rel="1" class="tabs" id="tab-0" ><?php echo $this->translate('active')?> (<?php echo $this->member_count['active']?>)</a></li>
+		<li><a href="#paneln" rel="2" class="tabs" id="tab-1" ><?php echo $this->translate('inactive')?> (<?php echo $this->member_count['inactive']?>)</a></li>
+		
+		<?php
+			if (isset($_GET['tab']) && "donors"==$_GET['tab']) :
+		?>
+		<li><a href="#paneln" rel="3" class="tabs" id="tab-3" ><?php echo $this->translate('donors_tab')?> (<?php echo $this->member_count['donors']?>)</a></li>
+		<?php
+			endif;
+		?>
+		
+	</ul>
+
+
+	<div id="paneln" class="ui-helper-reset ui-helper-clearfix ui-widget-header ui-corner-all" style="background:#deedf7; display: none;">
+	
+	<?php if (count($this->client_icons) > 0 ) : ?>
+		 <div class="form_filters" id="old_filters"  >
+			
+					<div class="vw_filters_block">
+						<div class="vw_filter_checkboxes" >
+							<label style="display: block;   float: left;   line-height: 20px; width: 100px;"><?php echo $this->translate('Filter by Icons')?></label>
+							<?php foreach($this->client_icons as $k=>$icon_details):?>	
+							<div style="margin-bottom:5px;" class="vw_filter_icons_item"  id="sys_icon-<?php echo $icon_details['id']; ?>">
+								<input type="checkbox" name="icons"  value="<?php echo $icon_details['id']?>"  class="icons_check"    onclick="$.icons_filter(this)"  id="filter_<?php echo $icon_details['id']; ?>" />
+								<label for="filter_<?php echo $icon_details['id']; ?>" style="background:#<?php echo $icon_details['color']; ?>" >
+								<?php if(!empty($icon_details['image'])): ?>
+									<img src="<?php echo APP_BASE . 'icons_system/' . $icon_details['image']; ?>"   title="<?php echo $icon_details['name']; ?>"  style="width: 32px; height: 32px;"/>
+								<?php else:?>
+									<span class="vw_icon_subst">&nbsp;</span>
+								<?php endif;?>
+								</label>
+
+							</div>
+							<?php endforeach;?>
+						</div>
+					</div>
+		
+		</div>
+	
+	<div style="clear:both"></div>
+	<?php endif; ?>
+		
+	<div style="margin-top:10px;">
+		<label style="display: block;   float: left;   line-height: 20px; width: 100px;"><?php echo $this->translate('dateofbirth')?></label>
+		
+					<select name="f_dob_start" id="f_dob_start">
+					<option value=""></option>
+					<?php  $yearRange = 115;
+    				$thisYear = date('Y');
+    				$startYear = ($thisYear - $yearRange);
+    				foreach (range($thisYear, $startYear) as $year) {
+    					$selected = "";
+						//if($year == $startYear) { $selected = " selected"; }
+    						echo '<option' . $selected . '>' . $year . '</option>';
+    				}?></select>
+		<label><?php echo $this->translate('bis')?>:</label>
+					<select name="f_dob_end" id="f_dob_end">
+					<option value=""></option>
+					<?php  $yearRange = 115;
+    				$thisYear = date('Y');
+    				$startYear = ($thisYear - $yearRange);
+    				foreach (range($thisYear, $startYear) as $year) {
+    					$selected = "";
+						//if($year == $thisYear) { $selected = " selected"; }
+    						echo '<option' . $selected . '>' . $year . '</option>';
+    				}?>
+		</select>
+	</div>
+	
+	
+	
+	
+	
+	
+	</div>
+	<p class="slide_p"><a href="#" id="searchlink" class="btn-slide-n_p"><?php echo $this->translate('slidefilter')?></a></p>
+
+
+
+
+
+
+<form action="" method="post" id="members_list">
+
+<input type="hidden" name="icons_filter" id="icons_filter" value="" />
+<input type="hidden" id="generate" name="generate" value="0" />
+<input type="hidden" id="template_id" name="template_id" value="0" />
+<input type="hidden" id="transfer2sendemail" name="transfer2sendemail" value="0" />
+
+<input type="hidden" id="page" name="page" value="member" />
+<input type="hidden" id="tab" name="tab" value="0" />
+
+
+	
+	
+<div class="row" id="projects-list">
+	<!-- Table -->
+  
+	  <table id="vw_list" class="table table-striped table-bordered table-hover table-condensed dataTable no-footer" style="display:none;">
+	  	<thead>
+
+	  		<tr>
+	  			<th><input type="checkbox" name="all-members" value="" id="all-members" /></th>
+	  			
+				<?php 
+				foreach($this->allColumns as $column) :
+				?>
+				<th><?php echo $this->translate( $column['columnName'] ); ?></th>
+				
+				<?php endforeach; ?>
+				
+				
+				<th><?php echo $this->translate('action'); ?></th>
+				
+				
+	  		</tr>
+	  	</thead>
+	  	
+	  </table>
+	 
+</div>
+</form>
+
+</div>
+
+		
+<div class="export_buttons" style="display:none">
+			<select name="export" id="export" class="export">
+		        <option value="0">Exportieren</option>
+		        <option value="export_xlsx">Excel(*.xlsx)</option>
+		        <option value="export_csv">Kommagetrennte Werte (*.csv)</option>
+		    </select>
+		 
+		 
+		     <select name="print" id="print"  class="print">
+		        <option value="0">Drucken</option>
+		        <option value="print_list_all_columns"> <?php echo $this->translate('Print list -all columns');?></option>
+		        <option value="print_list_viewable_columns"><?php echo $this->translate('Print list -viewable columns');?></option>
+
+		       <?php if (count($this->letter_templates) == 1):?>
+  	       			<?php foreach($this->letter_templates as $tpl_id => $tpl_value): ?>
+				 		<option value="print_letters-<?php echo $tpl_id;?>" ><?php echo $this->translate('Print letters');?></option>
+				 	<?php endforeach; ?>
+		       <?php elseif ( count($this->letter_templates) >= 1):?>
+	       			<optgroup  label="<?php echo $this->translate('Print letters');?>" value="print_letters">
+	       			<?php foreach($this->letter_templates as $tpl_id => $tpl_value): ?>
+				 		<option value="print_letters-<?php echo $tpl_id;?>" ><?php echo $tpl_value['title'];?></option>
+				 	<?php endforeach; ?>	
+				 	</optgroup>
+		        <?php endif;?>
+		       
+		        <option value="print_labels_3424"><?php echo $this->translate('Print label -avery 3424');?></option>
+		        <option value="print_labels_3422"><?php echo $this->translate('Print label -avery 3422');?></option>
+		        <option value="upcomming_birthdays"><?php echo $this->translate('Print upcomming_birthdays');?></option>
+		    	<option value="allyear_birthdays" ><?php echo $this->translate('Print allyear_birthdays');?></option>
+		    </select>
+			<input type="submit"  name="send_email" id="send_email"  class="send_email" value="Email" />
+			<input type="button"  id="merge_members" value="<?php echo $this->translate('merge_members_button');?>" onclick="location.href='<?php echo APP_BASE; ?>member/mergemember';" />
+			<input type="button"  id="undo_merge_members" value="<?php echo $this->translate('merge_members_undo_button');?>" onclick="location.href='<?php echo APP_BASE; ?>member/mergememberundo';" />
+</div>
+
+		<div class="icons">
+	
+		</div>
+<div class="modal"><!-- Place at bottom of page --></div>		
+		

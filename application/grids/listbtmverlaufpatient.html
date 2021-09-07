@@ -1,0 +1,127 @@
+<table id="samtab" class="patientMasterStab1Table livesearchdropdown" style="width:100%;">
+	<tr id="liAdmDia_tr1">
+		<td valign="top" width="15%">Datum</td>
+		<td valign="top" width="85%">Vorgang</td>
+	</tr>
+	<gridrow>
+		<phpscript>
+$cntr++;
+
+//NOTICE
+//get medications array **  TO DO if user can in future delete the medication this list must be all client medications!! **
+//currently this array is the same as the existing medis in btm buch client history/stock table
+
+$medisarray = $view->medicationarray;
+
+//get methods
+$methodsarray = $view->methodsarray;
+
+//get doctors array
+$allUsers = $view->usersSelect;
+
+$allUsers = $view->allUsers;
+
+
+$cols = "";
+$ch = "";
+foreach($sumary as $clienthistoryid=>$ch){
+
+	if(!in_array($ch['id'], $skippedid)){
+		switch($ch['methodid']){
+
+//PLUS OPERATION
+			case "5": //abgabe1 (-) din client
+				$ch['amount'] = $ch['amount'];
+				//$cols .= $methodsarray['user'][$ch['methodid']].": ".$ch['amount']." <b>".$medisarray[$ch['medicationid']]['name']."</b> von ".$allUsers[$ch['userid']]." erhalten <br />";
+				$cols .= "Der Bestand von <b>".$medisarray[$ch['medicationid']]['name']."</b> von <b>".$allUsers[$ch['userid']]."</b> wurde um ".$ch['amount']." durch ".$methodsarray['user'][$ch['methodid']]." reduziert  <br />";
+				
+				break;
+
+			case "6": //sonstiges
+				if($ch['amount'] < 0){
+					$direction = "bestand von <b>".$medisarray[$ch['medicationid']]['name']."</b> verringert durch";
+					$ch['amount'] = ($ch['amount'] *(-1));
+				} else {
+					$direction = "bestand von <b>".$medisarray[$ch['medicationid']]['name']."</b> erhöht durch";
+				}
+
+				$cols .=  $allUsers[$ch['userid']]." ".$direction." ".$ch['amount']."  ".$methodsarray['patient'][$ch['methodid']]."<br />";
+				break;
+			case "7": //abgabe2(+) din patient
+				$ch['amount'] = $ch['amount'];
+				//$cols .= $methodsarray['patient'][$ch['methodid']].": ".$ch['amount']." <b>".$medisarray[$ch['medicationid']]['name']."</b> von ".$allUsers[$ch['userid']]." erhalten <br />";
+				$cols .= "Der Bestand von <b>".$medisarray[$ch['medicationid']]['name']."</b> des Patienten wurde durch ".$methodsarray['patient'][$ch['methodid']]." von <b>".$allUsers[$ch['userid']]."</b> um ".$ch['amount']." erhöht.";
+				break;
+
+			case "8":
+				if($ch['verlauf_hide'] != '1')
+				{
+					$ch['amount'] = ($ch['amount']*(-1));
+					//$cols .= $methodsarray['patient'][$ch['methodid']].": ".$allUsers[$ch['userid']]." ".$ch['amount']." <b>".$medisarray[$ch['medicationid']]['name']."</b><br />";
+					if($ch['source'] == "p"){
+						$cols .= "Der Bestand von <b>".$medisarray[$ch['medicationid']]['name']."</b> des Patienten wurde um ".$ch['amount']." durch ".$methodsarray['patient'][$ch['methodid']]." reduziert<br />";
+					} else if($ch['source'] == "u"){
+						$cols .= "Der Bestand von <b>".$medisarray[$ch['medicationid']]['name']."</b> von ".$allUsers[$ch['userid']]." wurde um ".$ch['amount']." durch ".$methodsarray['patient'][$ch['methodid']]." reduziert<br />";
+					}
+				}
+				break;
+
+			case "9":
+				$ch['amount'] = ($ch['amount']*(-1));
+				//$cols .= $methodsarray['patient'][$ch['methodid']].": ".$ch['amount']." <b>".$medisarray[$ch['medicationid']]['name']."</b> an  ".$allUsers[$ch['to_userid']]."<br />";
+				$cols .= "Der Bestand von <b>".$medisarray[$ch['medicationid']]['name']."</b> des Patienten wurde um ".$ch['amount']." durch ".$methodsarray['patient'][$ch['methodid']]." reduziert<br />";
+				break;
+
+			case "10":
+				$ch['amount'] = $ch['amount'];
+				$cols .= $methodsarray['patient'][$ch['methodid']].": ".$ch['amount']." <b>".$medisarray[$ch['medicationid']]['name']."</b> von ".$allUsers[$ch['userid']]." erhalten <br />";
+				break;
+
+			case "11":
+				$ch['amount'] = ($ch['amount']*(-1));
+				//$cols .= $methodsarray['patient'][$ch['methodid']].": ".$allUsers[$ch['userid']]." ".$ch['amount']." <b>".$medisarray[$ch['medicationid']]['name']."</b><br />";
+				
+				$sonstige_more = '';
+				if(strlen($ch['sonstige_more']))
+				{
+					$sonstige_more = " (". $ch['sonstige_more'] .")";
+					
+				}
+				
+				//$cols .= $methodsarray['patient'][$ch['methodid']].": ".$allUsers[$ch['userid']]." ".$ch['amount']." <b>".$medisarray[$ch['medicationid']]['name']."</b>".$sonstige_more."<br />";
+				$cols .= "Der Bestand von <b>".$medisarray[$ch['medicationid']]['name']."</b> des Patienten wurde um ".$ch['amount']." durch ".$methodsarray['patient'][$ch['methodid']]."  ".$sonstige_more."  reduziert <br />";
+				
+				break;
+				
+			case "12":
+				$ch['amount'] = ($ch['amount']*(-1));
+				//$cols .= $methodsarray['user'][$ch['methodid']].": ".$allUsers[$ch['userid']]." ".$ch['amount']." <b>".$medisarray[$ch['medicationid']]['name']."</b><br />";
+				$cols .= "Der Bestand von <b>".$medisarray[$ch['medicationid']]['name']."</b> des Patienten wurde durch ".$methodsarray['user'][$ch['methodid']]." von <b>".$allUsers[$ch['userid']]."</b> um ".$ch['amount']." erhöht.<br />";
+				break;
+
+			default:
+				if($ch['type'] == "N"){
+					//$cols .= $medisarray[$ch['medicationid']]['name']." wurde hinzugefügt<br />";
+					$cols .= "<b>".$medisarray[$ch['medicationid']]['name']."</b> wurde dem BTM Buch hinzugefügt<br />";
+				}
+				break;
+		}
+		//ispc 1864 - add correction with red
+		if ($cols !='' &&  ! empty($ch['correction_event']) && ! empty($ch['correction_event']['correction_event_text_row'])  ){
+			$cols .= $ch['correction_event']['correction_event_text_row'] ;
+		}
+	
+	} else {
+		$cols .= "<br/>";
+	}
+}
+		</phpscript>
+		<tr>
+			<td valign="top" >[[date]]</td>
+			<td valign="top">
+				[[cols]]
+			</td>
+		</tr>
+	</gridrow>
+
+</table>

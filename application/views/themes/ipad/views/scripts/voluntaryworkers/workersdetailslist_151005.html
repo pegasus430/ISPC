@@ -1,0 +1,145 @@
+<script type="text/javascript">
+var pl_loading = function(){
+
+var dlist = '<div class="loadingdiv" align="center"><img src="images/pageloading.gif"><br />	Loading... please wait</div>';
+document.getElementById('content').innerHTML = dlist;
+
+}
+function loadpage(ord,clm)
+{
+	if($('#hdnlastpage').val()>=parseInt($('#pageno').val())){
+	if((parseInt($('#pageno').val()))>0){pgno=(parseInt($('#pageno').val()-1));}else{pgno=0;}
+	
+	ajaxCallserver({url:'voluntaryworkers/fetchdetailslist?clm='+clm+'&ord='+ord+'&pgno='+pgno,callLoading:pl_loading});
+	}else{
+		jAlert("<? echo $this->translate('invalidpageno'); ?>");
+	}
+}
+function searchData(val)
+{
+	ajaxCallserver({url:'voluntaryworkers/fetchdetailslist',
+	method:'POST',
+	data:{clm:'ln',ord:'ASC',pgno:0,val:val.value}});
+
+
+}
+
+var callBack = function(params)
+{
+	document.getElementById('content').innerHTML = params.voluntaryworkerslist; 
+	$(".confirm_button").click( function() {
+		$.confirmdeleteid = $(this).attr('rel');
+			jConfirm('<? echo $this->translate('confirmdeleterecord'); ?>', '<? echo $this->translate('confirmdeletetitle'); ?>', function(r) {
+			if(r)
+			{	
+				location.href = "<? echo APP_BASE ?>voluntaryworkers/deletevoluntaryworkerdet?id="+ $.confirmdeleteid;
+			}
+		});
+	});
+}
+
+
+
+function save_filter(chkbx){
+
+	var status_details = {};
+	var cnt = 0;
+	
+	$('.status_check').each(function(){
+		var name =  $(this).attr('name');
+		if($(this).is(':checked')){
+			var value  = "1";
+		}  else{
+			var value   = "0";
+		}
+		status_details[name] = value;
+		cnt++;
+	});
+	
+	
+	var array_status = JSON.stringify(status_details)
+	ajaxCallserver({
+		url : 'voluntaryworkers/fetchdetailslist?clm=ln&ord=ASC&pgno=0',
+		method : 'POST',
+		data : {
+			details: array_status
+		} 
+	});
+	
+	var search_text = $('#search_text').val();
+
+	
+	if(search_text){
+		ajaxCallserver({url:'voluntaryworkers/fetchdetailslist',
+			method:'POST',
+			data:{clm:'ln',ord:'ASC',pgno:0,val:search_text}});
+	}
+}
+
+$(document).ready(function() {  
+ 
+	
+	$('#search_text').on('keyup keypress', function(e) {
+		  var code = e.keyCode || e.which;
+		  if (code == 13) { 
+		    e.preventDefault();
+		    return false;
+		  }
+		});
+	
+}); 
+
+</script>
+	<div class="add_link">
+		<a href="voluntaryworkers/addvoluntaryworkerdet"><? echo $this->translate('addvoluntaryworker') ?></a>
+	</div>
+<form action="" method="post" name="filter_search" id="filter_search" >
+	<fieldset>
+		<legend><? echo $this->translate('filters') ?></legend>
+		<div class="vw_filters_block">
+			<div class="vw_filter_checkboxes">
+				<div class="vw_filter_item_lbl">
+					<label ><?php echo $this->translate('Filter by status')?></label>
+				</div>
+				
+				<div class="vw_filter_item">
+					<input type="checkbox" name="status_color_g"  value="1"  class="status_check" id="status_g"  onclick="save_filter(this)"  <?php if($this->ufilter['status_color_g'] == 1): ?>  checked="checked" <?endif;?>  />
+					<label for="status_g" ><img src="<?php echo RES_FILE_PATH;  ?>/images/vw_status_icon_green.png" alt="<?php echo $this->translate('green')?>" title="<?php echo $this->translate('green')?>" class="vw_color_status"/></label>
+				</div>
+				<div class="vw_filter_item">
+					<input type="checkbox" name="status_color_y" value="1" class="status_check"  id="status_y"  onclick="save_filter(this)"  <?php if($this->ufilter['status_color_y'] == 1): ?>  checked="checked" <?endif;?>  />
+					<label for="status_y" ><img src="<?php echo RES_FILE_PATH;  ?>/images/vw_status_icon_yellow.png" alt="<?php echo $this->translate('yellow')?>" title="<?php echo $this->translate('yellow')?>" class="vw_color_status"/></label>
+				</div>
+				<div class="vw_filter_item">
+					<input type="checkbox" name="status_color_r" value="1" class="status_check"  id="status_r"  onclick="save_filter(this)"  <?php if($this->ufilter['status_color_r'] == 1): ?>  checked="checked" <?endif;?>  />
+					<label  for="status_r" ><img src="<?php echo RES_FILE_PATH;  ?>/images/vw_status_icon_red.png" alt="<?php echo $this->translate('red')?>"  title="<?php echo $this->translate('red')?>"  class="vw_color_status" /></label>
+				</div>
+			
+				<div class="vw_filter_item">
+					<input type="checkbox" name="status_color_b" value="1" class="status_check"  id="status_b"  onclick="save_filter(this)"   <?php if($this->ufilter['status_color_b'] == 1): ?>  checked="checked" <?endif;?>  />
+					<label  for="status_b" ><img src="<?php echo RES_FILE_PATH;  ?>/images/vw_status_icon_black.png" alt="<?php echo $this->translate('inactive')?>" title="<?php echo $this->translate('inactive')?>" class="vw_color_status"/></label>
+				</div>
+			</div>
+			<br/>
+			<div class="vw_filter_livesearch">
+				<label><?php echo $this->translate('search')?></label>
+				<input type="text" name="search" id="search_text" value=""  onkeyup="searchData(this);" >
+			</div>
+		</div>
+	</fieldset>	 
+</form>
+
+<form action="" method="post" name="frmdoc" id="frmdoc" >
+	 <div id="familydoctorlist_deleteMsg" class="err"><? echo $this->delete_message ?><? echo $this->error_message ?></div>
+	<div id="familyDocfetchdetailslist_mainDiv" class="grid">
+		<h1 id="famDrFet_tranHeading"><? echo $this->translate('voluntaryworkers')?></h1> 
+		<div id="content">
+			<? echo $this->voluntaryworkersgrid ?>
+		</div>
+	</div>
+	
+</form>
+
+<script type="text/javascript">
+	ajaxCallserver({url:'voluntaryworkers/fetchdetailslist?clm=ln&ord=ASC&pgno=0',callLoading:pl_loading});
+</script>

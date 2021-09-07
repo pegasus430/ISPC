@@ -1,0 +1,816 @@
+<?php
+	$this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/page-css/nurse_billing_style.css'); 
+?>
+<?php
+	//IE Freaking hack
+	$url = APP_BASE . "patientform/nursebilling?".$_SERVER['QUERY_STRING'];
+	if(str_replace("&list=".$_REQUEST['list']."", "", $url)){
+		$finalJsUrl = str_replace("&list=".$_REQUEST['list']."", "", $url);
+	} else {
+		$finalJsUrl = $url;
+	}
+
+	
+?>
+<script type="text/javascript" >
+
+$(document).ready(function(){ 
+	$('#export_pdf').val('0');
+	$('.loading_div').hide();
+		
+	$('#pdf_submit').live('click',function(e){ 
+		e.preventDefault();
+		$(this).attr('disabled',true);
+		$('#export_pdf').val('1');
+		$('#billing_form').submit();
+	});
+
+	
+	
+	$('.add_visit').live('click',function(){
+		var kvno_begin_date_h = "<?php echo $this->kvno_begin_date_h; ?>";
+		var kvno_begin_date_m = "<?php echo  $this->kvno_begin_date_m; ?>";
+		var kvno_end_date_h = "<?php echo  $this->kvno_end_date_h; ?>";
+		var kvno_end_date_m = "<?php echo  $this->kvno_end_date_m; ?>";
+		$('#visit_action').val('add_visit');
+		$('#kvno_begin_date_h').val(kvno_begin_date_h);
+		$('#kvno_begin_date_m').val(kvno_begin_date_m);
+		$('#kvno_end_date_h').val(kvno_end_date_h);
+		$('#kvno_end_date_m').val(kvno_end_date_m);
+		$('#vizit_date').val( $(this).attr('rel'));
+
+		
+		 $('#add_visit_bock').dialog('open');
+	 });
+	
+	$('.edit_visit').live('click',function(){
+		
+		var visit_id = $(this).attr('rel');
+		$('#visit_action').val('edit_visit');
+		var kvno_begin_date_h = $('#kvno_begin_date_h-'+visit_id+' ').val();
+		var kvno_begin_date_m = $('#kvno_begin_date_m-'+visit_id+' ').val();
+		var kvno_end_date_h = $('#kvno_end_date_h-'+visit_id+' ').val();
+		var kvno_end_date_m = $('#kvno_end_date_m-'+visit_id+' ').val();
+		var vizit_date = $('#vizit_date-'+visit_id+' ').val();
+
+		$('#kvno_nurse_id').val( $(this).attr('rel'));
+		
+		$('#vizit_date').val(vizit_date);
+		$('#kvno_begin_date_h').val(kvno_begin_date_h);
+		$('#kvno_begin_date_m').val(kvno_begin_date_m);
+		$('#kvno_end_date_h').val(kvno_end_date_h);
+		$('#kvno_end_date_m').val(kvno_end_date_m);
+
+		$('#add_visit_bock').dialog('open');
+	 
+	 });
+	 
+	$('#add_visit_bock').dialog({
+	    autoOpen: false,
+	    modal: true,
+	    width: 350,
+	   	height: 200,
+	   	title:  "<?php echo $this->translate('visit add'); ?>",
+	    buttons:{
+		"<?php echo $this->translate('save'); ?>": function(){
+			$('.submitform').attr('disabled',true);
+			$('.loading_div').show();
+			 $(".ui-button:first").attr("disabled", true)                                               
+			 .addClass("ui-state-disabled").next("button").attr("disabled", true)                                               
+			 .addClass("ui-state-disabled");
+			 
+
+			
+			var error = 0;
+			var ajax_done = 0;
+
+			if($('#kvno_begin_date_h').val() > $('#kvno_end_date_h').val()) {
+				error = 1;
+			}
+
+			if($('#kvno_begin_date_h').val() == $('#kvno_end_date_h').val()) {
+				if($('#kvno_begin_date_m').val() >= $('#kvno_end_date_m').val()) {
+					error = 2;
+				}
+			}
+			if(error == 1) {
+				jAlert('Die Zeit der Beendigung des Besuchs sollte später sein als die Anfangszeit.');
+				return false;
+			} else if(error == 2) {
+				jAlert('Die Zeit der Beendigung des Besuchs sollte später sein als die Anfangszeit.');
+				return false;
+			}
+
+			if(error == '0'){
+				$.ajax({
+					type: 'POST',
+					url: 'ajax/overlappingcheck?id=<?php echo $_REQUEST['id']; ?>&uid=<?php echo $this->user_id;?>',
+					data: {
+						visit_type: 'N',
+						begin_h: $('#kvno_begin_date_h').val(),
+						begin_m: $('#kvno_begin_date_m').val(),
+						end_h: $('#kvno_end_date_h').val(),
+						end_m: $('#kvno_end_date_m').val(),
+						visit_start: $('#vizit_date').val(),
+						edit_id:function(){
+							if($('#kvno_nurse_id').val() ){
+								var kvno_nurse_id = $('#kvno_nurse_id').val();
+							} else {
+								var kvno_nurse_id = 0;
+							}
+							return kvno_nurse_id;
+						}
+					},
+ 
+					success:function(data){
+						var visitdata = jQuery.parseJSON(data);
+
+						if(visitdata.intersected == 1){
+							
+							$('.submitform').attr('disabled',false);
+							 $(".ui-button:first").attr("disabled", false)                                               
+							 .removeClass("ui-state-disabled").next("button").attr("disabled", false)                                               
+							 .removeClass("ui-state-disabled");
+							 
+							$('#duplicate_visits').dialog('open');
+							return false; // used with modal
+						} else {
+							$('.submitform').attr('disabled',true);
+							
+							 $(".ui-button:first").attr("disabled", true)                                               
+							 .addClass("ui-state-disabled").next("button").attr("disabled", true)                                               
+							 .addClass("ui-state-disabled");
+
+							 
+							 
+							$('#save_nurse_visit').submit();
+						}
+					},
+					error:function(){
+						ajax_done = 1;
+					}
+				});
+			}
+		},
+		  
+		"<?php echo $this->translate('cancel'); ?>": function(){
+			$('#vizit_date').val('');
+			$('#kvno_begin_date_h').val('');
+			$('#kvno_begin_date_m').val('');
+			$('#kvno_end_date_h').val('');
+			$('#kvno_end_date_m').val('');
+			$('#visit_action').val('');
+			$('.loading_div').hide();
+		    $('#add_visit_bock').dialog('close');
+		}
+	    },
+	    create:function () {
+	        $(this).closest(".ui-dialog")
+	            .find(".ui-button:first") // the first button
+	            .addClass("submitform");
+	    }
+	});
+	
+	/*--------------------------------------------------------------------------------------------------*/
+	/*-----------------------------------ADD MULTIPLE VISITS ------------------------------------------*/
+	/*--------------------------------------------------------------------------------------------------*/
+		$('#visit_start1').mask('99:99'); //add hours and minute mask
+		$('#visit_end1').mask('99:99'); //add hours and minute mask
+		
+	$('.add_multiple_visit').live('click',function(){
+		
+		var kvno_begin_date_h = "<?php echo $this->kvno_begin_date_h; ?>";
+		var kvno_begin_date_m = "<?php echo  $this->kvno_begin_date_m; ?>";
+		var kvno_end_date_h = "<?php echo  $this->kvno_end_date_h; ?>";
+		var kvno_end_date_m = "<?php echo  $this->kvno_end_date_m; ?>";
+	
+		$('#multile_visit_action').val('multile_visit_action');
+		$('input[name="visit_date"]').val( $(this).attr('rel'));
+		$('#add_multiple_visit_bock').dialog('open');
+	 });
+
+	
+	$('.new_row_visit').live('click',function(){
+		
+		var previous = $('#bulk_visits > tbody >tr :last').attr('rel'); 
+		
+		var next = Number(Number(previous) + 1 );  
+
+		var visit_start = '<td>'+next+'#  </td><td>Beginn :</td><td><input type="text" value="" name="visit['+next+'][start]" id="visit_start'+next+'" class="visit_time" /></td>';
+		var visit_end = '<td>Ende :</td>	<td><input type="text" value="" name="visit['+next+'][end]" id="visit_end'+next+'"  class="visit_time"   /> </td>';
+
+		$('#bulk_visits > tbody :last').append( '<tr rel="'+next+'">'+visit_start+visit_end+'</tr>');
+		
+		$('#visit_start'+next+'').mask('99:99'); //add hours and minute mask
+		$('#visit_end'+next+'').mask('99:99'); //add hours and minute mask
+		
+	 });
+	
+	
+	$('#add_multiple_visit_bock').dialog({
+	    autoOpen: false,
+	    modal: true,
+	    width: 350,
+	   	height: 400,
+	   	title:  "<?php echo $this->translate('visit add'); ?>",
+	    buttons:{
+		"<?php echo $this->translate('save'); ?>": function(){
+			$('.submitform').attr('disabled',true);
+			$('.loading_div').show();
+			 $(".ui-button:first").attr("disabled", true)                                               
+			 .addClass("ui-state-disabled").next("button").attr("disabled", true)                                               
+			 .addClass("ui-state-disabled");
+			
+			var error = 0;
+			var ajax_done = 0;
+ 
+ 
+			if(error == '0'){
+				$.ajax({
+					type: 'POST',
+					url: 'ajax/multipleoverlappingcheck?id=<?php echo $_REQUEST['id']; ?>',
+					data: {
+						form_data: $('#save_multiple_nurse_visit').serialize()
+ 
+					},
+ 
+					success:function(data){
+						var visitdata = jQuery.parseJSON(data);
+
+						if(visitdata.error == 1){
+							$('.submitform').attr('disabled',false);
+							 $(".ui-button:first").attr("disabled", false)                                               
+							 .removeClass("ui-state-disabled").next("button").attr("disabled", false)                                               
+							 .removeClass("ui-state-disabled");
+							jAlert('Die Zeit der Beendigung des Besuche sollte später sein als die Anfangszeit.');
+
+							return false; // used with modal
+							
+							
+						}
+						else if(visitdata.error == 2){
+							$('.submitform').attr('disabled',false);
+							 $(".ui-button:first").attr("disabled", false)                                               
+							 .removeClass("ui-state-disabled").next("button").attr("disabled", false)                                               
+							 .removeClass("ui-state-disabled");
+							jAlert('<?php echo $this->translate("invalid hours and minutes");?>');
+
+							return false; // used with modal
+						} else if(visitdata.new_intersected == 1){
+							
+							$('.submitform').attr('disabled',false);
+							 $(".ui-button:first").attr("disabled", false)                                               
+							 .removeClass("ui-state-disabled").next("button").attr("disabled", false)                                               
+							 .removeClass("ui-state-disabled");
+							 
+							$('#multiple_duplicate_visits').dialog('open');
+
+							return false; // used with modal
+							
+							
+						} else if(visitdata.intersected == 1){
+							
+							$('.submitform').attr('disabled',false);
+							 $(".ui-button:first").attr("disabled", false)                                               
+							 .removeClass("ui-state-disabled").next("button").attr("disabled", false)                                               
+							 .removeClass("ui-state-disabled");
+							 
+							$('#multiple_duplicate_visits').dialog('open');
+
+							return false; // used with modal
+							
+							
+						} else {
+							$('.submitform').attr('disabled',true);
+							
+							 $(".ui-button:first").attr("disabled", true)                                               
+							 .addClass("ui-state-disabled").next("button").attr("disabled", true)                                               
+							 .addClass("ui-state-disabled");
+
+							 $('#save_multiple_nurse_visit').submit();
+						}
+					},
+					error:function(){
+						ajax_done = 1;
+					}
+				});
+			}
+		},
+		  
+		"<?php echo $this->translate('cancel'); ?>": function(){
+			$('#add_multiple_visit_bock').dialog('close');
+		}
+	    },
+	    create:function () {
+	        $(this).closest(".ui-dialog")
+	            .find(".ui-button:first") // the first button
+	            .addClass("submitform");
+	    },
+	   close:function () {
+			$('#vizit_date').val('');
+			$('#kvno_begin_date_h').val('');
+			$('#kvno_begin_date_m').val('');
+			$('#kvno_end_date_h').val('');
+			$('#kvno_end_date_m').val('');
+			$('#visit_action').val('');
+			$('.loading_div').hide();
+			
+			$('#bulk_visits tbody').replaceWith('');
+
+			var default_visit_start = '<td>1#  </td><td>Beginn :</td><td><input type="text" value="" name="visit[1][start]" id="visit_start1" class="visit_start_default" /></td>';
+			var default_visit_end = '<td>Ende :</td>	<td><input type="text" value="" name="visit[1][end]" id="visit_end1" class="visit_end_default" /> </td>';
+	    
+			$('#bulk_visits').append( '<tbody><tr rel="1">'+default_visit_start+default_visit_end+'</tr></tbody>');
+			
+			$('#visit_start1').mask('99:99'); //add hours and minute mask
+			$('#visit_end1').mask('99:99'); //add hours and minute mask
+	    }
+	});
+	
+	$('#multiple_duplicate_visits').dialog({
+		autoOpen: false,
+		title: '<?php echo $this->translate('overlapping_event_modal_title'); ?>',
+		modal: true,
+		buttons: {
+			"<?php echo $this->translate('noconfirm'); ?>": function() {
+				$('.loading_div').hide();
+				$( this ).dialog( "close" );
+			},
+			"<?php echo $this->translate('yesconfirm'); ?>": function() {
+				$('#save_multiple_nurse_visit').submit();
+				 $(".ui-button:first").attr("disabled", true)                                               
+				 .addClass("ui-state-disabled").next("button").attr("disabled", true)                                               
+				 .addClass("ui-state-disabled");
+
+				$( this ).dialog( "close" );
+				
+			}
+		} 
+	})
+	
+	/*--------------------------------------------------------------------------------------------------*/
+	/*--------------------------------------------------------------------------------------------------*/
+	/*--------------------------------------------------------------------------------------------------*/
+	
+	$('#duplicate_visits').dialog({
+		autoOpen: false,
+		title: '<?php echo $this->translate('overlapping_event_modal_title'); ?>',
+		modal: true,
+		buttons: {
+			"<?php echo $this->translate('noconfirm'); ?>": function() {
+				$('.loading_div').hide();
+				$( this ).dialog( "close" );
+			},
+			"<?php echo $this->translate('yesconfirm'); ?>": function() {
+				$('#save_nurse_visit').submit();
+				 $(".ui-button:first").attr("disabled", true)                                               
+				 .addClass("ui-state-disabled").next("button").attr("disabled", true)                                               
+				 .addClass("ui-state-disabled");
+
+				$( this ).dialog( "close" );
+			}
+		} 
+	})
+	/*------------------------------DELETE VISIT -------------------------------*/
+	var delete_id = '';
+	$('#delete_confirmation').dialog({
+		autoOpen: false,
+		title: '<?php echo $this->translate('delete_visit_title'); ?>',
+		modal: true,
+		buttons: {
+			"<?php echo $this->translate('yesconfirm'); ?>": function() {
+				$('#delete_confirmation').dialog('close');
+
+				$.ajax({
+					type: 'POST',
+					url: 'patientform/nursebilling?id=<?php echo $_REQUEST['id']; ?>',
+					data: {
+						mode: 'del',
+						delid: 'd'+delete_id
+					},
+					success:function(data){
+						//reload page
+						window.location = '<?php echo APP_BASE; ?>patientform/nursebilling?id=<?php echo $_REQUEST['id']; ?>&list=<?php echo $_REQUEST['list']; ?>';
+					},
+					error:function(){
+						ajax_done = 1;
+					}
+				});
+			},
+			"<?php echo $this->translate('noconfirm'); ?>": function() {
+				$(this).dialog('close');
+			}
+		}
+	});
+
+	$('.delete_visit').live('click', function(){
+		delete_id = $(this).attr('rel');
+		$('#delete_confirmation').dialog('open');
+	});
+});
+
+function changeMonth(data){
+	var url = "<?php echo $finalJsUrl; ?>&list="+data;
+	$(location).attr('href',url);
+}	
+</script>
+
+<?php echo $this->patientinfo ?>
+<?php echo $this->tabmenus ?>
+<div style="display: none"> <img id="calImg" src="<?php echo RES_FILE_PATH;  ?>/images/calendar.png" alt="Popup" class="trigger"> </div>
+<form action="" name="billing_form" method="post" id="billing_form">
+<div class="billing_container">
+    <div class="btitle">
+    	<h3>Abrechnung spezialisierter ambulanter Versorgung</h3>
+    </div>
+    
+    
+    <div class="patient_info">
+    	<div class="pat_details">
+    	 Angaben	zum Versicherten: 
+    	 <b><?php echo $this->patient_name; ?></b> 
+    	 geb: <b><?php echo $this->patient_birthd; ?>,</b> 
+    	 Vers.nr.: <b><?php echo $this->patient_health_insurance_nr; ?></b> 
+    	</div>
+    	<div class="period_selection">
+    		<label>Monat:</label>
+    			    <?php
+					    if(empty($_REQUEST['list'])){
+							$sel_value = date("Ym");
+					    } else {
+							$sel_value = $_REQUEST['list'];
+					    }
+					    
+						$montharay = $this->montharray;
+					    
+					    if(count($montharay)>0){
+						echo '<select name="month" id="month" onChange="changeMonth(this.value);">';
+
+						foreach($this->montharray as $km=>$vm){
+						
+						  if($sel_value == $km){
+						    $selected = 'selected="selected"';
+						  } else {
+						    $selected = '';
+						  }
+						    echo '<option value="'.$km.'" '.$selected.' >'.$vm.'</option>';
+						}
+						echo "</select>";
+					} else {
+						echo end($montharay);
+					}
+			    ?>
+    	</div>
+    </div>
+    
+    
+    
+    <div class="billing_table">
+
+     <?php $visit_details = $this->visits_array; // All visits details ?> 
+     <?php $visit_p = $this->nurse_visit_day_p; // Visit details - according to p - shortcuts?> 
+     <?php $visit_p_price = $this->visit_price; // Visit PRICE - according to p - shortcuts - client specific?> 
+     <?php $current_date = array();  $current_date[date("Y-m-d")] = " current_day ";?> 
+ 
+		      
+
+
+    <table style="padding: 0px;" class="master_billing_table">
+    <tr>
+    	<td class="tdasth"></td>
+    	<td class="tdasth"></td>
+   		<td rowspan="15"  class="slave_billing_container" style="vertical-align: top;">
+   		<div class="td_scroll">
+   		<table class="slave_billing_table">
+			   	<tr>
+			        <?php foreach($this->month_days as $day_nr => $day_value):?>
+						<th class="<?php echo $current_date[$day_value];?> <?php if(!in_array($day_value, $this->total_active_days)):?> inactive_day<?php endif;?>" >
+							<span class="th_day"><?php echo $day_nr; ?></span>
+							<span class="th_day_options">
+							<?php if ( strtotime($day_value) <= strtotime(date('Y-m-d')) ): ?>
+								<?php if ( !in_array($day_value, $this->inactive_array_visits) && in_array($day_value, $this->total_active_days) ) :?>
+<!-- 									<a  class="add_visit" rel="<?php echo date('d.m.Y',strtotime($day_value)); ?>"  title="<?php echo $this->translate('Add visit')?>"><img width="20" height="20" src="<?php echo RES_FILE_PATH;  ?>/images/edit_add.png"> </a> -->
+									<a  class="add_multiple_visit" rel="<?php echo date('d.m.Y',strtotime($day_value)); ?>"  title="<?php echo $this->translate('Add multiple visits')?>"><img width="20" height="20" src="<?php echo RES_FILE_PATH;  ?>/images/edit_add.png"> </a>
+								<?php endif;?>
+							<?php endif;?>
+							</span>
+						</th>
+				    <?php endforeach; ?>
+			    </tr>
+   			 <?php foreach($this->nr_visits as $visit_number): ?>
+				<tr>
+					<?php foreach($this->complete_month_days as $day_nr => $day_value):?>
+						<td class=" <?php echo $current_date[$day_value]?> <?php if(!in_array($day_value, $this->total_active_days)):?> inactive_day<?php endif;?>">
+							
+							<?php if (in_array($day_value, $this->total_active_days)):?>
+								<a href="javascript:void(0);" class="edit_visit <?php echo $visit_details[$day_value][$visit_number]['visit_added_from'] ;?>" rel="<?php echo $visit_details[$day_value][$visit_number]['visit_id']; ?>" title="<?php echo $this->translate('Edit visit')?>"><?php echo $visit_details[$day_value][$visit_number]['visit_start'] ;?></a>
+								<input type="hidden" id="kvno_begin_date_h-<?php echo $visit_details[$day_value][$visit_number]['visit_id']; ?>" value="<?php echo $visit_details[$day_value][$visit_number]['visit_kvno_begin_date_h']; ?>" />
+								<input type="hidden" id="kvno_begin_date_m-<?php echo $visit_details[$day_value][$visit_number]['visit_id']; ?>" value="<?php echo $visit_details[$day_value][$visit_number]['visit_kvno_begin_date_m']; ?>" />
+								<input type="hidden" id="kvno_end_date_h-<?php echo $visit_details[$day_value][$visit_number]['visit_id']; ?>" value="<?php echo $visit_details[$day_value][$visit_number]['visit_kvno_end_date_h']; ?>" />
+								<input type="hidden" id="kvno_end_date_m-<?php echo $visit_details[$day_value][$visit_number]['visit_id']; ?>" value="<?php echo $visit_details[$day_value][$visit_number]['visit_kvno_end_date_m']; ?>" />
+								<input type="hidden" id="vizit_date-<?php echo $visit_details[$day_value][$visit_number]['visit_id']; ?>" value="<?php echo date('d.m.Y', strtotime($visit_details[$day_value][$visit_number]['visit_day'])); ?>" />
+							<?php else:?>
+							
+								<a href="javascript:void(0);" class="delete_visit <?php echo $visit_details[$day_value][$visit_number]['visit_added_from'] ;?> d<?php echo $visit_details[$day_value][$visit_number]['visit_status'] ;?>" rel="<?php echo $visit_details[$day_value][$visit_number]['visit_id']; ?>" title="<?php echo $this->translate('Delete visit')?>"><?php echo $visit_details[$day_value][$visit_number]['visit_start'] ;?></a>
+							<!-- 	<span class="<?php echo $visit_details[$day_value][$visit_number]['visit_added_from'] ;?>"><?php echo $visit_details[$day_value][$visit_number]['visit_start'] ;?></span>-->
+							
+							<?php endif;?>
+						</td>
+					<?php endforeach; ?>
+				</tr>
+
+				<tr>
+					<?php foreach($this->complete_month_days as $day_nr => $day_value):?>
+						<td class="<?php echo $current_date[$day_value]?><?php if(!in_array($day_value, $this->total_active_days)):?> inactive_day<?php endif;?>">
+							<?php echo $visit_details[$day_value][$visit_number]['visit_end'] ;?>
+						</td>
+					<?php endforeach; ?>
+				</tr>
+
+				<tr class="billing_count_duration">
+					<?php foreach($this->complete_month_days as $day_nr => $day_value):?>
+						<td class="<?php echo $current_date[$day_value]?><?php if(!in_array($day_value, $this->total_active_days)):?> inactive_day<?php endif;?>">
+							<?php echo $visit_details[$day_value][$visit_number]['visit_duration'] ;?>
+						</td>
+					<?php endforeach; ?>
+				</tr>
+			<?php endforeach; ?> 
+			<?php foreach($this->nr_visits as $visit_number): ?>
+    		<?php $p_shortcut = $visit_number+1; ?>
+		      	<tr>
+					<?php  $total_p['P'.$p_shortcut] = 0;?> 
+		
+					<?php foreach($this->complete_month_days as $day_nr => $day_value):?>
+					<?php if($visit_p[$day_value]['day_price_shortcut_P'.$p_shortcut]):?>
+						<td class="<?php echo $current_date[$day_value]?> <?php if(!in_array($day_value, $this->total_active_days)):?> inactive_day<?php endif;?>" > <?php echo $visit_p[$day_value]['day_price_shortcut_P'.$p_shortcut] ;?></td>
+					<?php else:?>
+					<td class="<?php echo $current_date[$day_value]?> <?php if(!in_array($day_value, $this->total_active_days)):?> inactive_day<?php endif;?>">0</td>
+					<?php endif;?>
+					<?php $total_p['P'.$p_shortcut] += $visit_p[$day_value]['day_price_shortcut_P'.$p_shortcut];?>
+ 
+ 
+ 
+					<?php  if( $this->price_details[$day_value]['P'.$p_shortcut]['shortcut'] ):?>
+									<?php
+										$totals['shortcuts']['P'.$p_shortcut] += $this->price_details[$day_value]['P'.$p_shortcut]['shortcut'];
+									?>
+									<?php
+										$t_lists['P'.$p_shortcut] [ $this->price_details[$day_value]['P'.$p_shortcut]['list'] ]['qty'] += $this->price_details[$day_value]['P'.$p_shortcut]['shortcut'];
+										$t_lists['P'.$p_shortcut] [ $this->price_details[$day_value]['P'.$p_shortcut]['list'] ]['price'] += $this->price_details[$day_value]['P'.$p_shortcut]['price'];
+										$t_lists['P'.$p_shortcut] [ $this->price_details[$day_value]['P'.$p_shortcut]['list'] ]['list_price'] = $this->price_details[$day_value]['P'.$p_shortcut]['price'];
+									?>
+ 
+					<?php endif;?>
+					
+					
+					
+					<?php endforeach; ?>
+				</tr>
+		<?php endforeach;?>
+   			</table>
+   			</div>
+		</td>
+   		<td class="tdasth">Anzahl insg.</td> 
+    </tr>
+	
+	<!-- /*---------------------------------------------*/ -->
+	<?php foreach($this->nr_visits as $visit_number): ?>
+	<tr>
+		<td>Einsatz <?php echo $visit_number+1;?></td>
+		<td>Beginn</td>
+		<td>&nbsp;</td>
+	</tr>
+	<tr>
+		<td></td>
+		<td>Ende</td>
+		<td></td>
+	</tr>
+	<tr class="billing_count_duration">
+		<td></td>
+		<td>Zeit</td>
+		<td></td>
+	</tr>
+
+	<?php endforeach; ?>
+	
+	<!-- /*---------------------------------------------*/ -->
+	<?php foreach($this->nr_visits as $visit_number): ?>
+	<?php $nr = $visit_number+1; ?>
+	<?php $shortcut = 'P'.$nr; ?>
+	<tr>
+		<td></td>
+		<td>
+			<?php echo $shortcut; ?>
+		</td>
+		<td>
+			<?php echo  $total_p[$shortcut]  ;?>
+		</td>
+	</tr>
+	<?php endforeach;?>
+
+	<tr class="no_borders">
+		<td></td>
+		<td></td>
+		<td></td>
+	</tr>
+</table>
+ 
+<br/>
+<table class="sh_billing_table">
+<tr>
+	<th>Pauschale</th>
+	<th>Anzahl</th>
+	<th>x Vergütung</th>
+	<th>Rechnungssumme</th>
+</tr>
+<?php foreach ($this->used_shortcuts as $shortcut):?>
+	<?php if (!$t_lists[$shortcut]) :?>
+		<?php
+		$t_lists[$shortcut][0]['qty'] = 0;
+		$t_lists[$shortcut][0]['price'] = 0;
+		$t_lists[$shortcut][0]['list_price'] = 0;
+		?>
+	<?php endif;?>
+	<?php foreach ($t_lists[$shortcut] as $shkey => $shortcut_details):?>
+ 
+		<tr>
+			<td><?php echo $shortcut ?></td>
+			<td><?php echo $shortcut_details['qty'] ?></td>
+			<td><?php echo $shortcut_details['list_price'] ?></td>
+			<td><?php echo $total_per_month = round(($shortcut_details['qty'] * $shortcut_details['list_price']),2) ?> <span>&euro;</span></td>
+		</tr>
+	<?php $total_costs_per_month += $total_per_month;?>	
+	<?php endforeach?>
+
+<?php endforeach; ?>
+<tr>
+	<td colspan="3" align="right">Ingesamt = </td>
+	<td ><?php echo $total_costs_per_month; ?> <span>&euro;</span></td>
+</tr>
+
+</table>
+<?php $nurse_data = $this->nurse_details;?>
+<table class="billing_client_details" cellpadding="3" cellspacing="5">
+	<tr>
+		<td></td>
+		<td>Wir bestätigen die angegebenen Leistungen entsprechend den<br />
+			gesetzlichen und vertraglichen Regelungen erbracht zu haben:
+		</td>
+		<td>&nbsp;</td>
+	</tr>
+	<tr>
+		<td></td>
+		<td style="border-bottom:1px solid #000; vertical-align: bottom;" > Name des SAPV Leistungserbringers</td>
+		<td>&nbsp;</td>
+	</tr>
+	<tr>
+		<td></td>
+		<td  style="  vertical-align: middle;" > <b><?php echo $nurse_data['nursing_service'];?></b> </td>
+		<td></td>
+	</tr>
+
+
+	<tr>
+		<td></td>
+			<td style="border-bottom:1px solid #000; vertical-align: bottom;" >Anschrift</td>
+		<td></td>
+	</tr>
+	<tr>
+		<td></td>
+		<td  style="  vertical-align: middle;" > <b><?php echo $nurse_data['nursing_service_address'];?></b> </td>
+		<td></td>
+	</tr>
+
+	<tr>
+		<td></td>
+		<td style="border-bottom:1px solid #000; vertical-align: bottom;" >IK-­‐Nummer</td>
+		<td></td>
+	</tr>
+	<tr>
+		<td></td>
+		<td  style="  vertical-align: middle;" > <b><?php echo $nurse_data['nursing_service_iknumber'];?></b></td>
+		<td></td>
+	</tr>
+
+
+	<tr>
+		<td></td>
+		<td class="bigfont" style="border-bottom:1px solid #000; vertical-align: bottom;" >Datum und Unterschrift</td>
+		<td></td>
+	</tr>
+	<tr>
+			<td>&nbsp;</td>
+		<td>&nbsp;</td>
+		<td>&nbsp;</td>
+	</tr>
+</table>
+<br/>
+
+<br/>
+	<table width="60%">
+		<tr>
+			<td  colspan="2" height="10">Folgende Kooperationspartner haben ganz oder Teilweise die	Leistungen erbracht</td>
+			<td ></td>
+		</tr>
+		<tr>
+			<td  colspan="3" > &nbsp;</td>
+		</tr>
+		
+		
+		<tr>
+			<td  colspan="2" style="border-bottom: 1px solid #000;"><b><?php echo $nurse_data['nursing_service'];?></b></td>
+			<td ></td>
+		</tr>
+	</table>
+
+
+		</div>
+    
+    
+    <input type="hidden" value="0" id="export_pdf" name="export_pdf" />
+</div>
+    <input type="submit" name="pdf_submit"  id="pdf_submit"  value="<?php echo $this->translate('generatepdf')?>" class="btnsubmit_usersessions"/>
+    
+</form>    
+  <div id="add_visit_bock">
+  
+  <form action="" name="save_nurse_visit" method="post" id="save_nurse_visit">
+  
+  <input type="hidden" name="visit_action" value="" id="visit_action" />
+  <input type="hidden" name="kvno_nurse_id" value="" id="kvno_nurse_id" />
+
+	<label for="kvno_begin_date" class="kvno_top_labels">Beginn :</label>
+		<select name="kvno_begin_date_h" id="kvno_begin_date_h">
+		<option value="00">00</option>
+		<?php for ($i=1; $i<=23; $i++){?>
+		 <option value="<?php echo str_pad($i, 2, "0", STR_PAD_LEFT); ?>"><?php echo str_pad($i, 2, "0", STR_PAD_LEFT); ?></option>
+	
+		<?php }?>
+		</select>
+		<select name="kvno_begin_date_m" id="kvno_begin_date_m">
+		<option value="00">00</option>
+		<?php for ($i=1; $i<=59; $i++){?>
+	
+		 <option value="<?php echo str_pad($i, 2, "0", STR_PAD_LEFT); ?>"><?php echo str_pad($i, 2, "0", STR_PAD_LEFT); ?></option>
+	
+		<?php }?>
+		</select>
+	<!--<input type="text" name="kvno_begin_date" value="<?php echo $this->kvno_begin_date;?>" /> &nbsp; -->
+	<label>Ende:</label>
+		<select name="kvno_end_date_h"  id="kvno_end_date_h">
+		<option value="00">00</option>
+		<?php for ($i=1; $i<=23; $i++){?>
+		 <option value="<?php echo str_pad($i, 2, "0", STR_PAD_LEFT); ?>"><?php echo str_pad($i, 2, "0", STR_PAD_LEFT); ?></option>
+	
+		<?php }?>
+		</select>
+		<select name="kvno_end_date_m"  id="kvno_end_date_m">
+		<option value="00">00</option>
+		<?php for ($i=1; $i<=59; $i++){?>
+		 <option value="<?php echo str_pad($i, 2, "0", STR_PAD_LEFT); ?>"><?php echo str_pad($i, 2, "0", STR_PAD_LEFT); ?></option>
+	
+		<?php }?>
+		</select>
+	<input type="hidden" name="vizit_date" id="vizit_date"  style="width:80px; margin: 2px 0 -2px 10px;" value="<?php echo $this->vizit_date ?>" >
+	</form>
+	<div class="loading_div"><?php echo $this->translate('loadingpleasewait');?> </div>
+	
+</div>
+
+
+
+
+<div id="add_multiple_visit_bock">
+
+	<form action="" name="save_multiple_nurse_visit" method="post" id="save_multiple_nurse_visit">
+		<input type="hidden" name="visit_action" value="" id="multile_visit_action" />
+		<input type="hidden" name="visit_type" value="N"  />
+		<a class="new_row_visit" href="javascript:void(0)"><?php echo $this->translate('new_row_visit');?></a> 
+		<table id="bulk_visits" border="1" cellpading="2" cellspacing="2">   
+			<tbody>
+				<tr rel="1">
+					<td>1#  </td>
+					<td>Beginn : </td>
+					<td><input type="text" value="" name="visit[1][start]" id="visit_start1"  class="visit_start_default" /></td>
+					<td>Ende : </td>
+					<td><input type="text" value="" name="visit[1][end]" id="visit_end1" class="visit_end_default" /> </td>
+				</tr>
+			</tbody>
+		</table>
+	<input type="hidden" name="visit_date" class="vizit_date"	style="width: 80px; margin: 2px 0 -2px 10px;"	value="<?php echo $this->vizit_date ?>">
+	</form>
+
+	<div class="loading_div"><?php echo $this->translate('loadingpleasewait');?> </div>
+</div>
+
+ <div id="duplicate_visits">
+	<p><?php echo $this->translate('overlapping_confirm');  ?></p>
+</div>   
+
+ <div id="multiple_duplicate_visits">
+	<p><?php echo $this->translate('there are one or more overlapping visits!');  ?></p>
+</div>   
+    <div id="delete_confirmation">
+	<?php echo $this->translate('delete_visit_confirm');  ?>
+</div>
+    

@@ -1,0 +1,146 @@
+<?php
+$clients_array = $this->clientsarray;
+$group_clients = $this->groups;
+
+?>
+<style>
+.selected_class td{
+    background-color: #ffffce;
+}
+</style>
+
+<script type="text/javascript">
+
+function checkedall(_this){
+	
+	 var _newval =  $(_this).attr('checked') || false;         
+     $(_this).parents('table').find('input:checkbox').not(_this).attr('checked', _newval);
+     
+}
+
+
+function delete_group(_group_id) {
+	jConfirm(
+		translate('confirm delete group of connected client files'), 
+		translate('confirm delete group of connected client files'), 
+		function(r) {
+			if (r) {
+			    location.href = appbase + "client/associateclientfiles?gid=" + _group_id + "&act=del";
+        }
+    });
+	
+	return false;
+}
+
+
+$(document).ready(function() {
+	$(".selector_ismaster").on("click", function(evt){
+		$(this).parents("tr").find("input:checkbox").attr("checked", true);
+	});
+});
+
+
+
+
+
+</script>
+
+<?= '<h2>' . $this->translate('clientname') . ':' . $this->client_name . '</h2>'?> 
+<br/>
+<h1><?php echo $this->translate('groups_list'); ?>
+<?= $_REQUEST['act'] == 'edit' ? ' - ' . $this->translate('edit'). ' ' . $this->translate('Group') : ''; ?>
+</h1>
+
+
+<!-- Groups Table start	-->
+<table width="100%" class="datatable" border="0" id="assignmodules_clientDetailTable">
+	<tr id="TableTwo_TrOne">
+		<th id="TableTwo_TrOne_thOne">ID</td>
+		<th id="TableTwo_TrOne_thTwo"><? echo $this->translate('groupname') ?></td>
+		<th id="TableTwo_TrOne_thTwo"><? echo $this->translate('associated_clients') ?></td>
+		<th id="TableTwo_TrOne_thThree"><? echo $this->translate('actions') ?></td>
+	</tr>
+    <?php $counter = 0;?>
+	<?php foreach ($this->groups as $kgroup => $vgroup): ?>
+		<tr id="TableTwo_Trtwo" class="row clickable <?= ($kgroup == $_REQUEST['gid']) ? 'selected_group selected_class' : ''?>" rel="<?= $kgroup; ?>" >
+			<td id="TableTwo_Trtwo_tdOne" valign="top"><?= ++$counter; ?></td>
+			<td id="TableTwo_Trtwo_tdTwo" valign="top"><?= $this->translate('Group') . ' #' . $counter; ?></td>
+			<td id="TableTwo_Trtwo_tdTwo" valign="top" style="width:500px;">
+				<?php 
+                    foreach ($vgroup as $row) { 
+                        if ($row['ismaster'] == 'yes') {
+                            echo '<b>' . $clients_array[$row['clientid']]['client_name'] . ' - ' . $this->translate('client - Parent') . '</b><br/>';
+                        } else {
+                            echo $clients_array[$row['clientid']]['client_name'] . '<br/>';
+                        }
+				    } 
+                ?>
+			</td>
+			<td id="TableTwo_Trtwo_tdThree" valign="top">
+                <a onClick="delete_group(<?=(int)$kgroup;?>)" href="javascript:void(0)" style="float:left; padding-right:5px;"><img src="<?php echo RES_FILE_PATH; ?>/images/action_delete.png" border="0" /></a>
+                <a href="<?php echo APP_BASE; ?>client/associateclientfiles?gid=<?=$kgroup?>&act=edit" style="float:left; padding-right:5px;"><img src="<?php echo RES_FILE_PATH; ?>/images/edit.png" border="0" /></a>
+            </td>
+		</tr>
+	<?php endforeach; ?>
+</table>
+<!-- Groups Table end	-->
+
+
+
+<br />	
+
+
+<h1><?php echo $this->translate('clients_list'); ?>
+<?= $_REQUEST['act'] == 'edit' ? ' - ' . $this->translate('edit'). ' ' . $this->translate('Group') : ''; ?>
+</h1>
+<!-- Clients List start -->
+<form action="" method="post" name="frmuser" id="frmuser" >
+	<div id="assignmodules_GridTableDiv" class="grid">
+		<?php if($_REQUEST['gid']):?>
+			<input type="hidden" name="edit_group" value="<?=(int)$_REQUEST['gid'];?>" id="edit_group" />
+		<?php endif;?>
+
+		<table width="100%" class="datatable" border="0" id="assignmodules_clientDetailTable">
+
+			<tr id="TableTwo_TrOne">
+				<th id="TableTwo_TrOne_thOne">ID</td>
+				<th id="TableTwo_TrOne_thTwo"><? echo $this->translate('clientname') ?></td>
+				<th id="TableTwo_TrOne_thTwo"><? echo $this->translate('email') ?></td>
+				<th id="TableTwo_TrOne_thTwo"><? echo $this->translate('status') ?></td>
+				<th><? echo $this->translate('client - Parent') ?></td>
+				<th id="TableTwo_TrOne_thThree"><input name="all_id[]" type="checkbox" onclick="checkedall(this)" value="" />&nbsp;</td>
+			</tr>
+			<?php foreach ($this->clientsarray as $kclient => $vclient): ?>
+                <?php
+                    $selected = '';
+                    $selected_class = '';
+                    $selected_ismaster = '';
+
+
+                    if($_REQUEST['act'] == 'edit') {
+                        $selected =  isset($group_clients[$_REQUEST['gid']] [ $vclient['id'] ]) ? 'checked="checked"' : '';
+                        $selected_class =  isset($group_clients[$_REQUEST['gid']] [ $vclient['id'] ]) ? 'selected_class' : '';
+                        $selected_ismaster =  $group_clients[$_REQUEST['gid']] [ $vclient['id'] ] ['ismaster'] == 'yes' ? 'checked' : '';
+                    }
+                ?>
+				<tr id="TableTwo_Trtwo" class="row <?=$selected_class;?>">
+					<td id="TableTwo_Trtwo_tdOne" valign="top"><?php echo $vclient['id']; ?></td>
+					<td id="TableTwo_Trtwo_tdTwo" valign="top"><?php echo $vclient['client_name']; ?></td>
+					<td id="TableTwo_Trtwo_tdTwo" valign="top"><?php echo $vclient['emailid']; ?></td>
+					<td id="TableTwo_Trtwo_tdTwo" valign="top"><?= $vclient['isactive'] == '0' ? $this->translate('useractive') : $this->translate('userinactive'); ?></td>
+					<td>
+                        <input type="radio" name="ismaster" class="selector_ismaster" value="<?php echo $vclient['id']; ?>" <?=$selected_ismaster;?>/>
+                    </td>
+                    
+                    <td id="TableTwo_Trtwo_tdThree" valign="top">
+                        <input type="checkbox" name="assigned_client[]" id="assigned_id_<?php echo $vclient['id']; ?>" value="<?php echo $vclient['id']; ?>" <?php echo $selected; ?>/>
+                    </td>
+				</tr>
+			<?php endforeach; ?>
+			<tr id="TableTwo_Trthree">
+				<td id="TableTwo_Trthree_tdTwo" valign="top" colspan="5"><input type="submit" name="add_btn" id="add_btn" class="button" style="float:right; margin: 0 0 0 10px;" value="<?php echo $this->translate('assoc_sel_clients'); ?>"></td>
+			</tr>
+		</table>
+	</div>
+</form>
+<!-- Clients List end -->

@@ -1,0 +1,390 @@
+<?php
+$patientdetails = $this->patientdetails;
+
+$period_days = $this->period_days;
+$shortcuts = $this->shortcuts;
+$master_data = $this->master_data;
+$classification_box = $this->classification_box;
+$client_details = $this->client_details;
+$flatrate_intervals = $this->flatrate_intervals;
+$fd_2_payd = $this->flatrate_days2payd;
+
+//overall_flatrate_days_js
+ //print_r($master_data); exit;
+?>
+<link rel='stylesheet' type='text/css' href='<?php echo RES_FILE_PATH; ?>/css/page-css/performancerecordform.css' />
+<?php
+	//IE Freaking hack
+	$url = APP_BASE . "invoice/performancerecordform?" . $_SERVER['QUERY_STRING'];
+	if (str_replace("&list=" . $_REQUEST['list'] . "", "", $url))
+	{
+		$finalJsUrl = str_replace("&list=" . $_REQUEST['list'] . "", "", $url);
+	}
+	else
+	{
+		$finalJsUrl = $url;
+	}
+?>
+<script type="text/javascript" >
+
+var fldays = [];
+$(function() {
+	
+		$('form').submit(function() {
+			setTimeout(function () {$('input[type=submit]').attr('disabled', true);}, 150);
+			setTimeout(function () {$('input[type=submit]').attr('disabled', false);}, 11000);
+		});
+
+		
+		 $(".flatrate_backgrond").each(function() {
+		        fdate = $(this).data('date');
+		        fldays.push(fdate);
+		    });
+		
+		var mouseover = function(){
+			var current_f_start = $(this).data('day');
+			for (i = current_f_start; i<= current_f_start+6; i++){
+				if($('#37b1_'+i).hasClass('flatrate_backgrond')){
+					$('#37b1_'+i).addClass(' temp_flatrate_backgrond_red');	
+				} else{
+					$('#37b1_'+i).addClass(' temp_flatrate_backgrond_green');	
+				}
+			}
+		}
+		var mouseleave = function(){
+			var current_f_start = $(this).data('day');
+			
+			for (i = current_f_start; i<= current_f_start+6; i++){
+				$('#37b1_'+i).removeClass(' temp_flatrate_backgrond_green');
+				$('#37b1_'+i).removeClass(' temp_flatrate_backgrond_red');
+			}
+		}
+
+		var start_flatrate = function(){
+			// check if the new period oerwrites an existing period
+			var new_flatrate_start = $(this).data('day');
+			var date = $(this).data('date');
+			
+			if(validate_flatrate_days(new_flatrate_start,date)){
+				
+				$('#37b1_'+new_flatrate_start).addClass(' flatrate_backgrond');
+				for (i = new_flatrate_start; i<= new_flatrate_start+6; i++){
+					
+					var new_date = $('#37b1_'+i).data('date');
+					fldays.push(new_date);
+					
+					$('#37b1_'+i).removeClass(' temp_flatrate_backgrond_green');
+					$('#37b1_'+i).removeClass(' temp_flatrate_backgrond_red');
+					$('#37b1_'+i).addClass(' flatrate_backgrond');	
+				
+					$('#qty_37b1_'+i).val('1');		
+					$('#flatrate_start_btn_'+i).remove();	
+					$('#flatrate_start_btn_'+i).hide();
+					// add pay date for all  new 
+					
+				}
+				var qty = '<input type="hidden" value="1" id="qty_37b1_'+new_flatrate_start+'" name="master_data['+date+'][37b1][qty]" class="pr_small_input"/>';
+				var pay_day = '<input type="hidden" value="1" id="pay_days_37b1_'+new_flatrate_start+'" name="master_data['+date+'][37b1][pay_days]" class="pr_small_input"/>';
+				var remove_button = '<button type="button" class="remove_flatrate" id="flatrate_remove_btn_'+new_flatrate_start+'" data-day="'+new_flatrate_start+'" data-date="'+date+'"><img src="<?php echo RES_FILE_PATH .'/images/action_delete.png'; ?>" alt="" title=""/></button>';
+				$('#37b1_'+new_flatrate_start).html(pay_day+qty+remove_button);
+			} else {
+				alert('<?php echo $this->translate("not allowed to create flatrate, a flatrate already exists in this period or inactive period follows"); ?>');
+				return false;
+			}
+		};
+		
+		var remove_flatrate = function(){
+			var date = $(this).data('date');
+			var current_f_start = $(this).data('day');
+			jConfirm('<?php echo $this->translate("Are you sure you whatn to remove this flatrate period?"); ?>', '<?php echo $this->translate('confirmdeletetitle'); ?>', function(r) {
+				if(r)
+				{	
+					var sh = '<input type="hidden" value="37b1" name="master_data['+date+'][37b1][shortcut]" class="pr_small_input_hid"/>';
+		
+					
+					// delete the remove button
+					for (i = current_f_start; i<= current_f_start+6; i++){
+		
+						if( !$('#37b1_'+i).hasClass('inactive_day')){
+							
+							var start_button = '<button class="start_flatrate" id="flatrate_start_btn_'+i+'" data-day="'+i+'" data-date="'+date+'"><img src="<?php echo RES_FILE_PATH .'/images/action_add.png'; ?>" alt="" title=""/></button>';
+							var qty = '<input id="qty_37b1_'+i+'" type="hidden" value="0" name="master_data['+date+'][37b1][qty]" class="pr_small_input_hid"/>';
+			
+							var remove_date = $('#37b1_'+i).data('date');
+							if($.inArray(remove_date, fldays) > -1){
+								fldays.splice($.inArray(remove_date, fldays),1);
+							} 
+							
+							$('#37b1_'+i).removeClass(' flatrate_backgrond');
+							$('#qty_37b1_'+i).val('0');	
+							$('#pay_days_37b1_'+i).val('0');
+	// 						$('#37b1_'+i).html(start_button+qty+sh);
+							$('#37b1_'+i).append(start_button);
+						}
+					}
+					
+					$('#pay_days_37b1_'+current_f_start).val(0);
+					$('#qty_37b1_'+current_f_start).val(0);
+					$('#flatrate_remove_btn_'+current_f_start).remove();
+					
+				}
+			});
+		};
+		
+		
+		
+		$(document).off('click','.start_flatrate').on('click','.start_flatrate',start_flatrate);
+		$(document).off('mouseover','.start_flatrate').on('mouseover','.start_flatrate',mouseover);
+		$(document).off('mouseleave','.start_flatrate').on('mouseleave','.start_flatrate',mouseleave);
+		$(document).off('click','.remove_flatrate').on('click','.remove_flatrate',remove_flatrate);
+	});
+	
+	
+	function changeMonth(data){
+		var url = "<?php echo $finalJsUrl; ?>&list="+data;
+		$(location).attr('href',url);
+	}
+	
+	function validate_flatrate_days(day,date){
+		
+		var holding_cells = 0;
+		for (i = day; i<= day+6; i++){
+			
+			var check_date = $('#37b1_'+i).data('date');
+
+			// or inactive days
+			if($.inArray(check_date,fldays) > -1 || $('#37b1_'+i).hasClass('inactive_day')){
+				holding_cells = holding_cells+1;
+			} 
+		}
+		
+		if(holding_cells > 0){
+			validation = false;
+		} else{
+			validation = true;
+		}
+		return validation;
+		
+	}
+	
+	
+</script>
+<?php echo $this->patientinfo ?>
+<?php echo $this->tabmenus ?>
+
+<?php if($this->save_data == "1"):?>
+<div class="form_alert_info">
+	<p><?php echo $this->translate("Form manually saved, to revert please press reset")?></p>
+	<br />&nbsp;
+</div>
+<?php endif; ?>
+<table id="document_details">
+	<tr>
+		<td style="width:510px;">
+			<h1><?php echo $this->translate('performance_record')  ?></h1>
+		</td>
+		<td style="width:200px;font-size: 8pt;line-height: 110%;">			
+			<?php echo $client_details['team_name'];  ?><br />
+			<?php echo $client_details['street1'];  ?> <?php echo $client_details['street2'];  ?><br />
+			<?php echo $client_details['postcode'];  ?> <?php echo $client_details['city'];  ?><br />
+			<?php echo $client_details['phone'];  ?><br />
+			<?php echo 'IK: '.$client_details['institutskennzeichen'];  ?><br />
+			<?php echo 'BSNR: '. $client_details['betriebsstattennummer'];  ?><br />
+
+		</td>
+	</tr>
+	<tr>
+		<td style="text-align: left;" colspan="2"><?php echo $this->translate('period_of_time');  ?>:  <?php if($this->first_active_day != "0000-00-00 00:00:00" && date('Y-m-d', strtotime($this->first_active_day)) != '1970-01-01' ): echo $this->first_active_day; endif; ?> - <?php if($this->last_active_day != "0000-00-00 00:00:00" && date('Y-m-d', strtotime($this->last_active_day)) != '1970-01-01'): echo $this->last_active_day; endif; ?> </td>
+	</tr>
+	<tr>
+		<td style="text-align: left;" colspan="2"><?php echo $this->translate('page_no');  ?>: 1</td>
+	</tr>
+</table>
+
+
+<?php echo $this->months_selector;  ?>
+<table id="patient_healthinsurance_details" class="datatable_new">
+	<tr>
+		<td class="left_col"><b><?php echo $this->translate('Klient'); ?></b></td>
+		<td><b><?php echo $this->translate('krankenkasse_details'); ?></b></td>
+		<td class="right_col" colspan="2" width="40%">&nbsp;</td>
+	</tr>
+	<tr>
+		<td class="left_col">
+			<?php echo $patientdetails['last_name'].', '.$patientdetails['first_name'];  ?><br />
+			<?php echo $patientdetails['street1'].'<br/> '.$patientdetails['zip'].' '.$patientdetails['city']; ?>
+		</td>
+		<td>
+			<?php echo $this->hi_subdiv_address;  ?>
+		</td>
+		<td class="right_col" colspan="2"></td>
+	</tr>
+	<tr>
+		<td id="clear_td">
+			<table id="inside_table" class="inside_table">
+				<tr>
+					<td id="clear_td">
+						<?php echo $this->translate('shtbirthd')?>: <?php echo $patientdetails['birthd'] ?><br/>
+						<?php echo $this->translate('pflegestufe2pflegegrade')?>:<?php echo  $this->patient_pflegestufe; ?>
+					</td>
+					<td id="clear_td">
+						&nbsp;<?php echo $this->translate('versnr')?>: <?php echo $this->insurance_no; ?><br/>						
+					</td>
+				</tr>
+			</table>
+		</td>
+		
+		<td>
+			<?php echo $this->translate('krankenkasse_ik')?>: <?php echo $this->health_insurance_ik ?><br/>
+			<?php echo $this->translate('krankenkasse_nr')?>: <?php echo $this->health_insurance_kassenr; ?>
+		</td>
+		<td width="20%">Grundlage:<?php echo  $action; ?> § 37b SGB V</td>
+		<td width="22%">
+			<?php echo $this->translate('sapv_approve_date')?>: <?php if(date('Y-m-d', strtotime($this->sapv_approve_date)) != '1970-01-01'): echo $this->sapv_approve_date; endif;?><br/>
+ 			<?php echo $this->translate('sapv_approve_nr')?>: <?php echo $this->sapv_approve_nr;  ?>
+		</td>
+	</tr>
+</table>
+<form action="" method="post" name="" >
+<table  class="datatable_new">
+	<tr>
+		<th style="text-align:left;">Leistungen <br />&nbsp;</th>
+		<td rowspan="11" id="container">
+		<div style="overflow: auto; height: auto;width: 450px;" >
+			<table id="performance" class="datatable_new" width="2000px">
+				<!-- START TOP PART -->
+				<tr>
+					<?php foreach($period_days as $day): $day_type = date('w', strtotime($day)); ?>
+					<th class="<?php if($day_type == 0 || $day_type == 6):  ?> weekend <?php endif; ?>  <?php if(!in_array($day,$this->real_active_days_overall_cs)):?> inactive_day <?php endif;?>  " >
+						<?php echo date('d', strtotime($day));  ?>
+						<?php echo strftime('%a', strtotime($day));  ?>
+					</th>
+					<?php endforeach;  ?>
+				</tr>
+				<tr>
+					<?php foreach($period_days as $day): $day_type = date('w', strtotime($day)); ?>
+					<td class="<?php if($day_type == 0 || $day_type == 6):  ?> weekend <?php endif; ?> <?php if(!in_array($day,$this->real_active_days_overall_cs)):?> inactive_day <?php endif;?>" >
+						<?php if($classification_box[$day]['home_visit'] != '0'):  ?>
+						<?php echo $classification_box[$day]['home_visit']; $totals['home_visit'] += $classification_box[$day]['home_visit'];  ?>
+						<?php endif;  ?>
+					</td>
+					<?php endforeach;  ?>
+				</tr>
+				<tr>
+					<?php foreach($period_days as $day): $day_type = date('w', strtotime($day)); ?>
+					<td class="<?php if($day_type == 0 || $day_type == 6):  ?> weekend <?php endif; ?> <?php if(!in_array($day,$this->real_active_days_overall_cs)):?> inactive_day <?php endif;?>">
+						<?php if($classification_box[$day]['beratung'] != '0'):  ?>
+						<?php echo $classification_box[$day]['beratung']; $totals['beratung'] += $classification_box[$day]['beratung']; ?>
+						<?php endif;  ?>
+					</td>
+					<?php endforeach;  ?>
+				</tr>
+				<tr>
+					<?php foreach($period_days as $day): $day_type = date('w', strtotime($day)); ?>
+					<td class="<?php if($day_type == 0 || $day_type == 6):  ?> weekend <?php endif; ?> <?php if(!in_array($day,$this->real_active_days_overall_cs)):?> inactive_day <?php endif;?>">
+						<?php if($classification_box[$day]['koordination'] != '0'):  ?>
+						<?php echo $classification_box[$day]['koordination']; $totals['koordination'] += $classification_box[$day]['koordination'];  ?>
+						<?php endif;  ?>
+					</td>
+					<?php endforeach;  ?>
+				</tr>
+
+				<tr>
+					<?php foreach($period_days as $day): $day_type = date('w', strtotime($day)); ?>
+					<td style="height: 5px!important; border:0; padding:0;clear:both;line-height: 2px;">&nbsp;</td>
+					<?php endforeach;  ?>
+				</tr>
+				
+				<!-- END TOP PART -->
+				
+				
+				
+				<?php foreach($shortcuts as $k_shortcut => $v_shortcut):  ?>
+				<tr>
+					<?php foreach($master_data as $k_date => $v_shortcut_details):  $day_type = date('w', strtotime($k_date)); ?>
+					<td id="<?php echo $v_shortcut.'_'.date('j',strtotime($k_date)) ?>" data-date="<?php echo $k_date;?>" class="<?php if(!in_array($k_date,$this->real_active_days_overall_cs)):?> inactive_day <?php endif;?> <?php if($v_shortcut == '37b1' && $v_shortcut_details[$v_shortcut]['qty'] == '1'):  ?> flatrate_backgrond<?php endif;  ?> <?php if($day_type == 0 || $day_type == 6):  ?> weekend <?php endif; ?> inside_container_cell ">
+						<?php if($v_shortcut_details[$v_shortcut]['qty']):  ?>
+							<?php if($v_shortcut == '37b1'): ?>
+
+									<?php if($v_shortcut_details[$v_shortcut]['pay_days'] == '1' && !in_array($v_shortcut, $only_one_start)): ?>  
+									<?php $sums[$v_shortcut] += $v_shortcut_details[$v_shortcut]['qty'];?>
+										<?php if(in_array($k_date,$this->real_active_days_overall_cs)):?> 
+											 <button type="button" class="remove_flatrate" id="flatrate_remove_btn_<?php echo date('j',strtotime($k_date)) ?>" data-day="<?php echo date('j',strtotime($k_date)) ?>" data-date="<?php echo date('Y-m-d',strtotime($k_date));?>"><img src="<?php echo RES_FILE_PATH .'/images/action_delete.png'; ?>" alt="" title=""/></button>
+											 <input type="hidden" id="pay_days_<?php echo $v_shortcut;?>_<?php echo date('j',strtotime($k_date));?>"  value="1" name="master_data[<?php echo $k_date;?>][<?php echo $v_shortcut;?>][pay_days]" class="pr_small_input_hid"/>
+										<?php endif;?>
+									<?php endif; ?>
+	
+									<?php if(in_array($k_date,$this->real_active_days_overall_cs)):?>
+										 <input type="hidden" id="qty_<?php echo $v_shortcut;?>_<?php echo date('j',strtotime($k_date));?>" value="<?php echo $v_shortcut_details[$v_shortcut]['qty']; ?>" name="master_data[<?php echo $k_date;?>][<?php echo $v_shortcut;?>][qty]" class="pr_small_input_hid"/>
+									<?php endif; ?>
+							<?php elseif($v_shortcut != '37b1'):  ?>
+								<?php if(in_array($k_date,$this->real_active_days_overall_cs)):?>
+									<input type="text" value="<?php echo $v_shortcut_details[$v_shortcut]['qty']; ?>" name="master_data[<?php echo $k_date;?>][<?php echo $v_shortcut;?>][qty]" class="pr_small_input"/>
+								<?php endif; ?>
+								<?php $sums[$v_shortcut] += $v_shortcut_details[$v_shortcut]['qty'];   ?>
+							<?php endif;  ?>
+						<?php else:  ?>
+							<?php if(in_array($k_date,$this->real_active_days_overall_cs)):?> 
+								<?php if($v_shortcut == '37b1'): ?>
+									<button class="start_flatrate" id="flatrate_start_btn_<?php echo date('j',strtotime($k_date));?>" data-day="<?php echo date('j',strtotime($k_date));?>" data-date="<?php echo date('Y-m-d',strtotime($k_date));?>"><img src="<?php echo RES_FILE_PATH .'/images/action_add.png'; ?>" alt="" title=""/></button>
+									<input type="hidden" id="qty_<?php echo $v_shortcut;?>_<?php echo date('j',strtotime($k_date));?>" value="0" name="master_data[<?php echo $k_date;?>][<?php echo $v_shortcut;?>][qty]" class="pr_small_input_hid"/>				 
+								<?php else:  ?>
+									<input type="text" value="<?php echo $v_shortcut_details[$v_shortcut]['qty']; ?>" name="master_data[<?php echo $k_date;?>][<?php echo $v_shortcut;?>][qty]" class="pr_small_input  <?php if($day_type == 0 || $day_type == 6):  ?> input_weekend <?php endif; ?> "/>
+								<?php endif;  ?>
+							<?php endif;  ?>
+						<?php endif;  ?>
+						<input type="hidden" value="<?php echo $v_shortcut;?>" name="master_data[<?php echo $k_date;?>][<?php echo $v_shortcut;?>][shortcut]"/>
+					</td>
+					<?php endforeach;  ?>
+				</tr>
+				<?php endforeach;  ?>
+				
+				
+			</table>
+		</div>
+
+		</td>
+		<th>Anzahl</th>
+	</tr>
+	<tr>
+		<td class="shortcuts">
+			<?php echo $this->translate('performange_home_visit_shortcut');  ?>
+		</td>
+		<td class="sums">
+			<?php echo $totals['home_visit'];  ?>
+		</td>
+	</tr>
+	<tr>
+		<td class="shortcuts">
+			<?php echo $this->translate('performange_beratung_shortcut');  ?>
+		</td>
+		<td class="sums">
+			<?php echo $totals['beratung'];  ?>
+		</td>
+	</tr>
+	<tr>
+		<td class="shortcuts">
+			<?php echo $this->translate('performange_koordination_shortcut');  ?>
+		</td>
+		<td class="sums">
+			<?php echo $totals['koordination'];  ?>
+		</td>
+	</tr>
+
+	<tr>
+		<td style="height: 5px!important; border:0; padding:0;clear:both;line-height: 2px;">&nbsp;</td>
+		<td style="height: 5px!important; border:0; padding:0;clear:both;line-height: 2px;">&nbsp;</td>
+	</tr>
+	<?php foreach($shortcuts as $k_shortcut => $v_shortcut):  ?>
+	<tr>
+		<td class="shortcuts <?php if($v_shortcut == '37b8'): ?> last <?php endif;?>"><?php echo $this->translate('shortcut_name_'.$v_shortcut);   ?> <?php echo $this->translate('shortcut_description_'.$v_shortcut);   ?></td>
+		<td class="sums"><?php if($sums[$v_shortcut]): echo $sums[$v_shortcut]; else: echo '0'; endif;?></td>
+	</tr>
+	<?php endforeach;  ?>
+</table>
+	<input type="submit" value="<?php echo $this->translate('save'); ?>" name="save_bwperformance" class="bigbutton ui-state-default ui-corner-all submit" />
+	<?php if($this->save_data == "1"):?>
+		<input type="submit" value="<?php echo $this->translate('reset'); ?>" name="reset_bwperformance" class="bigbutton ui-state-default ui-corner-all submit" />
+	<?php endif; ?>
+	<input type="submit" value="<?php echo $this->translate('generatepdf'); ?>" name="pdf" class="bigbutton ui-state-default ui-corner-all submit" />
+</form>

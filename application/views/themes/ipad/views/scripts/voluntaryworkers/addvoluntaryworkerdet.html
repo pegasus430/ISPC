@@ -1,0 +1,4149 @@
+<!-- Maria:: Migration ISPC to CISPC 08.08.2020 -->
+<?php
+//ISPC-2401 3)
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/tinymce3/jscripts/tiny_mce/tiny_mce.js');
+
+$this->headScript()->appendFile(APP_BASE.'javascript/fine-uploader/fine-uploader.min.js');
+$this->headLink()->appendStylesheet(APP_BASE.'javascript/fine-uploader/fine-uploader.css');
+
+//$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/jgrowl/fileuploader.js?'.date('Ymd'));
+//$this->headLink()->appendStylesheet(RES_FILE_PATH.'/javascript/jgrowl/filepatient.css?'.date('Ymd'));
+
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/page-css/voluntary_workers.css');
+$this->headScript()->appendFile( APP_BASE . 'javascript/livesearch/getzipcities.js' );
+
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/chosen_v1.6.2/chosen.jquery.js');
+$this->headLink()->appendStylesheet(RES_FILE_PATH.'/javascript/chosen_v1.6.2/chosen_2016.09.22.css');
+
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/data_tables/jquery.dataTables.js?'.date('Ymd'));
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/data_tables/dataTables.jqueryui.js?'.date('Ymd'));
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/data_tables/dataTables.jqueryui.css?' . date('Ymd'));
+
+$this->headScript()->appendFile(APP_BASE.'javascript/views/voluntaryworkers/addvoluntaryworkerdet.js');
+
+
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/page-css/voluntary-card.css'); //ISPC-2255
+
+			$color_options=""; 
+	 		foreach($this->all_colors as $color_id=>$color_name){
+		 		$color_options .= '<option value="'.$color_id.'" class="ost_'.$color_id.'">'.$color_name.'</option>';
+	 		}
+
+$referal_tab = $_REQUEST['referal_tab']; 
+ 
+?>
+
+<style>
+	.outer{
+		width: 100%!important;
+		
+	}
+	#Wrapper {
+		width: 100%!important;
+        min-height: 5px;
+        overflow: hidden;
+    
+	}
+    #Wrapper .LeftDiv {
+        float: left;
+        width: 200px;
+        overflow: hidden;
+        min-height: 100px;
+    }
+    
+  	#MainContent { 
+        width: auto!important;
+        display: block; /*default display for div */
+        float: none;/*default float for div*/
+        
+        padding-left:10px;
+        padding-right:30px;
+        
+        min-height: 800px;
+        overflow: hidden;
+	}
+	body {
+        overflow-x: hidden;
+    }
+</style>
+
+<script type="text/javascript">
+var workerid = '<?php echo $_REQUEST['id']; ?>';
+var sel_str = '<?php echo $this->sel_str; ?>';
+var activity_changed = {};
+
+$(document).ready(function() { /*------ Start $(document).ready --------------------*/
+	load_course();
+	
+	$('.cf_selectbox').chosen({placeholder_text_multiple: '<?php echo $this->translate("please_select"); ?>', width: '100%'});
+	//$('#bulk_work').load('<?php  echo APP_BASE."voluntaryworkers/workdatalist?id=".$_REQUEST['id'].""; ?>');
+	
+	
+	// =========Modal EDIT ===============================
+	/*$('.edit_wb').live('click', function(){
+		var id =$(this).data('id');
+
+		$('#edit_work_bulk_dialog').load('<?php  echo APP_BASE."voluntaryworkers/editworkbulk?vid='+id+'"; ?>', function() {
+			$('#edit_work_bulk_dialog').dialog('open');
+		});
+	});
+	
+
+	$('#edit_work_bulk_dialog').dialog({
+			resizable: false,
+			modal: true,
+			autoOpen: false,
+			width: 750,
+			height: 500,
+			title: "<?php echo $this->translate('edit'); ?>",
+			buttons: {
+				"Abbrechen": function () {
+					$(this).dialog("close");
+				},
+				"<?php echo $this->translate('save')?>": function () {
+					 $.ajax({
+					type: 'POST',
+					url: 'voluntaryworkers/editworkbulk',
+					data: $("#edit_work_bulk").serialize(),
+					success:function(data){
+						$('#edit_work_bulk_dialog').dialog("close");
+						//$('#bulk_work').load('<?php  echo APP_BASE."voluntaryworkers/workdatalist?id=".$_REQUEST['id'].""; ?>');
+						custom_data = {workerid: workerid, vtype: 'b', from_bulk: $('#from_bulk_work').val(), to_bulk: $('#to_bulk_work').val()}; 
+						
+						work_table_bulk.ajax.reload();
+					}
+				}); 
+				}
+			}
+	});*/
+	
+	
+	  //delete row
+   /* $('.delete_work_data').live('click', function() { 
+    	var idd= $(this).data('id');
+    	
+    	//url=$('frmremedie').attr('action);
+    	//ert(id);
+    	jConfirm('<? echo $this->translate('confirmdeleterecord'); ?>', '<? echo $this->translate('confirmdeletetitle'); ?>', function(r) {
+			if(r)
+			{
+				$.ajax({
+					  method: "POST",
+					  url : 'ajax/deleteworkdata?work_id='+idd+'=&vw_id=<?php echo $_REQUEST['id']; ?>',
+					  data: {work_id : idd},
+					  
+					  success: function(data)
+					  {  
+						//$('#bulk_work').load('<?php  echo APP_BASE."voluntaryworkers/workdatalist?id=".$_REQUEST['id'].""; ?>');
+						 custom_data = {workerid: workerid, vtype: 'b', from_bulk: $('#from_bulk_work').val(), to_bulk: $('#to_bulk_work').val()}; 
+							
+						 work_table_bulk.ajax.reload();
+					  }
+					})
+					  .done(function( msg ) {
+					   // alert( "Data Saved: " + msg );
+					  });
+			}
+		}); 
+        return false;
+   });*/
+	//============================================================
+	
+	
+	
+	
+	
+	
+	
+	/*$('.show_saved_data').click(function(e) {
+		e.preventDefault();
+		var target = $(this).data("work_type");
+
+		var arr_class = $(this).data("arr_class");
+		if(arr_class == "down"){
+			$(this).removeClass("arrow_down").addClass("arrow_up");
+			$(this).data("arr_class","up");
+		} else{
+			$(this).removeClass("arrow_up").addClass("arrow_down");
+			$(this).data("arr_class","down");
+		}
+		
+  		$( "#"+target ).toggle();
+	});*/
+	
+	$( ".a_date" ).datepicker({
+		dateFormat: 'dd.mm.yy',
+		showOn: "both",
+		buttonImage: $('#calImg').attr('src'),
+		buttonImageOnly: true,
+		changeMonth: true,
+		changeYear: true,
+		nextText: '',
+		prevText: ''
+	});
+	$(".a_date").mask("99.99.9999");
+	
+	$( ".gc_certificate_date" ).datepicker({
+		dateFormat: 'dd.mm.yy',
+		showOn: "both",
+		buttonImage: $('#calImg').attr('src'),
+		buttonImageOnly: true,
+		changeMonth: true,
+		changeYear: true,
+		nextText: '',
+		prevText: ''
+	});
+	$(".gc_certificate_date").mask("99.99.9999");
+	
+	//ISPC-2618 Carmen 30.07.2020
+	$( ".received_certificate_date" ).datepicker({
+		dateFormat: 'dd.mm.yy',
+		showOn: "both",
+		buttonImage: $('#calImg').attr('src'),
+		buttonImageOnly: true,
+		changeMonth: true,
+		changeYear: true,
+		nextText: '',
+		prevText: ''
+	});
+	$(".received_certificate_date").mask("99.99.9999");
+	//--
+
+	$( "#birthdate" ).datepicker({
+		dateFormat: 'dd.mm.yy',
+		showOn: "both",
+		buttonImage: $('#calImg').attr('src'),
+		buttonImageOnly: true,
+		changeMonth: true,
+		changeYear: true,
+		nextText: '',
+		prevText: '',
+		yearRange: "-100:+0"
+	});
+	$("#birthdate").mask("99.99.9999");
+	
+	$( "#engagement_date" ).datepicker({
+		dateFormat: 'dd.mm.yy',
+		showOn: "both",
+		buttonImage: $('#calImg').attr('src'),
+		buttonImageOnly: true,
+		changeMonth: true,
+		changeYear: true,
+		nextText: '',
+		prevText: '',
+		yearRange: "-100:+0"
+	});
+	$("#engagement_date").mask("99.99.9999");
+	
+
+	$('.wd_time').timepicker({
+		minutes : {
+			interval : 5
+		},
+		showPeriodLabels : false,
+		rows : 4,
+		hourText : 'Stunde',
+		minuteText : 'Minute',
+		onSelect: function(time){
+			var value = $(this).val();
+			var input_lenght = value.length;
+			var current_input = value.split(':');
+			var id_val = $(this).attr('id');
+			var id_string = id_val.split('_');
+			var error = 0;
+			var invalid_period = 0;
+
+			
+			var start_time = $('#timeinput_start_'+id_string[2]).val();			
+			var start_time_str = start_time.split(':');		
+			var end_time = $('#timeinput_end_'+id_string[2]).val();			
+			var end_time_str = end_time.split(':');		
+
+			
+			if(input_lenght == 5)
+			{
+				if (Number(current_input[0]) > 23   && Number(current_input[1]) > 59)
+				{
+						error = 1; //invalid time format
+				}
+				else if(Number(current_input[0]) <= 23   && Number(current_input[1]) > 59)
+				{
+					error = 2;//Invalid minute format
+				}
+				else if(Number(current_input[0]) > 23   && Number(current_input[1]) <= 59)
+				{
+					error = 3;//Invalid hour format
+				}
+				
+				if( error>0){
+					 $(this).addClass("error_format");
+					 
+				} else{
+					 $(this).removeClass("error_format");
+				}			
+		
+				if(id_string[1] == "start" && error == 0 && invalid_period == 0 && end_time !=""){
+					 if( Number(current_input[0]) > Number(end_time_str[0]) || (Number(current_input[0]) == Number(end_time_str[0]) &&  Number(current_input[1]) > Number(end_time_str[1]) )  )
+						{
+							invalid_period = 1;//Start date must be smaller than the end date
+							$('#timeinput_start_'+id_string[2] ).addClass("error_overlapping");
+							$('#timeinput_end_'+id_string[2] ).addClass("error_overlapping");
+							$('#timeinput_start_'+id_string[2] ).addClass("invalid_period");
+							$('#timeinput_end_'+id_string[2] ).addClass("invalid_period");
+						}
+				}
+				
+				if(id_string[1] == "end" && error == 0 && invalid_period == 0  && start_time !=""){
+					 if( (Number(current_input[0]) <  Number(start_time_str[0])) ||  (Number(current_input[0]) == Number(start_time_str[0]) &&  Number(current_input[1]) < Number(start_time_str[1]) )  )
+						{
+							invalid_period = 1;//End date must be bigger than the start date
+							$('#timeinput_start_'+id_string[2] ).addClass("error_overlapping");
+							$('#timeinput_end_'+id_string[2] ).addClass("error_overlapping");
+							$('#timeinput_start_'+id_string[2] ).addClass("invalid_period");
+							$('#timeinput_end_'+id_string[2] ).addClass("invalid_period");
+							
+						}
+				}
+			} 
+			
+			if(id_string[1] == "end" && input_lenght < 5 && start_time != '' && error == 0 ){
+				
+				invalid_period = 1;//End date is required
+				$('#timeinput_start_'+id_string[2] ).addClass("error_overlapping");
+				$('#timeinput_end_'+id_string[2] ).addClass("error_overlapping");
+				$('#timeinput_start_'+id_string[2] ).addClass("invalid_period");
+				$('#timeinput_end_'+id_string[2] ).addClass("invalid_period");
+			}
+			
+			if(id_string[1] == "start" && input_lenght < 5 && end_time != '' && error == 0 ){
+				
+				invalid_period = 1;//Start date is required
+				$('#timeinput_start_'+id_string[2] ).addClass("error_overlapping");
+				$('#timeinput_end_'+id_string[2] ).addClass("error_overlapping");
+				$('#timeinput_start_'+id_string[2] ).addClass("invalid_period");
+				$('#timeinput_end_'+id_string[2] ).addClass("invalid_period");
+			}
+			
+			if( invalid_period ==  0){
+				$('#timeinput_start_'+id_string[2] ).removeClass("error_overlapping");
+				$('#timeinput_end_'+id_string[2] ).removeClass("error_overlapping");
+				$('#timeinput_start_'+id_string[2] ).removeClass("invalid_period");
+				$('#timeinput_end_'+id_string[2] ).removeClass("invalid_period");
+		}
+		}
+	});
+	
+	/* =============== Validate time fields for visits ================*/	
+	$('.wd_time').mask("99:99"); //add hours and minute mask
+	$("[id^=timeinput]").blur(function() {
+		var value = $(this).val();
+		var input_lenght = value.length;
+		var current_input = value.split(':');
+		var id_val = $(this).attr('id');
+		var id_string = id_val.split('_');
+		var error = 0;
+		var invalid_period = 0;
+
+		
+		var start_time = $('#timeinput_start_'+id_string[2]).val();			
+		var start_time_str = start_time.split(':');		
+		var end_time = $('#timeinput_end_'+id_string[2]).val();			
+		var end_time_str = end_time.split(':');		
+
+		
+		if(input_lenght == 5)
+		{
+			if (Number(current_input[0]) > 23   && Number(current_input[1]) > 59)
+			{
+					error = 1; //invalid time format
+			}
+			else if(Number(current_input[0]) <= 23   && Number(current_input[1]) > 59)
+			{
+				error = 2;//Invalid minute format
+			}
+			else if(Number(current_input[0]) > 23   && Number(current_input[1]) <= 59)
+			{
+				error = 3;//Invalid hour format
+			}
+			
+			if( error>0){
+				 $(this).addClass("error_format");
+				 
+			} else{
+				 $(this).removeClass("error_format");
+			}			
+	
+			if(id_string[1] == "start" && error == 0 && invalid_period == 0 && end_time !=""){
+				 if( Number(current_input[0]) > Number(end_time_str[0]) || (Number(current_input[0]) == Number(end_time_str[0]) &&  Number(current_input[1]) > Number(end_time_str[1]) )  )
+					{
+						invalid_period = 1;//Start date must be smaller than the end date
+						$('#timeinput_start_'+id_string[2] ).addClass("error_overlapping");
+						$('#timeinput_end_'+id_string[2] ).addClass("error_overlapping");
+						$('#timeinput_start_'+id_string[2] ).addClass("invalid_period");
+						$('#timeinput_end_'+id_string[2] ).addClass("invalid_period");
+					}
+			}
+			
+			if(id_string[1] == "end" && error == 0 && invalid_period == 0  && start_time !=""){
+				 if( (Number(current_input[0]) <  Number(start_time_str[0])) ||  (Number(current_input[0]) == Number(start_time_str[0]) &&  Number(current_input[1]) < Number(start_time_str[1]) )  )
+					{
+						invalid_period = 1;//End date must be bigger than the start date
+						$('#timeinput_start_'+id_string[2] ).addClass("error_overlapping");
+						$('#timeinput_end_'+id_string[2] ).addClass("error_overlapping");
+						$('#timeinput_start_'+id_string[2] ).addClass("invalid_period");
+						$('#timeinput_end_'+id_string[2] ).addClass("invalid_period");
+						
+					}
+			}
+		} 
+		
+		if(id_string[1] == "end" && input_lenght < 5 && start_time != '' && error == 0 ){
+			
+			invalid_period = 1;//End date is required
+			$('#timeinput_start_'+id_string[2] ).addClass("error_overlapping");
+			$('#timeinput_end_'+id_string[2] ).addClass("error_overlapping");
+			$('#timeinput_start_'+id_string[2] ).addClass("invalid_period");
+			$('#timeinput_end_'+id_string[2] ).addClass("invalid_period");
+		}
+		
+		if(id_string[1] == "start" && input_lenght < 5 && end_time != '' && error == 0 ){
+			
+			invalid_period = 1;//Start date is required
+			$('#timeinput_start_'+id_string[2] ).addClass("error_overlapping");
+			$('#timeinput_end_'+id_string[2] ).addClass("error_overlapping");
+			$('#timeinput_start_'+id_string[2] ).addClass("invalid_period");
+			$('#timeinput_end_'+id_string[2] ).addClass("invalid_period");
+		}
+		
+		if( invalid_period ==  0){
+			$('#timeinput_start_'+id_string[2] ).removeClass("error_overlapping");
+			$('#timeinput_end_'+id_string[2] ).removeClass("error_overlapping");
+			$('#timeinput_start_'+id_string[2] ).removeClass("invalid_period");
+			$('#timeinput_end_'+id_string[2] ).removeClass("invalid_period");
+	}
+ });
+	
+	
+	
+	/* ######### Show hide - certificate date  ########## */
+	$('.gc_certificate_date_div').hide();
+	
+	$('.gc_certificate_radio').bind('click',function(){
+		if($(this).val() == "1"){
+			$('.gc_certificate_date_div').hide();
+			$('.gc_certificate_date').val('');
+		} else{
+			$('.gc_certificate_date_div').show();
+		}
+
+	});
+	
+	//ISPC-2618 Carmen 30.07.2020
+	/* ######### Show hide - received certificate date  ########## */
+	$('.received_certificate_date_div').hide();
+	
+	$('.received_certificate_radio').bind('click',function(){
+		if($(this).val() == "1"){
+			$('.received_certificate_date_div').hide();
+			$('.received_certificate_date').val('');
+		} else{
+			$('.received_certificate_date_div').show();
+		}
+
+	});
+	//--
+
+	$('#show_old_table').on('click',function(){
+		$('.availability_block_old').show();
+		$('#hide_old_table').show();
+		$('#show_old_table').hide();
+	});
+
+	$('#hide_old_table').on('click',function(){
+		$('#hide_old_table').hide();
+		$('#show_old_table').show();
+		$('.availability_block_old').hide();
+	});
+
+	$('.date').datepicker({
+		dateFormat: 'dd.mm.yy',
+		showOn: "both",
+		buttonImage: $('#calImg').attr('src'),
+		buttonImageOnly: true,
+		changeMonth: true,
+		changeYear: true,
+		nextText: '',
+		prevText: '',
+	});
+		
+	$(".date").mask("99.99.9999");	
+	
+	$(document).on('click','#table_activity tr a.delete_row',function(e){
+		  e.preventDefault();
+		  var tr_changed = $(this).closest('tr');
+		  
+	  	activity_changed[tr_changed.find('input').eq(1).val()] = {
+			"change": "deleted"			
+		}
+		  $(this).closest('tr').remove();
+	});
+	
+	
+	$(document).on('click','#patient_table tr a.delete_row',function(e){
+		  e.preventDefault();
+//		  alert('DELETEE');
+		  var tr_changed = $(this).closest('tr');
+		  
+	  	activity_changed[tr_changed.find('input').eq(1).val()] = {
+			"change": "deleted"			
+		}
+		  $(this).closest('tr').remove();
+	});
+	
+	$('table').on('click','tr a.bhv_delete_row',function(e){
+		  e.preventDefault();
+		  $(this).closest('tr').remove();
+		});
+	
+	
+	$('table').on('click','tr a.bw_delete_row',function(e){
+		  e.preventDefault();
+		  $(this).closest('tr').remove();
+		});
+	
+	$('table').on('click','tr a.shv_delete_row',function(e){
+		  e.preventDefault();
+		  $(this).closest('tr').remove();
+		});
+
+	
+	
+	$('table').on('click','tr a.delete_img',function(e){
+		  e.preventDefault();
+		  
+			jConfirm('<? echo $this->translate('confirmdeleterecord'); ?>', '<? echo $this->translate('confirmdeletetitle'); ?>', function(r) {
+				if(r)
+				{
+					
+					
+					var error = 0;
+					var ajax_done = 0;
+
+					$.ajax({
+						type: 'POST',
+						url: 'ajax/deletevwfile?id=<?php echo $_REQUEST['id']; ?>',
+						data: {
+							delete_file_id: 0,
+							delete_file_tabname: '',
+							is_image : 1
+						},
+
+						
+						success:function(data){
+							var deletedata = jQuery.parseJSON(data);
+							if(deletedata.deleted == 1){
+								
+								
+								  $('#img_deleted').val("1")
+								  html_str = "";
+								  html_str += "<strike><?php echo $this->translate('Image')?></strike>";
+								  html_str += " - <?php echo $this->translate('deleted')?>";
+								  
+								  $('#vw_img_name').html(html_str);
+								  $('#vw_img_delete').html("-");
+							  	
+							} else{
+								alert('<?php echo $this->translate("File was not deleted");?>');
+							}
+						},
+						error:function(){
+							ajax_done = 1;
+						}
+					});
+					
+					
+					  
+					  
+				}
+			});
+	});
+
+	
+	
+	$('table').on('click','tr a.delete_file_row',function(e){
+		e.preventDefault();
+		var new_del_id = $(this).attr('rel');
+		jConfirm('<? echo $this->translate('confirmdeleterecord'); ?>', '<? echo $this->translate('confirmdeletetitle'); ?>', function(r) {
+			if(r)
+			{
+				if ( ! checkclientchanged()){
+					return false;
+				}
+				
+				var del_ids = $('#files_del_ids').val();
+				
+				if(new_del_id)
+				{
+					$('#files_del_ids').val(del_ids+','+new_del_id)
+		
+				
+					var error = 0;
+					var ajax_done = 0;
+
+					$.ajax({
+						type: 'POST',
+						url: 'ajax/deletevwfile?id=<?php echo $_REQUEST['id']; ?>',
+						data: {
+							delete_file_id: new_del_id,
+							delete_file_tabname: $('#file_tab'+new_del_id).val(),
+							is_image : 0
+						},
+
+						
+						success:function(data){
+							var deletedata = jQuery.parseJSON(data);
+							if(deletedata.deleted == 1){
+								var filename = $('#file_name'+new_del_id).val();
+								del_str = "";
+								del_str += "<strike>"+filename+"</strike>";
+								del_str += " - <?php echo $this->translate('deleted')?>";
+							  	$('#td_file_name'+new_del_id).html(del_str);
+					
+							  	$('#td_file_delete'+new_del_id).html("-");
+							} else{
+								alert('<?php echo $this->translate("File was not deleted");?>');
+							}
+						},
+						error:function(){
+							ajax_done = 1;
+						}
+					});
+					
+					
+
+				}
+			}
+		});
+	});
+	
+	//TODO-2827 ISPC: Can not delete patient from voluntary worker Ancuta 17.01.2020
+	//$('table').on('click','tr a.delete_existing_row',function(e){
+	$(document).off('click',"tr a.delete_existing_row").on('click', 'tr a.delete_existing_row', function(e){
+		  e.preventDefault();
+		  var del_ids = $('#delete_ids').val();
+		  var new_del_id = $(this).attr('rel');
+		  
+		  if(new_del_id){
+			  $('#delete_ids').val(del_ids+','+new_del_id)
+		  }
+		  $(this).closest('tr').remove();
+	});
+	
+	var $tabs = $( "#tabs" ).tabs({
+		show: function(event, ui) {},
+		select: function(event, ui) {
+			var selected_tab = ui.index;
+			$("#tabs_selected_id").val(selected_tab);
+		}
+	});	
+	
+	
+	// ###############################	
+	// color status 
+	// ###############################	
+	
+	$("[id^=status_color_select_]").live('change',function(){
+		$(this).removeClass().addClass('st_'+$(this).val());
+	});
+	
+	// #######################################		
+	// hospiz visit new lines  - bulk visits
+	// #######################################
+	
+	
+		
+	$('.cs_date').each(function(){
+		
+		var rowid = $(this).data('rowid');
+	
+		$('#color_start_date_'+rowid).datepicker({
+			dateFormat: 'dd.mm.yy',
+			showOn: "both",					
+			buttonImage: $('#calImg').attr('src'),
+			buttonImageOnly: true,
+			changeMonth: true,
+			changeYear: true,
+			nextText: '',
+			prevText: '',
+			maxDate: $("#color_end_date_"+rowid).val(),
+			onSelect: function( selectedDate ) {
+ 			      var dateMin = $('#color_start_date_'+rowid).datepicker("getDate");
+ 			      var rMin = new Date(dateMin.getFullYear(), dateMin.getMonth(),dateMin.getDate() + 1); 
+ 			      var rMax = new Date(dateMin.getFullYear(), dateMin.getMonth(),dateMin.getDate() -1); 
+                   var target_prev_row_id = $(this).closest('tr').next('tr').attr('id');
+                   $('#color_end_date_'+target_prev_row_id).val($.datepicker.formatDate('dd.mm.yy', new Date(rMax)));
+                  
+                  $("#color_end_date_"+rowid).datepicker( "option", "minDate", selectedDate );
+			}
+		});
+		
+		$('#color_end_date_'+rowid).datepicker({
+			dateFormat: 'dd.mm.yy',
+			showOn: "both",					
+			buttonImage: $('#calImg').attr('src'),
+			buttonImageOnly: true,
+			changeMonth: true,
+			changeYear: true,
+			nextText: '',
+			prevText: '',
+			minDate: $("#color_start_date_"+rowid).val(),
+			onSelect: function( selectedDate ) {
+				
+ 			      var dateMin = $('#color_end_date_'+rowid).datepicker("getDate");
+ 			      var rMin = new Date(dateMin.getFullYear(), dateMin.getMonth(),dateMin.getDate() + 1); 
+ 			      var rMax = new Date(dateMin.getFullYear(), dateMin.getMonth(),dateMin.getDate() -1); 
+                   var target_prev_row_id = $(this).closest('tr').prev('tr').attr('id');
+                   $('#color_start_date_'+target_prev_row_id).val($.datepicker.formatDate('dd.mm.yy', new Date(rMin)));
+                  
+                  $("#color_start_date_"+rowid).datepicker( "option", "maxDate", selectedDate );
+                  
+                  
+ 
+          }
+		});
+		
+	});	
+	$('.cs_date').mask("99.99.9999");
+	
+	$('.add_new_status_line').live('click',function(){
+		var row_st_period = $('#color_count').val();
+		
+		var prev_row = parseInt(row_st_period) - 1;
+		var new_row = parseInt(row_st_period) + 1;
+		
+		if($('#color_end_date_'+prev_row).val() != ""){
+			
+            var dateMin = $('#color_end_date_'+prev_row).datepicker("getDate");
+            var rMin = new Date(dateMin.getFullYear(), dateMin.getMonth(),dateMin.getDate() + 1); 
+            //Lore 23.09.2019
+            setInterval(function() {
+                var current_start = $.datepicker.formatDate('dd.mm.yy', new Date(rMin));
+
+                $("#color_start_date_"+row_st_period).val(current_start);
+            	});
+
+		}  
+
+		
+		var current_start ="";
+		var color_options  = '<?php echo  $color_options;?>';
+		
+		var tr ='<tr id="'+row_st_period+'" class="'+row_st_period+'">';
+		var color_select ='<td><select name="color_status['+row_st_period+'][status]" data-rowid="'+row_st_period+'" id="status_color_select_'+row_st_period+'"  class="st_g"  style="width: 100px;" >'+color_options+'</select></td>';
+		var color_start ='<td><input type="text" name="color_status['+row_st_period+'][start_date]"  data-rowid="'+row_st_period+'"  value="'+current_start+'" id="color_start_date_'+row_st_period+'" class="from"   /></td>';
+		var color_end ='<td><input type="text" name="color_status['+row_st_period+'][end_date]"   data-rowid="'+row_st_period+'"  value="" id="color_end_date_'+row_st_period+'"  class="till"   /></td>';
+		var color_delete ='<td><a href="javascript:void(0)" class="bhv_delete_row" rel="<?php echo $k; ?>" id="delete_<?php echo $k; ?>"><img src="<?php echo RES_FILE_PATH;  ?>/images/action_delete.png" /></a></td>';
+		var tr_end = '</tr>';
+		
+		$('#color_status_table').prepend(tr
+				+color_select
+				+color_start
+				+color_end
+				+color_delete
+				+tr_end);
+ 
+		$('#status_color_select'+row_st_period).live('change',function(){
+			$(this).removeClass().addClass('st_'+$(this).val());
+		});
+		$('#color_start_date_'+row_st_period).datepicker({
+			dateFormat: 'dd.mm.yy',
+			showOn: "both",					
+			buttonImage: $('#calImg').attr('src'),
+			buttonImageOnly: true,
+			changeMonth: true,
+			changeYear: true,
+			nextText: '',
+			prevText: '',
+			onSelect: function( selectedDate ) {
+                   var dateMin = $('#color_start_date_'+row_st_period).datepicker("getDate");
+                   var rMin = new Date(dateMin.getFullYear(), dateMin.getMonth(),dateMin.getDate() + 1); 
+                   var rMax = new Date(dateMin.getFullYear(), dateMin.getMonth(),dateMin.getDate() -1);
+                   var target_prev_row_id = $(this).closest('tr').next('tr').attr('id');
+                   $('#color_end_date_'+target_prev_row_id).val($.datepicker.formatDate('dd.mm.yy', new Date(rMax)));
+                  $("#color_end_date_"+row_st_period).datepicker( "option", "minDate", selectedDate );
+                  
+            }
+ 
+		});
+		$('#color_start_date_'+row_st_period).mask("99.99.9999");
+		
+		$('#color_end_date_'+row_st_period).datepicker({
+			dateFormat: 'dd.mm.yy',
+			showOn: "both",					
+			buttonImage: $('#calImg').attr('src'),
+			buttonImageOnly: true,
+			changeMonth: true,
+			changeYear: true,
+			nextText: '',
+			prevText: '',
+			onSelect: function( selectedDate ) {
+ 				   var target_row_id = $(this).closest('tr').prev('tr').attr('id');
+                   var dateMin = $('#color_end_date_'+row_st_period).datepicker("getDate");
+                   var rMin = new Date(dateMin.getFullYear(), dateMin.getMonth(),dateMin.getDate() + 1); 
+                   var rMax = new Date(dateMin.getFullYear(), dateMin.getMonth(),dateMin.getDate() -1); 
+                   $('#color_start_date_'+target_row_id).val($.datepicker.formatDate('dd.mm.yy', new Date(rMin)));           
+                  $("#color_start_date_"+row_st_period).datepicker( "option", "maxDate", selectedDate );
+            }
+		});
+		$('#color_end_date_'+row_st_period).mask("99.99.9999");
+
+		$('#color_count').val(new_row);
+
+	});
+	
+	
+	// ##########	
+	// activities 
+	// ##########	
+	/*$('.add_new_line').live('click',function(){
+		<?php
+			foreach($this->event_types_select as $type_id=>$type_data) {
+				$sel_str .= '<option value="'.$type_id.'">'.$type_data['name'].'</option>';
+			}
+		?>
+		var row_status = $('#rows_status').val();
+
+		var event_type_select = '<select name="activity['+row_status+'][team_event_type]"  class="event_select" style="width:130px;"><option value=""><?php echo $this->translate("select")?></option><?php echo $sel_str;?></select>';
+		
+
+		var tr ='<tr class="activity_row">';
+		var a_date ='<td><input type="text" name="activity['+row_status+'][date]" value="" id="a_date_'+row_status+'"   class="vw_date"  /><input type="hidden" name="activity['+row_status+'][id]" value="'+row_status+'" /></td>';
+		var a_activity ='<td><input type="text" name="activity['+row_status+'][activity]" value="" class="vw_activity" /></td>';
+		var a_comment ='<td><input type="text" name="activity['+row_status+'][comment]" value="" class="vw_comment"  />  <input type="hidden" name="activity['+row_status+'][team_event]" value="0" />  <input type="hidden" name="activity['+row_status+'][team_event_id]" value="0"  /></td>';
+		var a_duration ='<td><input type="text" name="activity['+row_status+'][duration]" value="" class="vw_duration"  />  </td>';
+		var a_driving_time ='<td><input type="text" name="activity['+row_status+'][driving_time]" value="" class="vw_driving_time"  />  </td>';
+		var a_team_event ='<td>'+event_type_select+'</td>';
+		var a_delete ='<td><a href="javascript:void(0)" class="delete_row" rel="<?php echo $k; ?>" id="delete_<?php echo $k; ?>"><img src="<?php echo RES_FILE_PATH;  ?>/images/action_delete.png" /></a></td>';
+		var tr_end = '</tr>';
+		$('#acivity_table').append(tr
+				+a_date
+				+a_activity
+				+a_comment
+				+a_duration
+				+a_driving_time
+				+a_team_event
+				+a_delete
+				+tr_end);		
+		
+		$('.vwactivity').append(
+			tr+a_date+a_activity+a_comment+a_duration+a_driving_time+a_team_event+a_delete+tr_end
+		);		
+		
+		$('#a_date_'+row_status).datepicker({
+			dateFormat: 'dd.mm.yy',
+			showOn: "both",					
+			buttonImage: $('#calImg').attr('src'),
+			buttonImageOnly: true,
+			changeMonth: true,
+			changeYear: true,
+			nextText: '',
+			prevText: ''
+		});
+		var new_row = parseInt(row_status) + 1;
+
+		$('#rows_status').val(new_row);
+
+	});*/
+		
+	// ####################
+	// patient associations 
+	// ####################
+	
+	/*	$('.assign_patient_date').each(function(){
+		
+		var rowid = $(this).data('rowid');
+	
+		$('#patient_assign_start_'+rowid).datepicker({
+			dateFormat: 'dd.mm.yy',
+			showOn: "both",					
+			buttonImage: $('#calImg').attr('src'),
+			buttonImageOnly: true,
+			changeMonth: true,
+			changeYear: true,
+			nextText: '',
+			prevText: '',
+			maxDate: $("#patient_assign_end_"+rowid).val(),
+			onSelect: function( selectedDate ) {
+                  $("#patient_assign_end_"+rowid).datepicker( "option", "minDate", selectedDate );
+			}
+		});
+		
+		$('#patient_assign_end_'+rowid).datepicker({
+			dateFormat: 'dd.mm.yy',
+			showOn: "both",					
+			buttonImage: $('#calImg').attr('src'),
+			buttonImageOnly: true,
+			changeMonth: true,
+			changeYear: true,
+			nextText: '',
+			prevText: '',
+			minDate: $("#patient_assign_start_"+rowid).val(),
+			onSelect: function( selectedDate ) {
+                  $("#patient_assign_start_"+rowid).datepicker( "option", "maxDate", selectedDate );
+          }
+		});
+	});
+	
+	
+	
+	
+	$('.add_new_patient_line').live('click',function(){
+
+		var row_status = $('#associated_patients').val();
+
+		var tr ='<tr class="patient_row">';
+		var start_date ='<td><input type="text" name="patient_vw['+row_status+'][start]" class="assign_patient_date" value="" id="patient_assign_start_'+row_status+'"   /><input type="hidden" name="patient_vw['+row_status+'][custom]" value="1" /></td>';
+		var end_date ='<td><input type="text" name="patient_vw['+row_status+'][end]"  class="assign_patient_date"  value="" id="patient_assign_end_'+row_status+'"     /></td>';
+		var epid ='<td><input type="text" name="patient_vw['+row_status+'][patient_epid]" value="" id="patient_epid'+row_status+'" style="width:100px;" /></td>';
+		var patient ='<td><input type="text" name="patient_vw['+row_status+'][patient]" value="" id="patient'+row_status+'"  /><input type="hidden" name="patient_vw['+row_status+'][patientid]" value="" id="patientid'+row_status+'"  /></td>';
+		var a_delete ='<td><a href="javascript:void(0)" class="delete_row" rel="<?php echo $k; ?>" id="delete_<?php echo $k; ?>"><img src="<?php echo RES_FILE_PATH;  ?>/images/action_delete.png" /></a></td>';
+		var tr_end = '</tr>';
+		$('#patient_table').append(tr+start_date+end_date+epid+patient+a_delete+tr_end);
+		
+		
+		$('#patient_assign_start_'+row_status).datepicker({
+			dateFormat: 'dd.mm.yy',
+			showOn: "both",					
+			buttonImage: $('#calImg').attr('src'),
+			buttonImageOnly: true,
+			changeMonth: true,
+			changeYear: true,
+			nextText: '',
+			prevText: '',
+			onSelect: function( selectedDate ) {
+                  $("#patient_assign_end_"+row_status).datepicker( "option", "minDate", selectedDate );
+			}
+		});
+		
+		$('#patient_assign_end_'+row_status).datepicker({
+			dateFormat: 'dd.mm.yy',
+			showOn: "both",					
+			buttonImage: $('#calImg').attr('src'),
+			buttonImageOnly: true,
+			changeMonth: true,
+			changeYear: true,
+			nextText: '',
+			prevText: '',
+			onSelect: function( selectedDate ) {
+                  $("#patient_assign_start_"+row_status).datepicker( "option", "maxDate", selectedDate );
+          }
+		});
+		
+// 		$('#p_vw_s_date_'+row_status).datepicker({
+// 			dateFormat: 'dd.mm.yy',
+// 			showOn: "both",					
+// 			buttonImage: $('#calImg').attr('src'),
+// 			buttonImageOnly: true,
+// 			changeMonth: true,
+// 			changeYear: true,
+// 			nextText: '',
+// 			prevText: ''
+// 		});
+		
+// 		$('#p_vw_e_date_'+row_status).datepicker({
+// 			dateFormat: 'dd.mm.yy',
+// 			showOn: "both",					
+// 			buttonImage: $('#calImg').attr('src'),
+// 			buttonImageOnly: true,
+// 			changeMonth: true,
+// 			changeYear: true,
+// 			nextText: '',
+// 			prevText: ''
+// 		});
+		
+		
+		$('#patient_epid'+row_status).bind('keyup keydown change paste',function(){
+			//livesearch patients ls
+			$(this).live('change', function() {
+				var input_row = parseInt($(this).attr('id').substr(('patient_epid').length));
+				reset_patients(input_row);
+			}).liveSearch({
+				url: 'ajax/patientsearchvoluntaryworker?q=',
+				id: 'livesearch_vw_patients',
+				aditionalWidth: '62',
+				noResultsDelay: '1200',
+				typeDelay: '1200',
+				returnRowId: function (input) {return parseInt($(input).attr('id').substr(('patient_epid').length));}
+			});
+		});
+		
+		$('#patient'+row_status).bind('keyup keydown change paste',function(){
+			//livesearch patients ls
+			$(this).live('change', function() {
+				var input_row = parseInt($(this).attr('id').substr(('patient').length));
+				reset_patients(input_row);
+			}).liveSearch({
+				url: 'ajax/patientsearchvoluntaryworker?q=',
+				id: 'livesearch_vw_patients',
+				aditionalWidth: '62',
+				noResultsDelay: '1200',
+				typeDelay: '1200',
+				returnRowId: function (input) {return parseInt($(input).attr('id').substr(('patient').length));}
+			});
+		});
+		
+		var new_row = parseInt(row_status) + 1;
+		$('#associated_patients').val(new_row);
+	});
+*/
+
+		
+	// #######################################		
+	// hospiz visit new lines  -single visits
+	// #######################################		
+	$('.add_new_shv_patient_line').live('click',function(){
+		var row_hv_simple = $('#patient_visits_simple').val();
+		<?php
+			foreach($this->grundarray as $gr_id=>$gr_name) {
+				$shv_grund_sel_str .= '<option value="'.$gr_id.'">'.$gr_name.'</option>';
+			}
+		?>
+		var shv_grund_select = '<select name="simple['+row_hv_simple+'][grund]"  style="width:110px;"><?php echo $shv_grund_sel_str;?></select>';
+		
+		
+		var tr ='<tr class="patient_row">';
+		var shv_patient ='<td  style="width:190px"><input type="text" name="simple['+row_hv_simple+'][patient]"  value="" id="patientshv'+row_hv_simple+'"  style="width:93%;"/><input type="hidden" name="simple['+row_hv_simple+'][patient]"  value="" id="shv_patient_id'+row_hv_simple+'"  /><input type="hidden" name="simple['+row_hv_simple+'][patient_epid]"  value="" id="shv_patient_epid'+row_hv_simple+'"  /></td>';
+		var shv_grund ='<td>'+shv_grund_select+'</td>';
+		var shv_visit_date ='<td style="width: 120px;"><input type="text" name="simple['+row_hv_simple+'][hospizvizit_date]"  class="date" value="" id="shv_date_'+row_hv_simple+'"/></td>';
+		var shv_visit_duration ='<td><input type="text" name="simple['+row_hv_simple+'][besuchsdauer]"  value=""  /></td>';
+		var shv_km ='<td><input type="text" name="simple['+row_hv_simple+'][fahrtkilometer]"  value=""  /></td>';
+		var shv_driving_time ='<td><input type="text" name="simple['+row_hv_simple+'][fahrtzeit]"  value=""  /></td>';
+		var shv_night_shift ='<td><input type="checkbox" name="simple['+row_hv_simple+'][nightshift]" value="1"><input type="hidden" name="simple['+row_hv_simple+'][type]" value="n"></td>';
+		var shv_delete ='<td><a href="javascript:void(0)" class="shv_delete_row" rel="<?php echo $k; ?>" id="delete_<?php echo $k; ?>"><img src="<?php echo RES_FILE_PATH;  ?>/images/action_delete.png" /></a></td>';
+		var tr_end = '</tr>';
+		
+		$('#hospizv_table_single').append(tr
+				+shv_patient
+				+shv_grund
+				+shv_visit_date
+				+shv_visit_duration
+				+shv_km
+				+shv_driving_time
+				+shv_night_shift
+				+shv_delete
+				+tr_end);
+		
+		
+		$('#shv_date_'+row_hv_simple).datepicker({
+			dateFormat: 'dd.mm.yy',
+			showOn: "both",					
+			buttonImage: $('#calImg').attr('src'),
+			buttonImageOnly: true,
+			changeMonth: true,
+			changeYear: true,
+			nextText: '',
+			prevText: ''
+		});
+ 
+		$('#shv_date_'+row_hv_simple).mask("99.99.9999");
+		
+		$('#patientshv'+row_hv_simple).bind('keyup keydown change paste',function(){
+			//livesearch patients ls
+			$(this).live('change', function() {
+				var input_row = parseInt($(this).attr('id').substr(('patient').length));
+				reset_patients_shv(input_row);
+			}).liveSearch({
+				url: 'ajax/patientsearchvoluntaryworker?q=',
+				id: 'livesearch_vw_patients',
+				aditionalWidth: '62',
+				noResultsDelay: '1200',
+				typeDelay: '1200',
+				returnRowId: function (input) {return parseInt($(input).attr('id').substr(('patientshv').length));}
+			});
+		});
+		
+		
+		var new_row = parseInt(row_hv_simple) + 1;
+
+		$('#patient_visits_simple').val(new_row);
+
+	});
+		
+		
+	// #######################################		
+	// hospiz visit new lines  - bulk visits
+	// #######################################		
+	$('.add_new_bhv_patient_line').live('click',function(){
+		var row_hv_bulk = $('#patient_visits_bulk').val();
+		<?php
+			foreach($this->grundarray as $gr_id=>$gr_name) {
+				$bhv_grund_sel_str .= '<option value="'.$gr_id.'">'.$gr_name.'</option>';
+			}
+		?>
+		var bhv_grund_select = '<select name="bulk['+row_hv_bulk+'][grund]"  style="width:110px;"><?php echo $bhv_grund_sel_str;?></select>';
+		
+		
+		<?php  
+			$yearRange = 5;
+			$thisYear = date('Y');
+			$startYear = ($thisYear - $yearRange);
+			foreach (range($thisYear, $startYear) as $year){
+				$year_str .=  '<option value="'.$year.'" >' . $year . '</option>';
+			}
+		?>
+		
+		var year_select = '<select name="bulk['+row_hv_bulk+'][hospizvizit_date]"  style="width:65px;"><?php echo $year_str;?></select>';
+		
+		var tr ='<tr class="patient_row">';
+		var bhv_patient ='<td  style="width:190px"><input type="text" name="bulk['+row_hv_bulk+'][patient]"  value="" id="patientbhv'+row_hv_bulk+'"  style="width:95%;"/><input type="hidden" name="bulk['+row_hv_bulk+'][patient]"  value="" id="bhv_patient_id'+row_hv_bulk+'"  /><input type="hidden" name="bulk['+row_hv_bulk+'][patient_epid]"  value="" id="bhv_patient_epid'+row_hv_bulk+'"  /></td>';
+		var bhv_grund ='<td>'+bhv_grund_select+'</td>';
+		var bhv_visit_date ='<td>'+year_select+'</td>';
+		var bhv_amount ='<td><input type="text" name="bulk['+row_hv_bulk+'][amount]"  value=""  /></td>';
+		var bhv_visit_duration ='<td><input type="text" name="bulk['+row_hv_bulk+'][besuchsdauer]"  value=""  /></td>';
+		var bhv_km ='<td><input type="text" name="bulk['+row_hv_bulk+'][fahrtkilometer]"  value=""  /></td>';
+		var bhv_driving_time ='<td><input type="text" name="bulk['+row_hv_bulk+'][fahrtzeit]"  value=""  /></td>';
+		var bhv_night_shift ='<td><input type="checkbox" name="bulk['+row_hv_bulk+'][nightshift]" value="1"><input type="hidden" name="bulk['+row_hv_bulk+'][type]" value="b"></td>';
+		var bhv_delete ='<td><a href="javascript:void(0)" class="bhv_delete_row" rel="<?php echo $k; ?>" id="delete_<?php echo $k; ?>"><img src="<?php echo RES_FILE_PATH;  ?>/images/action_delete.png" /></a></td>';
+		var tr_end = '</tr>';
+		
+		$('#hospizv_table_bulk').append(tr
+				+bhv_patient
+				+bhv_grund
+				+bhv_visit_date
+				+bhv_amount
+				+bhv_visit_duration
+				+bhv_km
+				+bhv_driving_time
+				+bhv_night_shift
+				+bhv_delete
+				+tr_end);
+ 
+		
+		$('#patientbhv'+row_hv_bulk).bind('keyup keydown change paste',function(){
+			//livesearch patients ls
+			$(this).live('change', function() {
+				var input_row = parseInt($(this).attr('id').substr(('patient').length));
+				reset_patients_bhv(input_row);
+			}).liveSearch({
+				url: 'ajax/patientsearchvoluntaryworker?q=',
+				id: 'livesearch_vw_patients',
+				aditionalWidth: '62',
+				noResultsDelay: '1200',
+				typeDelay: '1200',
+				returnRowId: function (input) {return parseInt($(input).attr('id').substr(('patientbhv').length));}
+			});
+		});
+		
+		
+		var new_row = parseInt(row_hv_bulk) + 1;
+
+		$('#patient_visits_bulk').val(new_row);
+
+	});
+		
+	
+	// #######################################		
+	// voluntary - work_data   - single work
+	// #######################################		
+	$('.add_new_s_work_line').live('click',function(){
+		var row_work_simple = $('#work_simple_nr').val();
+		<?php
+			foreach($this->grundarray as $gr_id=>$gr_name) {
+				$sw_grund_sel_str .= '<option value="'.$gr_id.'">'.$gr_name.'</option>';
+			}
+		?>
+		var sw_grund_select = '<select name="work_simple['+row_work_simple+'][grund]"  style="width:98%;"><?php echo $sw_grund_sel_str;?></select>';
+		
+		var tr ='<tr class="work_row">';
+		var sw_grund ='<td>'+sw_grund_select+'</td>';
+		var sw_visit_date ='<td style="width: 100px;"><input type="text" name="work_simple['+row_work_simple+'][work_date]"  class="date" value="" id="sw_date_'+row_work_simple+'"/></td>';
+		var sw_visit_duration ='<td><input type="text" name="work_simple['+row_work_simple+'][besuchsdauer]"  value=""  /></td>';
+		var sw_km ='<td><input type="text" name="work_simple['+row_work_simple+'][fahrtkilometer]"  value=""  /></td>';
+		var sw_driving_time ='<td><input type="text" name="work_simple['+row_work_simple+'][fahrtzeit]"  value=""  /></td>';
+		var sw_night_shift ='<td><input type="checkbox" name="work_simple['+row_work_simple+'][nightshift]" value="1"><input type="hidden" name="work_simple['+row_work_simple+'][type]" value="n"></td>';
+		var sw_delete ='<td><a href="javascript:void(0)" class="sw_delete_row" rel="<?php echo $k; ?>" id="delete_<?php echo $k; ?>"><img src="<?php echo RES_FILE_PATH;  ?>/images/action_delete.png" /></a></td>';
+		var tr_end = '</tr>';
+		
+		$('#work_table_single').append(tr
+				+sw_grund
+				+sw_visit_date
+				+sw_visit_duration
+				+sw_km
+				+sw_driving_time
+				+sw_night_shift
+				+sw_delete
+				+tr_end);
+		
+		
+		$('#sw_date_'+row_work_simple).datepicker({
+			dateFormat: 'dd.mm.yy',
+			showOn: "both",					
+			buttonImage: $('#calImg').attr('src'),
+			buttonImageOnly: true,
+			changeMonth: true,
+			changeYear: true,
+			nextText: '',
+			prevText: ''
+		});
+ 
+		var new_row = parseInt(row_work_simple) + 1;
+
+		$('#work_simple_nr').val(new_row);
+
+	});
+		
+
+	
+	
+	// #######################################		
+	// Work new line  - bulk 
+	// #######################################		
+	$('.add_new_b_work_line').live('click',function(){
+		var row_work_bulk = $('#work_bulk_nr').val();
+		<?php
+			foreach($this->grundarray as $gr_id=>$gr_name) {
+				$bw_grund_sel_str .= '<option value="'.$gr_id.'">'.$gr_name.'</option>';
+			}
+		?>
+		var bw_grund_select = '<select name="work_bulk['+row_work_bulk+'][grund]"  style="width:80px;"><?php echo $bw_grund_sel_str;?></select>';
+
+		var tr ='<tr class="patient_row">';
+		var bw_grund ='<td>'+bw_grund_select+'</td>';
+		var bw_visit_date ='<td ><input type="text" name="work_bulk['+row_work_bulk+'][work_date]"  value="" class="b_w_date" id="b_w_date_'+row_work_bulk+'" /></td>';
+		var bw_comments ='<td ><input style="width:70px;" type="text" name="work_bulk['+row_work_bulk+'][comments]"  value=""  /></td>';
+		var bw_amount ='<td><input type="text" name="work_bulk['+row_work_bulk+'][amount]"  value=""  /></td>';
+		var bw_visit_duration ='<td><input type="text" name="work_bulk['+row_work_bulk+'][besuchsdauer]"  value=""  /></td>';
+		var bw_km ='<td><input type="text" name="work_bulk['+row_work_bulk+'][fahrtkilometer]"  value=""  /></td>';
+		var bw_driving_time ='<td><input type="text" name="work_bulk['+row_work_bulk+'][fahrtzeit]"  value=""  /></td>';
+		var bw_night_shift ='<td><input type="checkbox" name="work_bulk['+row_work_bulk+'][nightshift]" value="1"><input type="hidden" name="work_bulk['+row_work_bulk+'][type]" value="b"></td>';
+		var bw_delete ='<td><a href="javascript:void(0)" class="bw_delete_row" rel="<?php echo $k; ?>" id="delete_<?php echo $k; ?>"><img src="<?php echo RES_FILE_PATH;  ?>/images/action_delete.png" /></a></td>';
+		var tr_end = '</tr>';
+		
+		$('#work_table_bulk').append(tr
+				+bw_grund
+				+bw_visit_date
+				+bw_comments
+				+bw_amount
+				+bw_visit_duration
+				+bw_km
+				+bw_driving_time
+				+bw_night_shift
+				+bw_delete
+				+tr_end);
+		
+		$('#b_w_date_'+row_work_bulk).datepicker({
+			dateFormat: 'dd.mm.yy',
+			showOn: "both",					
+			buttonImage: $('#calImg').attr('src'),
+			buttonImageOnly: true,
+			changeMonth: true,
+			changeYear: true,
+			nextText: '',
+			prevText: ''
+		});
+		
+		$('#b_w_date_'+row_work_bulk).mask("99.99.9999");
+		
+		var new_row = parseInt(row_work_bulk) + 1;
+
+		$('#work_bulk_nr').val(new_row);
+
+	});
+		
+	
+	
+	
+	
+	
+	//###############################################################
+	//###############################################################
+	
+	
+	
+	//###############################################################
+	$('#btnsubmit , #btnsubmit_and_close').live('click',function(e){
+		e.preventDefault();
+		var submit_form = 1;
+		var submit_form_button = $(this).attr('id');
+		$('#changedrows').val(JSON.stringify(activity_changed));
+		
+		//alert($('#changedrows').val());		
+		
+		if(submit_form == 1){
+			var error = 0;
+			var ajax_done = 0;
+			var err_message = ''; //ISPC-2618 Carmen 31.07.2020
+
+			//ISPC-2401 Lore 21.05.2020 (validate not save empty volunteer)
+			var fst_name = document.getElementById("first_name").value;
+			var lst_name = document.getElementById('last_name').value;
+			if(fst_name.length == 0 && lst_name.length == 0){
+				//ISPC-2618 Carmen 31.07.2020
+				err_message = "<?php echo 'Nachname fehlt' ?>"; 
+				//jAlert("<?php echo 'Nachname fehlt' ?>");
+				//--
+				error = 1;
+			}
+			//.
+			
+			//ISPC-2618 Carmen 31.07.2020
+			$.ajax({
+				url: appbase+'voluntaryworkers/validatebankaccount',
+				method: "POST",
+				data: {bank_name: $('#bank_name').val(), iban: $('#iban').val(), bic: $('#bic').val(), account_holder: $('#account_holder').val()},
+				success: function(data) {
+					if(data != '0')
+					{
+						if(err_message != '')
+						{
+							err_message += '<br />' + translate('IBAN validation failed') + ' oder ' + translate('BIC validation failed');
+						}
+						else
+						{
+							err_message = translate('IBAN validation failed') + ' oder ' + translate('BIC validation failed');
+						}						
+						error += 1;
+					}
+					
+					
+					if(error == '0'){
+						
+						$(this).attr('disabled', true);
+						setTimeout(function () {$('input[type=submit]').attr('disabled', true);}, 150);
+						setTimeout(function () {$('input[type=submit]').attr('disabled', false);}, 9000);
+						
+						$.ajax({
+							type: 'POST',
+							url: 'ajax/overlappingvwcolorstatus',
+							data: {
+								form_data: $('#voluntary_worker').serialize()
+							},
+			
+							success:function(data){
+								var visitdata = jQuery.parseJSON(data);
+							
+								if( visitdata.new_intersected == "1" || 
+									visitdata.intersected == "1" || 
+									visitdata.error_invalid_period == "1" || 
+									visitdata.error_interrupted_period == "1"
+								)
+								{
+							
+									if(visitdata.new_intersected == "1")
+									{
+										var new_overlapping = visitdata.inserted_overlapping; // overlapping for form visits
+										 $.each(new_overlapping, function(key,period_row) {
+			 								 $('.'+period_row).find('input').addClass("error_overlapping");
+										 });
+										
+										jAlert("<?php echo  $this->translate('color statuses period are overlapping') ?>");
+									}
+									
+									if(visitdata.error_invalid_period == "1")
+									{
+										var invalid_period = visitdata.invalid_period; // overlapping for form visits
+										 $.each(invalid_period, function(key,period_row) {
+			 								 $('.'+period_row).find('input').addClass("error_overlapping");
+										 });
+										
+										jAlert("<?php echo  $this->translate('Invalid period') ?>");
+									}
+			 
+									if(visitdata.error_interrupted_period == "1")
+									{
+										var interrupted_period = visitdata.interrupted_period; // overlapping for form visits
+										 $.each(interrupted_period, function(key,period_row) {
+			 								 $('.'+period_row).find('input').addClass("error_overlapping");
+										 });
+										
+										jAlert("<?php echo  $this->translate('period must be continuous') ?>");
+									}
+			 
+									 
+									 $('.save_form_btn').attr('disabled',false);
+									 $(".ui-button:first").attr("disabled", false)                                               
+									 .removeClass("ui-state-disabled").next("button").attr("disabled", false)                                               
+									 .removeClass("ui-state-disabled");
+									setTimeout(function () {$('input[type=submit]').attr('disabled', false);}, 10);
+									return false; // used with modal
+								} 
+								else 
+								{
+									$('.save_form_btn').attr('disabled',true);
+									 $(".ui-button:first").attr("disabled", true)                                               
+									 .addClass("ui-state-disabled").next("button").attr("disabled", true)                                               
+									 .addClass("ui-state-disabled");
+								 	
+			 					 	 $('#save_form').val('1');
+			 					 	 
+			 					 	 $('#action_redirect').val(submit_form_button);
+			 					 	
+									 $('#voluntary_worker').submit();
+								 
+								}
+							},
+							error:function(){
+								ajax_done = 1;
+							}
+						});
+					}
+					else
+					{
+						jAlert(err_message);
+					}
+				},
+			});			
+			
+			/* if(error == '0'){
+				
+				$(this).attr('disabled', true);
+				setTimeout(function () {$('input[type=submit]').attr('disabled', true);}, 150);
+				setTimeout(function () {$('input[type=submit]').attr('disabled', false);}, 9000);
+				
+				$.ajax({
+					type: 'POST',
+					url: 'ajax/overlappingvwcolorstatus',
+					data: {
+						form_data: $('#voluntary_worker').serialize()
+					},
+	
+					success:function(data){
+						var visitdata = jQuery.parseJSON(data);
+					
+						if( visitdata.new_intersected == "1" || 
+							visitdata.intersected == "1" || 
+							visitdata.error_invalid_period == "1" || 
+							visitdata.error_interrupted_period == "1"
+						)
+						{
+					
+							if(visitdata.new_intersected == "1")
+							{
+								var new_overlapping = visitdata.inserted_overlapping; // overlapping for form visits
+								 $.each(new_overlapping, function(key,period_row) {
+	 								 $('.'+period_row).find('input').addClass("error_overlapping");
+								 });
+								
+								jAlert("<?php echo  $this->translate('color statuses period are overlapping') ?>");
+							}
+							
+							if(visitdata.error_invalid_period == "1")
+							{
+								var invalid_period = visitdata.invalid_period; // overlapping for form visits
+								 $.each(invalid_period, function(key,period_row) {
+	 								 $('.'+period_row).find('input').addClass("error_overlapping");
+								 });
+								
+								jAlert("<?php echo  $this->translate('Invalid period') ?>");
+							}
+	 
+							if(visitdata.error_interrupted_period == "1")
+							{
+								var interrupted_period = visitdata.interrupted_period; // overlapping for form visits
+								 $.each(interrupted_period, function(key,period_row) {
+	 								 $('.'+period_row).find('input').addClass("error_overlapping");
+								 });
+								
+								jAlert("<?php echo  $this->translate('period must be continuous') ?>");
+							}
+	 
+							 
+							 $('.save_form_btn').attr('disabled',false);
+							 $(".ui-button:first").attr("disabled", false)                                               
+							 .removeClass("ui-state-disabled").next("button").attr("disabled", false)                                               
+							 .removeClass("ui-state-disabled");
+							setTimeout(function () {$('input[type=submit]').attr('disabled', false);}, 10);
+							return false; // used with modal
+						} 
+						else 
+						{
+							$('.save_form_btn').attr('disabled',true);
+							 $(".ui-button:first").attr("disabled", true)                                               
+							 .addClass("ui-state-disabled").next("button").attr("disabled", true)                                               
+							 .addClass("ui-state-disabled");
+						 	
+	 					 	 $('#save_form').val('1');
+	 					 	 
+	 					 	 $('#action_redirect').val(submit_form_button);
+	 					 	
+							 $('#voluntary_worker').submit();
+						 
+						}
+					},
+					error:function(){
+						ajax_done = 1;
+					}
+				});
+			} */
+			//--
+		}
+	});
+	
+	
+	
+	$(".timeinput_cb").change(function(){
+		
+		var rel_value = $(this).attr('rel');
+		if (this.checked){
+			
+			$("#timeinput_start_"+rel_value+ ", #timeinput_end_"+ rel_value).prop("disabled", true).val("").removeClass('error_overlapping');
+			
+		}
+		else{
+			$("#timeinput_start_"+rel_value+ ", #timeinput_end_"+ rel_value).prop("disabled", false).val("").removeClass('error_overlapping');
+		}
+		//timeinput_start_1
+	
+	
+	
+	});
+
+	// icons ISPC - 1793
+	
+	
+	check_icons();
+
+	$('#assign_custom_icon').click(function() {
+		check_icons();
+		$('#available_custom_icons').toggle();
+	});
+
+	//assign
+	$('div#available_custom_icons div.available').live('click', function() {
+		var that = $(this);
+		$(that).hide();
+
+		//do assign code here! some ajax stuffs
+		xhr = $.ajax({
+			url: '<?php echo APP_BASE; ?>ajax/assigniconvw?vw_id=<?php echo $_REQUEST['id']; ?>&iconid=' + $(this).attr('rel'),
+			success: function(response) {
+				var response_obj = jQuery.parseJSON(response);
+				if (response_obj['status'] == 'ok') {
+					//clone that element and append it to the icon bar with id changed
+					$(that).clone().insertBefore('div.fixed').attr('id', 'assigned_custom_icon-' + $(that).attr('rel'));
+
+					//remove old class and add new class for iconbar entity
+					$('#assigned_custom_icon-' + $(that).attr('rel')).removeClass('available').addClass('custom_icon_assigned').show();
+
+					//hide cloned icon
+					$(that).hide();
+					check_icons();
+				}
+			}
+		});
+	});
+	//(un)assign
+	$('#confirm_unassign').dialog({autoOpen: false});
+	$('.custom_icon_assigned').live('click', function() {
+		var icon_id = parseInt($(this).attr('id').substr(('assigned_custom_icon-').length));
+//console.log(icon_id);
+		$('#confirm_unassign').dialog({
+			autoOpen: false,
+			modal: true,
+			title: '<?php echo $this->translate('unassign_icon'); ?>',
+			buttons: {
+				"<?php echo $this->translate('unassign_icon_btn'); ?>": function() {
+					//do (un)assign code here! some ajax stuffs
+					xhr = $.ajax({
+						url: '<?php echo APP_BASE; ?>ajax/removeiconvw?vw_id=<?php echo $_REQUEST['id']; ?>&iconid=' + icon_id,
+						success: function(response) {
+							var response_obj = jQuery.parseJSON(response);
+
+							if (response_obj['status'] == 'ok') {
+								//remove curent icon element
+								$('#assigned_custom_icon-' + icon_id).remove();
+
+								//unhide available icon
+								$('#available_custom_icon-' + icon_id).show();
+
+								check_icons();
+							}
+						}
+					});
+					$(this).dialog("close");
+				},
+				"<?php echo $this->translate('cancel'); ?>": function() {
+					$(this).dialog("close");
+				}
+			}
+		});
+		$('#confirm_unassign').dialog('open');
+	});
+	
+	
+	$(".open_versions").click(function(){
+		
+		var $val = $(this).attr("rel");
+		var link = $(this);
+		$(".row_revision_of_"+$val).toggle( 0, function(){
+			if ($(this).is(':visible')) {
+				link.removeClass('arrow_down').addClass('arrow_up');                
+       		} else {
+				link.removeClass('arrow_up').addClass('arrow_down');          
+			}        
+		
+		});
+	
+	});
+	
+	<?php if(isset($_GET['tabs'])) { ?>
+		
+		$tabs.tabs('select', <?php echo (int)$_GET['tabs']; ?>);
+		
+	<?php }	?>
+	
+	/*
+	$('#img_path').bind('change', function() {
+		 
+		var fileName = ''; 
+		fileName = $(this).val(); 
+		var ext = fileName.split('.').pop().toLowerCase();
+		
+		if($.inArray(ext, ['jpg','jpeg','png','gif']) == -1) {
+			alert('<?php echo $this->translate("youuploadedaninvalidfile")?> '+ext+'   nur .docx und .pdf');
+			$(this).val("");
+			$('#file-selected').html("");
+			$('#img_path_add').val('0');
+			return;
+		}else{
+			$('#file-selected').html(fileName); 
+			$('#img_path_add').val('1'); 
+		}
+		
+		
+		 
+	 });
+	*/	
+	
+	
+	
+	chosenizeSelectShortcut($('.selectShortcut'));
+		
+});/*-- END  $(document).ready ----------- --*/
+
+function load_course(){
+	var url = appbase +'voluntaryworkers/vwcourse?id='+workerid;
+	
+	$('.course_tab').load(url, function() {
+		
+	});
+}
+
+function sh_course(that){
+	var shortcuts_str ='';
+	var shortcuts_arr = [];
+	
+	$('.shortcut_checkboxes').each(function(){
+ 
+		if ($(this).is(':checked')) {
+			var valc = $(this).val(); 
+			 //shortcuts_str += valc+',';
+			 shortcuts_arr.push(valc);
+		} 
+		 
+		
+	});
+	var shortcuts_str = shortcuts_arr.join(',');
+	var url = appbase +'voluntaryworkers/vwcourse?id='+workerid+'&filter='+shortcuts_str;
+	console.log(url);
+	$('.course_tab').load(url, function() {
+		
+	});
+}
+
+
+var chosenSelectShortcutTimeoutId; 
+var chosenSelectShortcutTimeoutdelay = 2000;
+
+function clearTimeoutSelectShortcut(){
+	clearTimeout(chosenSelectShortcutTimeoutId);
+}
+
+function chosenizeSelectShortcut(_this) {
+	
+	if (typeof _this =='undefined' || _this == null ) {
+		return;
+	}
+	
+	$(_this)
+	.chosen({
+		
+        placeholder_text_single     : ' ',
+        inherit_select_classes      : true,
+        allow_single_deselect       : false,
+        display_selected_options    : false,
+        width   : '50px',
+        //multiple: false,
+        "search_contains": false,
+        no_results_text: translate('noresultfound'),
+        
+        
+        "data-choice_vsprintf"  : '<span class=\"choice\" style=\"%3%\">%1%</style>' ,
+        "data-row_vsprintf"     : '<span class=\"colLeft\" style=\"%3%\">%1%</span><span class=\"colRight\" style=\"%3%\">%2%</span>' ,
+        "data-search_vsprintf"  : '%1% %2%',
+        
+    })
+    .on("chosen:update_results_content", function(evt, data) {
+    	var _searchText = $(data.chosen.search_field).val().toUpperCase();
+		if (_searchText != '') {
+			if ($('option[value="' +_searchText+ '"]', this).length == 1) {
+
+				clearTimeoutSelectShortcut();
+				
+		    	var _that = this;
+		    	chosenSelectShortcutTimeoutId = setTimeout(function(){
+		    		
+		    		clearTimeoutSelectShortcut();
+		    		
+		    		$(data.chosen.search_field).val('');
+		    		
+				    $(_that).val(_searchText)
+				    .change()
+				    .trigger("chosen:updated")
+				    .trigger("chosen:close")
+				    ;
+				    
+				    //why you no close? mouse_on_container?
+				    $($(_that).data("chosen").container[0])
+				    .removeClass('chosen-with-drop')
+				    .removeClass('chosen-container-active');
+				    				    
+				} , chosenSelectShortcutTimeoutdelay);
+		    }	
+		}
+	 })
+	 .on("chosen:container_mousedown_open", function (evt, data) {
+		 clearTimeoutSelectShortcut();
+	 });
+	
+}
+
+
+function selectPatient(row, pid, epid, firstname, lastname, admission, dob)
+{
+	$('#patientid'+row).val(pid);
+	$('#patient_epid'+row).val(epid);
+	$('#patient'+row).val(lastname+', '+firstname);
+	
+	$('#shv_patient_id'+row).val(pid);
+	$('#shv_patient_epid'+row).val(epid);
+	$('#patientshv'+row).val(lastname+', '+firstname);
+	
+	$('#bhv_patient_id'+row).val(pid);
+	$('#bhv_patient_epid'+row).val(epid);
+	$('#patientbhv'+row).val(lastname+', '+firstname);
+}
+
+
+
+
+function reset_patients(input_row)
+{
+	$('#patientid'+input_row).val('');
+}
+
+function reset_patients_shv(input_row)
+{
+	$('#shv_patient_id'+input_row).val('');
+}
+
+function reset_patients_bhv(input_row)
+{
+	$('#bhv_patient_id'+input_row).val('');
+}
+
+
+function check_icons() {
+	var count_asigned = $('div.custom_icon_assigned').length;
+	var count_available = $('div.available').length;
+
+	if (count_asigned == count_available) {
+		$('#available_custom_icons').hide();
+		$('#assign_custom_icon').hide();
+	} else {
+		$('#assign_custom_icon').show();
+	}
+
+}
+
+</script>
+<style>
+	.qq-upload-list{
+		margin:5px!important;
+		padding-left: 5px;
+	}	
+	.qq-upload-file{
+		width: 120px!important;
+		word-wrap: break-word;
+		display: block;
+	}
+	
+	
+	/* ispc-2255*/
+	.special-selector{
+		background: transparent;
+		padding: 0;
+		width: 120px;
+		padding:0px; 
+		margin:0px; 
+	}
+	.special-selector:HOVER {
+		background: transparent;
+	}	
+	.qq-uploader_profile{
+		width: 100px;
+	}
+</style>
+
+<div style="display: none"> <img id="calImg" src="<?php echo RES_FILE_PATH;  ?>/images/calendar.png" alt="Popup" class="trigger"> </div>
+<form enctype="multipart/form-data"  action="" method="post" name="voluntary_worker" id="voluntary_worker">
+<? if(!empty($_REQUEST['id'])):?>
+
+
+<div class="patientcard" >
+		<div class="btn-back">
+			<a href="voluntaryworkers/workersdetailslist"><?php echo $this->translate('voluntary_workers_list') ?></a>
+		</div>
+		<!-- profile image -->
+		<div id="profile_image" style="width: 130px!important;  float: left;">
+				<table >
+					<tr>
+						<!--<td style="vertical-align: middle;"><?php echo $this->translate('upload_img') ?></td>-->
+						<td>
+							<div id="file-uploader-ProfileImage">
+								<noscript>
+									Please enable JavaScript to use file uploader.
+								</noscript>
+							</div>
+							
+					<script type="text/template" id="qq-template">
+        <div class="qq-uploader-selector qq-uploader_profile" qq-drop-area-text="Drop files here" >
+            
+			<div class="qq-total-progress-bar-container-selector qq-total-progress-bar-container">
+                <div role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" class="qq-total-progress-bar-selector qq-progress-bar qq-total-progress-bar"></div>
+            </div>
+			
+            <div class="qq-upload-drop-area-selector qq-upload-drop-area" qq-hide-dropzone>
+                <span class="qq-upload-drop-area-text-selector"></span>
+            </div>
+            <div class="qq-upload-button-selector qq-upload-button_profile special-selector" >
+		<?php if(strlen($this->img_path)>0){ ?>
+			<?php $img_file = 'icons_system/'.trim($this->img_path);?>
+			<?php if( file_exists($img_file)) {?>
+				<img src="<?php echo APP_BASE .$img_file.'?='.date('ymdhis') ?>"   class="avatar"/>
+			<?php } else { ?>
+				<img src="<?php echo APP_BASE .'images/no_profile_img.png'; ?>"  class="avatar"/>
+			<?php } ?>
+		<?php } else {?>
+			<img src="<?php echo APP_BASE .'images/no_profile_img.png'; ?>"   class="avatar"/>
+		<?php } ?>
+ 
+            </div>
+			
+            <span class="qq-drop-processing-selector qq-drop-processing">
+                <span>Processing dropped files...</span>
+                <span class="qq-drop-processing-spinner-selector qq-drop-processing-spinner"></span>
+            </span>
+			
+			
+            <ul class="qq-upload-list-selector qq-upload-list" aria-live="polite" aria-relevant="additions removals">
+                <li>
+                    <div class="qq-progress-bar-container-selector">
+                        <div role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" class="qq-progress-bar-selector qq-progress-bar"></div>
+                    </div>
+										
+					<img class="qq-thumbnail-selector" qq-max-size="100" qq-server-scale>
+                   					
+					
+                </li>
+            </ul>
+			
+
+          
+        </div>
+    </script>
+							
+						<script type="text/javascript">
+							var uploader = new qq.FineUploader({
+								debug: false,
+								multiple : false,
+								element: document.getElementById('file-uploader-ProfileImage'),
+								template: 'qq-template',
+								request: {
+									endpoint: appbase+'iconsystem/iconimageupload',
+									params: {
+										'op':'voluntaryworkers',
+										'profile_image_add' : 1,
+										'fileuploads' : 0,
+										'vw_id' : '<?php echo $_REQUEST["id"] ?>',
+										'date': new Date()
+									},
+								},
+								retry: {
+								   enableAuto: false
+								},
+								validation: {
+									allowedExtensions: ['jpeg', 'jpg', 'gif', 'png'],
+									sizeLimit: (200 * 1024) 
+								},
+								messages: {
+									sizeError: '<?php echo $this->translate("FineUploader sizeError");?>',
+									typeError: '<?php echo $this->translate("FineUploader typeError");?>',
+								},
+								callbacks: {
+									onComplete: function(id, fileName, responseJSON){
+										if (responseJSON.success == true){
+											//update images
+											var d = new Date();
+    										//$('.vw_img').attr('src', '<?php echo APP_BASE ?>' + responseJSON.file + '?dummy=' + d.getTime()).show();
+    										$('.avatar').attr('src', '<?php echo APP_BASE ?>' + responseJSON.file + '?dummy=' + d.getTime()).show();
+											$("#profile_image_add").val("1");
+											$("#fileuploads").val("0");
+										}
+										$('#btnsubmit, #btnsubmit_and_close').removeAttr("disabled");
+									},
+									onSubmit: function(id, fileName){
+										
+										if ( ! checkclientchanged()) {
+											return false;
+										}
+										
+										$('#btnsubmit, #btnsubmit_and_close').attr("disabled", "true");
+										//uploader.params
+										//$("#profile_image_add").val("1");
+										//$("#fileuploads").val("0");								 
+									},
+								}
+								
+							});
+						</script>		
+												
+							
+							<input type="hidden" name="profile_image_add" id="profile_image_add" value="0"/>
+		
+							
+						 </td>
+					</tr>
+				</table>
+				</div>
+		
+		
+		
+		
+		<div class="info">
+			<div class="username">
+				<h2><?php echo $this->first_name ?> <?php echo $this->last_name ?></h2><span><?php if($this->birthdate !='') echo "(".$this->birthdate.")"; ?></span>
+			</div>
+		
+			<ul class="status">
+				<li>
+					<span class="fieldname"><?php echo $this->translate('vw_primary_status') ?>:</span>
+					<span class="value">			
+						<?php if (!empty($this->pri_status_array)): ?>
+						<?php foreach ($this->pri_status_array as $k_status => $v_status): ?>
+							<?php if ($v_status['id'] != 'n'): ?>
+								<?php if(in_array($v_status['id'], $this->selected_statuses)):  ?> <?php echo $v_status['status']; ?> <?php endif;  ?>
+							<?php endif; ?>
+						<?php endforeach; ?>
+						<?php endif; ?>
+					</span>
+				</li> 
+				
+				
+				<?php if ( !empty( $this->selected_statuses ) && !empty($this->status_array)): ?>
+					<li>
+						<span class="fieldname"><?php echo $this->translate('status') ?>:</span>
+						<span class="value">
+							<?php if (!empty($this->status_array)): ?>
+								<?php foreach ($this->status_array as $k_status => $v_status): ?>
+									<?php if(in_array($k_status, $this->selected_statuses)):  ?><?php echo $v_status; ?>, <?php endif;  ?>
+								<?php endforeach; ?>
+							<?php endif; ?>
+						</span>
+					</li>
+				<?php endif; ?>
+			</ul>
+			
+			<ul class="contact">
+				<?php if($this->street !='' || $this->zip !='' || $this->city !=''):?>
+				<li class="location"><?php if($this->street !='') echo $this->street; ?> <?php if($this->zip !='') echo " ".$this->zip; ?> <?php if($this->city !='') echo " ".$this->city ?> </li>
+				<?php endif;?>
+				
+				<?php if($this->phone != '' ): ?>
+				<li class="phone"><?php  echo $this->phone; ?></li>
+				<?php endif; ?>
+				
+				<?php if($this->mobile != '' ): ?>
+				<li class="mobile"><?php  echo $this->mobile; ?></li>
+				<?php endif; ?>
+				
+			</ul>
+		</div>
+		
+			<div class="icons">
+				<?php if ( count($this->custom_icon_details) > 0 ) : ?>
+				<?php foreach($this->vw_icons_details as $k_pat_icon => $v_pat_icon): ?>
+					<div class="patient_icon_cell custom_icon_assigned" style="background:#<?php echo $v_pat_icon['color']; ?>" id="assigned_custom_icon-<?php echo $v_pat_icon['id']; ?>" title="<?php echo $v_pat_icon['name']; ?>">
+						<?php if(!empty($v_pat_icon['image'])): ?>
+							<img src="<?php echo APP_BASE . 'icons_system/' . $v_pat_icon['image']; ?>" title="<?php echo $this->translate($v_pat_icon['name']); ?>" />
+						<?php else: ?>
+						&nbsp;
+						<?php endif; ?>
+					</div>
+				<?php endforeach; ?>
+				<div class="patient_icon_cell fixed"> <a href="javascript:void(0);" id="assign_custom_icon" > <img src="<?php echo APP_BASE . 'images/btttt_plus.png' ?>" title="<?php echo $this->translate('assign_custom_icon'); ?>" /> </a></div>
+				<?php endif; ?>
+		
+				<div class="icons_block">
+					<div id="available_custom_icons" style="display:none;">
+						<?php foreach($this->custom_icon_details as $k_cust_icon_det => $v_cust_icon_det): ?>
+							<div class="patient_icon_cell available" style="<?php if($v_cust_icon_det['visible'] == '0'): ?>display:none; <?php endif; ?>background:#<?php echo $v_cust_icon_det['color']; ?>" rel="<?php echo $v_cust_icon_det['id']; ?>" id="available_custom_icon-<?php echo $v_cust_icon_det['id']; ?>" title="<?php echo $v_cust_icon_det['name']; ?>">
+								<?php if(!empty($v_cust_icon_det['image'])): ?>
+									<img src="<?php echo APP_BASE . 'icons_system/' . $v_cust_icon_det['image']; ?>" />
+								<?php else: ?>
+									<p> &nbsp; </p>
+								<?php endif; ?>
+							</div>
+						<?php endforeach; ?>
+					</div>
+				</div>
+		</div>
+	</div>
+
+
+<div id="familydoctorlist_translateDiv" class="add">
+	<ul id="FamDrli_ul">
+		<li id="FamDrli_ul_li" class="back_list">
+			<a href="voluntaryworkers/workersdetailslist">&laquo; <?php echo $this->translate('voluntary_workers_list') ?></a>
+		</li>
+	</ul>
+</div>
+<? if($show_old == 1) :?>
+<div class="vw_header">
+	<table class="datatable">
+		<tr>
+			<td class="header_label" width="100px">Name</td>
+			<td width="25%"><b><?php echo $this->last_name ?>, <?php echo $this->first_name ?></b></td>
+			
+			<td width="100px"><?php echo $this->translate('vw_address') ?></td>		
+			<td width="30%">
+				<b>
+				<?php if($this->street !='') echo $this->street; ?>
+				<!--  <?php if($this->zip !='') echo ", ".$this->zip; ?>
+				<?php if($this->city !='') echo "<br>".$this->city ?> -->
+				<?php if($this->zip !='') echo "<br>".$this->zip; ?>
+				<?php if($this->city !='') echo " ".$this->city ?>
+				</b>	
+			</td>
+			<td rowspan="3" width="100px" style="vertical-align: middle;">
+				<!-- profile image -->
+				<?php if(strlen($this->img_path)>0){ ?>
+					<?php $img_file = 'icons_system/'.trim($this->img_path);?>
+					<!--<img src="<?php echo $img_file; ?>" style="width:100px;"/> -->
+					<?php if( file_exists($img_file)) {?>
+						<img src="<?php echo APP_BASE .$img_file.'?='.date('ymdhis') ?>"  style="width:100px;"/>
+					<?php } else { ?>
+						<img src="<?php echo APP_BASE .'images/no_profile_img.png'; ?>"  style="width:100px;"/>
+					<?php } ?>
+				<?php } else {?>
+					<img src="<?php echo APP_BASE .'images/no_profile_img.png'; ?>"  style="width:100px;"/>
+				<?php } ?>
+			</td>
+		</tr>
+		<tr>
+			<td class="header_label"><?php echo $this->translate('birthd') ?></td>
+			<td><b><?php echo $this->birthdate ?></b></td>
+			
+			<td>
+				<?php if($this->phone != '' ) echo $this->translate('phone')."<br>"; ?>
+				<?php if($this->mobile != '' ) echo $this->translate('mobile'); ?>
+			</td>		
+			<td>
+				<b><?php if($this->phone != '' ) echo $this->phone."<br>"; ?>
+				<?php if($this->mobile != '' )echo $this->mobile; ?>
+				</b>
+			</td>		
+		</tr>
+		<tr>
+			<td class="header_label"><?php echo $this->translate('primary_status') ?></td>
+			<td>
+				<?php if (!empty($this->pri_status_array)): ?>
+				<?php foreach ($this->pri_status_array as $k_status => $v_status): ?>
+					<?php if ($v_status['id'] != 'n'): ?>
+						<?php if(in_array($v_status['id'], $this->selected_statuses)):  ?> <?php echo $v_status['status']; ?> <?php endif;  ?>
+					<?php endif; ?>
+				<?php endforeach; ?>
+				<?php endif; ?>
+			</td>
+			
+			<td class="header_label"><?php echo $this->translate('status') ?></td>
+					
+			<td>
+				<?php if (!empty($this->status_array)): ?>
+					<?php foreach ($this->status_array as $k_status => $v_status): ?>
+					<!-- ISPC-2054(update secondary statuses by client) -->
+						<!-- <?php if ($v_status['id'] != 'n'): ?>
+							<?php if(in_array($v_status['id'], $this->selected_statuses)):  ?><?php echo $v_status['status']; ?>, <?php endif;  ?> 
+						<?php endif; ?> -->
+						<?php if(in_array($k_status, $this->selected_statuses)):  ?><?php echo $v_status; ?>, <?php endif;  ?>
+					<?php endforeach; ?>
+				<?php endif; ?>
+			</td>		
+		</tr>
+		<?php if ( count($this->custom_icon_details) > 0 ) : ?>
+		<tr>
+			<td>
+				Icons
+			</td>
+			<td colspan="4">
+				<?php foreach($this->vw_icons_details as $k_pat_icon => $v_pat_icon): ?>
+					<div class="patient_icon_cell custom_icon_assigned" style="background:#<?php echo $v_pat_icon['color']; ?>" id="assigned_custom_icon-<?php echo $v_pat_icon['id']; ?>" title="<?php echo $v_pat_icon['name']; ?>">
+						<?php if(!empty($v_pat_icon['image'])): ?>
+							<img src="<?php echo APP_BASE . 'icons_system/' . $v_pat_icon['image']; ?>" title="<?php echo $this->translate($v_pat_icon['name']); ?>" />
+						<?php else: ?>
+						&nbsp;
+						<?php endif; ?>
+					</div>
+				<?php endforeach; ?>
+				<div class="patient_icon_cell fixed"> <a href="javascript:void(0);" id="assign_custom_icon" > <img src="<?php echo APP_BASE . 'images/btttt_plus.png' ?>" title="<?php echo $this->translate('assign_custom_icon'); ?>" /> </a></div>
+			</td>
+		</tr>
+		<?php endif; ?>
+	</table>
+<div class="icons_block">
+<div id="available_custom_icons" style="display:none;">
+<?php foreach($this->custom_icon_details as $k_cust_icon_det => $v_cust_icon_det): ?>
+
+							<div class="patient_icon_cell available" style="<?php if($v_cust_icon_det['visible'] == '0'): ?>display:none; <?php endif; ?>background:#<?php echo $v_cust_icon_det['color']; ?>" rel="<?php echo $v_cust_icon_det['id']; ?>" id="available_custom_icon-<?php echo $v_cust_icon_det['id']; ?>" title="<?php echo $v_cust_icon_det['name']; ?>">
+												<?php if(!empty($v_cust_icon_det['image'])): ?>
+									<img src="<?php echo APP_BASE . 'icons_system/' . $v_cust_icon_det['image']; ?>" />
+												<?php else: ?>
+									<p> &nbsp; </p>
+		<?php endif; ?>
+							</div>
+
+	<?php endforeach; ?>
+</div>
+</div>
+
+</div>
+<?php endif; ?>
+
+<?php endif; ?>
+
+
+
+<div id="addfamilydoctor_Msgerror" class="err"><?php echo $this->error_message ?></div>
+
+<!-- 
+<span class="span_page_title">Ehrenamtlicher / Koordinator: <b><?php echo $this->first_name ?> <?php echo $this->last_name ?></b></span>
+ -->
+
+<?php $voluntary_worker_history = $this->voluntary_worker_history;?>
+<div class="tab_container" >
+	<div>
+		<div id="tabs">
+			<ul>
+				<li><a href="#tabs-1">Hospizverein</a></li>
+				<li><a href="#tabs-2">pers. Daten</a></li>
+				<li><a href="#tabs-8">Bankverbindung</a></li>
+				<li><a href="#tabs-3">Verfügbarkeit</a></li>
+				<li><a href="#tabs-4">Fortbildungen</a></li>
+				<li><a href="#tabs-5">Patienten</a></li>
+				<li><a href="#tabs-6"><?php echo $this->translate('status_color');?></a></li>
+				<li><a href="#tabs-7"><?php echo $this->translate('vw_course');?></a></li>
+			</ul>
+
+<!-- 			####################################### -->
+<!-- 			############## TAB 1 ################## -->
+<!-- 			####################################### -->
+
+			<div id="tabs-1">
+				<div class="tcontainer">
+
+					<div class="form_row_vw">
+						<label><?php echo $this->translate('hospice_association') ?></label>
+						<div class="form_row_inpt">
+						<select name="hospice_association" class="hospice_association">
+							<option value="0"><?php echo $this->translate('select') ?></option>
+							<?php if (!empty($this->h_associations)): ?>
+								<?php foreach ($this->h_associations as $assoc): ?>
+									<option value="<?php echo $assoc['id']; ?>" <?php if ($this->hospice_association == $assoc['id']) : ?> selected="selected" <?php endif; ?> ><?php echo $assoc['name']; ?></option>
+								<?php endforeach; ?>
+							<?php endif; ?>
+						</select>
+						</div>
+					</div>
+				
+					<div class="form_row_vw">
+				 		<label><?php echo $this->translate('vw_primary_status'); ?></label>
+				 		<div class="form_row_inpt">
+							<?php if (!empty($this->pri_status_array)): ?>
+								<ul class="voluntaryworkers_p_statuses">
+									<?php foreach ($this->pri_status_array as $k_status => $v_status): ?>
+										<?php if ($v_status['id'] != 'n'): ?>
+											<li class="voluntaryworkers_p_statuses_li">
+												<input type="radio" name="primary_status" value="<?php echo $v_status['id']; ?>" id="primary_status_<?php echo $v_status['id']; ?>"  <?php if(in_array($v_status['id'], $this->selected_statuses)):  ?>checked="checked"<?php endif;  ?>  />
+												<label for="primary_status_<?php echo $v_status['id']; ?>"><?php echo $v_status['status']; ?></label>
+											</li>
+											<?php if ($k_status % 1 == '0'): ?>
+											</ul>
+											<ul class="voluntaryworkers_p_statuses">
+											<?php endif; ?>
+											
+										<?php endif; ?>
+									<?php endforeach; ?>
+								</ul>
+							<?php endif; ?>
+						</div>
+					</div>
+				
+				
+					<div class="form_row_vw">
+				 		<label><?php echo $this->translate('primary_status list')?></label>
+				 		<div class="form_row_inpt">
+							<?php echo $this->formSelect("co_koordinator", $this->co_koordinator, null, $this->koordinators_array  ); ?>
+						</div>
+					</div>
+				
+				
+					<div class="form_row_vw">
+						<label><?php echo $this->translate('status') ?></label>
+						<div class="form_row_inpt">
+						<!-- ISPC-2054(update secondary statuses by client) -->
+						<?php  $sel_box = $this->formSelect(
+										"status[]", 
+										$this->selected_statuses, // in initial form
+										array(
+											//"id" => "id",
+											//"rel" => $cntr,
+											"class" => "cf_selectbox",
+											"multiple" => true,
+											"size" => 1,
+											//"disable" => $this->patient_contact_forms_disabled,
+											//"onchange" => "populate_symptoms(this);"
+											),
+											$this->status_array
+								);
+
+							echo $sel_box;
+						?>
+						
+							<!-- <?php if (!empty($this->status_array)): ?>
+								<ul class="voluntaryworkers_statuses">
+									<?php foreach ($this->status_array as $k_status => $v_status): ?>
+										<?php if ($v_status['id'] != 'n'): ?>
+											<li class="voluntaryworkers_statuses_li">
+												<input type="checkbox" name="status[]" value="<?php echo $v_status['id']; ?>" id="status_<?php echo $v_status['id']; ?>"  <?php if(in_array($v_status['id'], $this->selected_statuses)):  ?>checked="checked"<?php endif;  ?>  />
+												<label for="status_<?php echo $v_status['id']; ?>"><?php echo $v_status['status']; ?></label>
+											</li>
+					
+											<?php if ($k_status % 4 == '0'): ?>
+											</ul>
+											<ul class="voluntaryworkers_statuses">
+											<?php endif; ?>
+					
+										<?php endif; ?>
+									<?php endforeach; ?>
+								</ul>
+							<?php endif; ?> -->
+						</div>
+					</div>
+				</div>
+				<div class="clearer"></div>
+			</div>
+			
+<!-- 			####################################### -->
+<!-- 			############## TAB 2 ################## -->
+<!-- 			####################################### -->
+			
+			<div id="tabs-2">
+				<!-- upload image -->
+				 
+				
+				
+				<label for="salutation" id="lbl_salutation"><?php echo $this->translate('salutation'); ?></label>
+				<input type="text" name="salutation" id="salutation" tabindex="3" value="<?php echo $this->salutation; ?>">
+				<div id="addfamilydoctor_salutationOneerror" class="error"><?php echo $this->error_salutation ?></div><div class="clearer"></div>
+				
+				<label for="first_name" id="lbl_firstname"><?php echo $this->translate('firstname') ?></label>
+				<input type="text" name="first_name" id="first_name" tabindex="4" value="<?php echo $this->first_name ?>">
+				<div id="addfamilydoctor_firstNameerror" class="error"><?php echo $this->error_first_name ?></div><div class="clearer"></div>
+		
+				<label for="last_name" id="lbl_lastname"><?php echo $this->translate('lastname') ?></label>
+				<input type="text" name="last_name" tabindex="5" id="last_name" value="<?php echo $this->last_name ?>">
+				<div id="addfamilydoctor_lastNameerror" class="error"> <?php echo $this->error_last_name ?></div><div class="clearer"></div>
+
+				<label for="birthd" id="lbl_birthd"><?php echo $this->translate('birthd') ?></label>
+				<input type="text" name="birthdate" tabindex="5" id="birthdate" value="<?php echo $this->birthdate ?>">
+				<div id="addfamilydoctor_birthdeerror" class="error"> <?php echo $this->error_birthd ?></div><div class="clearer"></div>
+		
+				<label for="street1" id="lbl_street1"><?php echo $this->translate('street') ?></label>
+				<input type="text" name="street" id="street1" tabindex="6" value="<?php echo $this->street ?>">
+				<div id="addfamilydoctor_streetOneerror" class="error"><?php echo $this->error_street ?></div><div class="clearer"></div>
+		
+				<label for="zip" id="lbl_postcode"><?php echo $this->translate('postcode') ?></label>
+				<input type="text" name="zip" id="zip" tabindex="7" value="<?php echo $this->zip ?>">
+				<div id="addfamilydoctor_ziperror" class="error"> <?php echo $this->error_zip ?></div><div class="clearer"></div>
+		
+				<label for="city" id="lbl_city"><?php echo $this->translate('city') ?></label>
+				<input type="text" name="city" id="city" tabindex="8" value="<?php echo $this->city ?>">
+				<div id="addfamilydoctor_cityerror" class="error"> <?php echo $this->error_city ?></div><div class="clearer"></div>
+		
+		
+				<label for="phone_private" id="lbl_phone_private"><?php echo $this->translate('phone') ?></label>
+				<input type="text" name="phone" id="phone" tabindex="9" value="<?php echo $this->phone ?>">
+				<div id="addfamilydoctor_Privatephoneerror" class="error"> <?php echo $this->error_phone ?></div><div class="clearer"></div>
+		
+				<label for="phone_emergency" id="lbl_phone_private"><?php echo $this->translate('mobile') ?></label>
+				<input type="text" name="mobile" id="mobile" tabindex="10" value="<?php echo $this->mobile ?>">
+				<div id="addfamilydoctor_Privatephoneerror" class="error"> <?php echo $this->error_mobile ?></div><div class="clearer"></div>
+		
+				<label for="email" id="lbl_email" class="label_class100px"><?php echo $this->translate('email') ?></label>
+				<input type="text" name="email" id="email" tabindex="11" value="<?php echo $this->email ?>">
+				<div id="addfamilydoctor_emailerror" class="error"> <?php echo $this->error_email ?></div><div class="clearer"></div>
+		
+				<!-- New fields added  -->
+		
+				<label for="children" id="lbl_children" class="label_class100px"><?php echo $this->translate('children') ?></label>
+				<input type="text" name="children" id="children" tabindex="12" value="<?php echo $this->children ?>">
+				<div   class="error"> <?php echo $this->error_children ?></div><div class="clearer"></div>
+		
+		
+				<label for="profession" id="lbl_profession" class="label_class100px"><?php echo $this->translate('profession') ?></label>
+				<input type="text" name="profession" id="profession" tabindex="13"   class="input_style"  value="<?php echo $this->profession ?>">
+				<div  class="error"> <?php echo $this->error_profession ?></div><div class="clearer"></div>
+		
+				<label for="appellation" id="lbl_appellation" class="label_class100px"><?php echo $this->translate('appellation') ?></label>
+				<input type="text" name="appellation" id="appellation" tabindex="14" class="input_style" value="<?php echo $this->appellation ?>">
+				<div   class="error"> <?php echo $this->error_appellation ?></div><div class="clearer"></div>
+				
+				<!-- ISPC-2618 Carmen 30.07.2020 -->
+				<label for="linguistic_proficiency" id="lbl_linguistic_proficiency"><?php echo $this->translate('vw_linguistic_proficiency') ?></label>
+				<input type="text" name="linguistic_proficiency" id="linguistic_proficiency" tabindex="14" class="input_style" value="<?php echo $this->linguistic_proficiency ?>">
+				<div   class="error"> <?php echo $this->error_linguistic_proficiency ?></div><div class="clearer"></div>
+				<!-- // -->
+		
+				<label for="edication_hobbies" id="lbl_edication_hobbies" class="label_class100px"><?php echo $this->translate('edication_hobbies') ?></label>
+				<textarea name="edication_hobbies" id="edication_hobbies" cols="20" rows="5" tabindex="15"   class="text_blocks"><?php echo $this->edication_hobbies ?></textarea>
+				<div   class="error"> <?php echo $this->error_edication_hobbies ?></div><div class="clearer"></div>
+		
+		
+				<label for="special_skils" id="lbl_special_skils" class="label_class100px"><?php echo $this->translate('special_skils') ?></label>
+				<textarea name="special_skils" id="special_skils" cols="20" rows="5" tabindex="16"  class="text_blocks" ><?php echo $this->special_skils ?></textarea>
+				<div  class="error"> <?php echo $this->error_special_skils ?></div><div class="clearer"></div>
+				
+				<!-- ISPC-2618 Carmen 30.07.2020 -->
+				<label for="limitations_uncertainties" id="lbl_limitations_uncertainties"><?php echo $this->translate('vw_limitations_uncertainties') ?></label>
+				<input type="text" name="limitations_uncertainties" id="limitations_uncertainties" tabindex="16" class="input_style" value="<?php echo $this->limitations_uncertainties ?>">
+				<div   class="error"> <?php echo $this->error_limitations_uncertainties ?></div><div class="clearer"></div>
+				<!-- // -->
+
+<!-- -ISPC-2401 3)- -->
+			<label for="fdcomments" id="lbl_fdcomments"><?php echo $this->translate('comment') ?></label>
+				<textarea name="comments" id="fdcomments" cols="45" rows="7" tabindex="17" class="mceEditor defaultSkin"><?php  echo $this->comments ?></textarea>
+				<div id="addfamilydoctor_commentserror" class="error"> <?php echo $this->error_comments ?></div><div class="clearer"></div>
+				
+				<!-- ISPC-2618 Carmen 30.07.2020 -->
+				<div class="measles_vaccination_block">
+					<label class="label_class100px"><?php echo $this->translate("vw_measles_vaccination")?></label>
+					<div class="cert_r">
+						<input type="radio" class="measles_vaccination_radio" name="measles_vaccination" value="1"  id="measles_vaccination1" <?php if($this->measles_vaccination == "1"): ?>  checked="checked" <?php endif;?> />
+						<label>Nein</label>
+						<input type="radio" class="measles_vaccination_radio"  name="measles_vaccination" value="2"  id="measles_vaccination2" <?php if($this->measles_vaccination == "2"): ?>  checked="checked" <?php endif;?> />
+						<label>Ja</label>
+					</div>
+				</div>				
+				<div class="clearer"></div>
+				
+				<div class="received_certificate_block">
+					<label class="label_class100px"><?php echo $this->translate("vw_received_certificate")?></label>
+					<div class="cert_r">
+						<input type="radio" class="received_certificate_radio" name="received_certificate" value="1"  id="received_certificate1" <?php if($this->received_certificate == "1"): ?>  checked="checked" <?php endif;?> />
+						<label>Nein</label>
+						<input type="radio" class="received_certificate_radio"  name="received_certificate" value="2"  id="received_certificate2" <?php if($this->received_certificate == "2"): ?>  checked="checked" <?php endif;?> />
+						<label>Ja</label>
+						<div class="received_certificate_date_div <?php if($this->received_certificate == "2"): ?>  force_display <?php endif;?>"" >
+						<label class="label_class100px"><?php echo $this->translate("vw_received_certificate_date")?></label>
+						<input type="text" name="received_certificate_date" class="received_certificate_date" value="<?php echo $this->received_certificate_date; ?>" />
+						</div>
+					</div>
+				</div>				
+				<div class="clearer"></div>
+				
+				<label for="course_management" id="lbl_course_management"><?php echo $this->translate('vw_course_management') ?></label>
+				<input type="text" name="course_management" id="course_management" tabindex="16" class="input_style" value="<?php echo $this->course_management ?>">
+				<div   class="error"> <?php echo $this->error_course_management ?></div><div class="clearer"></div>
+				
+				<label for="conversation_leader" id="lbl_conversation_leader"><?php echo $this->translate('vw_conversation_leader') ?></label>
+				<input type="text" name="conversation_leader" id="conversation_leader" tabindex="16" class="input_style" value="<?php echo $this->conversation_leader ?>">
+				<div   class="error"> <?php echo $this->error_conversation_leader ?></div><div class="clearer"></div>
+				<!-- // -->
+								
+				<div class="certificate_block">
+					<label class="label_class100px"><?php echo $this->translate("Certificate")?></label>
+					<div class="cert_r">
+						<input type="radio" class="gc_certificate_radio" name="gc_certificate" value="1"  id="gc_certificate1" <?php if($this->gc_certificate == "1"): ?>  checked="checked" <?php endif;?> />
+						<label>Nein</label>
+						<input type="radio" class="gc_certificate_radio"  name="gc_certificate" value="2"  id="gc_certificate2" <?php if($this->gc_certificate == "2"): ?>  checked="checked" <?php endif;?> />
+						<label>Ja</label>
+						<div class="gc_certificate_date_div <?php if($this->gc_certificate == "2"): ?>  force_display <?php endif;?>"" >
+						<input type="text" name="gc_certificate_date" class="gc_certificate_date" value="<?php echo $this->gc_certificate_date; ?>" />
+						</div>
+					</div>
+				</div>				
+				<div class="clearer"></div>
+				
+				<!-- ISPC-2618 Carmen 30.07.2020 -->
+				<label for="gc_entry" id="lbl_gc_entry"><?php echo $this->translate('vw_gc_entry') ?></label>
+				<input type="text" name="gc_entry" id="gc_entry" tabindex="18" class="input_style" value="<?php echo $this->gc_entry ?>">
+				<div   class="error"> <?php echo $this->error_gc_entry ?></div><div class="clearer"></div>
+				
+				<label for="gc_checked_by" id="lbl_gc_checked_by"><?php echo $this->translate('vw_gc_checked_by') ?></label>
+				<input type="text" name="gc_checked_by" id="gc_checked_by" tabindex="19" class="input_style" value="<?php echo $this->gc_checked_by ?>">
+				<div   class="error"> <?php echo $this->error_gc_checked_by ?></div><div class="clearer"></div>
+				<!-- // -->
+				
+				<!-- ISPC-2618 Carmen 28.07.2020 -->
+				<div class="confidentiality_block">
+					<label class="label_class100px"><?php echo $this->translate("vw_confidentiality")?></label>
+					<div class="cert_r">
+						<input type="radio" class="confidentiality_radio" name="confidentiality" value="1"  id="confidentiality1" <?php if($this->confidentiality == "1"): ?>  checked="checked" <?php endif;?> />
+						<label>Nein</label>
+						<input type="radio" class="confidentiality_radio"  name="confidentiality" value="2"  id="confidentiality2" <?php if($this->confidentiality == "2"): ?>  checked="checked" <?php endif;?> />
+						<label>Ja</label>
+					</div>
+				</div>				
+				<div class="clearer"></div>
+				
+				<div class="health_aptitude_block">
+					<label class="label_class100px"><?php echo $this->translate("vw_health_aptitude")?></label>
+					<div class="cert_r">
+						<input type="radio" class="health_aptitude_radio" name="health_aptitude" value="1"  id="health_aptitude1" <?php if($this->health_aptitude == "1"): ?>  checked="checked" <?php endif;?> />
+						<label>Nein</label>
+						<input type="radio" class="health_aptitude_radio"  name="health_aptitude" value="2"  id="health_aptitude2" <?php if($this->health_aptitude == "2"): ?>  checked="checked" <?php endif;?> />
+						<label>Ja</label>
+					</div>
+				</div>				
+				<div class="clearer"></div>
+				
+				<div class="activity_agreement_block">
+					<label class="label_class100px"><?php echo $this->translate("vw_activity_agreement")?></label>
+					<div class="cert_r">
+						<input type="radio" class="activity_agreement_radio" name="activity_agreement" value="1"  id="gc_certificate1" <?php if($this->activity_agreement == "1"): ?>  checked="checked" <?php endif;?> />
+						<label>Nein</label>
+						<input type="radio" class="activity_agreement_radio"  name="activity_agreement" value="2"  id="gc_certificate2" <?php if($this->activity_agreement == "2"): ?>  checked="checked" <?php endif;?> />
+						<label>Ja</label>
+					</div>
+				</div>				
+				<div class="clearer"></div>
+				
+				<div class="photo_permission_block">
+					<label class="label_class100px"><?php echo $this->translate("vw_photo_permission")?></label>
+					<div class="cert_r">
+						<input type="radio" class="photo_permission_radio" name="photo_permission" value="1"  id="photo_permission1" <?php if($this->photo_permission == "1"): ?>  checked="checked" <?php endif;?> />
+						<label>Nein</label>
+						<input type="radio" class="photo_permission_radio"  name="photo_permission" value="2"  id="photo_permission2" <?php if($this->photo_permission == "2"): ?>  checked="checked" <?php endif;?> />
+						<label>Ja</label>
+					</div>
+				</div>				
+				<div class="clearer"></div>
+				
+				
+				<!-- // -->
+				
+				<label for="engagement_date" id="lbl_engagement_date" class="label_class100px"><?php echo $this->translate('engagement_date') ?></label>
+				<input type="text" name="engagement_date" tabindex="5" id="engagement_date"  value="<?php echo $this->engagement_date ?>">
+				<div id="addfamilydoctor_engagement_dateeerror" class="error"> <?php echo $this->error_engagement_date; ?></div><div class="clearer"></div>
+		
+				
+			</div>
+			
+			<!-- ISPC-2618 Carmen 30.07.2020 -->
+			<!-- 			####################################### -->
+			<!-- 			############## TAB 8 ################## -->
+			<!-- 			####################################### -->	
+			
+			<div id="tabs-8">
+				<label for="bank_name" id="lbl_bank_name"><?php echo $this->translate('Bank Name'); ?></label>
+				<input type="text" name="bank_name" id="bank_name" tabindex="12" value="<?php echo $this->bank_name; ?>">
+				<div class="error"><?php echo $this->error_bank_name ?></div><div class="clearer"></div>
+				
+				<label for="iban" id="lbl_iban"><?php echo $this->translate('IBAN'); ?></label>
+				<input type="text" name="iban" id="iban" tabindex="13" value="<?php echo $this->iban; ?>">
+				<div  class="error"><?php echo $this->error_iban ?></div><div class="clearer"></div>
+				
+				<label for="bic" id="lbl_bic"><?php echo $this->translate('BIC') ?></label>
+				<input type="text" name="bic" id="bic" tabindex="14" value="<?php echo $this->bic ?>">
+				<div class="error"><?php echo $this->error_bic ?></div><div class="clearer"></div>
+		
+				<label for="account_holder" id="lbl_account_holder"><?php echo $this->translate('account_holder') ?></label>
+				<input type="text" name="account_holder" tabindex="15" id="account_holder" value="<?php echo $this->account_holder ?>">
+				<div class="error"> <?php echo $this->error_account_holder ?></div><div class="clearer"></div>
+				
+			</div>
+			<!-- // -->
+
+<!-- 			####################################### -->
+<!-- 			############## TAB 3 ################## -->
+<!-- 			####################################### -->			
+			
+			<div id="tabs-3">
+				<div class="availability_block">
+				<?php 
+					$week_days_array = array('1'=>'Monday','2'=>'Tuesday','3'=>'Wednesday','4'=>'Thursday','5'=>'Friday','6'=>'Saturday','7'=>'Sunday');
+					$work_periods = array("morning","afternoon","evening","night","allday");
+				?>	
+					<div class="working_data_block">
+						<table>
+							<thead>
+								
+								<tr>
+									<th rowspan="2"><?php echo $this->translate('th_working_day')?></th>
+								</tr>
+								<tr>
+									<th><?php echo $this->translate('morning')?></th>
+									<th><?php echo $this->translate('afternoon')?></th>
+									<th><?php echo $this->translate('evening')?></th>
+									<th><?php echo $this->translate('night')?></th>
+									<th><?php echo $this->translate('all day')?></th>
+								</tr>
+							</thead>
+							<tbody>
+								<?php for($i=1; $i<=7; $i++ ):?>
+										<tr>
+											<th class="wd_label_th">
+												<?php echo $this->translate($week_days_array[$i]); ?>
+											</th>
+											<td>
+												<input type="checkbox" name="availability[<?php echo $i?>][morning]" value="1" rel="<?php echo $i;?>"   <?php if($this->availability_scheduled[$i]['morning']==1){ echo 'checked="checked"';}?> />
+											</td>
+											<td>
+												<input type="checkbox" name="availability[<?php echo $i?>][afternoon]" value="1" rel="<?php echo $i;?>"   <?php if($this->availability_scheduled[$i]['afternoon']==1){ echo 'checked="checked"';}?> />
+											</td>
+											<td>
+												<input type="checkbox" name="availability[<?php echo $i?>][evening]" value="1" rel="<?php echo $i;?>"   <?php if($this->availability_scheduled[$i]['evening']==1){ echo 'checked="checked"';}?> />
+											</td>
+											<td>
+												<input type="checkbox" name="availability[<?php echo $i?>][night]" value="1" rel="<?php echo $i;?>"  <?php if($this->availability_scheduled[$i]['night']==1){ echo 'checked="checked"';}?> />
+											</td>
+											<td>
+												<input type="checkbox" name="availability[<?php echo $i?>][allday]" value="1" rel="<?php echo $i;?>"   <?php if($this->availability_scheduled[$i]['allday']==1){ echo 'checked="checked"';}?> />
+											</td>
+										</tr>	
+								<?php endfor;?>
+							</tbody>
+			 			</table>
+					</div>
+			   </div>		
+			   	
+
+				<br/>
+				<div>
+					<label for="comments_availability" id="lbl_email"><?php echo $this->translate('vw_availability comment') ?></label>
+					<?php echo $this->formTextarea('comments_availability', $this->comments_availability, array("rows"=>4)); ?>
+					<div class="clearer"></div>
+				</div>
+				
+				
+				<div class="has_car_block">
+					<label for="has_car" id="lbl_has_car"><?php echo $this->translate('has_car') ?></label>
+					<select name="has_car" id="has_car" tabindex="16">
+						<option value="0" <?php if($this->has_car == 0):?> selected="selected" <?php endif; ?> >...</option>
+						<option value="1" <?php if($this->has_car == 1):?> selected="selected" <?php endif; ?> >Ja</option>
+						<option value="2" <?php if($this->has_car == 2):?> selected="selected" <?php endif; ?> >Nein</option>
+					</select>
+					<div class="error"> <?php echo $this->error_has_car ?></div><div class="clearer"></div>
+				</div>
+			   	
+			   			
+				<div class="visibility_links">
+					<a href="javascript:void(0)" id="show_old_table"><?php echo $this->translate("Click to see old table")?></a>
+					<a href="javascript:void(0)" id="hide_old_table" style="display: none;"><?php echo $this->translate("Click to hide old table")?></a>
+				</div>
+				<div class="availability_block_old" style="display: none;">
+				
+				<h1>II.</h1>
+			   <div class="availability_block"  >
+					<?php $week_days_array = array('1'=>'Monday','2'=>'Tuesday','3'=>'Wednesday','4'=>'Thursday','5'=>'Friday','6'=>'Saturday','7'=>'Sunday');?>	
+					<div class="working_data_block">
+						<table>
+							<thead>
+								<tr>
+									<th rowspan="2"><?php echo $this->translate('th_working_day')?></th>
+									<th colspan="3"><?php echo $this->translate('th_working_hours')?></th>
+								</tr>
+								
+								<tr>
+									<th><?php echo $this->translate('working_hours_from')?></th>
+									<th><?php echo $this->translate('working_hours_till')?></th>
+									<th><?php echo $this->translate('day')?></th>
+								</tr>
+							</thead>
+							<tbody>
+								<?php for($i=1; $i<=7; $i++ ):?>
+									<?php if($this->availability[$i]) : ?>
+										<?php foreach($this->availability[$i] as $day_intervals): ?>
+											<tr>
+												<th class="wd_label_th">
+													<?php echo $this->translate($week_days_array[$i]); ?>
+												</th>
+												<td>
+													<input type="text"  disabled="disabled" name="availability[<?php echo $i?>][from]" id="timeinput_start_<?php echo $i;?>" value="<?php  if($day_intervals['allday']!=1) echo date('H:i',strtotime($day_intervals['start_time']))?>" class="wd_time" />
+												</td>
+												<td>
+													<input type="text" name="availability[<?php echo $i?>][till]"  id="timeinput_end_<?php echo $i;?>" value="<?php  if($day_intervals['allday']!=1) echo date('H:i',strtotime($day_intervals['end_time']))?>" class="wd_time" />
+												</td>
+												<td>
+													<input type="checkbox"  disabled="disabled" name="availability[<?php echo $i?>][allday]" id="timeinput_cb_<?php echo $i;?>" value="1" rel="<?php echo $i;?>" class="timeinput_cb" <?php if($day_intervals['allday']==1){ echo 'checked="checked"';}?> />
+												</td>
+											</tr>	
+										<?php endforeach; ?>
+									<?php else: ?>
+										<tr>
+											<th class="wd_label_th">
+												<?php echo $this->translate($week_days_array[$i]); ?>
+											</th>
+											<td>
+												<input type="text"  disabled="disabled" name="availability[<?php echo $i?>][from]" id="timeinput_start_<?php echo $i;?>"  value="" class="wd_time" />
+											</td>
+											<td>
+												<input type="text"  disabled="disabled"  name="availability[<?php echo $i?>][till]" id="timeinput_end_<?php echo $i;?>" value="" class="wd_time" />
+											</td>
+											<td>
+												<input type="checkbox"  disabled="disabled" name="availability[<?php echo $i?>][allday]" id="timeinput_cb_<?php echo $i;?>" value="1" rel="<?php echo $i;?>" class="timeinput_cb" />
+											</td>
+										</tr>	
+										<?php endif;?>	
+								<?php endfor;?>
+							</tbody>
+			 			</table>
+					</div>
+	
+				
+				</div>
+				
+		
+				<h1>I.</h1>
+					<label for="phone_emergency" id="lbl_working_week_days"><?php echo $this->translate('working_week_days') ?></label>
+					<table width="70%"   >
+						<tr>
+							<td>
+					<table border="1" width="100%" cellpadding="10" cellspacing="10" class="working_hours" >
+						<tr>
+							<td><input type="checkbox" id="mon" name="working_week_days[]" value="mon"  disabled="disabled" tabindex="16"   <?php if(in_array('mon',$this->working_week_days)):?> checked="checked"  <?php endif;?>  />&nbsp;<label  for="mon"><?php echo $this->translate('Monday'); ?></label></td>
+			 
+							<td><input type="checkbox" id="tue" name="working_week_days[]" value="tue"   disabled="disabled" <?php if(in_array('tue',$this->working_week_days)):?> checked="checked"  <?php endif;?> />&nbsp;<label for="tue"><?php echo $this->translate('Tuesday'); ?></label></td>
+			 
+							<td><input type="checkbox" id="wed" name="working_week_days[]" value="wed"   disabled="disabled" <?php if(in_array('wed',$this->working_week_days)):?> checked="checked"  <?php endif;?> />&nbsp;<label for="wed"><?php echo $this->translate('Wednesday'); ?></label></td>
+			 
+							<td><input type="checkbox" id="thu" name="working_week_days[]" value="thu"  disabled="disabled" <?php if(in_array('thu',$this->working_week_days)):?> checked="checked"  <?php endif;?>  />&nbsp;<label for="thu"><?php echo $this->translate('Thursday'); ?></label></td>
+			 
+							<td><input type="checkbox" id="fri"  name="working_week_days[]" value="fri"  disabled="disabled" <?php if(in_array('fri',$this->working_week_days)):?> checked="checked"  <?php endif;?> />&nbsp;<label  for="fri" ><?php echo $this->translate('Friday'); ?></label></td>
+				 
+							<td><input type="checkbox" id="sat"  name="working_week_days[]" value="sat"  disabled="disabled" <?php if(in_array('sat',$this->working_week_days)):?> checked="checked"  <?php endif;?>  />&nbsp;<label  for="sat" ><?php echo $this->translate('Saturday'); ?></label></td>
+			 
+							<td><input type="checkbox" id="sun" name="working_week_days[]" value="sun"  disabled="disabled" <?php if(in_array('sun',$this->working_week_days)):?> checked="checked"  <?php endif;?>  />&nbsp;<label  for="sun" ><?php echo $this->translate('Sunday'); ?></label></td>
+						</tr>			
+					</table>
+					</td>
+					</tr>
+					</table>
+					<div class="clearer"></div>
+	
+					<label for="working_hours" id="lbl_working_hours"><?php echo $this->translate('working_hours') ?></label>
+					<table width="70%" border="0" >
+						<tr>
+							<td>
+								<table border="1" width="100%" cellpadding="10" cellspacing="10" class="working_hours" > 
+									<tr>
+									<?php for ($i=0; $i<=23; $i++):?>
+										<?php if($i!= 0 && is_int($i/8)): ?>
+										</tr><tr>
+										<?php endif; ?>
+										<?php $hour = str_pad($i, 2, "0", STR_PAD_LEFT);?>
+										<td><input type="checkbox" name="working_hours[]" id="<?php echo $hour; ?>" value="<?php echo $hour; ?>"  disabled="disabled" <?php if(in_array($hour,$this->working_hours)):?> checked="checked"  <?php endif;?>   />&nbsp;<label for="<?php echo str_pad($i, 2, "0", STR_PAD_LEFT); ?>"><?php echo str_pad($i, 2, "0", STR_PAD_LEFT); ?></label>&nbsp;</td>
+									<?php endfor; ?>
+									</tr>
+								</table>
+							</td>
+						</tr>
+					</table>
+					<div class="clearer"></div>
+				</div>
+		
+
+			</div>
+			
+<!-- 			####################################### -->
+<!-- 			############## TAB 4 ################## -->
+<!-- 			####################################### -->			
+			
+			<div id="tabs-4">
+<?php
+
+function return_bytes($val) {
+    $val = trim($val);
+    $last = strtolower($val[strlen($val)-1]);
+    switch($last) {
+        // The 'G' modifier is available since PHP 5.1.0
+        case 'g':
+            $val *= 1024;
+        case 'm':
+            $val *= 1024;
+        case 'k':
+            $val *= 1024;
+    }
+
+    return $val;
+}
+
+$upload_max_filesize = return_bytes(ini_get('upload_max_filesize'));
+
+?>			
+				<script type="text/template" id="qq-template_revisions">
+					<div class="qq-uploader-selector qq-uploader qq-uploader2" qq-drop-area-text="Drop files here">
+
+
+						<div class="qq-upload-drop-area-selector qq-upload-drop-area" qq-hide-dropzone>
+							<span class="qq-upload-drop-area-text-selector"></span>
+						</div>
+						
+						<div class="qq-upload-button-selector qq-upload-button qq-upload-button2">
+							<div><?php echo $this->translate('uploadafile'); ?></div>
+						</div>
+
+						<span class="qq-drop-processing-selector qq-drop-processing">
+							<span>Processing dropped files...</span>
+							<span class="qq-drop-processing-spinner-selector qq-drop-processing-spinner"></span>
+						</span>
+
+						<div class="qq-total-progress-bar-container-selector qq-total-progress-bar-container">
+							<div role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" class="qq-total-progress-bar-selector qq-progress-bar qq-total-progress-bar"></div>
+						</div>
+						
+						<ul class="qq-upload-list-selector qq-upload-list qq-upload-list2" aria-live="polite" aria-relevant="additions removals">
+							<li>
+								<div class="qq-progress-bar-container-selector">
+									<div role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" class="qq-progress-bar-selector qq-progress-bar"></div>
+								</div>
+
+								<img class="qq-thumbnail-selector" qq-max-size="100" qq-server-scale>
+
+
+							</li>
+						</ul>
+						
+
+
+					</div>
+				</script>			
+				<div class="upload_files_block">		
+					<b><?php echo $this->translate('vw_files'); ?></b>
+					<table width="85%" border="0" align="left" cellpadding="0" cellspacing="0"  id="listpatientfiles_contenttable">
+						<tr>
+							<th height="20" align="left" valign="top" width="15%"><strong><?php echo $this->translate('date'); ?></strong></th>
+							<th height="20" align="left" valign="top" width="50%"><strong><?php echo $this->translate('title'); ?></strong></th>
+							<th align="left" valign="top"  width="80px"><strong><?php echo $this->translate('filetype'); ?></strong></th>
+							<th align="left" valign="top"  width="120px"><strong><?php echo $this->translate('uploadby'); ?></strong></th>
+							<th align="left" valign="top" ><strong><?php echo $this->translate('deletes'); ?></strong></th>
+							<th><strong><?php echo $this->translate('revision'); ?></strong></th>
+						</tr>
+						<?php
+							$filetypearray = array("zip" => "zip.png", "msword" => "word.png", "vnd.openxmlformats-officedocument.wordprocessingml.document" => "word.png", "docx" => "word.png", "excel" => "excel.png", "xls" => "excel.png", "XLSX" => "excel.png", "vnd.openxmlformats-officedocument.spreadsheetml.sheet" => "excel.png", "pdf" => "pdf.png", "txt" => "text.png", "text" => "text.png", "plain" => "text.png", "vnd.ms-powerpoint" => "powerpoint.png", "vnd.openxmlformats-officedocument.presentationml.presentation" => "powerpoint.png", "jpeg" => "file-jpg.png", "jpg" => "file-jpg.png", "gif" => "file-gif.png");
+						?>
+						
+						<? if(strlen($this->img_path) > 0 && $_REQUEST['id']): ?>
+							<tr class="row <? if($event_files_master['tabname'] == "teamevent_custom"):?> custom_file <?endif;?>"> 
+								<td height="20" align="left" valign="top" class="event_date">
+									<?php if($this->create_date != "0000-00-00 00:00:00"):?>
+										<?php echo date("d.m.Y H:i", strtotime($this->create_date)); ?>
+									<?php elseif($this->change_date != "0000-00-00 00:00:00"):?>
+										<?php echo date("d.m.Y H:i", strtotime($this->change_date)); ?>
+									<?php else:?>
+										-
+									<?php endif;?>
+									<input type="hidden" name="img_path" value="<?php echo $this->img_path; ?>"/>
+									<input type="hidden" name="img_deleted" id="img_deleted" value="<?php echo $this->img_deleted; ?>"/>
+								</td>
+								<td height="20" align="left" valign="top" id="vw_img_name">
+									 
+									<?php 
+										if($this->img_deleted != 1){
+											echo '<a href="'.APP_BASE.'voluntaryworkers/vwfile?id='.$_REQUEST['id'].'&doc_id=0&is_image=1">' . $this->translate('Image') . '</a>';
+										} else {
+											echo '<strike>' . $this->translate('Image') . '</strike>'." - " . $this->translate('deleted');; 
+										}
+									 ?>
+								</td>
+								<td align="left" valign="top">
+									<?
+									    $extension = explode(".", $this->img_path);
+								    	$filetype = $extension[count($extension) - 1];
+									?>
+									<?php echo $filetype; ?>
+								</td>
+								<td align="left" valign="top"><?php echo $this->allusers[1]; ?></td>
+								<td align="left" valign="top" id="vw_img_delete">
+								<?php if($this->img_deleted != 1):?>
+									<a href="javascript:void(0)" class="delete_img" id="delete_img_<?php echo $k; ?>"><img src="<?php echo RES_FILE_PATH;  ?>/images/action_delete.png" /></a>
+
+								<?php else:?>
+									 - 
+								<?php endif;?>	
+								</td>
+								<td><!-- revision --></td>
+							</tr>
+						<?php endif; ?>
+						
+						
+						<?php foreach($this->event_files as $event_id => $event_files):?>
+							<?php foreach($event_files as $k_id => $event_files_master):
+								$master_filetype = strtoupper($event_files_master['file_type']);
+								$master_file_type = $filetypearray[$event_files_master['file_type']];
+								$allUsers = $this->allusers;
+							?>
+							<?php $event = '';
+							if($_REQUEST['id'])
+							{
+								$event = "id=".$_REQUEST['id'].'&';
+							}
+
+							if($event_files_master['isdeleted'] == 1):
+								$master_title = "<strike>" . $event_files_master['title'] . "</strike>";
+								$master_delete = " - ";
+								$master_prefix = " - " . $this->translate('deleted');
+							else:
+								$wrap = ''; if ( count($event_files_master["rev"]) >0) $wrap = "a_href_wrap"; 
+								$master_title = '<a class="'.$wrap.'" href="'.APP_BASE.'voluntaryworkers/vwfile?doc_id=' . $event_files_master['id']. '&tab='.$event_files_master['tabname'].'&is_image=0">' . $event_files_master['title'] . '</a>';
+								$master_delete = '<a href="javascript:void(0)" class="delete_file_row" rel="'.$event_files_master['id'].'"><img src="' . RES_FILE_PATH . '/images/action_delete.png" border="0" /></a>';
+								$master_prefix = "";
+							endif;
+							?>	
+							
+								<tr class="row <? if($event_files_master['tabname'] == "teamevent_custom"):?> custom_file <?endif;?>"> 
+									<td height="20" align="left" valign="top" class="event_date">
+										<?php echo date("d.m.Y H:i", strtotime($event_files_master['create_date'])); ?>
+										<input type="hidden" id="file_name<?php echo $event_files_master['id'];?>" value="<?php echo $event_files_master['title'];?>"/>
+										<input type="hidden" id="file_tab<?php echo $event_files_master['id'];?>" value="<?php echo $event_files_master['tabname'];?>"/>
+									
+									</td>
+									<td height="20" align="left" valign="top" id="td_file_name<?php echo $event_files_master['id'];?>">
+										<?php echo $master_title . $master_prefix; ?>
+									
+										
+										<?php if ( count($event_files_master["rev"])>0):?>
+										
+											<a style="display: block; float:right; width:120px;" class="show_versions arrow_down open_versions" rel="<?php echo $event_files_master['id'];?>"  data-arr_class="down" data-work_type="simple_visits" href="javascript:void(0)"><?php echo $this->translate("open_history")?></a>
+								
+										<?php  endif; ?> 
+									
+									</td>
+									<td align="left" valign="top"><?php echo $master_filetype; ?></td>
+									<td align="left" valign="top"><?php echo $allUsers[$event_files_master['create_user']]; ?></td>
+									<td align="left" valign="top" id="td_file_delete<?php echo $event_files_master['id'];?>"><?php echo $master_delete; ?></td>
+									<td>
+									<?php if($event_files_master['isdeleted'] == 0):?>
+									
+										
+									<div id="file_replace_<?php echo $event_files_master['id'];?>">
+										<noscript>
+										Please enable JavaScript to use file uploader.
+										</noscript>
+									</div>
+									<script type="text/javascript">
+										var uploader = new qq.FineUploader({
+											debug: false,
+											multiple : false,
+											element: document.getElementById("file_replace_<?php echo $event_files_master['id'];?>"),
+											template: 'qq-template_revisions',
+											request: {
+												endpoint: appbase+'voluntaryworkers/clientuploadify',
+												params: {
+													'date': new Date(),
+													"is_revision":1,
+													"parent_id":"<?php echo $event_files_master['doc_id'];?>", 
+													"member_id":"<?php echo $event_files_master['recordid'];?>",
+
+												},
+											},
+											retry: {
+											   enableAuto: false
+											},
+											validation: {
+												allowedExtensions: ['docx','doc','csv','xls','pdf','jpg','jpeg','gif','png'],
+												sizeLimit: <?php echo $upload_max_filesize; ?> 												
+											},
+											messages: {
+												sizeError: '<?php echo $this->translate("FineUploader sizeError");?>',
+												typeError: '<?php echo $this->translate("FineUploader typeError");?>',
+											},
+											callbacks: {
+												onComplete: function(id, fileName, responseJSON){
+													$('#btnsubmit, #btnsubmit_and_close').removeAttr("disabled");
+
+													if(typeof(responseJSON) === 'object' &&  responseJSON.success === true){
+														window.location.href = "<? echo APP_BASE ?>voluntaryworkers/editvoluntaryworkerdet?tabs=3&id=<?php echo $event_files_master['recordid'] ?>&flg=suc";
+													}else{
+														if (responseJSON.success === false) alert(responseJSON.error);
+														$("body").removeClass("loading");
+													}
+												},
+												onSubmit: function(id, fileName){
+													if ( ! checkclientchanged()){
+														return false;
+													}
+													$("body").addClass("loading"); 
+													$('#btnsubmit, #btnsubmit_and_close').attr("disabled", "true");
+													$("#profile_image_add").val("0");
+													$("#fileuploads").val("0");								 
+												},
+											}
+
+										});
+									</script>	
+
+									<?php else:?>
+									-<!-- no revision -->
+									<?php endif; ?>
+									
+									</td>
+								</tr>
+								
+								<?php
+									//check for file revisions
+									if ( count($event_files_master["rev"])>0) :
+									//krsort($event_files_master["rev"]);
+									foreach( $event_files_master["rev"] as $revision) :
+
+								?>
+								<tr class= "row_revision_of_<?php echo $event_files_master['id'];?>" style="display:none; background-color:#ffffff">
+									<td><?php echo date("d.m.Y H:i", strtotime($revision['create_date'])); ?></td>
+									<td>
+										<a style="float:left;" href="<?php echo APP_BASE; ?>voluntaryworkers/vwfile?doc_id=<?php echo $revision['id']; ?>&tab=<?php echo $revision['tabname']; ?>&is_image=0"><?php echo $revision['title']; ?> v.<?php echo $revision['revision']; ?></a>
+									</td>
+									<td><?php echo strtoupper($revision['file_type']); ?></td>
+									<td><?php echo $allUsers[$revision['create_user']]; ?></td>
+									
+									
+									
+								</tr>
+								<?php endforeach; ?>
+								<?php endif ?>
+						
+						
+							<?php endforeach; ?>
+					<?php endforeach; ?>
+					</table>
+					<input type="hidden" name="files_del_ids" id="files_del_ids" value="0"/>
+					
+					<table width="100%" border="0" cellspacing="0" cellpadding="0" class="no_td_border">
+					  <tr>
+					    <td align="left" valign="top">
+					    <div id="TableContentOuter" style="display:<? echo $this->styleadd ?>">
+					    <table width="100%" border="0" cellspacing="0" cellpadding="0">
+					      <tr>
+					        <td width="25%" height="28" align="left" valign="top"><? echo $this->translate('file_upload_title')?></td>
+					        <td width="40%" height="28" align="left" valign="top"><label>
+					          <input type="text" name="title" id="title" />
+					          <input type="hidden" name="fileuploads" value="1" />
+					        </label></td>
+					        <td height="28" align="left" valign="top" class="err"><? echo $this->error_title;?></td>
+					        <td height="28" align="left" valign="top">&nbsp;</td>
+					      </tr>
+					      <tr>
+					        <td height="28" align="left" valign="top"><? echo $this->translate('uploadfile_user')?>*</td>
+					        <td height="28" align="left" valign="top"> 
+							
+								<div id="file-uploader-demo1">
+									<noscript>
+										Please enable JavaScript to use file uploader.
+									</noscript>
+								</div>
+
+							<script type="text/template" id="qq-template_demo1">
+									<div class="qq-uploader-selector qq-uploader" qq-drop-area-text="Drop files here">
+
+										<div class="qq-upload-drop-area-selector qq-upload-drop-area" qq-hide-dropzone>
+											<span class="qq-upload-drop-area-text-selector"></span>
+										</div>
+
+										<div class="qq-upload-button-selector qq-upload-button">
+											<div><?php echo $this->translate('uploadafile'); ?></div>
+										</div>
+
+										<span class="qq-drop-processing-selector qq-drop-processing">
+											<span>Processing dropped files...</span>
+											<span class="qq-drop-processing-spinner-selector qq-drop-processing-spinner"></span>
+										</span>
+
+										<div class="qq-total-progress-bar-container-selector qq-total-progress-bar-container">
+											<div role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" class="qq-total-progress-bar-selector qq-progress-bar qq-total-progress-bar"></div>
+										</div>
+
+
+										<ul class="qq-upload-list-selector qq-upload-list qq-upload-list-visible" aria-live="polite" aria-relevant="additions removals">
+											<li>
+												<div class="qq-progress-bar-container-selector">
+													<div role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" class="qq-progress-bar-selector qq-progress-bar"></div>
+												</div>
+
+												<div class="qq-file-info">
+													<div class="qq-file-name">
+														<span class="qq-upload-file-selector qq-upload-file"></span>
+													</div>
+													<span class="qq-upload-size-selector qq-upload-size"></span>
+													
+												</div>
+
+											</li>
+										</ul>
+
+
+
+									</div>
+								</script>
+								<script type="text/javascript">
+										var uploader = new qq.FineUploader({
+											debug: false,
+											multiple : false,
+											element: document.getElementById("file-uploader-demo1"),
+											template: 'qq-template_demo1',
+											request: {
+												endpoint: appbase+'voluntaryworkers/clientuploadify',
+												params: {
+													'date': new Date(),
+													"member_id":"<?php echo $event_files_master['recordid'];?>",
+												},
+											},
+											retry: {
+											   enableAuto: false
+											},
+											validation: {
+												allowedExtensions: ['docx','doc','csv','xls','pdf','jpg','jpeg','gif','png'],
+												sizeLimit: <?php echo $upload_max_filesize; ?> 												
+											},
+											messages: {
+												sizeError: '<?php echo $this->translate("FineUploader sizeError");?>',
+												typeError: '<?php echo $this->translate("FineUploader typeError");?>',
+											},
+											callbacks: {
+												onComplete: function(id, fileName, responseJSON){
+													$('#btnsubmit, #btnsubmit_and_close').removeAttr("disabled");
+												},
+												onSubmit: function(id, fileName){
+													if ( ! checkclientchanged()){
+														return false;
+													}
+													$('#btnsubmit, #btnsubmit_and_close').attr("disabled", "true");
+													$("#profile_image_add").val("0");
+													$("#fileuploads").val("1");								 
+												},
+											}
+
+										});
+									</script>
+								
+					    	</td>
+					        <td height="28" align="left" valign="top">(<? echo $this->translate('maxfilesize'); ?>: <?php echo ini_get('upload_max_filesize'); ?>B)</td>
+					        <td height="28" align="left" valign="top" class="err"><? echo $this->error_filename ;?></td>
+					      </tr>
+			 
+					
+					    </table></div></td>
+					  </tr>
+					</table>
+		</div>
+			
+				<!-- ISPC - 2231 -p.3 - paginate the tables and add a von-till to filter -->
+				<!-- activities and training -->
+				<div class="activity_block" style="width: 100%;">
+					<div style="float: left; width: 100%;"><b><?php echo $this->translate('activities and training'); ?></b></div>
+					
+					<!-- <table  width="100%" align="left" border="0" cellpadding="5" cellspacing="0" class="PatientDetail_datatable" id="acivity_table" >
+					<tbody>
+		           	<tr>
+			            <th align="left"  rowspan="2" valign="top" width="100"><strong><?php echo $this->translate('date');?></strong></th>
+			            <th align="left"  rowspan="2" valign="top"><strong><?php echo $this->translate('activity_trainning');?></strong></th>
+			            <th align="left"  rowspan="2" valign="top"><strong><?php echo $this->translate('comment');?></strong></th>
+			            <th align="left"  colspan="2" valign="top"><strong><?php echo $this->translate('activity_duration_th');?></strong></th>
+			            <th align="left"  rowspan="2" valign="top"><strong><?php echo $this->translate('vw team event type');?></strong></th>
+			            <th align="left"  rowspan="2" valign="top" width="70"><strong><?php echo $this->translate('delete');?></strong></th>
+		          	</tr>
+		          	
+		           	<tr>
+			            <th align="left" valign="top"><strong><?php echo $this->translate('activity_duration_column');?></strong></th>
+			            <th align="left" valign="top"><strong><?php echo $this->translate('activity_driving_time_column');?></strong></th>
+		          	</tr>
+		          	
+		          	
+			    	<?php foreach($this->activities as $k => $activity): ?>
+					<tr class="activity_row">
+						<td>
+							<input type="text" name="activity[<?php echo $k; ?>][date]" value="<?php echo date('d.m.Y',strtotime($activity['date'])); ?>"  class="a_date vw_date" />
+							<input type="hidden" name="activity[<?php echo $k; ?>][id]" value="<?php echo $k; ?>" />
+						</td>
+						<td>
+							<input type="text" name="activity[<?php echo $k; ?>][activity]" value="<?php echo $activity['activity']; ?>"  class="vw_activity"/>
+						</td>
+						
+						<td>
+							<input type="text" name="activity[<?php echo $k; ?>][comment]" value="<?php echo $activity['comment']; ?>" class="vw_comment"/>
+							<input type="hidden" name="activity[<?php echo $k; ?>][team_event]" value="<?php echo $activity['team_event']; ?>" />
+							<input type="hidden" name="activity[<?php echo $k; ?>][team_event_id]" value="<?php echo $activity['team_event_id']; ?>" />
+						</td>
+						
+						
+						<td>
+							<input type="text" name="activity[<?php echo $k; ?>][duration]" value="<?php echo $activity['duration']; ?>" class="vw_duration"/>
+						</td>
+						
+						
+						<td>
+							<input type="text" name="activity[<?php echo $k; ?>][driving_time]" value="<?php echo $activity['driving_time']; ?>" class="vw_driving_time"/>
+						</td>
+						
+						
+						<td>
+						<select name="activity[<?php echo $k; ?>][team_event_type]"  class="event_select" id="event_type">
+							<option value=""><?php echo $this->translate("select")?></option>
+							
+							<? foreach($this->event_types_select as $type_id => $type_data): ?>
+							<option value="<? echo $type_id; ?>"  <? if($activity['team_event_type'] == $type_id):?> selected="selected" <? endif;?> ><? echo $type_data['name']?></option>
+							<? endforeach; ?>
+							</select>
+						</td>
+						
+		          		<td> 
+		          			<a href="javascript:void(0)" class="delete_row" id="delete_<?php echo $k; ?>"><img src="<?php echo RES_FILE_PATH;  ?>/images/action_delete.png" /></a>
+		          		</td>
+					</tr>
+				<?php endforeach; ?>
+				
+			    	</tbody>
+					</table> -->
+					<br />
+					<br />
+					<div style="float: left; width: 100%;">
+					<?php echo $this->translate("from"); ?>:&nbsp;<input type="text" name="from_activity" id="from_activity" value=""  class="assign_patient_date">
+			 		<?php echo $this->translate("to"); ?>:&nbsp;<input type="text" name="to_activity" id="to_activity" value=""  class="assign_patient_date">
+			 		<a  href="javascript:void(0)" id="filter_activity" class="filter_button"><button><?php echo $this->translate('Filter  - activity')?></button></a>
+			 		</div>
+					<table id="table_activity" class="table table-striped table-bordered table-hover table-condensed dataTable no-footer">
+ 						<thead>
+					 		<tr>
+					            <th rowspan="2"><strong><?php echo $this->translate('date');?></strong></th>
+					            <th rowspan="2"><strong><?php echo $this->translate('activity_trainning');?></strong></th>
+					            <th rowspan="2"><strong><?php echo $this->translate('comment');?></strong></th>
+					            <th colspan="2"><strong><?php echo $this->translate('activity_duration_th');?></strong></th>
+					            <th rowspan="2"><strong><?php echo $this->translate('vw team event type');?></strong></th>
+					            <th rowspan="2"><strong><?php echo $this->translate('delete');?></strong></th>
+		          			</tr>
+		          	
+		           			<tr>
+					            <th><strong><?php echo $this->translate('activity_duration_column');?></strong></th>
+					            <th><strong><?php echo $this->translate('activity_driving_time_column');?></strong></th>
+		          			</tr>
+ 						</thead>
+ 					</table>
+					
+						<input type="hidden" id="rows_status" value="<?php echo $this->activities_key;?>" />
+				<br style="clear: both;"/>
+				<a class="add_new_line" rel=""  title="" href="javascript:void(0)"><img width="20" height="20" src="<?php echo RES_FILE_PATH;  ?>/images/edit_add.png"><span><?php echo $this->translate('add_activity')?></span> </a>
+				</div>
+				
+			<div class="clearer"></div>
+			</div>
+			
+			
+			
+			
+			
+			
+<!-- 			####################################### -->
+<!-- 			############## TAB 5 ################## -->
+<!-- 			####################################### -->
+			
+			<div id="tabs-5">
+
+				<div class="vw_p_table_container">			
+					<!-- table of patients where voluntary worker is associated -->
+					<h5 class="pat_tab_title"> <?php echo $this->translate('Patients associations') ?></h5>
+					<!-- ISPC-2401 11) -->
+					<br />
+					<br />
+					<div style="float: left; width: 100%;">
+						<?php echo $this->translate("year"); ?>:&nbsp;
+				        			        
+				        <select id="year_assg">
+ 							<!--  <option value=''> </option> -->
+ 							<option value=''> </option>
+ 							    <?php
+  									for ($year_assg = date("Y") ; $year_assg >=2008 ; $year_assg--) {
+									$css_seleted = ($year_assg == date("Y")) ? 'selected="selected"' : '';
+ 								     echo "<option value=$year_assg  $css_seleted>$year_assg</option>";
+  								  }
+ 								 ?>
+						</select>
+			 		</div>
+			 		
+					<table id="patient_table" class="PatientDetail_datatable">
+					 <thead>
+						<tr>
+							<th><? echo $this->translate('start_association_date')?></th>
+							<th><? echo $this->translate('end_association_date')?></th>
+							<th><? echo $this->translate('epid')?></th>
+							<th><? echo $this->translate('patientname')?></th>
+							<th><? echo $this->translate('delete')?></th>
+						</tr>
+				<!-- 	 	<? foreach($voluntary_worker_history[$_REQUEST['id']] as $ke =>$vwpatient): ?>
+							<tr>
+								<td><input type="text" name="patient_vw[<? echo $vwpatient['entry_id']; ?>][start]"  id="patient_assign_start_<? echo $vwpatient['entry_id']; ?>" data-rowid="<? echo $vwpatient['entry_id']; ?>"  value="<? echo $vwpatient['start']?>" class="assign_patient_date"></td>
+								<td><input type="text" name="patient_vw[<? echo $vwpatient['entry_id']; ?>][end]"   id="patient_assign_end_<? echo $vwpatient['entry_id']; ?>" data-rowid="<? echo $vwpatient['entry_id']; ?>"  value="<? echo $vwpatient['end']?>"  class="assign_patient_date">
+									<input type="hidden" name="patient_vw[<? echo $vwpatient['entry_id']; ?>][vwid]"  value="<? echo $vwpatient['vwid']?>">
+									<input type="hidden" name="patient_vw[<? echo $vwpatient['entry_id']; ?>][custom]"  value="0" >
+								</td>
+								<td>
+									<? echo $vwpatient['epid']?>
+									<input type="hidden" name="patient_vw[<? echo $vwpatient['entry_id']; ?>][patient_epid]"  value="<? echo $vwpatient['epid']?>">
+								</td>
+								<td><? echo $vwpatient['patient_name']?></td>
+								<td>
+									<a href="javascript:void(0)" class="delete_existing_row" rel="<? echo $vwpatient['entry_id']; ?>"   id="delete_<?php echo $k; ?>"><img src="<?php echo RES_FILE_PATH;  ?>/images/action_delete.png" /></a>
+								</td>
+							</tr>
+						<? endforeach;?>
+					 -->
+					</thead>		 	
+					</table>
+					<table>
+						<tr>
+							<td>
+								<input type="hidden" id="associated_patients" value="<?php echo 900000+count($voluntary_worker_history[$_REQUEST['id']]) ?>" />
+								<a class="add_new_patient_line" rel=""  title="" href="javascript:void(0)"><img width="20" height="20" src="<?php echo RES_FILE_PATH;  ?>/images/edit_add.png"><span><?php echo $this->translate('add association to patient')?></span> </a>
+							</td>
+						</tr>
+					</table>
+					<input type="hidden" value="0" id="delete_ids" name="delete_voluntry_from_patients" />
+				</div>
+				
+				<!-- ISPC - 2231 -p.3 - paginate the tables and add a von-till to filter -->
+				<!-- ############################################################## -->
+				<!-- ############ PATIENT VISITS - SIMPLE ######################### -->
+				<!-- ############################################################## -->
+				<div class="vw_p_table_container">
+					<h5 class="pat_tab_title"> <?php echo $this->translate('single_visit') ?></h5>
+					<div class="clearer"></div>
+					<table border="1" width="100%" class="hospiz_v_table" cellpadding="10" cellspacing="10" id="hospizv_table_single" style="margin-top: 20px;">
+						<tr class="tr_header">
+							<th><?php echo $this->translate('patient') ?></th>
+							<th><?php echo $this->translate('Grund') ?></th>
+							<th><?php echo $this->translate('date') ?></th>
+							<th style="width: 90px;"><?php echo $this->translate('hospizv_duration') ?></th>
+							<th><?php echo $this->translate('hospizv_distance') ?></th>
+							<th><?php echo $this->translate('timetravel') ?></th>
+							<th><?php echo $this->translate('nightshift')  ?></th>
+							<th><?php echo $this->translate('delete') ?></th>
+						</tr>
+					</table>
+					<input type="hidden" id="patient_visits_simple" value="<?php echo $this->s_hospiz_vizits_nr ?>" />
+						<a class="add_new_shv_patient_line" rel=""  title="" href="javascript:void(0)"><img width="20" height="20" src="<?php echo RES_FILE_PATH;  ?>/images/edit_add.png"><span><?php echo $this->translate('add single work to patient')?></span> </a>
+					<? if(!empty($this->s_hospiz_vizits)): ?>
+						<a  href="javascript:void(0)" class="show_saved_data arrow_down" data-work_type = "simple_visits" data-arr_class = "down" ><?php echo $this->translate('Show Hide saved  - simple visits')?></a>
+						
+			 			<div class="  saved_work" id="simple_visits">
+			 			<?php echo $this->translate("from"); ?>:&nbsp;<input type="text" name="from_simple_visits" id="from_simple_visits" value=""  class="assign_patient_date">
+			 				<?php echo $this->translate("to"); ?>:&nbsp;<input type="text" name="to_simple_visits" id="to_simple_visits" value=""  class="assign_patient_date">
+			 				<a  href="javascript:void(0)" class="filter_visits filter_button" data-work_type = "simple_visits"><button><?php echo $this->translate('Filter  - simple visits')?></button></a>
+							<!-- <table border="1" width="100%" class="hospiz_v_table_det" cellpadding="10" cellspacing="10">
+						<tr class="tr_header">
+							<th><?php echo $this->translate('#') ?></th>
+							<th><?php echo $this->translate('Patients') ?></th>
+							<th><?php echo $this->translate('Grund') ?></th>
+							<th><?php echo $this->translate('date') ?></th>
+							<th style="width: 90px;"><?php echo $this->translate('hospizv_duration') ?></th>
+							<th><?php echo $this->translate('hospizv_distance') ?></th>
+							<th><?php echo $this->translate('timetravel') ?></th>
+							<th><?php echo $this->translate('nightshift')  ?></th>
+							
+						</tr>
+						
+						<?php $snr=1;?>
+						<?php foreach($this->s_hospiz_vizits as $sk =>$sv):?>
+							 <tr class="patient_row">
+								<td><? echo $snr;?></td>
+								<td><? echo $sv['patient'];?></td>
+								<td><? echo $this->grundarray[$sv['grund']];?></td>
+								<td><? echo $sv['hospizvizit_date']?></td>
+								<td><? echo $sv['besuchsdauer']?></td>
+								<td><? echo $sv['fahrtkilometer']?></td>
+								<td><? echo $sv['fahrtzeit']?></td>
+								<td><? if($sv['nightshift'] == "1"): ?>Ja <?php else: ?> Nein  <? endif;?></td>
+							</tr>
+						<? $snr++; endforeach;?>
+					</table> -->
+					<table id="table_simple_visits" class="table table-striped table-bordered table-hover table-condensed dataTable no-footer">
+		 						<thead>
+							 		<tr>
+							 			<th><?php echo $this->translate('#') ?></th>
+							 			<th><?php echo $this->translate('Patients') ?></th>
+							 			<th><?php echo $this->translate('Grund') ?></th>
+							 			<th><?php echo $this->translate('date') ?></th>
+							 			<th><?php echo $this->translate('hospizv_amount') ?></th>
+							 			<th><?php echo $this->translate('hospizv_duration') ?></th>
+							 			<th><?php echo $this->translate('hospizv_distance') ?></th>
+							 			<th><?php echo $this->translate('timetravel') ?></th>
+										<th><?php echo $this->translate('nightshift')  ?></th>
+										<th><?php echo $this->translate('actions')  ?></th>				<!-- TODO-3796 Lore 16.02.2021 -->
+							 		</tr>
+		 						</thead>
+ 							</table>
+						</div>
+					<?php endif;?>
+				</div>
+							
+				<!-- ############################################################## -->
+				<!-- ############ PATIENT VISITS - BULK ######################### -->
+				<!-- ############################################################## -->
+				<div class="vw_p_table_container">
+					<h5 class="pat_tab_title"> <?php echo $this->translate('cumulative_visit') ?></h5>
+					<div class="clearer"></div>
+					<table border="1" width="100%" class="hospiz_v_table" cellpadding="10" cellspacing="10" id="hospizv_table_bulk" style="margin-top: 20px;">
+						<tr class="tr_header">
+							<th><?php echo $this->translate('patient') ?></th>
+							<th><?php echo $this->translate('Grund') ?></th>
+							<th><?php echo $this->translate('year') ?></th>
+							<th><?php echo $this->translate('hospizv_amount') ?></th>
+							<th style="width: 90px"><?php echo $this->translate('hospizv_duration') ?></th>
+							<th><?php echo $this->translate('hospizv_distance') ?></th>
+							<th><?php echo $this->translate('timetravel') ?></th>
+							<th><?php echo $this->translate('nightshift') ?></th>
+							<th><?php echo $this->translate('delete') ?></th>
+							<th><?php echo $this->translate('actions')  ?></th>				<!-- TODO-3796 Lore 16.02.2021 -->
+						</tr>
+					</table>
+					<input type="hidden" id="patient_visits_bulk" value="<?php echo $this->b_hospiz_vizits_nr ?>" />
+		 			<div class=""><a class="add_new_bhv_patient_line" rel=""  title="" href="javascript:void(0)"><img width="20" height="20" src="<?php echo RES_FILE_PATH;  ?>/images/edit_add.png"><span><?php echo $this->translate('add cumulative work to patient')?></span> </a></div>
+		 			
+			 		<? if(!empty($this->b_hospiz_vizits)): ?>
+				 		<a  href="javascript:void(0)" class="show_saved_data arrow_down" data-work_type = "bulk_visits" data-arr_class = "down" ><?php echo $this->translate('Show Hide saved  - bulk visits')?></a>
+						<div class="saved_work" id = "bulk_visits">
+							<?php echo $this->translate("from"); ?>:&nbsp;<input type="text" name="from_bulk_visits" id="from_bulk_visits" value=""  class="assign_patient_date">
+			 				<?php echo $this->translate("to"); ?>:&nbsp;<input type="text" name="to_bulk_visits" id="to_bulk_visits" value=""  class="assign_patient_date">
+			 				<a  href="javascript:void(0)" class="filter_visits filter_button" data-work_type = "bulk_visits"><button><?php echo $this->translate('Filter  - bulk visits')?></button></a>
+							<!-- <table border="1" width="100%" class="hospiz_v_table_det" cellpadding="10" cellspacing="10" >
+								<tr class="tr_header">
+									<th><?php echo $this->translate('#') ?></th>
+									<th><?php echo $this->translate('Patients') ?></th>
+									<th><?php echo $this->translate('Grund') ?></th>
+									<th><?php echo $this->translate('year') ?></th>
+									<th><?php echo $this->translate('hospizv_amount') ?></th>
+									<th style="width: 90px"><?php echo $this->translate('hospizv_duration') ?></th>
+									<th><?php echo $this->translate('hospizv_distance') ?></th>
+									<th><?php echo $this->translate('timetravel') ?></th>
+									<th><?php echo $this->translate('nightshift') ?></th>
+								</tr>
+								
+								<?php $bnr =1;?>
+								<?php foreach($this->b_hospiz_vizits as $bk =>$bv):?>
+									 <tr class="patient_row">
+										<td><? echo $bnr?></td>
+										<td><? echo $bv['patient']?></td>
+										<td><? echo $this->grundarray[$bv['grund']]?></td>
+										<td><? echo $bv['hospizvizit_date']?></td>
+										<td><? echo $bv['amount']?></td>
+										<td><? echo $bv['besuchsdauer']?></td>
+										<td><? echo $bv['fahrtkilometer']?></td>
+										<td><? echo $bv['fahrtzeit']?></td>
+										<td><? if($bv['nightshift'] == "1"): ?>Ja <?php else: ?> Nein  <? endif;?></td>
+									</tr>
+								<? $bnr++; endforeach;?>
+							</table> -->
+							<table id="table_bulk_visits" class="table table-striped table-bordered table-hover table-condensed dataTable no-footer">
+		 						<thead>
+							 		<tr>
+							 			<th><?php echo $this->translate('#') ?></th>
+							 			<th><?php echo $this->translate('Patients') ?></th>
+							 			<th><?php echo $this->translate('Grund') ?></th>
+							 			<th><?php echo $this->translate('date') ?></th>
+							 			<th><?php echo $this->translate('hospizv_amount') ?></th>
+							 			<th><?php echo $this->translate('hospizv_duration') ?></th>
+							 			<th><?php echo $this->translate('hospizv_distance') ?></th>
+							 			<th><?php echo $this->translate('timetravel') ?></th>
+										<th><?php echo $this->translate('nightshift')  ?></th>
+							 		</tr>
+		 						</thead>
+ 							</table>
+						</div>
+					<? endif;?>
+					
+				</div>
+								
+				<!-- ############################################################## -->
+				<!-- ############ Vw work- SIMPLE ################################## -->
+				<!-- ############################################################## -->
+				<?php if($show_single_work == "1") : ?>
+					<div class="vw_p_table_container">
+						<h5 class="pat_tab_title"> <?php echo $this->translate('single_work') ?></h5>
+						<div class="clearer"></div>
+						<table border="1" width="100%" class="hospiz_v_table" cellpadding="10" cellspacing="10" id="work_table_single" style="margin-top: 20px;">
+							<tr class="tr_header">
+								<th><?php echo $this->translate('Grund') ?></th>
+								<th><?php echo $this->translate('date') ?></th>
+								<th style="width: 90px;"><?php echo $this->translate('hospizv_duration') ?></th>
+								<th><?php echo $this->translate('hospizv_distance') ?></th>
+								<th><?php echo $this->translate('timetravel') ?></th>
+								<th><?php echo $this->translate('nightshift')  ?></th>
+								<th><?php echo $this->translate('delete') ?></th>
+							</tr>
+						</table>
+						<input type="hidden" id="work_simple_nr" value="<?php echo $this->s_work_nr ?>" />
+						<div class=""><a class="add_new_s_work_line" rel=""  title="" href="javascript:void(0)"><img width="20" height="20" src="<?php echo RES_FILE_PATH;  ?>/images/edit_add.png"><span><?php echo $this->translate('add single work')?></span> </a></div>
+						
+						<? if(!empty($this->s_work) ): ?>
+							<a  href="javascript:void(0)" class="show_saved_data arrow_down" data-work_type = "simple_work" data-arr_class = "down" ><?php echo $this->translate('Show Hide saved  - simple work')?></a>
+							<div class="saved_work" id = "simple_work">
+							<?php echo $this->translate("from"); ?>:&nbsp;<input type="text" name="from_simple_work" id="from_simple_work" value=""  class="assign_patient_date">
+			 				<?php echo $this->translate("to"); ?>:&nbsp;<input type="text" name="to_simple_work" id="to_simple_work" value=""  class="assign_patient_date">
+			 				<a  href="javascript:void(0)" class="filter_work filter_button" data-work_type = "simple_work"><button><?php echo $this->translate('Filter  - simple work')?></button></a>
+								<!-- <table border="1" width="100%" class="single_work_table_det" cellpadding="10" cellspacing="10">
+									<tr class="tr_header">
+										<th><?php echo $this->translate('#') ?></th>
+										<th><?php echo $this->translate('Grund') ?></th>
+										<th><?php echo $this->translate('date') ?></th>
+										<th style="width: 90px;"><?php echo $this->translate('hospizv_duration') ?></th>
+										<th><?php echo $this->translate('hospizv_distance') ?></th>
+										<th><?php echo $this->translate('timetravel') ?></th>
+										<th><?php echo $this->translate('nightshift')  ?></th>
+									</tr> -->
+									
+									<?php //$swnr = 1;?>
+									<?php //foreach($this->s_work as $swk =>$sw):?>
+										 <!-- <tr class="patient_row">
+											<td><? echo $swnr;?></td>
+											<td><? echo $this->grundarray[$sw['grund']];?></td>
+											<td><? echo $sw['work_date']?></td>
+											<td><? echo $sw['besuchsdauer']?></td>
+											<td><? echo $sw['fahrtkilometer']?></td>
+											<td><? echo $sw['fahrtzeit']?></td>
+											<td><? if($sw['nightshift'] == "1"): ?>Ja <?php else: ?> Nein  <? endif;?></td>
+										</tr>
+									<? //$swnr++; //endforeach;?>
+								</table> -->
+								<table id="table_simple_work" class="table table-striped table-bordered table-hover table-condensed dataTable no-footer">
+		 						<thead>
+							 		<tr>
+							 			<th><?php echo $this->translate('#') ?></th>
+							 			<th><?php echo $this->translate('Grund') ?></th>
+							 			<th><?php echo $this->translate('date') ?></th>
+							 			<th><?php echo $this->translate('hospizv_duration') ?></th>
+							 			<th><?php echo $this->translate('hospizv_distance') ?></th>
+							 			<th><?php echo $this->translate('timetravel') ?></th>
+										<th><?php echo $this->translate('nightshift')  ?></th>
+							 		</tr>
+		 						</thead>
+ 							</table>
+								
+			</div>
+						<?php endif;?>
+					</div>
+				<?php endif; ?>
+			
+				<!-- ############################################################## -->
+				<!-- ############ Vw work- BULK ################################## -->
+				<!-- ############################################################## -->
+				<div class="vw_p_table_container">
+					<h5 class="pat_tab_title"> <?php echo $this->translate('cumulative work') ?></h5>
+					<div class="clearer"></div>
+					<table border="1" width="100%" class="hospiz_v_table" cellpadding="10" cellspacing="10" id="work_table_bulk" style="margin-top: 20px;">
+						<tr class="tr_header">
+							<th><?php echo $this->translate('Grund') ?></th>
+							<th style="width: 90px"><?php echo $this->translate('date') ?></th>
+							<th><?php echo $this->translate('comments') ?></th>
+							<th><?php echo $this->translate('hospizv_amount') ?></th>
+							<th style="width: 90px"><?php echo $this->translate('hospizv_duration') ?></th>
+							<th><?php echo $this->translate('hospizv_distance') ?></th>
+							<th><?php echo $this->translate('timetravel') ?></th>
+							<th><?php echo $this->translate('nightshift') ?></th>
+							<th><?php echo $this->translate('delete') ?></th>
+						</tr>
+					</table>
+					<input type="hidden" id="work_bulk_nr" value="<?php echo $this->b_work_nr ?>" />
+		 			<div class=""><a class="add_new_b_work_line" rel=""  title="" href="javascript:void(0)"><img width="20" height="20" src="<?php echo RES_FILE_PATH;  ?>/images/edit_add.png"><span><?php echo $this->translate('add cumulative work')?></span> </a></div>
+					<? if(!empty($this->b_work)): ?>
+						<a  href="javascript:void(0)" class="show_saved_data arrow_down" data-work_type = "bulk_work" data-arr_class = "down" ><?php echo $this->translate('Show Hide saved  - bulk work')?></a>
+							<div class="saved_work" id = "bulk_work">
+								<!-- load work data list  -->
+								<?php echo $this->translate("from"); ?>:&nbsp;<input type="text" name="from_bulk_work" id="from_bulk_work" value=""  class="assign_patient_date">
+			 					<?php echo $this->translate("to"); ?>:&nbsp;<input type="text" name="to_bulk_work" id="to_bulk_work" value=""  class="assign_patient_date">
+			 					<a  href="javascript:void(0)" class="filter_work filter_button" data-work_type = "bulk_work"><button><?php echo $this->translate('Filter  - bulk work')?></button></a>
+								<table id="table_bulk_work" class="table table-striped table-bordered table-hover table-condensed dataTable no-footer">
+		 						<thead>
+							 		<tr>
+							 			<th><?php echo $this->translate('#') ?></th>
+							 			<th><?php echo $this->translate('Grund') ?></th>
+							 			<th><?php echo $this->translate('date') ?></th>
+							 			<th><?php echo $this->translate('hospizv_duration') ?></th>
+							 			<th><?php echo $this->translate('hospizv_distance') ?></th>
+							 			<th><?php echo $this->translate('timetravel') ?></th>
+										<th><?php echo $this->translate('nightshift')  ?></th>
+										<th><?php echo $this->translate('actions')  ?></th>
+							 		</tr>
+		 						</thead>
+ 							</table>
+							</div>
+					<? endif;?>	
+				</div>
+			<div class="clearer"></div>
+			</div>
+			
+			
+<!-- 			####################################### -->
+<!-- 			############## TAB 6 ################## -->
+<!-- 			####################################### -->
+			
+			<div id="tabs-6">
+				
+				<div class="cstatus_table">
+					<table border="1" width="100%"   cellpadding="10" cellspacing="10" id="color_status_table">
+						<thead>
+							<tr>
+								<th><?php echo $this->translate('status_color')?></th>
+								<th><?php echo $this->translate('status_from')?></th>
+								<th><?php echo $this->translate('status_till')?></th>
+								<th><?php echo $this->translate('Action')?></th>
+							</tr>
+						</thead>
+						<tbody>
+						
+						<?php $is = 1;	$count_cs =  count($this->status_color_array); ?>
+						
+						<?php foreach($this->status_color_array as $k=>$status_period):?>
+							<?php $row_id = count($this->status_color_array) + $is + 5000000;?>
+							<?php $row_id_next =  count($this->status_color_array) + 1 + 5000000;?> <!-- Lore -- this is for #color_count -->
+							
+							<tr id="<?php echo $row_id; ?>" class="<?php echo $row_id; ?>">
+								
+								<td>
+									<select name="color_status[<?php echo $row_id;?>][status]"  data-rowid="<?php echo count($this->status_color_array)+ 5000000;?>" id="status_color_select_<?php echo $row_id; ?>"  class="st_<?php echo $status_period['status'];?>"  style="width: 100px;" >
+									 <!-- ISPC-2401 pct6,7 -->
+ 							    	 <?php foreach ($this->all_colors as $status_id => $col_status_name):?>
+										<option value=<?php echo $status_id ?> class="ost_<?php echo $status_id ?>" <?php if($status_period['status'] == $status_id):?> selected="selected" <?php endif;?>  ><?php echo $col_status_name;?></option>
+  								 	 <?php 
+ 										 endforeach ;
+ 									 ?>
+								   <!-- <option value="g" class="ost_g" <?php if($status_period['status'] == "g"):?> selected="selected" <?php endif;?>  ><?php echo $this->translate('green')?></option>
+										<option value="y" class="ost_y" <?php if($status_period['status'] == "y"):?> selected="selected" <?php endif;?>  ><?php echo $this->translate('yellow')?></option>
+										<option value="r" class="ost_r" <?php if($status_period['status'] == "r"):?> selected="selected" <?php endif;?>  ><?php echo $this->translate('red')?></option>
+										<option value="b" class="ost_b" <?php if($status_period['status'] == "b"):?> selected="selected" <?php endif;?>  ><?php echo $this->translate('inactive')?></option>
+									 -->
+									</select>
+								</td>
+								
+								<td>
+									<input type="text" data-rowid="<?php echo $row_id; ?>" id="color_start_date_<?php echo $row_id; ?>" name="color_status[<?php echo $row_id;?>][start_date]" value="<?php echo $status_period['start_date']?>" class="cs_date color_start_date from">
+								</td>
+								
+								<td>
+									<input type="text" data-rowid="<?php echo $row_id; ?>" id="color_end_date_<?php echo $row_id; ?>" name="color_status[<?php echo $row_id;?>][end_date]" value="<?php echo $status_period['end_date']?>" class="cs_date  color_end_date till">
+								</td>
+								
+								<td>
+									<a href="javascript:void(0)" class="delete_existing_row" rel="<? echo $status_period['id']; ?>"   id="delete_<?php echo $k; ?>"><img src="<?php echo RES_FILE_PATH;  ?>/images/action_delete.png" /></a>
+								</td>
+							</tr>
+						<?php 
+							$is--; 
+							endforeach;
+						?>
+						</tbody>			
+					</table>
+					<div class=""><a class="add_new_status_line" rel=""  title="" href="javascript:void(0)"><img width="20" height="20" src="<?php echo RES_FILE_PATH;  ?>/images/edit_add.png"><span><?php echo $this->translate('add status period')?></span> </a></div>
+					<input type="hidden" id="color_count" value="<?php echo $row_id_next+1;?>">
+				</div>
+			
+				<div class="clearer"></div>
+			</div>
+			
+			
+			
+			
+<!-- 			####################################### -->
+<!-- 			############## TAB 7 ################## -->
+<!-- 			####################################### -->
+			<!-- ISPC - 2231 -p.5 apply design of patient verlauf; used select with chosen instead input for shortcut-->
+			<div id="tabs-7">
+				<? 
+					$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/autogrow/jquery.elastic.source_new.js?'.date('Ymd'));
+				?>		
+				<script type="text/javascript">
+				$(document).ready(function(){
+					$('.vwc_textarea').elastic();
+					
+				});
+				
+				var shorcuts_js = <?php echo $this->shorcuts_js ?>;
+				var delaytrimer;
+				
+				function keyupdelay(obj, cntr) 
+				{
+					clearTimeout(delaytrimer);
+					delaytrimer = setTimeout(function applydelay(){
+						upper(cntr);
+						chkmask(obj.value, cntr);
+						changeinput(obj.value, cntr);
+					},700);
+				}
+				function upper(v) {
+					document.getElementById("vw_course_type"+v).value = document.getElementById("vw_course_type"+v).value.toUpperCase();
+				}
+				
+				function chkmask(ltr,cnt)
+				{
+					var cnts = 0;
+					for(i=0; i<shorcuts_js.length;i++) {
+						if(shorcuts_js[i] == ltr) {
+							cnts++;
+						}
+					}
+
+					if(cnts<1){
+						document.getElementById('vw_course_type'+cnt).value="";
+					} else {
+						$('#vw_course_title'+cnt).focus();
+						new_course_line(cnt+1);
+					}
+				}
+				
+				function appendto(rowId,inputValue){
+					var text = '';
+ 
+					if ($('#vw_course_type' + rowId).val() == "XT" ) 
+					{
+						//appended the select value to time
+						if ($('#time' + rowId).val() == "Zeit (in Minuten)" || $('#time' + rowId).val() == "" || $('#time' + rowId).val() == " ") 
+						{//set time default value if left empty
+							time = " ";
+						} 
+						else 
+						{
+							time = $('#time' + rowId).val();
+						}
+			
+						if ($('#komment' + rowId).val() == "Grund / Anlass" || $('#komment' + rowId).val() == "" || $('#komment' + rowId).val() == " ") 
+						{//set kommentar default value if left empty
+							komment = " ";
+						} 
+						else 
+						{
+							komment = $('#komment' + rowId).val();
+						}
+						text = time + ' | ' + komment + ' | ' + $('#date' + rowId).val() + ' ' + $('#hourtime' + rowId).val();
+					}  
+					$('#vw_course_title' + rowId).val(text);
+	 
+				}
+
+				
+				function changeinput(shortcut, id){
+					idplus = id +1;
+					idminus = id -1;
+					
+					$('.verlauf_error_div').hide();
+					$('#vw_course_title'+id).val('');
+					
+	 				if(shortcut == "XT" || shortcut == "xt")
+					{ //Koordination and Telefon 
+
+						if($('#hidd'+id).length > 0)
+						{
+							$('#hidd'+id).hide().remove();
+							$('#vw_course_title'+id).val('');
+						}
+
+					
+						$("#time"+id).live("keyup input paste", function(){
+							setTimeout(jQuery.proxy(function() {
+								this.val(this.val().replace(/[^0-9]/g, ''));
+							}, $(this)), 0);
+						});
+
+
+						var newInputs = '';
+						newInputs +='<div id="hidd'+id+'">';
+						newInputs +='<input type="text" id="time'+id+'" class="vw_course_time" name="vw_course[time][]" value="Zeit (in Minuten)" onfocus="if(this.value == \'Zeit (in Minuten)\') { this.value=\'\'}" onblur="if(this.value == \'\'){ this.value=\'Zeit (in Minuten)\' } else { appendto (\''+id+'\',this.value) }" onkeydown="appendto(\''+id+'\',this.value);"/>';
+						newInputs +='<textarea name="vw_course[komment][]" id="komment'+id+'" class="vw_course_comment" onfocus="if(this.value == \'Grund / Anlass\') { this.value=\'\'}" onblur="if(this.value == \'\'){ this.value=\'Grund / Anlass\' } else { appendto(\''+id+'\',this.value) }" >Grund / Anlass</textarea> ';
+						newInputs +='<input type="text" id="date'+id+'" name="vw_course[date][]" class="vw_course_date" value="<?php echo date("d.m.Y"); ?>" onfocus="appendto(\''+id+'\',this.value);"  onblur="if(this.value == \'\'){ this.value=\'<?php echo date("d.m.Y"); ?>\' }"   onchange="if(this.value == \'\'){ this.value=\'<?php echo date("d.m.Y"); ?>\' } else { appendto(\''+id+'\',this.value) }"/>';
+						newInputs +='<input type="text" id="hourtime'+id+'" name="vw_course[hourtime][]" class="vw_course_timepicker"  value="<?php echo date("H:i"); ?>"   onblur="if(this.value == \'\'){ this.value=\'<?php echo date("H:i"); ?>\' }"/>';
+						newInputs +='</div>';
+						
+						$('#vwc_text'+id).append(newInputs);
+
+						$('#komment'+id).elastic();
+						
+						$('#date' + id).mask("99.99.9999");
+						$('#date'+id).datepicker({
+							dateFormat: 'dd.mm.yy',
+							showOn: "both",
+							buttonImage: $('#calImg').attr('src'),
+							buttonImageOnly: true,
+							changeMonth: true,
+							changeYear: true,
+							nextText: '',
+							prevText: '',
+							onSelect: function(date) {
+								appendto(id,date.value);
+								$(this).focus();
+								return false;
+							}
+						});
+
+						$('#hourtime' + id).timepicker({
+							onSelect : function(time_value) {
+								if($('#date'+id).val()==""){
+									$('#date'+id).val("<?php echo date('d.m.Y'); ?>");
+								}
+								appendto(id, time_value);
+								$(this).focus();
+								return false;
+							},
+							minutes : {
+								interval : 5
+							},
+							showPeriodLabels : false,
+							rows : 4,
+							hourText : 'Stunde',
+							minuteText : 'Minute'
+						});
+
+						$('#vw_course_title' + id).hide();
+
+						$('#vwc_text' + id).show();
+						appendto(id, '<?php echo date("d.m.Y"); ?>');
+						if (jQuery.inArray(shortcut, shorcuts_js)) {
+							$('#time' + id).focus();
+						}
+
+					}
+					else 
+					{
+						$('#vw_course_title' + id).show();
+						$('#hidd' + id).hide().remove();
+						$('#vw_course_title' + id).val('');
+					}
+				}
+
+
+				function new_course_line(newcnt)
+				{
+
+					var createrow = 0;
+					if(newcnt>=2)
+					{
+						createrow = '1';
+					}
+					else
+					{
+						if(document.getElementById('vw_course_title'+(newcnt-2))){ //avoid error when element is not defined!!
+							if(document.getElementById('vw_course_title'+(newcnt-2)).value.length>0) //if it has more than 1 character create new row
+							{
+								createrow = '1';
+							}
+						}
+					}
+
+					if(createrow==1)
+					{
+						if($('#vw_course_type'+newcnt).length == "0"){
+							var outerdiv = document.createElement('div');
+							outerdiv.className = "vwc_inner_inputs";
+
+							var div1 = document.createElement('div');
+							div1.className="vwc_shortcut";
+
+							var div2 = document.createElement('div');
+							div2.className="vwc_text";
+							div2.id="vwc_text"+newcnt;
+
+							/*var ip1 = document.createElement('input');
+							ip1.name = "vw_course[vw_course_type][]";
+							ip1.id = "vw_course_type"+newcnt;
+							ip1.type = "text";
+							
+							ip1.onkeyup = function(){
+								keyupdelay(this,newcnt);
+							};
+							ip1.onchange = function(){
+								keyupdelay(this,newcnt);
+							};*/
+							
+							/* cloned_selectShortcut replaces ip1 */
+							var cloned_selectShortcut= $('.vwc_shortcut').find('select.selectShortcut:first').clone(false).off();
+							$(cloned_selectShortcut)
+							.attr('id', "vw_course_type"+newcnt)
+							.css('display','block')
+							.attr("onchange", "")
+							//removeAttrr('onchange')
+//							.chosen("destroy") 
+							.change(function(){ keyupdelay(this, newcnt); })
+							.find(':selected').removeAttr('selected').end();
+							
+							var ip2 = document.createElement('textarea');
+							ip2.name = "vw_course[vw_course_title][]";
+							ip2.id = "vw_course_title"+newcnt;
+							ip2.className = 'vwc_textarea';
+							
+							div1.appendChild($(cloned_selectShortcut).get(0));
+							div2.appendChild(ip2);
+
+							outerdiv.appendChild(div1);
+							outerdiv.appendChild(div2);
+
+							$('.vwc_inputs').append($(outerdiv));
+							$('.vwc_textarea').elastic();
+							
+							var div3 = document.createElement('div');
+							div3.className="clearer";
+							
+							$('.vwc_inputs').append($(div3));
+							
+							chosenizeSelectShortcut($(outerdiv).find('select.selectShortcut'));
+
+						}
+
+					}
+				}
+				var callBackWrong = function(params){
+
+					if(params.val==1)
+					{
+						$("#wrongcomment_"+params.id).show();
+						$("#wrongcomment_"+params.id).html(params.comment);
+						$('#vwc_line_'+params.id).addClass('wrongfilter');
+
+						$('#vwc_line_'+params.id).addClass('greyclass');
+						$('.wrc_'+params.id).find('font').attr('color','#cccccc');
+						$('.wrt_'+params.id).find('font').attr('color','#cccccc');
+					}
+					else
+					{
+						$('#vwc_line_'+params.id).removeClass('greyclass');
+						$('#vwc_line_'+params.id).removeClass('wrongfilter');
+
+						$('#wrongcomment_'+params.id).hide();
+
+
+
+						for(i=0;i<$('.wrc_'+params.id).length;i++)
+						{
+							var crid = ($('.wrc_'+params.id)[i].id);
+							var crtid = ($('.wrt_'+params.id)[i].id);
+							var oldcolor = $('#old_'+crid.substr(('wrc_').length)).val();
+
+							$('#'+crid).find('font').attr('color','#'+oldcolor);
+							$('#'+crtid).find('font').attr('color','#'+oldcolor);
+						}
+					}
+				}
+				function uncheckbox(chk)
+				{
+			       $('#wrong_check_'+chk).attr('checked',false);
+				}
+				function closepopup() {
+					disablePopup();
+				}
+
+				
+				function openPopup(chkbx,id, skip_modal) {
+// 					var checkid = $(chkbx).attr('id');
+					var checkid = $(chkbx).data('block_id');
+					
+					var ids = "";
+					var quamma = "";
+
+					for(i=0; i < $('.block_'+checkid).length; i++) {
+						var entry_id = $('.block_'+checkid + ":eq("+i+")").attr('data-entry_id');
+// 						ids = ids + quamma + ( $('.block_'+checkid)[i].id );
+						ids = ids + quamma + entry_id;
+						
+// 						console.log( $('.block_'+checkid + ":eq("+i+")").attr('data-entry_id') );
+						
+						quamma = ",";
+					}
+
+					console.log(ids); 
+					if(chkbx.checked) {
+						$("<input type='hidden' name='comments["+id+"]' id='comment_"+id+"' value='' />").appendTo("#frmcourse");
+
+						$('#contactArea').html('<iframe id="add_family_doc" frameborder="0" src="" scrolling="no" style="margin:0 auto;"></iframe>');
+
+
+						centerPopup({sr:'about:blank',ht:250,wt:450});
+
+						$('#contactArea').html('<div><?php echo $this->translate('wrongcomment'); ?><div align="right"><a id="popupContactClose" style="cursor:pointer;" onclick="uncheckbox(\''+checkid+'\');closepopup()">x</a></div></div><div><textarea name="comment" id="comment"></textarea></div><div><button name="" onClick="saveComment(\''+id+'\',\''+ids+'\',\''+checkid+'\');"><?php echo $this->translate('submit');?></button></div>');
+
+						loadPopup();
+					} else {
+
+						$("#comment_"+id).remove();
+
+						ajaxCallserver({url:'voluntaryworkers/savewrongcd?ids='+ids+'&val=0&blockcnt='+checkid});
+					}
+				}
+
+				function saveComment(id,ids,blockid)
+				{
+				   var val = "";
+				   var modal_mode = '0';
+
+					if($("#comment").val().length>0) {
+						val="<?php echo ("Dieser Eintrag wurde als gelöscht markiert. Begründung : ") ?>" + $("#comment").val();
+
+						$("#comment_"+id).val(val);
+
+						ajaxCallserver({url:'voluntaryworkers/savewrongcd', method:'POST', data:{comment:val,val:1,ids:ids,blockcnt:blockid}});
+						disablePopup();
+					}
+					else
+					{
+						jAlert('<?php echo $this->translate('entercomment') ?>');
+					}
+				}
+				
+				</script>
+
+				<div class="vw_course_form">
+					
+					<!-- course date  -->
+					<div class="vwc_title"><?php echo $this->translate('patientcoursedocs')?></div>
+					<div class="vwc_date"><?php echo date("d.m.Y");?></div>
+					
+									<span class="err">
+						<?php echo $this->error_shortcut; ?>
+						<?php echo $this->error_date; ?>
+					</span>
+
+									
+					<!-- course inputs  -->
+					<div class="vwc_inputs">
+<!-- 					used_sh_in_vw -->
+										
+					<? if(!empty($this->used_sh_in_vw)):?>
+						<div class="vwc_course_filter">
+							<?php foreach($this->all_available_shortcuts as $k=>$sh_data):?>
+							<? if(in_array($sh_data['shortcut'],$this->used_sh_in_vw)):?>
+							<?php
+										$style="";
+										if(strlen($sh_data['font_color']) > 0){
+											$style .="color: #".$sh_data['font_color']."; ";
+										}
+										if($sh_data['isbold'] == "1"){
+											$style .=" font-weight:800; ";
+										}
+										if($sh_data['isitalic'] == "1"){
+											$style .=" font-style: italic; ";
+										}
+										if($sh_data['isunderline'] == "1"){
+											$style .=" text-decoration: underline; ";
+										}
+									
+									 ?>
+									<div class="vwc_course_f" <?php if(strlen($style) > 0 ): ?> style="<?php echo $style;?>" <?php endif;?>  > <input type="checkbox" class="shortcut_checkboxes" name="course_filter" id="course_filter_<?php echo $sh_data['shortcut']?>" value="<?php echo $sh_data['shortcut']?>" onClick="sh_course(this)" <?php if($this->course_filter == 'K'){ echo 'checked="checked"';} ?>  /> <?php echo $sh_data['ctype']?></div>
+							<?php endif;?>
+							<?php endforeach;?>
+					</div>
+					<?php endif;?>
+					
+						<div class="vwc_inner_inputs">
+							<div class="vwc_shortcut">			
+								<!-- <input type="text" onchange="keyupdelay(this,1)" onkeyup="keyupdelay(this,1)" value="" id="vw_course_type1" name="vw_course[vw_course_type][]"> -->
+							
+							<?php 
+							//add empty option so we can de-select
+							$optionss = "<option value='' data-1='' data-2='" . $this->translate("Please select action") . "' data-3='font-style: italic;color:#BBBBBB;'>" . $this->translate("Please select action") . "</option>"; 
+
+							foreach ($this->all_available_shortcuts as $short) {
+    							$css = '';
+   			 					$css .= $short['isbold'] ? 'font-weight: bold;' : '';
+    							$css .= $short['isitalic'] ? 'font-style: italic;' : '';
+    							$css .= $short['isunderline'] ? 'text-decoration: underline;' : '';
+    							$css .= $short['font_color'] ? "color: #{$short['font_color']};" : '';
+    
+    							//$selected = $short['shortcut'] == $course_type ? ' selected ' : '';
+    
+    							$short['course_fullname'] = trim($short['course_fullname']);
+    
+    							$optionss .= "<option value='{$short['shortcut']}' data-1='{$short['shortcut']}' data-2='{$short['ctype']}' data-3='{$css}'>{$short['ctype']}</option>";
+							} 
+							$course_type_as_select = "<select name='vw_course[vw_course_type][]' onchange='keyupdelay(this,1)' id='vw_course_type1' class='selectShortcut chosenShortcuts-container'>{$optionss}</select>";
+							echo $course_type_as_select;
+							?>
+						</div>
+							
+							<div class="vwc_text"  id="vwc_text1"> 			
+								<textarea rows="" cols="" id="vw_course_title1" class="vwc_textarea" name="vw_course[vw_course_title][]" ></textarea>
+							</div>
+						</div>
+						<div class="clearer"></div>
+					</div>
+				</div>
+				
+				
+			 <div class="course_tab">
+			 
+			 </div>
+			 
+			<!-- ISPC-2401 pct.5 Move in vwcourse.html  -->
+			<!-- 	<?php if(empty($this->vw_course)) { ?>
+					<div class="vw_course" style="border-top: 0px;">
+				<?php } else { ?>
+					<div class="vw_course">
+				<?php } ?>
+				<?php 	
+						$vw_course = $this->vw_course;
+						$course_users = $this->allusers;
+ 				?>
+					<?php
+					$blockcounter = "1";
+					$wrongfilterclass = "";
+					$greyclass = "";
+					 foreach($vw_course as $vcw_line=>$vwc):?>
+					 <?
+					 if ($vwc['wrong'] == 1)
+						{
+        					$wrongfilterclass = "wrongfilter";
+        					$greyclass = "greyclass";
+						 } else{
+        					$wrongfilterclass = "";
+        					$greyclass = "";
+						}						
+					 
+					 ?>
+					<div class="vwc_line <?php echo $wrongfilterclass;?> <?php echo $greyclass;?>" id="vwc_line_<?php echo $blockcounter; ?>">
+						<div class="vwc_left">
+						<?php
+							$full_course_date = $vwc['c_date_dt'].''.$vwc['c_date_hm'];
+							$full_done_date = $vwc['date_dt'].''.$vwc['date_hm'];
+						
+						 if($full_course_date != $full_done_date ):?>
+							<span class="done_date_block"> <?php echo $vwc['date_dt']; ?>, <?php echo $vwc['date_hm']; ?></span>
+							<span class="entry_date_block"> <?php echo $vwc['c_date_dt']; ?>, <?php echo $vwc['c_date_hm']; ?></span><br/>
+							
+						<?php else:	?>
+							<span class="done_date_block"> <?php echo $vwc['date_dt']; ?>, <?php echo $vwc['date_hm']; ?></span>
+						<?php endif; ?>
+						<?php echo $course_users[$vwc['user']]; ?>
+						</div>
+						
+						
+						
+						
+						<div class="vwc_right">
+							<div class="vwc_details">
+									<?php foreach($vwc['summary'] as $k=>$sh_data):?>
+									
+								   <?php
+										$wrongcheck = "";
+
+										if ($sh_data['wrong'] == 1)
+										{
+											$wrongcheck = 'checked=checked';
+										}
+
+										$style="";
+										if(strlen($sh_data['font_color']) > 0){
+											$style .="color: #".$sh_data['font_color']."; ";
+										}
+										if($sh_data['isbold'] == "1"){
+											$style .=" font-weight:800; ";
+										}
+										if($sh_data['isitalic'] == "1"){
+											$style .=" font-style: italic; ";
+										}
+										if($sh_data['isunderline'] == "1"){
+											$style .=" text-decoration: underline; ";
+										}
+									
+									 ?>
+										<div class="vwc_details_line">		
+											<div class="vwc_sh greyfontclass wrc_<?php echo $blockcounter; ?>" id="wrc_<?php echo $sh_data['id'] ?>" <?php if(strlen($style) > 0 ): ?> style="<?php echo $style;?>" <?php endif;?> > <?php echo $sh_data['course_type']?></div>
+											<div class="vwc_text greyfontclass wrt_<?php echo $blockcounter; ?>" id="wrt_<?php echo $sh_data['id'] ?>" <?php if(strlen($style) > 0 ): ?> style="<?php echo $style;?>" <?php endif;?>  > <?php echo $sh_data['course_title']?></div>
+											
+										<div class="colleft2_inpwid " style="display: none;">
+											<input type="checkbox" name="wrong[<?php echo $sh_data['id'] ?>]" class="block_<?php echo $blockcounter; ?>" data-entry_id="<?php echo $sh_data['id'] ?>"	id="<?php echo $sh_data['id'] ?>" value="1"  /> 
+											<input type="hidden" value="<?php echo $sh_data['course_type']?>" 	id="course_type_<?php echo $sh_data['id'] ?>" name="courses_types[]" class="courses_types_<?php echo $blockcounter; ?>"	rel="0" /> &nbsp;
+										</div>
+										<input type="hidden" name="oldcolor" id="old_<?php echo $sh_data['id'] ?>" value="<?php echo $sh_data['font_color']; ?>" />
+											
+										</div>		
+									<?php endforeach; ?>
+							</div>
+							<div class="vwc_details_wrong">
+							
+								<input type="checkbox" class="divcheckbox" onclick="openPopup(this,<?php echo $blockcounter; ?>)" <?php echo $wrongcheck; ?> value="1" id="wrong_check_<?php echo $blockcounter; ?>"  data-block_id="<?php echo $blockcounter; ?>"  name="wrongmain">
+							</div>
+							
+							<div class="ListCourseSumm" id="wrongcomment_<?php echo $blockcounter; ?>" style="width: 100%; display: bloc; float:left;"><?php echo $vwc['wrongcomment'];  ?></div>
+						</div>
+					
+					</div> 
+				<?php $blockcounter++; ?>
+				<?php endforeach; ?>
+					
+					
+				</div>  -->
+				
+				<div class="vwc_available">
+				
+					<!-- <h3><?php echo $this->translate("vwc available shortcuts"); ?></h3> -->
+					<div class="verlauf_bar_bottom"></div>
+					<?php foreach($this->all_available_shortcuts as $k=>$sh_data):?>
+															<?php
+										$style="";
+										if(strlen($sh_data['font_color']) > 0){
+											$style .="color: #".$sh_data['font_color']."; ";
+										}
+										if($sh_data['isbold'] == "1"){
+											$style .=" font-weight:800; ";
+										}
+										if($sh_data['isitalic'] == "1"){
+											$style .=" font-style: italic; ";
+										}
+										if($sh_data['isunderline'] == "1"){
+											$style .=" text-decoration: underline; ";
+										}
+									
+									 ?>
+										<div class="vwc_sh_av_line">		
+											<div class="vwc_av_sh" <?php if(strlen($style) > 0 ): ?> style="<?php echo $style;?>" <?php endif;?> > <?php echo $sh_data['shortcut']?></div>
+											<div class="vwc_av_text" <?php if(strlen($style) > 0 ): ?> style="<?php echo $style;?>" <?php endif;?>  > <?php echo $sh_data['ctype']?></div>
+										</div>		
+					<?php endforeach;?>
+				</div>
+			
+				<div class="clearer"></div>
+			<!-- </div> -->
+		</div>
+	</div>
+	</div>
+	
+
+		<label for="btnsubmit"></label>
+		<input type="hidden" id="changedrows" value="" name="changedrows">
+		<input type="submit" name="btnsubmit" id="btnsubmit" class="button" tabindex="30" value="<?php echo $this->translate('submit') ?>">
+		<input type="submit" name="btnsubmit2" id="btnsubmit_and_close" class="button btnsubmit_usersessions" value="<?php echo $this->translate('save and close') ?>">
+ 		<input type="hidden" name="tabs" value="" id="tabs_selected_id" /> 
+ 		<input type="hidden" name="action_redirect" id="action_redirect" value="btnsubmit" /> 
+ 		<!-- ISPC-2401 10) add a VW with the new TAB "Ausbildung Ehrenamtliche" selected.  -->
+ 		<input type="hidden" name="referal_tab" id="referal_tab" value="<?php echo $_REQUEST['referal_tab'] ?>" /> 
+ 		
+</form>
+<div id="edit_work_bulk_dialog" >
+ 
+</div> <!-- Edit work bulk DIALOG END -->
+
+
+<div id="confirm_unassign">
+	<p><?php echo $this->translate('confirm_unassign_icon_text'); ?></p>
+</div>
+<div class="modal"><!-- Place at bottom of page --></div>

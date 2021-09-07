@@ -1,0 +1,146 @@
+<!-- ISPC-2748 Lore 17.11.2020 -->
+<?php
+
+	$pl = $this->price_list;
+?>
+<script>
+	$(document).ready(function() {
+		$( "#start, #end" ).datepicker({
+			dateFormat: 'dd.mm.yy',
+			showOn: "both",
+			buttonImage: $('#calImg').attr('src'),
+			buttonImageOnly: true,
+			changeMonth: true,
+			changeYear: true
+		});
+
+
+		$('#duplicate_list').dialog({
+			autoOpen: false,
+			title: '<?php echo $this->translate('overlapping_list'); ?>',
+			modal: true,
+			buttons: {
+				"<?php echo $this->translate('Ok'); ?>": function() {
+					$( this ).dialog( "close" );
+					$('#save_list').removeAttr('disabled');
+				}
+			}
+		});
+
+		$('#save_list').bind('click', function(event) {
+			event.preventDefault();
+
+			$.ajax({
+				type: 'POST',
+				url: 'ajax/pricelistoverlapping',
+				data: {
+					list: '<?php echo $_REQUEST['list'] ?>',
+					start: $('#start').val(),
+					end: $('#end').val()
+				},
+				beforeSend:function(){
+					//loading image
+					$('#save_list').attr('disabled',true);
+					$('#save_list').addClass('loading_button');
+				},
+				success:function(data){
+					$('input#save_list').removeClass('loading_button');
+					$('#save_list').attr('disabled',false);
+
+					var listdata = jQuery.parseJSON(data);
+
+					if(listdata.intersected == 1){
+						$('#duplicate_list').dialog('open');
+						return false; // used with modal
+
+					} else {
+						$('#save_list').attr('disabled',true);
+						$('#save_prices_list').submit();
+					}
+				},
+				error:function(){
+					ajax_done = 1;
+				}
+			});
+		});
+		
+		
+		$('.delete_link').live('click', function(){
+			var list_id = $(this).attr('id');
+			
+			   jConfirm('<?php echo $this->translate('confirmdeleterecord'); ?>', '', function(r) {
+					if(r)
+					{
+	 					location.href = "<?php echo APP_BASE.'misc/pricelist?list="+list_id+"&op=del';  ?>";
+					}
+			});
+			return false;
+			
+		})
+		 
+	});
+
+
+</script>
+<div style="display: none;"><img id="calImg" src="<?php echo RES_FILE_PATH;  ?>/images/calendar.png" alt="Popup" class="trigger"></div>
+<br>
+<p style="font-size:16px;"><?php echo $this->translate('This are the pricelists for the invoices you are allowed to use. If no lists are available please contact the administrator!');  ?></p>
+<br>
+<form  method="POST" action="" id="save_prices_list" name="save_prices_list">
+<?php foreach($this->allowed_invoices_array as $invoice_type=>$invoice_name): ?>
+<h1 style="margin-left: 25px;"><?php echo $this->translate('Price List').' für '.$invoice_name;  ?></h1>
+<table class="datatable">
+	<thead>
+		<tr>
+			<th><?php echo $this->translate('no');  ?></th>
+			<th><?php echo $this->translate('p_start_date');  ?></th>
+			<th><?php echo $this->translate('p_end_date');  ?></th>
+			<th><?php echo $this->translate('actions');  ?></th>
+		</tr>
+	</thead>
+	<tbody>
+		<?php if(!empty($this->price_list)): ?>
+			<?php $i = 1; foreach($this->price_list as $k_list=>$price_listed):  ?>
+			<tr class="<?php if($price_listed['id'] == $this->listid): $selected = $k_list;?> selected_row <?php else: ?> alternate <?php endif;  ?> hoover">
+				<td><?php echo $i;  ?></td>
+				<td><?php echo date('d.m.Y', strtotime($price_listed['start']));  ?></td>
+				<td><?php echo date('d.m.Y', strtotime($price_listed['end']));  ?></td>
+				<td>
+					<table class="datatable_special">
+						<tr>
+							<td><a href="<?php echo APP_BASE.'misc/clientpricelistdetails?invoice_type='.$invoice_type.'&list='.$price_listed['id'];  ?>" class="inline_link"><?php echo $this->translate('select');  ?></a></td>
+							<td><a href="<?php echo APP_BASE.'misc/clientpricelist?invoice_type='.$invoice_type.'&list='.$price_listed['id'].'&op=edit';  ?>" class="inline_link"><?php echo $this->translate('edit');  ?></a></td>
+							<td><a href="javascript:void(0);" class="inline_link delete_link" id="<? echo $price_listed['id']; ?>" rel="<? echo $price_listed['id']; ?>"    ><?php echo $this->translate('delete');  ?></a></td>
+						</tr>
+					</table>
+				</td>
+			</tr>
+			<?php $i++; endforeach;  ?>
+		<?php else:  ?>
+			<tr class="nohover">
+				<td colspan="4"><?php echo $this->translate('No price list saved.');  ?></td>
+			</tr>
+		<?php endif;  ?>
+		<tr class="nohover">
+			<td>&nbsp;</td>
+			<td><input type="text" value="<?php if($this->price_list && $this->listid == $_REQUEST['list'] && $_REQUEST['op'] == 'edit'): ?><?php echo date('d.m.Y', strtotime($pl[$selected]['start']));  ?><?php endif;  ?>" name="start" id="start" /></td>
+			<td><input type="text" value="<?php if($this->price_list && $this->listid == $_REQUEST['list'] && $_REQUEST['op'] == 'edit'): ?><?php echo date('d.m.Y', strtotime($pl[$selected]['end']));  ?><?php endif;  ?>" name="end" id="end" /></td>
+			<td><input type="hidden" value="<?php if($this->price_list && $this->listid == $_REQUEST['list'] && $_REQUEST['op'] == 'edit'): ?>1<?php endif; ?>" name="edit_period" id="edit_period" /> &nbsp;<input type="submit" value="<?php echo $this->translate('save');?>" id="save_list" name="save_list" /></td>
+		</tr>
+		<?php if($this->error_date):  ?>
+		<tr>
+			<td colspan="4" class="invalid_date_errors">
+				<?php echo $this->error_date;  ?>
+			</td>
+		</tr>
+		<?php endif; ?>
+	</tbody>
+</table>
+<br/>
+<br/>
+<br/>
+<?php endforeach; ?>
+</form>
+<div id="duplicate_list">
+	<?php echo $this->translate('overlapping_list_confirm');  ?>
+</div>

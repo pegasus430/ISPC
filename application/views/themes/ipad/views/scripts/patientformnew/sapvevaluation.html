@@ -1,0 +1,1620 @@
+<?php $this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/page-css/sapvevaluation.css'); ?> 
+<?php 
+
+$form_data = $this->form_data;
+$saved_data = $this->saved_data;
+
+$url = APP_BASE . "patientformnew/sapvevaluation?" . $_SERVER['QUERY_STRING'];
+if (str_replace("&admissionid=" . $_REQUEST['admissionid'] . "", "", str_replace("&user=" . $_REQUEST['user'] . "", "", $url)))
+{
+	$finalJsUrl = str_replace("&admissionid=" . $_REQUEST['admissionid'] . "", "", str_replace("&user=" . $_REQUEST['user'] . "", "", $url));
+}
+else
+{
+	$finalJsUrl = $url;
+}
+
+?>
+<script type="text/javascript" >
+$(document).ready(function(){
+	$(".datetype").datepicker({
+		dateFormat: 'dd.mm.yy',
+		showOn: "both",
+		buttonImage: $('#calImg').attr('src'),
+		buttonImageOnly: true,
+		changeMonth: true,
+		changeYear: true,
+		nextText: '',
+		prevText: ''
+	});
+	
+	$('ul.tabs li').click(function(){
+		var tab_id = $(this).attr('data-tab');
+
+		$('ul.tabs li').removeClass('current');
+		$('.tab_block').removeClass('current');
+
+		$(this).addClass('current');
+		$("#"+tab_id).addClass('current');
+	})
+
+	$('#general_pdf').click(function(e){
+		$('.form_action').each(function() {
+			$(this).val("");
+		});
+	});
+	
+	
+	$('.submit_form').click(function(e){
+		$('.form_action').each(function() {
+			$(this).val("");
+		});
+	});
+	
+	$('.save_page').click(function(e){
+		e.preventDefault();
+		var page = $(this).data('page');
+		if(page != ""){
+			$('#save_page').val(page);
+			$('#sapvevaluation').submit();
+			
+		}
+	})
+	
+	$('.print_page').click(function(e){
+		e.preventDefault();
+		var page = $(this).data('page');
+		if(page != ""){
+			$('#print_page').val(page);
+			$('#sapvevaluation').submit();
+		}
+	})
+	
+	$('.reset_page').click(function(e){
+		e.preventDefault();
+		var page = $(this).data('page');
+		if(page != ""){
+			$('#reset_page').val(page);
+			$('#sapvevaluation').submit();
+		}
+	});
+
+	$('.show_patient_info').click(function(){	
+			$('#patient_info4hospitalization').dialog('open');
+		return false;
+	});
+	
+	$('#patient_info4hospitalization').dialog({
+		autoOpen: false,
+		modal: true,
+		resizable: false,
+		draggable: false,
+		title: "<?php echo $this->translate('patient_info') ?>",
+		width: 500,
+		height: 400,
+	});
+	
+	$(document).on('click', '.versorger-catheader', function(){
+        $(this).next().toggle();
+        if($(this).hasClass('active')){
+            $(this).removeClass('active').addClass('inactive');
+        }else{
+            $(this).addClass('active').removeClass('inactive');
+        }
+    });
+	
+	$('#patient_info4hospitalization a').each(function(){
+		$(this).removeClass('fall_edit');
+		$(this).removeClass('vv_fall_edit');
+	});
+
+	$('#patient_info4hospitalization .dontPrint').each(function(){
+		$(this).hide();
+	});
+	
+	$('#patient_info4hospitalization .addbutton').each(function(){
+		$(this).closest("tr").hide();
+	});
+	
+	$('#patient_info4hospitalization .optional').each(function(){
+		$(this).parent().parent().hide();
+	});
+	
+	$('#end_sapv_button').hide();
+	
+});
+
+
+function change_period(data){
+	if(data != "-1"){
+		var url = "<?php echo $finalJsUrl; ?>&admissionid="+data; 
+	} 
+	else
+	{
+		var url = "<?php echo $finalJsUrl; ?>"; 
+	}
+	$(location).attr('href',url);
+}
+
+</script>
+
+ <!--[if lt IE 8]>
+<style type="text/css">
+	/* css for IE 7 and lower */
+	.tab_block{
+		display: block!important;
+	}
+	.tabs{
+		display: none;
+	}
+	.f_highlight{
+		display: block;
+	}
+</style>
+<![endif]-->
+
+<form action="" method="post" name="sapvevaluation" id="sapvevaluation">
+
+<div id="stammblatt_CalendarImg" style="display: none;">
+	<img id="calImg" src="<?php echo RES_FILE_PATH;  ?>/images/calendar.png" alt="Popup" class="trigger">
+</div>
+ 
+<?php //echo $this->patientinfo ?>
+<?php //echo $this->tabmenus ?>
+
+<div class="fall_selector">
+	<label><b><?php echo $this->translate("Select period: ")?></b></label>
+	<select name="admissionid" onChange="change_period(this.value);">
+		<?php foreach($this->admission_periods as $admi_id=>$admi_dates): ?>
+			<option value="<?php echo $admi_id;?>" <?php if($_REQUEST["admissionid"] == $admi_id || $this->admissionid == $admi_id ):?> selected = "selected" <?php endif;?>> <?php echo $admi_dates['start']; ?> - <?php echo $admi_dates['end']; ?></option>
+		<?php endforeach;?>
+	</select>
+</div>
+
+<ul class="tabs por_tabs">
+	<li class="tab-link current" data-tab="msp1">Messpunkt I</li>
+	<li class="tab-link" data-tab="msp2">Messpunkt II</li>
+	<li class="tab-link" data-tab="ipos1">IPOS Messpunkt I</li>
+	<li class="tab-link" data-tab="ipos2">IPOS Messpunkt 7 Tage</li>
+</ul>
+
+<div class="tab_container pot_cont_sapv_evaluation">
+
+     <div class="Evaluation tab_block current"  id="msp1">
+     <!--  ###################################################################################################################################### -->
+     <!--  #################################################### Messpunkt I  #################################################################### -->
+     <!--  ###################################################################################################################################### -->
+		<div class="f_highlight">Messpunkt I</div>
+    	<?php if($saved_data['msp1'] == "1"):?>
+		<div class="tab_form_alert_info" >
+			<p><?php echo $this->translate("Form manually saved, to revert please press reset-sapv_evaluation")?></p>
+		</div>	
+		<?php endif; ?>
+		
+      <div class="InfoSection">
+        <div class="InfoDiv">
+          <div class="Infoleft"> Krankenkasse bzw. Kostenträger<br />
+            <input id="hi_company_name" name="msp1[health_insurance_name]" type="text"  value="<?php echo $form_data['msp1']['health_insurance_name']; ?>" class="MarginZero" />
+          </div>
+          <div class="BlackDivider"></div>
+          <div class="Inforight"> Kassen-Nr.<br />
+            <input id="kassen_nr" name="msp1[health_insurance_kassen_nr]" type="text" class="MarginZero" value="<?php echo $form_data['msp1']['health_insurance_kassen_nr']; ?>" />
+          </div>
+          <div class="ClrBoth"></div>
+        </div>
+        <div class="InfoSectionBottom">
+          <div class="InfoDiv">
+            <div class="Inforight"> Betriebsstätten-Nr.<br />
+              <input id="betriebsstatten_nr" name="msp1[client_bsnr]" type="text" value="<?php echo $form_data['msp1']['client_bsnr']; ?>" class="MarginZero"   />
+            </div>
+            <div class="BlackDivider"></div>
+            <div class="Inforight">Institutionskennzeichen<br />
+             <input id="institutskennzeichen" name="msp1[client_iknumber]" type="text" value="<?php echo $form_data['msp1']['client_iknumber']; ?>" class="MarginZero" />
+            </div>
+            <div class="BlackDivider"></div>
+				<div class="Inforight"> 
+					&nbsp;<br />&nbsp;
+            </div>
+            <div class="ClrBoth"></div>
+          </div>
+        </div>
+      </div>
+      <div class="HeadingSection">
+		<h2>SAPV- Einzelfallevaluation aus Sicht des Dienstes</h2> 
+			<span class="center">gemäß Anlage 5 - Mustervertrag Bayern</span><br />
+      </div>
+      <div class="title_point">
+		Messpunkt I
+      </div> 
+
+	<table class="table_msp1" >
+			<tr>
+			    <td colspan="14">  <h3>I. Patientenmerkmale und Bedarf an spez. ambulanten Palliativversorgung (SAPV)</h3></td>
+			</tr>
+
+			<tr>
+			    <td colspan="14">&nbsp; </td>
+			</tr>
+			
+			<tr>
+				<td width="10%"><label>Patienten-ID:</label></td>
+				<td width="5%"><input type="text" name="msp1[patient_epid]" class="epid_se" value="<?php echo $form_data['msp1']['patient_epid']; ?>" /></td>
+				
+				<td width="5%">&nbsp;</td>
+				
+				<td width="10%"><label>Geschlecht:</label></td>
+				<td width="3%"><input type="radio" name="msp1[patient_gender]" value="2" <?php $x = ($form_data['msp1']['patient_gender'] == "2")? 'checked="checked"' : ''; echo $x; ?> /></td>
+				<td width="2%"><label >w</label></td>
+				<td width="3%"><input type="radio" name="msp1[patient_gender]" value="1" <?php $x = ($form_data['msp1']['patient_gender'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td>
+				<td width="2%"><label>m</label></td>
+				
+				<td width="12%">&nbsp;</td>
+				
+				<td width="5%"><label>Alter:</label></td>
+				<td width="5%"><input type="text" class="age_se" name="msp1[patient_age]" value="<?php echo $form_data['msp1']['patient_age']; ?>" /> 
+				<td width="15%"><label>&nbsp;Jahre</label></td>
+				<td width="5%"><label>PLZ:</label></td>
+				<td width="20%"><input type="text" name="msp1[patient_zip]" class="plz_se" value="<?php echo $form_data['msp1']['patient_zip'];?>" /></td>
+		    </tr>
+		</table>
+
+
+	<table class="table_msp1" >
+			<tr>
+				<td width="20%">&nbsp;<br/><label>Beginn der SAPV:</label></td>
+				<td><input size="10" type="text" name="msp1[first_admission]" class="datetype" value="<?php echo $form_data['msp1']['first_admission']; ?>"/></td>
+			</tr>
+			<tr>
+				<td width="20%">&nbsp;<br/><label><b>Grundkrankheit ICD10: </b></label></td>
+				<td>&nbsp;<br/><input type="text" name="msp1[main_diagnosis]" value="<?php echo $form_data['msp1']['main_diagnosis'];?>" /></td>
+			</tr>
+       </table>
+       
+       
+       
+<!-- Betreuungsrelevante Nebendiagnosen (ICD 10):-->      
+		<table class="table_msp1" >
+			<tr >
+			  <td colspan="4"><label><b>Betreuungsrelevante Nebendiagnosen (ICD): </b></label></td>
+			  	<td><input type="checkbox" name="msp1[has_side_diagno1]" value="1" <?php $x = ($form_data['msp1']['has_side_diagno1'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td>
+			  	<td><input  type="text" size="7" name="msp1[side_diagno1]" value="<?php echo $form_data['msp1']['side_diagno1'];?>" /></td>
+			  	
+			  	<td><input type="checkbox" name="msp1[has_side_diagno2]" value="1" <?php $x = ($form_data['msp1']['has_side_diagno2'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td>
+			  	<td><input  type="text" size="7" name="msp1[side_diagno2]" value="<?php echo $form_data['msp1']['side_diagno2'];?>" /></td>
+			  	
+			  	<td><input type="checkbox" name="msp1[has_side_diagno3]" value="1" <?php $x = ($form_data['msp1']['has_side_diagno3'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td>
+			  	<td><input  type="text" size="7" name="msp1[side_diagno3]" value="<?php echo $form_data['msp1']['side_diagno3'];?>" /></td>
+			</tr>
+			
+<!-- Erstverordnung  -->       
+	        <tr >
+	         	 <td width="25%"  colspan="2"><b>Erstverordnung: </b></td>
+	             <td width="2%"><input type="checkbox" name="msp1[first_sapv_types][]" value="1" id="first_sapv_be" <?php $x = (in_array("1",$form_data['msp1']['first_sapv_types']))? 'checked="checked"' : ''; echo $x; ?> /></td><td width="16%"><label  for="first_sapv_be"> Beratung </label></td>
+				 <td width="2%"><input type="checkbox" name="msp1[first_sapv_types][]" value="2" id="first_sapv_ko" <?php $x = (in_array("2",$form_data['msp1']['first_sapv_types']))? 'checked="checked"' : ''; echo $x; ?> /></td><td width="16%"><label  for="first_sapv_ko"> Koordination </label></td>
+				 <td width="2%"><input type="checkbox" name="msp1[first_sapv_types][]" value="3"  id="first_sapv_tv"<?php $x = (in_array("3",$form_data['msp1']['first_sapv_types']))? 'checked="checked"' : ''; echo $x; ?> /></td><td width="16%"><label  for="first_sapv_tv"> Teilversorgung </label></td>
+				 <td width="2%"><input type="checkbox" name="msp1[first_sapv_types][]" value="4"  id="first_sapv_vv"<?php $x = (in_array("4",$form_data['msp1']['first_sapv_types']))? 'checked="checked"' : ''; echo $x; ?> /></td><td width="18%"><label   for="first_sapv_vv"> Vollversorgung </label></td>
+	        </tr>
+	        
+	        
+<!-- Erstkontakt durch:  -->    
+	         <tr>
+	        	 <td width="25%" colspan="2"><b>Erstkontakt durch: </b></td>
+				 <td width="2%"><input type="radio" name="msp1[first_contact]" value="1" <?php $x = ($form_data['msp1']['first_contact'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td> <td width="16%"><label > Patient/Angehörige </label></td>
+				 <td width="2%"><input type="radio" name="msp1[first_contact]" value="2" <?php $x = ($form_data['msp1']['first_contact'] == "2")? 'checked="checked"' : ''; echo $x; ?> /></td> <td width="16%"><label > Beratungsdienst</label></td>
+				 <td width="2%"><input type="radio" name="msp1[first_contact]" value="3" <?php $x = ($form_data['msp1']['first_contact'] == "3")? 'checked="checked"' : ''; echo $x; ?> /></td> <td width="16%"><label > Hausarzt </label></td>        
+				 <td width="2%"></td>        
+				 <td width="18%"></td>        
+	        </tr>
+	         <tr>
+				<td width="2%"><input type="radio" name="msp1[first_contact]" value="4" <?php $x = ($form_data['msp1']['first_contact'] == "4")? 'checked="checked"' : ''; echo $x; ?> /></td> <td width="23%"><label> Stationäres Hospiz</label></td>
+				<td width="2%"><input type="radio" name="msp1[first_contact]" value="5" <?php $x = ($form_data['msp1']['first_contact'] == "5")? 'checked="checked"' : ''; echo $x; ?> /></td> <td width="16%"><label> Krankenhaus</label></td>
+				<td width="2%"><input type="radio" name="msp1[first_contact]" value="6" <?php $x = ($form_data['msp1']['first_contact'] == "6")? 'checked="checked"' : ''; echo $x; ?> /></td> <td width="16%"><label> Palliativstation </label></td>
+				<td width="2%"><input type="radio" name="msp1[first_contact]" value="7" <?php $x = ($form_data['msp1']['first_contact'] == "7")? 'checked="checked"' : ''; echo $x; ?> /></td> <td width="16%"><label> Facharzt</label></td>
+				 <td width="2%">&nbsp;</td>        
+			    <td width="18%"></td>
+		     </tr>
+		     <tr>
+				<td width="2%"><input type="radio" name="msp1[first_contact]" value="8" <?php $x = ($form_data['msp1']['first_contact'] == "8")? 'checked="checked"' : ''; echo $x; ?> /></td> <td width="23%"><label> ambulanter Hospizdienst</label></td>
+				<td width="2%"><input type="radio" name="msp1[first_contact]" value="9" <?php $x = ($form_data['msp1']['first_contact'] == "9")? 'checked="checked"' : ''; echo $x; ?> /></td> <td width="16%"><label> Ambulante Pflege</label></td>
+				<td width="2%"><input type="radio" name="msp1[first_contact]" value="10" <?php $x = ($form_data['msp1']['first_contact'] == "10")? 'checked="checked"' : ''; echo $x; ?> /></td> <td width="16%"><label>  Stationäre Pflege </label></td>
+				<td width="2%"><input type="radio" name="msp1[first_contact]" value="11" <?php $x = ($form_data['msp1']['first_contact'] == "11")? 'checked="checked"' : ''; echo $x; ?> /></td> <td width="16%"><label> Sonstige</label></td>
+				 <td width="2%">&nbsp;</td>        
+			    <td width="18%"></td>
+		     </tr>
+		</table>
+	     
+	     
+	     
+	     
+<!--Lebenssituation bei Aufnahme der SAPV:-->
+		<table  class="table_msp1" >
+			<tr>
+				<td colspan="4"><label><b>Lebenssituation bei Aufnahme der SAPV: </b></label></td>
+				<td  width="2%"><input type="radio" name="msp1[living_conditions]" value="1" <?php $x = ($form_data['msp1']['living_conditions'] == "1")? 'checked="checked"' : ''; echo $x; ?> /> </td><td colspan="3"><label > amb. Wohngruppe	 </label></td>
+        	</tr>
+        	
+        	<tr>
+	         	<td  width="2%"><input type="radio" name="msp1[living_conditions]" value="2" <?php $x = ($form_data['msp1']['living_conditions'] == "2")? 'checked="checked"' : ''; echo $x; ?> /> </td><td  colspan="3"><label > zu Hause, allein </label></td>
+				<td width="2%"><input type="radio" name="msp1[living_conditions]" value="3" <?php $x = ($form_data['msp1']['living_conditions'] == "3")? 'checked="checked"' : ''; echo $x; ?> /> </td><td  colspan="3"><label >zu Hause, selbst Caregiver für weitere Bezugsperson</label></td>
+       	 	</tr>
+       	 	
+        	<tr>
+	         	<td width="2%"><input type="radio" name="msp1[living_conditions]" value="4" <?php $x = ($form_data['msp1']['living_conditions'] == "4")? 'checked="checked"' : ''; echo $x; ?> /> </td><td colspan="3"><label >zu Hause m. belastbarer Bezugsperson  </label></td>
+				<td width="2%"><input type="radio" name="msp1[living_conditions]" value="5" <?php $x = ($form_data['msp1']['living_conditions'] == "5")? 'checked="checked"' : ''; echo $x; ?> /> </td><td colspan="3"><label >zu Hause m. nicht belastbarer Bezugsperson</label></td>
+       	 	</tr>
+        
+        	<tr>
+	         	<td width="2%"><input type="radio" name="msp1[living_conditions]" value="6" <?php $x = ($form_data['msp1']['living_conditions'] == "6")? 'checked="checked"' : ''; echo $x; ?> /> </td><td><label >im stat.Hospiz</label></td>
+				<td width="2%"><input type="radio" name="msp1[living_conditions]" value="7" <?php $x = ($form_data['msp1']['living_conditions'] == "7")? 'checked="checked"' : ''; echo $x; ?> /> </td><td><label >Kurzzeitpflege</label></td>
+	         	<td width="2%"><input type="radio" name="msp1[living_conditions]" value="8" <?php $x = ($form_data['msp1']['living_conditions'] == "8")? 'checked="checked"' : ''; echo $x; ?> /> </td><td><label >in stat. Pflegeeinrichtung</label></td>
+				<td width="2%"><input type="radio" name="msp1[living_conditions]" value="9" <?php $x = ($form_data['msp1']['living_conditions'] == "9")? 'checked="checked"' : ''; echo $x; ?> /> </td><td><label ><input  type="text"  size="10" name="msp1[living_conditions_other]" value="<?php echo $form_data['msp1']['living_conditions_other'];?>" /></label></td>
+       	 	</tr>
+        </table>
+        
+        
+        
+ <!--Ergänzende Versorgung bei Aufnahme der SAPV: -->
+		<table  class="table_msp1">
+        	<tr>
+           		<td colspan="6" ><label><b>Ergänzende Versorgung bei Aufnahme der SAPV: </b></label></td>
+          	</tr>
+			<tr>
+				<td width="2%"><input type="checkbox" name="msp1[extra_nursing_care][]" value="1" <?php $x = (in_array("1",$form_data['msp1']['extra_nursing_care']))? 'checked="checked"' : ''; echo $x; ?> /></td><td><label > ambulanter Hospizdienst</label></td>
+				<td width="2%"><input type="checkbox" name="msp1[extra_nursing_care][]" value="2" <?php $x = (in_array("2",$form_data['msp1']['extra_nursing_care']))? 'checked="checked"' : ''; echo $x; ?> /></td><td><label > Ambulante Pflege</label></td>
+				<td width="2%"><input type="checkbox" name="msp1[extra_nursing_care][]" value="3" <?php $x = (in_array("3",$form_data['msp1']['extra_nursing_care']))? 'checked="checked"' : ''; echo $x; ?> /></td><td><label >  Stationäre Pflege </label></td>
+			<tr>
+			<tr>
+				<td><input type="checkbox" name="msp1[extra_nursing_care][]" value="4" <?php $x = (in_array("4",$form_data['msp1']['extra_nursing_care']))? 'checked="checked"' : ''; echo $x; ?> /></td><td><label >24h-Präsenzkraft</label></td>
+				<td><input type="checkbox" name="msp1[extra_nursing_care][]" value="5" <?php $x = (in_array("5",$form_data['msp1']['extra_nursing_care']))? 'checked="checked"' : ''; echo $x; ?> /></td><td><label >Intensivpflege</label></td>
+				<td><input type="checkbox" name="msp1[extra_nursing_care][]" value="6" <?php $x = (in_array("6",$form_data['msp1']['extra_nursing_care']))? 'checked="checked"' : ''; echo $x; ?> /></td><td><label >Nein</label></td>
+			</tr>         
+		</table>
+	      
+<!-- Geschätzte Prognose:  -->
+		<table  class="table_msp1">
+	       <tr >
+				<td width="20%"><label><b>Geschätzte Prognose: </b></label></td>
+				<td><input type="radio" name="msp1[estimaded_prognosis]" value="1" <?php $x = ($form_data['msp1']['estimaded_prognosis'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td><td><label > 0-2 Tage</label></td>
+				<td><input type="radio" name="msp1[estimaded_prognosis]" value="2" <?php $x = ($form_data['msp1']['estimaded_prognosis'] == "2")? 'checked="checked"' : ''; echo $x; ?> /></td><td><label > 3-7 Tage</label></td>
+				<td><input type="radio" name="msp1[estimaded_prognosis]" value="3" <?php $x = ($form_data['msp1']['estimaded_prognosis'] == "3")? 'checked="checked"' : ''; echo $x; ?> /></td><td><label >1-4 Wochen</label></td>
+				<td><input type="radio" name="msp1[estimaded_prognosis]" value="4" <?php $x = ($form_data['msp1']['estimaded_prognosis'] == "4")? 'checked="checked"' : ''; echo $x; ?> /></td><td><label >5-12 Wochen</label></td>
+				<td><input type="radio" name="msp1[estimaded_prognosis]" value="5" <?php $x = ($form_data['msp1']['estimaded_prognosis'] == "5")? 'checked="checked"' : ''; echo $x; ?> /></td><td><label > &gt; 12 Wochen</label></td>
+           </tr>
+           </table>
+           
+<!-- Karnofsky-Index (AKPS):   -->
+	    <table  class="table_msp1">
+        <tr>
+            <td width="20%"><label><b>Karnofsky-Index (AKPS):</b></label></td>
+			<td width="2%"><input type="radio" name="msp1[akps]" value="100" <?php $x = ($form_data['msp1']['akps'] == "100")? 'checked="checked"' : ''; echo $x; ?> /></td><td width="5%"><label  >100</label></td>
+			<td width="2%"><input type="radio" name="msp1[akps]" value="90" <?php $x = ($form_data['msp1']['akps'] == "90")? 'checked="checked"' : ''; echo $x; ?> /></td><td width="5%"><label >90</label></td>
+			<td width="2%"><input type="radio" name="msp1[akps]" value="80" <?php $x = ($form_data['msp1']['akps'] == "80")? 'checked="checked"' : ''; echo $x; ?> /></td><td width="5%"><label >80</label></td>
+			<td width="2%"><input type="radio" name="msp1[akps]" value="70" <?php $x = ($form_data['msp1']['akps'] == "70")? 'checked="checked"' : ''; echo $x; ?> /></td><td width="5%"><label >70</label></td>
+			<td width="5%">&nbsp;</td>
+			<td width="2%"><input type="radio" name="msp1[akps]" value="60" <?php $x = ($form_data['msp1']['akps'] == "60")? 'checked="checked"' : ''; echo $x; ?> /></td><td width="5%"><label > 60</label></td>
+			<td width="2%"><input type="radio" name="msp1[akps]" value="50" <?php $x = ($form_data['msp1']['akps'] == "50")? 'checked="checked"' : ''; echo $x; ?> /></td><td width="5%"><label > 50</label></td>
+			<td width="2%"><input type="radio" name="msp1[akps]" value="40" <?php $x = ($form_data['msp1']['akps'] == "40")? 'checked="checked"' : ''; echo $x; ?> /></td><td width="5%"><label > 40</label></td>
+			<td width="5%">&nbsp;</td>
+			<td width="2%"><input type="radio" name="msp1[akps]" value="30" <?php $x = ($form_data['msp1']['akps'] == "30")? 'checked="checked"' : ''; echo $x; ?> /></td><td width="5%"><label > 30</label></td>
+			<td width="2%"><input type="radio" name="msp1[akps]" value="20" <?php $x = ($form_data['msp1']['akps'] == "20")? 'checked="checked"' : ''; echo $x; ?> /></td><td width="5%"><label > 20</label></td>
+			<td width="2%"><input type="radio" name="msp1[akps]" value="10" <?php $x = ($form_data['msp1']['akps'] == "10")? 'checked="checked"' : ''; echo $x; ?> /></td><td width="5%"><label > 10</label></td>
+           </tr>
+		</table>           
+           
+<!--Einschätzung der Krankheitsphase bei Erstbesuch: -->
+		<table  class="table_msp1">
+         	<tr>
+				<td colspan="10"><label><b>Einschätzung der Krankheitsphase bei Erstbesuch:</b></label></td>
+			</tr>
+         	<tr>
+				<td><input type="radio" name="msp1[assessment_disease]" value="1" <?php $x = ($form_data['msp1']['assessment_disease'] == "1")? 'checked="checked"' : ''; echo $x; ?> /> </td><td><label> stabil</label></td>
+				<td><input type="radio" name="msp1[assessment_disease]" value="2" <?php $x = ($form_data['msp1']['assessment_disease'] == "2")? 'checked="checked"' : ''; echo $x; ?> /> </td><td><label>instabil</label></td>
+				<td><input type="radio" name="msp1[assessment_disease]" value="3" <?php $x = ($form_data['msp1']['assessment_disease'] == "3")? 'checked="checked"' : ''; echo $x; ?> /></td><td><label>sich verschlechternd</label></td>
+				<td><input type="radio" name="msp1[assessment_disease]" value="4" <?php $x = ($form_data['msp1']['assessment_disease'] == "4")? 'checked="checked"' : ''; echo $x; ?> /></td><td><label> sterbend</label></td>
+				<td><input type="radio" name="msp1[assessment_disease]" value="5" <?php $x = ($form_data['msp1']['assessment_disease'] == "5")? 'checked="checked"' : ''; echo $x; ?> /></td><td><label>verstorben/Trauerbeistand</label></td>
+			</tr>
+		</table>
+          
+<!--Legende: -->  
+		&nbsp;<br/>
+		&nbsp;<br/>
+         <label><b>Legende<br/>Karnowsky-Index(AKPS):</b></label>
+		&nbsp;<br/>
+		&nbsp;<br/>
+         <table width="98%" align="center">
+           <tr>
+              <td class="cell_1">&nbsp;100% </td>
+              <td class="cell_2" >&nbsp;normal; beschwerdefrei; keine Krankheitszeichen</td>
+           </tr>
+            <tr>
+              <td class="cell_1">&nbsp;90% </td>
+              <td class="cell_2" >&nbsp;fähig zur normalen Aktivität; nur geringe Krankheitszeichen</td>
+           </tr>
+            <tr>
+              <td class="cell_1">&nbsp;80% </td>
+              <td class="cell_2" >&nbsp;mit Anstrengung normale Aktivität möglich; mäßige Krankheitszeichen</td>
+           </tr>
+            <tr>
+              <td class="cell_1">&nbsp;70% </td>
+              <td class="cell_2" >&nbsp;Selbstversorgung möglich; unfähig zur Entfaltung einer normalen Aktivität oder aktiven Tätigkeit</td>
+           </tr>
+           <tr>
+              <td class="cell_1">&nbsp;60% </td>
+              <td class="cell_2" >&nbsp;Pat. Benötigt gelegentlich fremde Hilfe</td>
+           </tr>
+           <tr>
+              <td class="cell_1">&nbsp;50% </td>
+              <td class="cell_2" >&nbsp;erhebliche Hilfeleistungen nötig; häufig medizinische Versorgung</td>
+           </tr>
+           <tr>
+              <td class="cell_1">&nbsp;40% </td>
+              <td class="cell_2" >&nbsp;mehr als 50% der Zeit bettlägerig </td>
+           </tr>
+            <tr>
+              <td class="cell_1">&nbsp;30% </td>
+              <td class="cell_2" >&nbsp;fast vollständig bettlägerig</td>
+           </tr>
+           <tr>
+              <td class="cell_1">&nbsp;20% </td>
+              <td class="cell_2" >&nbsp;vollständig bettlägerig; umfassende Pflege durch Professionelle oder Familie erforderlich</td>
+           </tr>
+            <tr>
+              <td class="cell_1">&nbsp;10% </td>
+              <td class="cell_2" >&nbsp;komatös oder fast nicht erweckbar</td>
+           </tr>
+           
+           
+         </table>
+      &nbsp;<br/>
+ <!--Krankheitsphasen:-->            
+              <label><b>Krankheitsphasen:</b></label>
+              &nbsp;<br/>&nbsp;<br/>
+              <table width="98%" align="center">
+                <tr>
+                   <td class="cell_1">&nbsp;stabil </td>
+                   <td class="cell_2" >&nbsp;Patient kommt mit der derzeitigen Versorgung zurecht, die Angehörigen ebenfalls; Medikamentendosierung unverändert</td>
+                </tr>
+                 <tr>
+                   <td class="cell_1">&nbsp;instabil </td>
+                   <td class="cell_2" >&nbsp;unvorhergesehene Verschlechterung, auch bei Angehörigen, sofortige Intervention / Änderung des Vorgehens erforderlich</td>
+                </tr>
+                 <tr>
+                   <td class="cell_1">&nbsp;sich verschlechternd</td>
+                   <td class="cell_2" >&nbsp;erwartete Verschlechterung, Anpassung erforderlich, aber vorausgesehen</td>
+                </tr>
+                 <tr>
+                   <td class="cell_1">&nbsp;sterbend</td>
+                   <td class="cell_2" >&nbsp;in bis zu zwei Tagen ist der Todeseintritt zu erwarten (final)</td>
+                </tr>
+                <tr>
+                   <td class="cell_1">&nbsp;verstorben/Trauerbeistand</td>
+                   <td class="cell_2" >&nbsp;bei Erstbesuch ist der Patient gerade verstorben, jedoch erfolgt eine Betreuung der Angehörigen</td>
+                </tr>
+               </table>
+
+               <table class="bottom_footer">
+	               <tr>
+					    <td>SAPV-Einzelfallevaluation Bayern (Version 2012)</td>
+	               </tr>
+               </table>
+		<div class="se_tabs_buttons">	
+			<button name="save_msp1" type="submit" data-page="msp1" class="submit_form save_page btnsubmit_usersessions" ><? echo $this->translate('save') ?><sup>*</sup></button>
+			<button name="pdf_msp1" type="submit" data-page="msp1" class="submit_form print_page btnsubmit_usersessions" ><? echo $this->translate('generatepdf') ?><sup>*</sup></button>
+			<?php if($saved_data['msp1'] == "1"):?>
+				<button name="reset_msp1" type="submit" data-page="msp1" class="submit_form reset_page btnsubmit_usersessions" ><? echo $this->translate('reset') ?><sup>*</sup></button>
+			<?php endif; ?>
+			<span>*) <? echo $this->translate('Action only for current tab: msp1') ?></span>
+	    </div>
+               
+    </div><!-- END tab msp1 -->
+
+     <div class="Evaluation tab_block"  id="msp2">
+    <div class="f_highlight">
+     	Messpunkt II
+    </div>
+    
+     <!--  ###################################################################################################################################### -->
+     <!--  #################################################### Messpunkt II  #################################################################### -->
+     <!--  ###################################################################################################################################### -->
+	<?php if($saved_data['msp2'] == "1"):?>
+		<div class="tab_form_alert_info" >
+			<p><?php echo $this->translate("Form manually saved, to revert please press reset-sapv_evaluation")?></p>
+		</div>	
+	<?php endif; ?>
+  
+  <div class="antet">
+      <div class="InfoSection">
+        <div class="InfoDiv">
+          <div class="Infoleft"> Krankenkasse bzw. Kostenträger<br />
+            <input id="hi_company_name" name="msp2[health_insurance_name]" type="text"  value="<?php echo $form_data['msp2']['health_insurance_name']; ?>" class="MarginZero" />
+          </div>
+          <div class="BlackDivider"></div>
+          <div class="Inforight"> Kassen-Nr.<br />
+            <input id="kassen_nr" name="msp2[health_insurance_kassen_nr]" type="text" class="MarginZero" value="<?php echo $form_data['msp2']['health_insurance_kassen_nr']; ?>" />
+          </div>
+          <div class="ClrBoth"></div>
+        </div>
+        <div class="InfoSectionBottom">
+          <div class="InfoDiv">
+            <div class="Inforight"> Betriebsstätten-Nr.<br />
+              <input id="betriebsstatten_nr" name="msp2[client_bsnr]" type="text" value="<?php echo $form_data['msp2']['client_bsnr']; ?>" class="MarginZero"   />
+            </div>
+            <div class="BlackDivider"></div>
+            <div class="Inforight">Institutionskennzeichen<br />
+             <input id="institutskennzeichen" name="msp2[client_iknumber]" type="text" value="<?php echo $form_data['msp2']['client_iknumber']; ?>" class="MarginZero" />
+            </div>
+            <div class="BlackDivider"></div>
+            <div class="Inforight"> &nbsp;<br />
+            	&nbsp;
+            </div>
+            <div class="ClrBoth"></div>
+          </div>
+        </div>
+      </div>
+     
+      <div class="title_point2" style="float:left;">
+		Messpunkt II
+      </div> 
+      <div class="ClrBoth"></div>
+      </div>
+      
+     <!-- II. -->  
+
+    	<table class="table_msp2" >
+			<tr>
+			    <td colspan="14">  <h3>II. Abschluß der spez. ambulanten Palliativversorgung (SAPV)</h3></td>
+			</tr>
+
+			<tr>
+			    <td colspan="14">&nbsp; </td>
+			</tr>
+			
+			<tr>
+				<td width="10%"><label>Patienten-ID:</label></td>
+				<td width="5%"><input type="text" name="msp2[patient_epid]" class="epid_se" value="<?php echo $form_data['msp2']['patient_epid']; ?>" /></td>
+				
+				<td width="5%">&nbsp;</td>
+				
+				<td width="10%"><label>Geschlecht:</label></td>
+				<td width="3%"><input type="radio" name="msp2[patient_gender]" value="2" <?php $x = ($form_data['msp2']['patient_gender'] == "2")? 'checked="checked"' : ''; echo $x; ?> /></td>
+				<td width="2%"><label >w</label></td>
+				<td width="3%"><input type="radio" name="msp2[patient_gender]" value="1" <?php $x = ($form_data['msp2']['patient_gender'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td>
+				<td width="2%"><label>m</label></td>
+				
+				<td width="12%">&nbsp;</td>
+				
+				<td width="5%"><label>Alter:</label></td>
+				<td width="5%"><input type="text" class="age_se" name="msp2[patient_age]" value="<?php echo $form_data['msp2']['patient_age']; ?>" /> 
+				<td width="15%"><label>&nbsp;Jahre</label></td>
+				<td width="5%"><label>PLZ:</label></td>
+				<td width="20%"><input type="text" name="msp2[patient_zip]" class="plz_se" value="<?php echo $form_data['msp2']['patient_zip'];?>" /></td>
+		    </tr>
+		</table>
+   <table class="table_msp2">
+ <!-- Ergänzende Versorgung bei Beendigung der SAPV:-->
+		<tr>
+			<td colspan="8"><label><b> Ergänzende Versorgung bei Beendigung der SAPV: </b></label></td>
+		</tr>	
+		<tr>	
+			<td><input type="checkbox" name="msp2[sapv_completion][]" value="1" <?php $x = (in_array("1",$form_data['msp2']['sapv_completion']))? 'checked="checked"' : ''; echo $x; ?> /></td><td><label class="spacinginput">  Pflegedienst Grundpflege </label></td>
+			<td><input type="checkbox" name="msp2[sapv_completion][]" value="2" <?php $x = (in_array("2",$form_data['msp2']['sapv_completion']))? 'checked="checked"' : ''; echo $x; ?> /></td><td><label class="spacinginput">Pflegedienst Behandlungspflege</label></td>
+			<td><input type="checkbox" name="msp2[sapv_completion][]" value="3" <?php $x = (in_array("3",$form_data['msp2']['sapv_completion']))? 'checked="checked"' : ''; echo $x; ?> /></td><td><label class="spacinginput">Amb. Hospizdienst</label></td>
+			<td><input type="checkbox" name="msp2[sapv_completion][]" value="4" <?php $x = (in_array("4",$form_data['msp2']['sapv_completion']))? 'checked="checked"' : ''; echo $x; ?> /></td><td><label class="spacinginput">24h-Präsenzkraft</label></td>
+		</tr>
+		<tr>
+			<td><input type="checkbox" name="msp2[sapv_completion][]" value="5" <?php $x = (in_array("5",$form_data['msp2']['sapv_completion']))? 'checked="checked"' : ''; echo $x; ?> /></td><td><label class="spacinginput">Intensiv-Pflege</label></td>
+			<td><input type="checkbox" name="msp2[sapv_completion][]" value="6" <?php $x = (in_array("6",$form_data['msp2']['sapv_completion']))? 'checked="checked"' : ''; echo $x; ?> /></td><td><label class="spacinginput">Nein</label></td>
+			<td colspan="5"></td>
+		</tr>
+	</table>
+           
+  <!-- Komplexes Symptomgeschehen retrospektiv:-->
+	<table class="table_msp2">
+		<tr>
+  			<td colspan="10"><label><b> Komplexes Symptomgeschehen retrospektiv:</b></label></td>
+ 		</tr>
+		<tr>
+			<td width="32%" class="col_1"><label>Schmerzsymptomatik</label></td>
+			<td width="2%"><input type="radio" name="msp2[pain_symptoms]" value="1" <?php $x = ($form_data['msp2']['pain_symptoms'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td><td width="4%"><label class="spacinginput">JA</label></td>
+			<td width="2%"><input type="radio" name="msp2[pain_symptoms]" value="2" <?php $x = ($form_data['msp2']['pain_symptoms'] == "2")? 'checked="checked"' : ''; echo $x; ?> /></td><td width="10%"><label class="spacinginput">NEIN</label></td>
+			<td width="35%" class="col_3"><label>Gastrointestinale Symptomatik</label></td>
+			<td width="2%"><input type="radio" name="msp2[gastrointestinal_symptoms]" value="1" <?php $x = ($form_data['msp2']['gastrointestinal_symptoms'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td><td width="3%"><label class="spacinginput">JA</label></td>
+			<td width="2%"><input type="radio" name="msp2[gastrointestinal_symptoms]" value="2" <?php $x = ($form_data['msp2']['gastrointestinal_symptoms'] == "2")? 'checked="checked"' : ''; echo $x; ?> /></td><td width="8%"><label class="spacinginput">NEIN</label></td>
+		</tr>
+ 		
+		<tr>
+			<td class="col_1"><label>Neurol./psychiatr./psych. Symptomatik</label></td>
+			<td><input type="radio" name="msp2[neurol_symptoms]" value="1" <?php $x = ($form_data['msp2']['neurol_symptoms'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td><td><label class="spacinginput">JA</label></td>
+			<td><input type="radio" name="msp2[neurol_symptoms]" value="2" <?php $x = ($form_data['msp2']['neurol_symptoms'] == "2")? 'checked="checked"' : ''; echo $x; ?> /></td><td><label class="spacinginput">NEIN</label></td>
+			<td class="col_3"><label>Urogenitale Symptomatik</label></td>
+			<td><input type="radio" name="msp2[urogen_symptoms]" value="1" <?php $x = ($form_data['msp2']['urogen_symptoms'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td><td><label class="spacinginput">JA</label></td>
+			<td><input type="radio" name="msp2[urogen_symptoms]" value="2" <?php $x = ($form_data['msp2']['urogen_symptoms'] == "2")? 'checked="checked"' : ''; echo $x; ?> /></td><td><label class="spacinginput">NEIN</label></td>
+		</tr>
+          
+		<tr>
+			<td class="col_1"><label>Ulz./exulz.Wunden oder Tumore</label></td>
+			<td><input type="radio" name="msp2[wund_symptoms]" value="1" <?php $x = ($form_data['msp2']['wund_symptoms'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td><td><label class="spacinginput">JA</label></td>
+			<td><input type="radio" name="msp2[wund_symptoms]" value="2" <?php $x = ($form_data['msp2']['wund_symptoms'] == "2")? 'checked="checked"' : ''; echo $x; ?> /></td><td><label class="spacinginput">NEIN</label></td>
+			<td class="col_3"><label>Respir./kardiale Symptomatik</label></td>
+			<td><input type="radio" name="msp2[cardiac_symptoms]" value="1" <?php $x = ($form_data['msp2']['cardiac_symptoms'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td><td><label class="spacinginput">JA</label></td>
+			<td><input type="radio" name="msp2[cardiac_symptoms]" value="2" <?php $x = ($form_data['msp2']['cardiac_symptoms'] == "2")? 'checked="checked"' : ''; echo $x; ?> /></td><td><label class="spacinginput">NEIN</label></td>
+		</tr>
+	</table>            
+	
+ <!-- Weiteres komplexes Geschehen retrospektiv:-->
+ 	<table class="table_msp2">
+             <tr>
+                <td colspan="10"><label><b>Weiteres komplexes Geschehen retrospektiv:</b></label></td>
+             </tr>
+             
+                       
+		<tr>
+			<td width="32%" class="col_1"><label>Ethische Konflikte</label></td>
+			<td width="2%"><input type="radio" name="msp2[ethical_conflicts]" value="1" <?php $x = ($form_data['msp2']['ethical_conflicts'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td><td width="4%"><label class="spacinginput">JA</label></td>
+			<td width="2%"><input type="radio" name="msp2[ethical_conflicts]" value="2" <?php $x = ($form_data['msp2']['ethical_conflicts'] == "2")? 'checked="checked"' : ''; echo $x; ?> /></td><td width="10%"><label class="spacinginput">NEIN</label></td>
+			<td width="35%" class="col_3"><label>Existentielle Not</label></td>
+			<td width="2%"><input type="radio" name="msp2[existential_crisis]" value="1" <?php $x = ($form_data['msp2']['existential_crisis'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td><td width="3%"><label class="spacinginput">JA</label></td>
+			<td width="2%"><input type="radio" name="msp2[existential_crisis]" value="2" <?php $x = ($form_data['msp2']['existential_crisis'] == "2")? 'checked="checked"' : ''; echo $x; ?> /></td><td width="8%"><label class="spacinginput">NEIN</label></td>
+		</tr>
+             
+             
+                       
+		<tr>
+			<td class="col_1"><label>Koordination/Unterstützung der allg. amb. Palliativversorgung</label></td>
+			<td><input type="radio" name="msp2[palliative_care]" value="1" <?php $x = ($form_data['msp2']['palliative_care'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td><td><label class="spacinginput">JA</label></td>
+			<td><input type="radio" name="msp2[palliative_care]" value="2" <?php $x = ($form_data['msp2']['palliative_care'] == "2")? 'checked="checked"' : ''; echo $x; ?> /></td><td><label class="spacinginput">NEIN</label></td>
+			<td class="col_3"><label>Koordination/Unterstützung des privaten Bezugssystems</label></td>
+			<td><input type="radio" name="msp2[reference_system]" value="1" <?php $x = ($form_data['msp2']['reference_system'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td><td><label class="spacinginput">JA</label></td>
+			<td><input type="radio" name="msp2[reference_system]" value="2" <?php $x = ($form_data['msp2']['reference_system'] == "2")? 'checked="checked"' : ''; echo $x; ?> /></td><td><label class="spacinginput">NEIN</label></td>
+		</tr>
+                       
+		<tr>
+			<td class="col_1"><label>Betreuung/Beratung bei sozial-rechtlichen Problemen</label></td>
+			<td><input type="radio" name="msp2[security_problems]" value="1" <?php $x = ($form_data['msp2']['security_problems'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td><td><label class="spacinginput">JA</label></td>
+			<td><input type="radio" name="msp2[security_problems]" value="2" <?php $x = ($form_data['msp2']['security_problems'] == "2")? 'checked="checked"' : ''; echo $x; ?> /></td><td><label class="spacinginput">NEIN</label></td>
+			<td class="col_3"><label>Ausgeprägter Wunsch n. Kuration</label></td>
+			<td><input type="radio" name="msp2[curation]" value="1" <?php $x = ($form_data['msp2']['curation'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td><td><label class="spacinginput">JA</label></td>
+			<td><input type="radio" name="msp2[curation]" value="2" <?php $x = ($form_data['msp2']['curation'] == "2")? 'checked="checked"' : ''; echo $x; ?> /></td><td><label class="spacinginput">NEIN</label></td>
+		</tr>
+		<tr>
+			<td class="col_1"><label>Frage nach aktiver Lebensverkürzung</label></td>
+			<td><input type="radio" name="msp2[life_shortening]" value="1" <?php $x = ($form_data['msp2']['life_shortening'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td><td><label class="spacinginput">JA</label></td>
+			<td><input type="radio" name="msp2[life_shortening]" value="2" <?php $x = ($form_data['msp2']['life_shortening'] == "2")? 'checked="checked"' : ''; echo $x; ?> /></td><td><label class="spacinginput">NEIN</label></td>
+			  <td colspan="5"><label>Sonstiges:&nbsp; </label> <input  type="text" style="width:70%;" name="msp2[retrospektiv_other]" value="<?php echo $form_data['msp2']['retrospektiv_other'];?>" /></td>   
+		</tr>
+ 	</table>
+    <br/>
+ <!--Beendigung der SAPV am:-->
+	<table class="table_msp2">
+              <tr>
+                 <td colspan="8">
+	                 <table>
+	                 	<tr>
+	                 	 	<td><label><b> Beendigung der SAPV am:&nbsp;</b> </label></td><td><input size="10" type="text" name="msp2[last_discharge]" class="datetype" value="<?php echo $form_data['msp2']['last_discharge']; ?>" /></td><td><label><b>&nbsp;wegen</b></label></td>
+	                 	</tr>
+	                 </table>
+                  </td>
+             </tr>
+             <tr>
+			       <td><input type="radio" name="msp2[sapv_termination]" value="1" <?php $x = ($form_data['msp2']['sapv_termination'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td><td width="19%"><label class="spacinginput">Stabilisierung</label></td>
+			       <td><input type="radio" name="msp2[sapv_termination]" value="2" <?php $x = ($form_data['msp2']['sapv_termination'] == "2")? 'checked="checked"' : ''; echo $x; ?> /></td><td  width="19%"><label class="spacinginput">Kausaler Therapieansatz</label></td>
+			       <td><input type="radio" name="msp2[sapv_termination]" value="3" <?php $x = ($form_data['msp2']['sapv_termination'] == "3")? 'checked="checked"' : ''; echo $x; ?> /></td><td><label class="spacinginput">Ablauf der Verordnung</label></td>
+			       <td><input type="radio" name="msp2[sapv_termination]" value="4" <?php $x = ($form_data['msp2']['sapv_termination'] == "4")? 'checked="checked"' : ''; echo $x; ?> /></td><td><label class="spacinginput">Verlegung</label></td>
+             </tr>
+             <tr>
+			        <td><input type="radio" name="msp2[sapv_termination]" value="5" <?php $x = ($form_data['msp2']['sapv_termination'] == "5")? 'checked="checked"' : ''; echo $x; ?> /></td><td><label class="spacinginput">Verstorben</label></td>
+			        <td><input type="radio" name="msp2[sapv_termination]" value="6" <?php $x = ($form_data['msp2']['sapv_termination'] == "6")? 'checked="checked"' : ''; echo $x; ?> /></td><td><label class="spacinginput">Sonstiges</label></td>
+			        <td colspan="4"></td>
+            </tr>
+<!--Beurteilung der SAPV durch den Dienst retrospektiv als Falltypisierung:-->         
+             <tr >
+                 <td colspan="8"><label><b> Beurteilung der SAPV durch den Dienst retrospektiv als Falltypisierung:</b> </label></td>
+             </tr>
+             <tr>
+			       <td><input type="radio" name="msp2[case_typing]" value="1" <?php $x = ($form_data['msp2']['case_typing'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td><td><label class="spacinginput">Grenzfall</label></td>
+			       <td><input type="radio" name="msp2[case_typing]" value="2" <?php $x = ($form_data['msp2']['case_typing'] == "2")? 'checked="checked"' : ''; echo $x; ?> /></td><td><label class="spacinginput">Routinefall</label></td>
+			       <td><input type="radio" name="msp2[case_typing]" value="3" <?php $x = ($form_data['msp2']['case_typing'] == "3")? 'checked="checked"' : ''; echo $x; ?> /></td><td colspan="3"><label class="spacinginput">Problemfall</label></td>
+             </tr>
+        </table>
+ <!-- Einbindung der SAPV erfolgte retrospektiv:-->      
+    	<table class="table_msp2">
+ 	       <tr>
+                 <td width="31%"><label><b> Einbindung der SAPV </b> erfolgte retrospektiv:</label></td>
+			     <td width="2%"><input type="radio" name="msp2[sapv_integration]" value="1" <?php $x = ($form_data['msp2']['sapv_integration'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td><td  width="11%"><label class="spacinginput">zu früh</label></td>
+			     <td width="5%">&nbsp;&nbsp;<input type="radio" name="msp2[sapv_integration]" value="2" <?php $x = ($form_data['msp2']['sapv_integration'] == "2")? 'checked="checked"' : ''; echo $x; ?> /></td><td><label class="spacinginput">rechtzeitig</label></td>
+			     <td width="2%"><input type="radio" name="msp2[sapv_integration]" value="3" <?php $x = ($form_data['msp2']['sapv_integration'] == "3")? 'checked="checked"' : ''; echo $x; ?> /></td><td><label class="spacinginput">zu spät</label></td>
+             </tr>
+        </table>
+  <!-- SAPV-Kategorie bei Abschluss:-->   
+    	<table class="table_msp2">
+              <tr >
+                 <td colspan="2"><label><b>SAPV-Kategorie bei Abschluss:</b></label></td>
+                 <td colspan="6"></td>  
+             </tr>
+             <tr>
+	              <td width="2%"><input type="checkbox" name="msp2[latest_sapv][]" value="1" <?php $x = (in_array("1",$form_data['msp2']['latest_sapv']))? 'checked="checked"' : ''; echo $x; ?> /></td><td width="22%"><label class="spacinginput"><b>Beratung</b></label></td>
+	              <td width="2%"><input type="checkbox" name="msp2[latest_sapv][]" value="2" <?php $x = (in_array("2",$form_data['msp2']['latest_sapv']))? 'checked="checked"' : ''; echo $x; ?> /></td><td width="19%"><label class="spacinginput"><b>Koordination</b></label></td>
+	              <td width="2%"><input type="checkbox" name="msp2[latest_sapv][]" value="3" <?php $x = (in_array("3",$form_data['msp2']['latest_sapv']))? 'checked="checked"' : ''; echo $x; ?> /></td><td><label class="spacinginput"><b>Teilversorgung</b></label></td>
+	              <td width="2%"><input type="checkbox" name="msp2[latest_sapv][]" value="4" <?php $x = (in_array("4",$form_data['msp2']['latest_sapv']))? 'checked="checked"' : ''; echo $x; ?> /></td><td><label class="spacinginput"><b>Vollversorgung</b></label></td>
+             </tr>
+        </table>
+        
+        <br/>
+<!--  Zusätzliche Angaben bei Teilversorgung/Vollversorgung:-->  
+    	<table class="table_msp2">
+             <tr >
+                 <td colspan="6"><h4>Zusätzliche Angaben bei Teilversorgung/Vollversorgung:</h4><br/><b>Sterbeort:</b></td>
+             </tr>
+             <tr>
+	              <td width="2%"><input type="radio" name="msp2[additional_information]" value="1" <?php $x = ($form_data['msp2']['additional_information'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td><td  width="28%"><label class="spacinginput">im häuslichen Umfeld verstorben</label></td>
+	              <td width="2%"><input type="radio" name="msp2[additional_information]" value="2" <?php $x = ($form_data['msp2']['additional_information'] == "2")? 'checked="checked"' : ''; echo $x; ?> /></td><td><label class="spacinginput"> im Heim verstorben</label></td>
+	              <td width="2%"><input type="radio" name="msp2[additional_information]" value="3" <?php $x = ($form_data['msp2']['additional_information'] == "3")? 'checked="checked"' : ''; echo $x; ?> /></td><td><label class="spacinginput"> im Hospiz verstorben</label></td>
+             </tr>
+             <tr>
+	              <td><input type="radio" name="msp2[additional_information]" value="4" <?php $x = ($form_data['msp2']['additional_information']== "4")? 'checked="checked"' : ''; echo $x; ?> /></td><td><label class="spacinginput"> auf Palliativstation verstorben 	</label></td>
+	              <td><input type="radio" name="msp2[additional_information]" value="5" <?php $x = ($form_data['msp2']['additional_information'] == "5")? 'checked="checked"' : ''; echo $x; ?> /></td><td><label class="spacinginput"> im Krankenhaus verstorben</label></td>
+	              <td><input type="radio" name="msp2[additional_information]" value="6" <?php $x = ($form_data['msp2']['additional_information'] == "6")? 'checked="checked"' : ''; echo $x; ?> /></td><td><label class="spacinginput"> Sonstiges:&nbsp;</label><input type="text" name="msp2[additional_information_txt]" value="<?php echo $form_data['msp2']['additional_information_txt'] ;?>" size="15"></td>
+             </tr>
+            </table> 
+            <br/>
+<!-- Sterbeort n. Wunsch:-->  
+    	<table class="table_msp2">
+            <tr>
+              <td  width="20%"><label><b>Sterbeort n. Wunsch: </b></label></td> 
+              <td width="2%"><input type="radio" name="msp2[request_death]" value="1" <?php $x = ($form_data['msp2']['request_death'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td><td width="5%"><label class="spacinginput">ja</label></td>
+              <td width="2%"><input type="radio" name="msp2[request_death]" value="2" <?php $x = ($form_data['msp2']['request_death'] == "2")? 'checked="checked"' : ''; echo $x; ?> /></td><td width="5%"><label class="spacinginput"> nein</label></td>
+              <td width="2%"><input type="radio" name="msp2[request_death]" value="3" <?php $x = ($form_data['msp2']['request_death'] == "3")? 'checked="checked"' : ''; echo $x; ?> /></td><td><label class="spacinginput"> unbekannt/unbestimmt</label></td>
+             </tr>
+            </table> 
+             
+<!-- Weitere Angaben:-->             
+    	<table class="table_msp2">
+             <tr>
+                 <td colspan="6"><label><b>Weitere Angaben</b></label></td>  
+             </tr>
+             <tr>
+               <td width="25%"><label>Tage mit 24h-Bereitschaft:</label></td>
+               <td width="10%"><input type="text"name="msp2[more_information_24]" size="10" value="<?php echo $form_data['msp2']['more_information_24'] ;?>" /></td>
+               <td width="15%"><label>&nbsp;Tage</label> </td> 
+               
+               <td width="18%"><label>Intermittierung (Anzahl):</label></td>
+               <td width="10%"><input type="text"name="msp2[intermittent_number]" size="10" value="<?php echo $form_data['msp2']['intermittent_number'] ;?>" /></td>
+               <td><label>&nbsp;Tage</label> </td> 
+             </tr>
+             <tr>
+               <td><label>Hausbesuche PC-Team, gesamt:</label></td>
+               <td width="10%"><input type="text"name="msp2[visits_count]" size="10" value="<?php echo $form_data['msp2']['visits_count'] ;?>" /></td>
+               <td><label>&nbsp;Besuche</label> </td> 
+               <td> </td>
+               <td> </td>
+               <td></td> 
+             </tr>
+            </table> 
+ 
+   <!--Notarzteinsätze­­:-->  
+    	<table class="table_msp2">
+             <tr>
+                 <td colspan="13"><h4>Notarzteinsätze­­</h4></td>  
+             </tr>
+              <tr>
+	              <td width="25%"><label>Notarzteinsätze­­ bei TV/VV:	</label></td>
+			       <td width="2%"><input type="radio" name="msp2[emergency_intervention]" value="1" <?php $x = ($form_data['msp2']['emergency_intervention'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td><td width="3%"><label class="spacinginput">0</label></td>
+			       <td width="2%"><input type="radio" name="msp2[emergency_intervention]" value="2" <?php $x = ($form_data['msp2']['emergency_intervention'] == "2")? 'checked="checked"' : ''; echo $x; ?> /></td><td width="3%"><label class="spacinginput">1</label></td>
+			       <td width="2%"><input type="radio" name="msp2[emergency_intervention]" value="3" <?php $x = ($form_data['msp2']['emergency_intervention'] == "3")? 'checked="checked"' : ''; echo $x; ?> /></td><td width="4%"><label class="spacinginput">2</label></td>
+			       <td width="2%"><input type="radio" name="msp2[emergency_intervention]" value="4" <?php $x = ($form_data['msp2']['emergency_intervention']== "4")? 'checked="checked"' : ''; echo $x; ?> /></td><td width="3%"><label class="spacinginput">3</label></td>
+			       <td width="2%"><input type="radio" name="msp2[emergency_intervention]" value="5" <?php $x = ($form_data['msp2']['emergency_intervention'] == "5")? 'checked="checked"' : ''; echo $x; ?> /></td><td width="3%"><label class="spacinginput">4</label></td>
+			       <td width="2%"><input type="radio" name="msp2[emergency_intervention]" value="6" <?php $x = ($form_data['msp2']['emergency_intervention'] == "6")? 'checked="checked"' : ''; echo $x; ?> /></td><td width="37%"><label class="spacinginput">>5</label></td>
+           </tr>
+        </table> 
+           
+  <!-- Krankenhauseinweisungen: ISPC - 2320 -add info button -->     
+    	<table class="table_msp2">
+          <tr>
+               <td width="46%"><span class="patient_info"><b>Krankenhauseinweisungen:</b></span><span class="show_patient_info"></span></td>
+               <td width="2%"><input type="radio" name="msp2[hospitalizations]" value="1" <?php $x = ($form_data['msp2']['hospitalizations'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td><td colspan="3"><label class="spacinginput">keine</label></td>
+               <td width="2%"><input type="radio" name="msp2[hospitalizations]" value="2" <?php $x = ($form_data['msp2']['hospitalizations'] == "2")? 'checked="checked"' : ''; echo $x; ?> /></td><td colspan="3"><label class="spacinginput">1-3</label></td>
+               <td width="2%"><input type="radio" name="msp2[hospitalizations]" value="3" <?php $x = ($form_data['msp2']['hospitalizations'] == "3")? 'checked="checked"' : ''; echo $x; ?> /></td><td colspan="3"><label class="spacinginput">>3</label></td>   
+          </tr>
+          
+          
+           <tr>
+              	<td><label>Erste KH- Einweisung erfolgte wegen: </label></td>
+                <td width="2%"><input type="radio" name="msp2[first_kh]" value="1" <?php $x = ($form_data['msp2']['first_kh'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td><td width="3%"><label class="spacinginput">1</label></td>
+                <td width="2%"><input type="radio" name="msp2[first_kh]" value="2" <?php $x = ($form_data['msp2']['first_kh'] == "2")? 'checked="checked"' : ''; echo $x; ?> /></td><td width="3%"><label class="spacinginput">2</label></td>
+                <td width="2%"><input type="radio" name="msp2[first_kh]" value="3" <?php $x = ($form_data['msp2']['first_kh'] == "3")? 'checked="checked"' : ''; echo $x; ?> /></td><td width="3%"><label class="spacinginput">3</label></td>   
+                <td width="2%"><input type="radio" name="msp2[first_kh]" value="4" <?php $x = ($form_data['msp2']['first_kh'] == "4")? 'checked="checked"' : ''; echo $x; ?> /></td><td width="3%"><label class="spacinginput">4</label></td>
+                <td width="2%"><input type="radio" name="msp2[first_kh]" value="5" <?php $x = ($form_data['msp2']['first_kh'] == "5")? 'checked="checked"' : ''; echo $x; ?> /></td><td width="3%"><label class="spacinginput">5</label></td> 
+                <td width="2%"><input type="radio" name="msp2[first_kh]" value="6" <?php $x = ($form_data['msp2']['first_kh'] == "6")? 'checked="checked"' : ''; echo $x; ?> /></td><td width="27%"><label class="spacinginput">6</label></td> 
+            </tr>
+             <tr>
+               <td><label>Zweite KH- Einweisung erfolgte wegen: </label></td>
+                <td><input type="radio" name="msp2[second_kh]" value="1" <?php $x = ($form_data['msp2']['second_kh'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td><td><label class="spacinginput">1</label></td>
+                <td><input type="radio" name="msp2[second_kh]" value="2" <?php $x = ($form_data['msp2']['second_kh'] == "2")? 'checked="checked"' : ''; echo $x; ?> /></td><td><label class="spacinginput">2</label></td>
+                <td><input type="radio" name="msp2[second_kh]" value="3" <?php $x = ($form_data['msp2']['second_kh'] == "3")? 'checked="checked"' : ''; echo $x; ?> /></td><td><label class="spacinginput">3</label></td>   
+                <td><input type="radio" name="msp2[second_kh]" value="4" <?php $x = ($form_data['msp2']['second_kh'] == "4")? 'checked="checked"' : ''; echo $x; ?> /></td><td><label class="spacinginput">4</label></td>
+                <td><input type="radio" name="msp2[second_kh]" value="5" <?php $x = ($form_data['msp2']['second_kh'] == "5")? 'checked="checked"' : ''; echo $x; ?> /></td><td><label class="spacinginput">5</label></td> 
+                <td><input type="radio" name="msp2[second_kh]" value="6" <?php $x = ($form_data['msp2']['second_kh'] == "6")? 'checked="checked"' : ''; echo $x; ?> /></td><td><label class="spacinginput">6</label></td> 
+             </tr>
+             <tr>
+               <td><label>Dritte KH- Einweisung erfolgte wegen:  </label></td>
+                <td><input type="radio" name="msp2[third_kh]" value="1" <?php $x = ($form_data['msp2']['third_kh']  == "1")? 'checked="checked"' : ''; echo $x; ?> /></td><td><label class="spacinginput">1</label></td>
+                <td><input type="radio" name="msp2[third_kh]" value="2" <?php $x = ($form_data['msp2']['third_kh']  == "2")? 'checked="checked"' : ''; echo $x; ?> /></td><td><label class="spacinginput">2</label></td>
+                <td><input type="radio" name="msp2[third_kh]" value="3" <?php $x = ($form_data['msp2']['third_kh']  == "3")? 'checked="checked"' : ''; echo $x; ?> /></td><td><label class="spacinginput">3</label></td>   
+                <td><input type="radio" name="msp2[third_kh]" value="4" <?php $x = ($form_data['msp2']['third_kh']  == "4")? 'checked="checked"' : ''; echo $x; ?> /></td><td><label class="spacinginput">4</label></td>
+                <td><input type="radio" name="msp2[third_kh]" value="5" <?php $x = ($form_data['msp2']['third_kh']  == "5")? 'checked="checked"' : ''; echo $x; ?> /></td><td><label class="spacinginput">5</label></td> 
+                <td><input type="radio" name="msp2[third_kh]" value="6" <?php $x = ($form_data['msp2']['third_kh']  == "6")? 'checked="checked"' : ''; echo $x; ?> /></td><td><label class="spacinginput">6</label></td> 
+              </tr>
+           <tr>
+              <td height="20" colspan="13"></td>
+           </tr>
+           </table>
+   <!--Legende für die KH-Einweisungen:-->  
+           <table>
+             <tr >
+                 <td class="patientenid spacing-row"><label><i>Legende für die KH-Einweisungen:</i></label></td>  
+             </tr>
+              <tr >
+                 <td class="patientenid"><label><i>1 = Symptomlinderung; 2 = Medizinische Intervention; 3 = Patientenwunsch; 4 = wegen Angehörigen erforderlich;</i></label></td>  
+             </tr>
+             <tr >
+                 <td class="patientenid "><label><i>5 = Sonstiges; 6 = aus SAPV-Perspektive nicht indiziert</i></label></td>  
+             </tr>
+		  </table>
+         <table class="bottom_footer">
+          	<tr>
+    			<td>SAPV-Einzelfallevaluation Bayern (Version 2015)</td>
+           </tr>
+         </table>
+   		<div class="se_tabs_buttons">	
+			<button name="save_msp2" type="submit" data-page="msp2" class="submit_form save_page btnsubmit_usersessions" ><? echo $this->translate('save') ?><sup>*</sup></button>
+			<button name="pdf_msp2" type="submit" data-page="msp2" class="submit_form print_page btnsubmit_usersessions" ><? echo $this->translate('generatepdf') ?><sup>*</sup></button>
+			<?php if($saved_data['msp2'] == "1"):?>
+				<button name="reset_msp2" type="submit" data-page="msp2" class="submit_form reset_page btnsubmit_usersessions" ><? echo $this->translate('reset') ?><sup>*</sup></button>
+			<?php endif; ?>
+			<span>*) <? echo $this->translate('Action only for current tab: msp2') ?></span>
+	    </div>
+      </div><!-- END tab msp2 -->
+      
+      
+     <div class="Evaluation tab_block"  id="ipos1">
+     		<div class="f_highlight">IPOS Messpunkt I</div>
+     <!--  ###################################################################################################################################### -->
+     <!--  #################################################### IPOS Messpunkt I  ############################################################### -->
+     <!--  ###################################################################################################################################### -->
+        <?php if($saved_data['ipos1'] == "1"):?>
+			<div class="tab_form_alert_info" >
+				<p><?php echo $this->translate("Form manually saved, to revert please press reset-sapv_evaluation")?></p>
+			</div>	
+		<?php endif; ?>	     
+     
+     
+     
+        <div class="antet">
+      <div class="InfoSection">
+        <div class="InfoDiv">
+          <div class="Infoleft"> Krankenkasse bzw. Kostenträger<br />
+            <input id="hi_company_name" name="ipos1[health_insurance_name]" type="text"  value="<?php echo $form_data['ipos1']['health_insurance_name']; ?>" class="MarginZero" />
+          </div>
+          <div class="BlackDivider"></div>
+          <div class="Inforight"> Kassen-Nr.<br />
+            <input id="kassen_nr" name="ipos1[health_insurance_kassen_nr]" type="text" class="MarginZero" value="<?php echo $form_data['ipos1']['health_insurance_kassen_nr']; ?>" />
+          </div>
+          <div class="ClrBoth"></div>
+        </div>
+        <div class="InfoSectionBottom">
+          <div class="InfoDiv">
+            <div class="Inforight"> Betriebsstätten-Nr.<br />
+              <input id="betriebsstatten_nr" name="ipos1[client_bsnr]" type="text" value="<?php echo $form_data['ipos1']['client_bsnr']; ?>" class="MarginZero"   />
+            </div>
+            <div class="BlackDivider"></div>
+            <div class="Inforight">Institutionskennzeichen<br />
+             <input id="institutskennzeichen" name="ipos1[client_iknumber]" type="text" value="<?php echo $form_data['ipos1']['client_iknumber']; ?>" class="MarginZero" />
+            </div>
+            <div class="BlackDivider"></div>
+            <div class="Inforight"> &nbsp;<br />
+            	&nbsp;
+            </div>
+            <div class="ClrBoth"></div>
+          </div>
+        </div>
+      </div>
+     
+      <div class="title_point2" style="float:left;">IPOS<br>
+		Messpunkt I
+      </div> 
+      <div class="ClrBoth"></div>
+      </div>
+          	<table class="table_ipos1" >
+
+			<tr>
+			    <td colspan="14">&nbsp; </td>
+			</tr>
+			
+			<tr>
+				<td width="10%"><label>Patienten-ID:</label></td>
+				<td width="5%"><input type="text" name="ipos1[patient_epid]" class="epid_se" value="<?php echo $form_data['ipos1']['patient_epid']; ?>" /></td>
+				
+				<td width="5%">&nbsp;</td>
+				
+				<td width="10%"><label>Geschlecht:</label></td>
+				<td width="3%"><input type="radio" name="ipos1[patient_gender]" value="2" <?php $x = ($form_data['ipos1']['patient_gender'] == "2")? 'checked="checked"' : ''; echo $x; ?> /></td>
+				<td width="2%"><label >w</label></td>
+				<td width="3%"><input type="radio" name="ipos1[patient_gender]" value="1" <?php $x = ($form_data['ipos1']['patient_gender'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td>
+				<td width="2%"><label>m</label></td>
+				
+				<td width="12%">&nbsp;</td>
+				
+				<td width="5%"><label>Alter:</label></td>
+				<td width="5%"><input type="text" class="age_se" name="ipos1[patient_age]" value="<?php echo $form_data['ipos1']['patient_age']; ?>" /> 
+				<td width="15%"><label>&nbsp;Jahre</label></td>
+				<td width="5%"><label>PLZ:</label></td>
+				<td width="20%"><input type="text" name="ipos1[patient_zip]" class="plz_se" value="<?php echo $form_data['ipos1']['patient_zip'];?>" /></td>
+		    </tr>
+		</table>
+  <!-- Welche Hauptprobleme hatte der Patient* in den letzten 3 Tagen? -->
+        <table width="100%">
+              <tr>
+                 <td colspan="2"><label>1. Welche Hauptprobleme hatte der Patient* <b>in den letzten 3 Tagen?</b></label></td>
+              </tr>
+              <tr>
+                  <td width="2%"><label class="special">a.&nbsp;</label></td>
+                  <td ><input type="text" name="ipos1[problems_a]"  value="<?php echo $form_data['ipos1']['problems_a']; ?>" class="big_input_se"/></td>
+              </tr>
+              <tr>
+                  <td><label class="special">b.&nbsp;</label></td>
+                  <td ><input type="text" name="ipos1[problems_b]"  value="<?php echo $form_data['ipos1']['problems_b']; ?>" class="big_input_se" /></td>
+              </tr>
+              <tr>
+                  <td ><label class="special">c.&nbsp;</label></td>
+                  <td ><input type="text" name="ipos1[problems_c]"  value="<?php echo $form_data['ipos1']['problems_c']; ?>"  class="big_input_se"/></td>
+              </tr>
+      
+      
+   <!--  Bitte kreuzen Sie an, wie sehr der Patient in den letzten 3 Tagen von folgenden Symptomen beeinträchtigt war: -->     
+        
+         <tr >
+                 <td colspan="2"><label>2. Bitte kreuzen Sie an, wie sehr der Patient <b>in den letzten 3 Tagen</b> von folgenden Symptomen <b>beeinträchtigt</b> war:</label></td>
+              </tr>
+         <tr>
+            <td colspan="2" class="spacing-row">
+               <table width="98%">
+                    <tr>
+                     <th class="cell1">&nbsp;</th>
+                     <th class="cell2">Gar nicht</th>
+                     <th class="cell3"> Ein wenig</th>
+                     <th class="cell4"> Mäßig</th>
+                     <th class="cell5"> Stark</th>
+                     <th class="cell6"> Extrem stark</th>
+                     <th class="cell7"> Nicht beurteilbar
+                           (z.B. bewusstlos)
+                    </th>
+                   </tr>
+                    <tr>
+                     <td class="cell1">&nbsp;Schmerzen</td>
+                     <td class="cell2"><span>0</span><input type="radio" name="ipos1[ache]" value="1" <?php $x = ($form_data['ipos1']['ache'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                     <td class="cell3"><span>1</span><input type="radio" name="ipos1[ache]" value="2" <?php $x = ($form_data['ipos1']['ache'] == "2")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell4"><span>2</span><input type="radio" name="ipos1[ache]" value="3" <?php $x = ($form_data['ipos1']['ache'] == "3")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell5"><span>3</span><input type="radio" name="ipos1[ache]" value="4" <?php $x = ($form_data['ipos1']['ache'] == "4")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell6"><span>4</span><input type="radio" name="ipos1[ache]" value="5" <?php $x = ($form_data['ipos1']['ache'] == "5")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell7"><span>5</span><input type="radio" name="ipos1[ache]" value="6" <?php $x = ($form_data['ipos1']['ache'] == "6")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                   </tr>
+                    <tr>
+                     <td class="cell1">&nbsp;Atemnot</td>
+                     <td class="cell2"><span>0</span><input type="radio" name="ipos1[difficulty_breathing]" value="1" <?php $x = ($form_data['ipos1']['difficulty_breathing'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                     <td class="cell3"><span>1</span><input type="radio" name="ipos1[difficulty_breathing]" value="2" <?php $x = ($form_data['ipos1']['difficulty_breathing'] == "2")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell4"><span>2</span><input type="radio" name="ipos1[difficulty_breathing]" value="3" <?php $x = ($form_data['ipos1']['difficulty_breathing'] == "3")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell5"><span>3</span><input type="radio" name="ipos1[difficulty_breathing]" value="4" <?php $x = ($form_data['ipos1']['difficulty_breathing'] == "4")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell6"><span>4</span><input type="radio" name="ipos1[difficulty_breathing]" value="5" <?php $x = ($form_data['ipos1']['difficulty_breathing'] == "5")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell7"><span>5</span><input type="radio" name="ipos1[difficulty_breathing]" value="6" <?php $x = ($form_data['ipos1']['difficulty_breathing'] == "6")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                   </tr>
+                   <tr>
+                     <td class="cell1">&nbsp;Schwäche oder fehlende Energie</td>
+                     <td class="cell2"><span>0</span><input type="radio" name="ipos1[lack_energy]" value="1" <?php $x = ($form_data['ipos1']['lack_energy'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                     <td class="cell3"><span>1</span><input type="radio" name="ipos1[lack_energy]" value="2" <?php $x = ($form_data['ipos1']['lack_energy'] == "2")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell4"><span>2</span><input type="radio" name="ipos1[lack_energy]" value="3" <?php $x = ($form_data['ipos1']['lack_energy'] == "3")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell5"><span>3</span><input type="radio" name="ipos1[lack_energy]" value="4" <?php $x = ($form_data['ipos1']['lack_energy'] == "4")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell6"><span>4</span><input type="radio" name="ipos1[lack_energy]" value="5" <?php $x = ($form_data['ipos1']['lack_energy'] == "5")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell7"><span>5</span><input type="radio" name="ipos1[lack_energy]" value="6" <?php $x = ($form_data['ipos1']['lack_energy'] == "6")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                   </tr>
+                   <tr>
+                     <td class="cell1">&nbsp;Übelkeit<br/><i>&nbsp;(das Gefühl, erbrechen zu müssen)</i></td>
+                     <td class="cell2"><span>0</span><input type="radio" name="ipos1[nausea]" value="1" <?php $x = ($form_data['ipos1']['nausea'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                     <td class="cell3"><span>1</span><input type="radio" name="ipos1[nausea]" value="2" <?php $x = ($form_data['ipos1']['nausea'] == "2")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell4"><span>2</span><input type="radio" name="ipos1[nausea]" value="3" <?php $x = ($form_data['ipos1']['nausea'] == "3")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell5"><span>3</span><input type="radio" name="ipos1[nausea]" value="4" <?php $x = ($form_data['ipos1']['nausea'] == "4")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell6"><span>4</span><input type="radio" name="ipos1[nausea]" value="5" <?php $x = ($form_data['ipos1']['nausea'] == "5")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell7"><span>5</span><input type="radio" name="ipos1[nausea]" value="6" <?php $x = ($form_data['ipos1']['nausea'] == "6")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                   </tr>
+                   <tr>
+                     <td class="cell1">&nbsp;Erbrechen</td>
+                     <td class="cell2"><span>0</span><input type="radio" name="ipos1[vomit]" value="1" <?php $x = ($form_data['ipos1']['vomit'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                     <td class="cell3"><span>1</span><input type="radio" name="ipos1[vomit]" value="2" <?php $x = ($form_data['ipos1']['vomit'] == "2")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell4"><span>2</span><input type="radio" name="ipos1[vomit]" value="3" <?php $x = ($form_data['ipos1']['vomit'] == "3")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell5"><span>3</span><input type="radio" name="ipos1[vomit]" value="4" <?php $x = ($form_data['ipos1']['vomit'] == "4")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell6"><span>4</span><input type="radio" name="ipos1[vomit]" value="5" <?php $x = ($form_data['ipos1']['vomit'] == "5")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell7"><span>5</span><input type="radio" name="ipos1[vomit]" value="6" <?php $x = ($form_data['ipos1']['vomit'] == "6")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                   </tr>
+                    <tr>
+                     <td class="cell1">&nbsp;Appetitlosigkeit</td>
+                     <td class="cell2"><span>0</span><input type="radio" name="ipos1[anorexia]" value="1" <?php $x = ($form_data['ipos1']['anorexia'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                     <td class="cell3"><span>1</span><input type="radio" name="ipos1[anorexia]" value="2" <?php $x = ($form_data['ipos1']['anorexia'] == "2")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell4"><span>2</span><input type="radio" name="ipos1[anorexia]" value="3" <?php $x = ($form_data['ipos1']['anorexia'] == "3")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell5"><span>3</span><input type="radio" name="ipos1[anorexia]" value="4" <?php $x = ($form_data['ipos1']['anorexia'] == "4")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell6"><span>4</span><input type="radio" name="ipos1[anorexia]" value="5" <?php $x = ($form_data['ipos1']['anorexia'] == "5")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell7"><span>5</span><input type="radio" name="ipos1[anorexia]" value="6" <?php $x = ($form_data['ipos1']['anorexia'] == "6")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                   </tr>
+                   <tr>
+                     <td class="cell1">&nbsp;Verstopfung</td>
+                     <td class="cell2"><span>0</span><input type="radio" name="ipos1[constipation]" value="1" <?php $x = ($form_data['ipos1']['constipation'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                     <td class="cell3"><span>1</span><input type="radio" name="ipos1[constipation]" value="2" <?php $x = ($form_data['ipos1']['constipation'] == "2")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell4"><span>2</span><input type="radio" name="ipos1[constipation]" value="3" <?php $x = ($form_data['ipos1']['constipation'] == "3")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell5"><span>3</span><input type="radio" name="ipos1[constipation]" value="4" <?php $x = ($form_data['ipos1']['constipation'] == "4")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell6"><span>4</span><input type="radio" name="ipos1[constipation]" value="5" <?php $x = ($form_data['ipos1']['constipation'] == "5")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell7"><span>5</span><input type="radio" name="ipos1[constipation]" value="6" <?php $x = ($form_data['ipos1']['constipation'] == "6")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                   </tr>
+                    <tr>
+                     <td class="cell1">&nbsp;Mundtrockenheit oder schmerzhafter Mund</td>
+                     <td class="cell2"><span>0</span><input type="radio" name="ipos1[dry_mouth]" value="1" <?php $x = ($form_data['ipos1']['ache'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                     <td class="cell3"><span>1</span><input type="radio" name="ipos1[dry_mouth]" value="2" <?php $x = ($form_data['ipos1']['ache'] == "2")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell4"><span>2</span><input type="radio" name="ipos1[dry_mouth]" value="3" <?php $x = ($form_data['ipos1']['ache'] == "3")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell5"><span>3</span><input type="radio" name="ipos1[dry_mouth]" value="4" <?php $x = ($form_data['ipos1']['ache'] == "4")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell6"><span>4</span><input type="radio" name="ipos1[dry_mouth]" value="5" <?php $x = ($form_data['ipos1']['ache'] == "5")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell7"><span>5</span><input type="radio" name="ipos1[dry_mouth]" value="6" <?php $x = ($form_data['ipos1']['ache'] == "6")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                   </tr>
+                    <tr>
+                     <td class="cell1">&nbsp;Schläfrigkeit</td>
+                     <td class="cell2"><span>0</span><input type="radio" name="ipos1[sleepiness]" value="1" <?php $x = ($form_data['ipos1']['sleepiness'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                     <td class="cell3"><span>1</span><input type="radio" name="ipos1[sleepiness]" value="2" <?php $x = ($form_data['ipos1']['sleepiness'] == "2")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell4"><span>2</span><input type="radio" name="ipos1[sleepiness]" value="3" <?php $x = ($form_data['ipos1']['sleepiness'] == "3")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell5"><span>3</span><input type="radio" name="ipos1[sleepiness]" value="4" <?php $x = ($form_data['ipos1']['sleepiness'] == "4")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell6"><span>4</span><input type="radio" name="ipos1[sleepiness]" value="5" <?php $x = ($form_data['ipos1']['sleepiness'] == "5")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell7"><span>5</span><input type="radio" name="ipos1[sleepiness]" value="6" <?php $x = ($form_data['ipos1']['sleepiness'] == "6")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                   </tr>
+                    <tr>
+                     <td class="cell1">&nbsp;Eingeschränkte Mobilität</td>
+                     <td class="cell2"><span>0</span><input type="radio" name="ipos1[limited_mobility]" value="1" <?php $x = ($form_data['ipos1']['limited_mobility'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                     <td class="cell3"><span>1</span><input type="radio" name="ipos1[limited_mobility]" value="2" <?php $x = ($form_data['ipos1']['limited_mobility'] == "2")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell4"><span>2</span><input type="radio" name="ipos1[limited_mobility]" value="3" <?php $x = ($form_data['ipos1']['limited_mobility'] == "3")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell5"><span>3</span><input type="radio" name="ipos1[limited_mobility]" value="4" <?php $x = ($form_data['ipos1']['limited_mobility'] == "4")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell6"><span>4</span><input type="radio" name="ipos1[limited_mobility]" value="5" <?php $x = ($form_data['ipos1']['limited_mobility'] == "5")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell7"><span>5</span><input type="radio" name="ipos1[limited_mobility]" value="6" <?php $x = ($form_data['ipos1']['limited_mobility'] == "6")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                   </tr>
+         </table>
+           </td>
+           </tr>  
+           
+<!-- Bitte nennen Sie weitere Symptome, die aus Ihrer Sicht den Patienten in den letzten 3 Tagen beeinträchtigt haben. -->      
+              <tr>
+                 <td colspan="2" class="patientenid spacing-row"><label>Bitte nennen Sie weitere Symptome, die aus Ihrer Sicht den Patienten <b>in den letzten 3 Tagen beeinträchtigt</b> haben.</label></td>
+              </tr> 
+              <tr>
+                <td class="spacing-row" colspan="2">
+                   <table width="98%">
+                     <tr>
+                       <td class="cell1" style=""><input type="text" name="ipos1[more_symptoms1_txt]" size="31%"  value="<?php echo $form_data['ipos1']['more_symptoms1_txt']; ?>" /></td>
+                       <td class="cell2"><span>0</span><input type="radio" name="ipos1[more_symptoms1]" value="1" <?php $x = ($form_data['ipos1']['more_symptoms1'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                       <td class="cell3"><span>1</span><input type="radio" name="ipos1[more_symptoms1]" value="2" <?php $x = ($form_data['ipos1']['more_symptoms1'] == "2")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                       <td class="cell4"><span>2</span><input type="radio" name="ipos1[more_symptoms1]" value="3" <?php $x = ($form_data['ipos1']['more_symptoms1'] == "3")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                       <td class="cell5"><span>3</span><input type="radio" name="ipos1[more_symptoms1]" value="4" <?php $x = ($form_data['ipos1']['more_symptoms1'] == "4")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                       <td class="cell6"><span>4</span><input type="radio" name="ipos1[more_symptoms1]" value="5" <?php $x = ($form_data['ipos1']['more_symptoms1'] == "5")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                       <td class="cell7"><span>5</span><input type="radio" name="ipos1[more_symptoms1]" value="6" <?php $x = ($form_data['ipos1']['more_symptoms1'] == "6")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                    </tr>
+                    <tr>
+                       <td class="cell1" style=""><input type="text" name="ipos1[more_symptoms2_txt]" size="31%"  value="<?php echo $form_data['ipos1']['more_symptoms2_txt']; ?>" /></td>
+                       <td class="cell2"><span>0</span><input type="radio" name="ipos1[more_symptoms2]" value="1" <?php $x = ($form_data['ipos1']['more_symptoms2'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                       <td class="cell3"><span>1</span><input type="radio" name="ipos1[more_symptoms2]" value="2" <?php $x = ($form_data['ipos1']['more_symptoms2'] == "2")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                       <td class="cell4"><span>2</span><input type="radio" name="ipos1[more_symptoms2]" value="3" <?php $x = ($form_data['ipos1']['more_symptoms2'] == "3")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                       <td class="cell5"><span>3</span><input type="radio" name="ipos1[more_symptoms2]" value="4" <?php $x = ($form_data['ipos1']['more_symptoms2'] == "4")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                       <td class="cell6"><span>4</span><input type="radio" name="ipos1[more_symptoms2]" value="5" <?php $x = ($form_data['ipos1']['more_symptoms2'] == "5")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                       <td class="cell7"><span>5</span><input type="radio" name="ipos1[more_symptoms2]" value="6" <?php $x = ($form_data['ipos1']['more_symptoms2'] == "6")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                    </tr>
+                    <tr>
+                       <td class="cell1" style=""><input type="text" name="ipos1[more_symptoms3_txt]" size="31%"  value="<?php echo $form_data['ipos1']['more_symptoms3_txt']; ?>" /></td>
+                       <td class="cell2"><span>0</span><input type="radio" name="ipos1[more_symptoms3]" value="1" <?php $x = ($form_data['ipos1']['more_symptoms3'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                       <td class="cell3"><span>1</span><input type="radio" name="ipos1[more_symptoms3]" value="2" <?php $x = ($form_data['ipos1']['more_symptoms3'] == "2")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                       <td class="cell4"><span>2</span><input type="radio" name="ipos1[more_symptoms3]" value="3" <?php $x = ($form_data['ipos1']['more_symptoms3'] == "3")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                       <td class="cell5"><span>3</span><input type="radio" name="ipos1[more_symptoms3]" value="4" <?php $x = ($form_data['ipos1']['more_symptoms3'] == "4")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                       <td class="cell6"><span>4</span><input type="radio" name="ipos1[more_symptoms3]" value="5" <?php $x = ($form_data['ipos1']['more_symptoms3'] == "5")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                       <td class="cell7"><span>5</span><input type="radio" name="ipos1[more_symptoms3]" value="6" <?php $x = ($form_data['ipos1']['more_symptoms3'] == "6")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                    </tr>
+                   </table>
+                </td>
+              </tr>
+  
+  <!-- In den letzten 3 Tagen: -->               
+              <tr align="center">
+                 <td colspan="2" width="70%" align="center" class="patientenid spacing-row"><label><b>In den letzten 3 Tagen:</b></label></td>
+              </tr>
+                <tr>
+            <td class="spacing-row"  colspan="2">
+              <table width="98%">
+                    <tr>
+                     <th class="cell1">&nbsp;</th>
+                     <th class="cell2">Gar nicht</th>
+                     <th class="cell3"> Selten</th>
+                     <th class="cell4">  Manchmal</th>
+                     <th class="cell5">  Meistens</th>
+                     <th class="cell6">  Immer</th>
+                     <th class="cell7"> Nicht beurteilbar
+                           (z.B. bewusstlos)
+                    </th>
+                   </tr>
+                   <tr>
+                     <td class="cell1">3. War der Patient wegen seiner Erkrankung oder Behandlung besorg oder beunruhigt?</td>
+                     <td class="cell2"><span>0</span><input type="radio" name="ipos1[disease]" value="1" <?php $x = ($form_data['ipos1']['disease'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                     <td class="cell3"><span>1</span><input type="radio" name="ipos1[disease]" value="2" <?php $x = ($form_data['ipos1']['disease'] == "2")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell4"><span>2</span><input type="radio" name="ipos1[disease]" value="3" <?php $x = ($form_data['ipos1']['disease'] == "3")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell5"><span>3</span><input type="radio" name="ipos1[disease]" value="4" <?php $x = ($form_data['ipos1']['disease'] == "4")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell6"><span>4</span><input type="radio" name="ipos1[disease]" value="5" <?php $x = ($form_data['ipos1']['disease'] == "5")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell7"><span>5</span><input type="radio" name="ipos1[disease]" value="6" <?php $x = ($form_data['ipos1']['disease'] == "6")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                   </tr>
+                   <tr>
+                      <td class="cell1">4. Waren die Familie/ Freunde des Patienten seinetwegen besorgt oder beunruhigt?</td>
+                     <td class="cell2"><span>0</span><input type="radio" name="ipos1[concerned_worried]" value="1" <?php $x = ($form_data['ipos1']['concerned_worried'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                     <td class="cell3"><span>1</span><input type="radio" name="ipos1[concerned_worried]" value="2" <?php $x = ($form_data['ipos1']['concerned_worried'] == "2")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell4"><span>2</span><input type="radio" name="ipos1[concerned_worried]" value="3" <?php $x = ($form_data['ipos1']['concerned_worried'] == "3")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell5"><span>3</span><input type="radio" name="ipos1[concerned_worried]" value="4" <?php $x = ($form_data['ipos1']['concerned_worried'] == "4")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell6"><span>4</span><input type="radio" name="ipos1[concerned_worried]" value="5" <?php $x = ($form_data['ipos1']['concerned_worried'] == "5")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell7"><span>5</span><input type="radio" name="ipos1[concerned_worried]" value="6" <?php $x = ($form_data['ipos1']['concerned_worried'] == "6")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                   </tr>
+                    <tr>
+                     <td class="cell1">5. Denken Sie, dass er traurig bedrückt war?</td>
+                     <td class="cell2"><span>0</span><input type="radio" name="ipos1[depressed_sad]" value="1" <?php $x = ($form_data['ipos1']['depressed_sad'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                     <td class="cell3"><span>1</span><input type="radio" name="ipos1[depressed_sad]" value="2" <?php $x = ($form_data['ipos1']['depressed_sad'] == "2")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell4"><span>2</span><input type="radio" name="ipos1[depressed_sad]" value="3" <?php $x = ($form_data['ipos1']['depressed_sad'] == "3")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell5"><span>3</span><input type="radio" name="ipos1[depressed_sad]" value="4" <?php $x = ($form_data['ipos1']['depressed_sad'] == "4")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell6"><span>4</span><input type="radio" name="ipos1[depressed_sad]" value="5" <?php $x = ($form_data['ipos1']['depressed_sad'] == "5")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell7"><span>5</span><input type="radio" name="ipos1[depressed_sad]" value="6" <?php $x = ($form_data['ipos1']['depressed_sad'] == "6")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                   </tr>
+                    <tr>
+                     <td class="cell1">&nbsp;</td>
+                     <td class="cell2">Immer</td>
+                     <td class="cell3">Meistens</td>
+                      <td class="cell4">Manchmal</td>
+                      <td class="cell5">Selten</td>
+                      <td class="cell6">Gar nicht</td>
+                       <td class="cell7"> Nicht beurteilbar
+                           (z.B. bewusstlos)
+                    </td>
+                   </tr>
+                   <tr>
+                     <td class="cell1">6. Denken Sie, dass er im Frieden mit sich selbst war?</td>
+                     <td class="cell2"><span>0</span><input type="radio" name="ipos1[peace_yourself]" value="1" <?php $x = ($form_data['ipos1']['peace_yourself'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                     <td class="cell3"><span>1</span><input type="radio" name="ipos1[peace_yourself]" value="2" <?php $x = ($form_data['ipos1']['peace_yourself'] == "2")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell4"><span>2</span><input type="radio" name="ipos1[peace_yourself]" value="3" <?php $x = ($form_data['ipos1']['peace_yourself'] == "3")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell5"><span>3</span><input type="radio" name="ipos1[peace_yourself]" value="4" <?php $x = ($form_data['ipos1']['peace_yourself'] == "4")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell6"><span>4</span><input type="radio" name="ipos1[peace_yourself]" value="5" <?php $x = ($form_data['ipos1']['peace_yourself'] == "5")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell7"><span>5</span><input type="radio" name="ipos1[peace_yourself]" value="6" <?php $x = ($form_data['ipos1']['peace_yourself'] == "6")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                   </tr>
+                   <tr>
+                     <td class="cell1">7. Konnte der Patient seine Gefühle mit seiner Familie oder seinen Freunden teilen, so viel wie er wollte?</td>
+                     <td class="cell2"><span>0</span><input type="radio" name="ipos1[feelings_family]" value="1" <?php $x = ($form_data['ipos1']['feelings_family'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                     <td class="cell3"><span>1</span><input type="radio" name="ipos1[feelings_family]" value="2" <?php $x = ($form_data['ipos1']['feelings_family'] == "2")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell4"><span>2</span><input type="radio" name="ipos1[feelings_family]" value="3" <?php $x = ($form_data['ipos1']['feelings_family'] == "3")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell5"><span>3</span><input type="radio" name="ipos1[feelings_family]" value="4" <?php $x = ($form_data['ipos1']['feelings_family'] == "4")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell6"><span>4</span><input type="radio" name="ipos1[feelings_family]" value="5" <?php $x = ($form_data['ipos1']['feelings_family'] == "5")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell7"><span>5</span><input type="radio" name="ipos1[feelings_family]" value="6" <?php $x = ($form_data['ipos1']['feelings_family'] == "6")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                   </tr>
+                   <tr>
+                     <td class="cell1">8. Hat der Patient so viele Informationen erhalten, wie er wollte?</td>
+                     <td class="cell2"><span>0</span><input type="radio" name="ipos1[information_wanted]" value="1" <?php $x = ($form_data['ipos1']['information_wanted'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                     <td class="cell3"><span>1</span><input type="radio" name="ipos1[information_wanted]" value="2" <?php $x = ($form_data['ipos1']['information_wanted'] == "2")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell4"><span>2</span><input type="radio" name="ipos1[information_wanted]" value="3" <?php $x = ($form_data['ipos1']['information_wanted'] == "3")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell5"><span>3</span><input type="radio" name="ipos1[information_wanted]" value="4" <?php $x = ($form_data['ipos1']['information_wanted'] == "4")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell6"><span>4</span><input type="radio" name="ipos1[information_wanted]" value="5" <?php $x = ($form_data['ipos1']['information_wanted'] == "5")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell7"><span>5</span><input type="radio" name="ipos1[information_wanted]" value="6" <?php $x = ($form_data['ipos1']['information_wanted'] == "6")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                   </tr>
+                   <tr>
+                     <td class="cell1">&nbsp;</td>
+                     <td class="cell2">Probleme angegangen/ Keine Probleme</td>
+                     <td class="cell3"> Probleme größtenteils angegangen</td>
+                      <td class="cell4">Probleme teilweise angegangen</td>
+                      <td class="cell5"> Probleme kaum angegangen</td>
+                      <td class="cell6"> Probleme nicht angegan gen</td>
+                      <td class="cell7"> Nicht beurteilbar
+                           (z.B. bewusstlos)
+                    </td>
+                   </tr>
+                   <tr>
+                     <td class="cell1">9. Wurden praktische Probleme angegangen, die Folge seiner Erkrankungen sind (z.B. finanzieller oder persönlicher Art)?</td>
+                     <td class="cell2"><span>0</span><input type="radio" name="ipos1[practical_problems]" value="1" <?php $x = ($form_data['ipos1']['practical_problems'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                     <td class="cell3"><span>1</span><input type="radio" name="ipos1[practical_problems]" value="2" <?php $x = ($form_data['ipos1']['practical_problems'] == "2")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell4"><span>2</span><input type="radio" name="ipos1[practical_problems]" value="3" <?php $x = ($form_data['ipos1']['practical_problems'] == "3")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell5"><span>3</span><input type="radio" name="ipos1[practical_problems]" value="4" <?php $x = ($form_data['ipos1']['practical_problems'] == "4")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell6"><span>4</span><input type="radio" name="ipos1[practical_problems]" value="5" <?php $x = ($form_data['ipos1']['practical_problems'] == "5")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell7"><span>5</span><input type="radio" name="ipos1[practical_problems]" value="6" <?php $x = ($form_data['ipos1']['practical_problems'] == "6")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                   </tr>
+                  </table>
+         </td>
+         </tr>
+       </table>
+       
+     <table>
+		<tr>
+		    <td class="patientenid spacing-row"><label><i>* Um die Fragen möglichst kurz zu halten, wird im Folgenden nur &#8222;der Patient&#8221; genannt. Gemeint ist immer &#8222;die Patientin/der Patient&#8221;.</i></label></td>  
+		</tr>
+  	</table>
+   <table class="bottom_footer">
+		<tr>
+   			<td>SAPV-Einzelfallevaluation Bayern - IPOS (Version 2015)</td>
+        </tr>
+	</table>
+	
+  	<div class="se_tabs_buttons">	
+		<button name="save_ipos1" type="submit" data-page="ipos1" class="submit_form save_page btnsubmit_usersessions" ><? echo $this->translate('save') ?><sup>*</sup></button>
+		<button name="pdf_ipos1" type="submit" data-page="ipos1" class="submit_form print_page btnsubmit_usersessions" ><? echo $this->translate('generatepdf') ?><sup>*</sup></button>
+		<?php if($saved_data['ipos1'] == "1"):?>
+			<button name="reset_ipos1" type="submit" data-page="ipos1" class="submit_form reset_page btnsubmit_usersessions" ><? echo $this->translate('reset') ?><sup>*</sup></button>
+		<?php endif; ?>
+		<span>*) <? echo $this->translate('Action only for current tab: ipos1') ?></span>
+    </div>    
+    	  
+	  
+	</div> <!-- END tab ipos1 -->
+
+    <div class="Evaluation tab_block" id="ipos2">
+     <!--  ###################################################################################################################################### -->
+     <!--  #################################################### IPOS Messpunkt 7 Tage ########################################################### -->
+     <!--  ###################################################################################################################################### -->
+	<div class="f_highlight">IPOS Messpunkt 7 Tage</div>
+        <?php if($saved_data['ipos2'] == "1"):?>
+			<div class="tab_form_alert_info" >
+				<p><?php echo $this->translate("Form manually saved, to revert please press reset-sapv_evaluation")?></p>
+			</div>	
+		<?php endif; ?>	     
+     
+        <div class="antet">
+      <div class="InfoSection">
+        <div class="InfoDiv">
+          <div class="Infoleft"> Krankenkasse bzw. Kostenträger<br />
+            <input id="hi_company_name" name="ipos2[health_insurance_name]" type="text"  value="<?php echo $form_data['ipos2']['health_insurance_name']; ?>" class="MarginZero" />
+          </div>
+          <div class="BlackDivider"></div>
+          <div class="Inforight"> Kassen-Nr.<br />
+            <input id="kassen_nr" name="ipos2[health_insurance_kassen_nr]" type="text" class="MarginZero" value="<?php echo $form_data['ipos2']['health_insurance_kassen_nr']; ?>" />
+          </div>
+          <div class="ClrBoth"></div>
+        </div>
+        <div class="InfoSectionBottom">
+          <div class="InfoDiv">
+            <div class="Inforight"> Betriebsstätten-Nr.<br />
+              <input id="betriebsstatten_nr" name="ipos2[client_bsnr]" type="text" value="<?php echo $form_data['ipos2']['client_bsnr']; ?>" class="MarginZero"   />
+            </div>
+            <div class="BlackDivider"></div>
+            <div class="Inforight">Institutionskennzeichen<br />
+             <input id="institutskennzeichen" name="ipos2[client_iknumber]" type="text" value="<?php echo $form_data['ipos2']['client_iknumber']; ?>" class="MarginZero" />
+            </div>
+            <div class="BlackDivider"></div>
+            <div class="Inforight"> &nbsp;<br />
+            	&nbsp;
+            </div>
+            <div class="ClrBoth"></div>
+          </div>
+        </div>
+      </div>
+     
+      <div class="title_point3" style="float:left;">IPOS<br>
+		Messpunkt 7 Tage
+      </div> 
+      <div class="ClrBoth"></div>
+      </div>
+      
+      
+      
+ <!-- Welche Hauptprobleme hatte der Patient* in den letzten 3 Tagen? -->
+        <table width="100%">
+              <tr>
+                  <td width="2%"><label class="special">a.&nbsp;</label></td>
+                  <td ><input type="text" name="ipos2[problems_a]"  value="<?php echo $form_data['ipos2']['problems_a']; ?>" class="big_input_se" /></td>
+              </tr>
+              <tr>
+                  <td><label class="special">b.&nbsp;</label></td>
+                  <td ><input type="text" name="ipos2[problems_b]"  value="<?php echo $form_data['ipos2']['problems_b']; ?>"  class="big_input_se"/></td>
+              </tr>
+              <tr>
+                  <td ><label class="special">c.&nbsp;</label></td>
+                  <td ><input type="text" name="ipos2[problems_c]"  value="<?php echo $form_data['ipos2']['problems_c']; ?>"   class="big_input_se" /></td>
+              </tr>
+      
+      
+   <!--  Bitte kreuzen Sie an, wie sehr der Patient in den letzten 3 Tagen von folgenden Symptomen beeinträchtigt war: -->     
+        
+         <tr >
+                 <td colspan="2"><label>2. Bitte kreuzen Sie an, wie sehr der Patient <b>in den letzten 3 Tagen</b> von folgenden Symptomen <b>beeinträchtigt</b> war:</label></td>
+              </tr>
+         <tr>
+            <td colspan="2" class="spacing-row">
+               <table width="98%">
+                    <tr>
+                     <th class="cell1">&nbsp;</th>
+                     <th class="cell2">Gar nicht</th>
+                     <th class="cell3"> Ein wenig</th>
+                     <th class="cell4"> Mäßig</th>
+                     <th class="cell5"> Stark</th>
+                     <th class="cell6"> Extrem stark</th>
+                     <th class="cell7"> Nicht beurteilbar
+                           (z.B. bewusstlos)
+                    </th>
+                   </tr>
+                    <tr>
+                     <td class="cell1">&nbsp;Schmerzen</td>
+                     <td class="cell2"><span>0</span><input type="radio" name="ipos2[ache]" value="1" <?php $x = ($form_data['ipos2']['ache'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                     <td class="cell3"><span>1</span><input type="radio" name="ipos2[ache]" value="2" <?php $x = ($form_data['ipos2']['ache'] == "2")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell4"><span>2</span><input type="radio" name="ipos2[ache]" value="3" <?php $x = ($form_data['ipos2']['ache'] == "3")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell5"><span>3</span><input type="radio" name="ipos2[ache]" value="4" <?php $x = ($form_data['ipos2']['ache'] == "4")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell6"><span>4</span><input type="radio" name="ipos2[ache]" value="5" <?php $x = ($form_data['ipos2']['ache'] == "5")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell7"><span>5</span><input type="radio" name="ipos2[ache]" value="6" <?php $x = ($form_data['ipos2']['ache'] == "6")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                   </tr>
+                    <tr>
+                     <td class="cell1">&nbsp;Atemnot</td>
+                     <td class="cell2"><span>0</span><input type="radio" name="ipos2[difficulty_breathing]" value="1" <?php $x = ($form_data['ipos2']['difficulty_breathing'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                     <td class="cell3"><span>1</span><input type="radio" name="ipos2[difficulty_breathing]" value="2" <?php $x = ($form_data['ipos2']['difficulty_breathing'] == "2")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell4"><span>2</span><input type="radio" name="ipos2[difficulty_breathing]" value="3" <?php $x = ($form_data['ipos2']['difficulty_breathing'] == "3")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell5"><span>3</span><input type="radio" name="ipos2[difficulty_breathing]" value="4" <?php $x = ($form_data['ipos2']['difficulty_breathing'] == "4")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell6"><span>4</span><input type="radio" name="ipos2[difficulty_breathing]" value="5" <?php $x = ($form_data['ipos2']['difficulty_breathing'] == "5")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell7"><span>5</span><input type="radio" name="ipos2[difficulty_breathing]" value="6" <?php $x = ($form_data['ipos2']['difficulty_breathing'] == "6")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                   </tr>
+                   <tr>
+                     <td class="cell1">&nbsp;Schwäche oder fehlende Energie</td>
+                     <td class="cell2"><span>0</span><input type="radio" name="ipos2[lack_energy]" value="1" <?php $x = ($form_data['ipos2']['lack_energy'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                     <td class="cell3"><span>1</span><input type="radio" name="ipos2[lack_energy]" value="2" <?php $x = ($form_data['ipos2']['lack_energy'] == "2")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell4"><span>2</span><input type="radio" name="ipos2[lack_energy]" value="3" <?php $x = ($form_data['ipos2']['lack_energy'] == "3")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell5"><span>3</span><input type="radio" name="ipos2[lack_energy]" value="4" <?php $x = ($form_data['ipos2']['lack_energy'] == "4")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell6"><span>4</span><input type="radio" name="ipos2[lack_energy]" value="5" <?php $x = ($form_data['ipos2']['lack_energy'] == "5")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell7"><span>5</span><input type="radio" name="ipos2[lack_energy]" value="6" <?php $x = ($form_data['ipos2']['lack_energy'] == "6")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                   </tr>
+                   <tr>
+                     <td class="cell1">&nbsp;Übelkeit<br/><i>&nbsp;(das Gefühl, erbrechen zu müssen)</i></td>
+                     <td class="cell2"><span>0</span><input type="radio" name="ipos2[nausea]" value="1" <?php $x = ($form_data['ipos2']['nausea'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                     <td class="cell3"><span>1</span><input type="radio" name="ipos2[nausea]" value="2" <?php $x = ($form_data['ipos2']['nausea'] == "2")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell4"><span>2</span><input type="radio" name="ipos2[nausea]" value="3" <?php $x = ($form_data['ipos2']['nausea'] == "3")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell5"><span>3</span><input type="radio" name="ipos2[nausea]" value="4" <?php $x = ($form_data['ipos2']['nausea'] == "4")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell6"><span>4</span><input type="radio" name="ipos2[nausea]" value="5" <?php $x = ($form_data['ipos2']['nausea'] == "5")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell7"><span>5</span><input type="radio" name="ipos2[nausea]" value="6" <?php $x = ($form_data['ipos2']['nausea'] == "6")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                   </tr>
+                   <tr>
+                     <td class="cell1">&nbsp;Erbrechen</td>
+                     <td class="cell2"><span>0</span><input type="radio" name="ipos2[vomit]" value="1" <?php $x = ($form_data['ipos2']['vomit'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                     <td class="cell3"><span>1</span><input type="radio" name="ipos2[vomit]" value="2" <?php $x = ($form_data['ipos2']['vomit'] == "2")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell4"><span>2</span><input type="radio" name="ipos2[vomit]" value="3" <?php $x = ($form_data['ipos2']['vomit'] == "3")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell5"><span>3</span><input type="radio" name="ipos2[vomit]" value="4" <?php $x = ($form_data['ipos2']['vomit'] == "4")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell6"><span>4</span><input type="radio" name="ipos2[vomit]" value="5" <?php $x = ($form_data['ipos2']['vomit'] == "5")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell7"><span>5</span><input type="radio" name="ipos2[vomit]" value="6" <?php $x = ($form_data['ipos2']['vomit'] == "6")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                   </tr>
+                    <tr>
+                     <td class="cell1">&nbsp;Appetitlosigkeit</td>
+                     <td class="cell2"><span>0</span><input type="radio" name="ipos2[anorexia]" value="1" <?php $x = ($form_data['ipos2']['anorexia'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                     <td class="cell3"><span>1</span><input type="radio" name="ipos2[anorexia]" value="2" <?php $x = ($form_data['ipos2']['anorexia'] == "2")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell4"><span>2</span><input type="radio" name="ipos2[anorexia]" value="3" <?php $x = ($form_data['ipos2']['anorexia'] == "3")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell5"><span>3</span><input type="radio" name="ipos2[anorexia]" value="4" <?php $x = ($form_data['ipos2']['anorexia'] == "4")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell6"><span>4</span><input type="radio" name="ipos2[anorexia]" value="5" <?php $x = ($form_data['ipos2']['anorexia'] == "5")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell7"><span>5</span><input type="radio" name="ipos2[anorexia]" value="6" <?php $x = ($form_data['ipos2']['anorexia'] == "6")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                   </tr>
+                   <tr>
+                     <td class="cell1">&nbsp;Verstopfung</td>
+                     <td class="cell2"><span>0</span><input type="radio" name="ipos2[constipation]" value="1" <?php $x = ($form_data['ipos2']['constipation'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                     <td class="cell3"><span>1</span><input type="radio" name="ipos2[constipation]" value="2" <?php $x = ($form_data['ipos2']['constipation'] == "2")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell4"><span>2</span><input type="radio" name="ipos2[constipation]" value="3" <?php $x = ($form_data['ipos2']['constipation'] == "3")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell5"><span>3</span><input type="radio" name="ipos2[constipation]" value="4" <?php $x = ($form_data['ipos2']['constipation'] == "4")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell6"><span>4</span><input type="radio" name="ipos2[constipation]" value="5" <?php $x = ($form_data['ipos2']['constipation'] == "5")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell7"><span>5</span><input type="radio" name="ipos2[constipation]" value="6" <?php $x = ($form_data['ipos2']['constipation'] == "6")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                   </tr>
+                    <tr>
+                     <td class="cell1">&nbsp;Mundtrockenheit oder schmerzhafter Mund</td>
+                     <td class="cell2"><span>0</span><input type="radio" name="ipos2[dry_mouth]" value="1" <?php $x = ($form_data['ipos2']['ache'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                     <td class="cell3"><span>1</span><input type="radio" name="ipos2[dry_mouth]" value="2" <?php $x = ($form_data['ipos2']['ache'] == "2")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell4"><span>2</span><input type="radio" name="ipos2[dry_mouth]" value="3" <?php $x = ($form_data['ipos2']['ache'] == "3")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell5"><span>3</span><input type="radio" name="ipos2[dry_mouth]" value="4" <?php $x = ($form_data['ipos2']['ache'] == "4")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell6"><span>4</span><input type="radio" name="ipos2[dry_mouth]" value="5" <?php $x = ($form_data['ipos2']['ache'] == "5")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell7"><span>5</span><input type="radio" name="ipos2[dry_mouth]" value="6" <?php $x = ($form_data['ipos2']['ache'] == "6")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                   </tr>
+                    <tr>
+                     <td class="cell1">&nbsp;Schläfrigkeit</td>
+                     <td class="cell2"><span>0</span><input type="radio" name="ipos2[sleepiness]" value="1" <?php $x = ($form_data['ipos2']['sleepiness'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                     <td class="cell3"><span>1</span><input type="radio" name="ipos2[sleepiness]" value="2" <?php $x = ($form_data['ipos2']['sleepiness'] == "2")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell4"><span>2</span><input type="radio" name="ipos2[sleepiness]" value="3" <?php $x = ($form_data['ipos2']['sleepiness'] == "3")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell5"><span>3</span><input type="radio" name="ipos2[sleepiness]" value="4" <?php $x = ($form_data['ipos2']['sleepiness'] == "4")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell6"><span>4</span><input type="radio" name="ipos2[sleepiness]" value="5" <?php $x = ($form_data['ipos2']['sleepiness'] == "5")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell7"><span>5</span><input type="radio" name="ipos2[sleepiness]" value="6" <?php $x = ($form_data['ipos2']['sleepiness'] == "6")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                   </tr>
+                    <tr>
+                     <td class="cell1">&nbsp;Eingeschränkte Mobilität</td>
+                     <td class="cell2"><span>0</span><input type="radio" name="ipos2[limited_mobility]" value="1" <?php $x = ($form_data['ipos2']['limited_mobility'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                     <td class="cell3"><span>1</span><input type="radio" name="ipos2[limited_mobility]" value="2" <?php $x = ($form_data['ipos2']['limited_mobility'] == "2")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell4"><span>2</span><input type="radio" name="ipos2[limited_mobility]" value="3" <?php $x = ($form_data['ipos2']['limited_mobility'] == "3")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell5"><span>3</span><input type="radio" name="ipos2[limited_mobility]" value="4" <?php $x = ($form_data['ipos2']['limited_mobility'] == "4")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell6"><span>4</span><input type="radio" name="ipos2[limited_mobility]" value="5" <?php $x = ($form_data['ipos2']['limited_mobility'] == "5")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell7"><span>5</span><input type="radio" name="ipos2[limited_mobility]" value="6" <?php $x = ($form_data['ipos2']['limited_mobility'] == "6")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                   </tr>
+         </table>
+           </td>
+           </tr>  
+           
+<!-- Bitte nennen Sie weitere Symptome, die aus Ihrer Sicht den Patienten in den letzten 3 Tagen beeinträchtigt haben. -->      
+              <tr>
+                 <td colspan="2" class="patientenid spacing-row"><label>Bitte nennen Sie weitere Symptome, die aus Ihrer Sicht den Patienten <b>in den letzten 3 Tagen beeinträchtigt</b> haben.</label></td>
+              </tr> 
+              <tr>
+                <td class="spacing-row" colspan="2">
+                   <table width="98%">
+                     <tr>
+                       <td class="cell1" style=""><input type="text" name="ipos2[more_symptoms1_txt]" size="31%"  value="<?php echo $form_data['ipos2']['more_symptoms1_txt']; ?>" /></td>
+                       <td class="cell2"><span>0</span><input type="radio" name="ipos2[more_symptoms1]" value="1" <?php $x = ($form_data['ipos2']['more_symptoms1'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                       <td class="cell3"><span>1</span><input type="radio" name="ipos2[more_symptoms1]" value="2" <?php $x = ($form_data['ipos2']['more_symptoms1'] == "2")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                       <td class="cell4"><span>2</span><input type="radio" name="ipos2[more_symptoms1]" value="3" <?php $x = ($form_data['ipos2']['more_symptoms1'] == "3")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                       <td class="cell5"><span>3</span><input type="radio" name="ipos2[more_symptoms1]" value="4" <?php $x = ($form_data['ipos2']['more_symptoms1'] == "4")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                       <td class="cell6"><span>4</span><input type="radio" name="ipos2[more_symptoms1]" value="5" <?php $x = ($form_data['ipos2']['more_symptoms1'] == "5")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                       <td class="cell7"><span>5</span><input type="radio" name="ipos2[more_symptoms1]" value="6" <?php $x = ($form_data['ipos2']['more_symptoms1'] == "6")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                    </tr>
+                    <tr>
+                       <td class="cell1" style=""><input type="text" name="ipos2[more_symptoms2_txt]" size="31%"  value="<?php echo $form_data['ipos2']['more_symptoms2_txt']; ?>" /></td>
+                       <td class="cell2"><span>0</span><input type="radio" name="ipos2[more_symptoms2]" value="1" <?php $x = ($form_data['ipos2']['more_symptoms2'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                       <td class="cell3"><span>1</span><input type="radio" name="ipos2[more_symptoms2]" value="2" <?php $x = ($form_data['ipos2']['more_symptoms2'] == "2")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                       <td class="cell4"><span>2</span><input type="radio" name="ipos2[more_symptoms2]" value="3" <?php $x = ($form_data['ipos2']['more_symptoms2'] == "3")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                       <td class="cell5"><span>3</span><input type="radio" name="ipos2[more_symptoms2]" value="4" <?php $x = ($form_data['ipos2']['more_symptoms2'] == "4")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                       <td class="cell6"><span>4</span><input type="radio" name="ipos2[more_symptoms2]" value="5" <?php $x = ($form_data['ipos2']['more_symptoms2'] == "5")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                       <td class="cell7"><span>5</span><input type="radio" name="ipos2[more_symptoms2]" value="6" <?php $x = ($form_data['ipos2']['more_symptoms2'] == "6")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                    </tr>
+                    <tr>
+                       <td class="cell1" style=""><input type="text" name="ipos2[more_symptoms3_txt]" size="31%"  value="<?php echo $form_data['ipos2']['more_symptoms3_txt']; ?>" /></td>
+                       <td class="cell2"><span>0</span><input type="radio" name="ipos2[more_symptoms3]" value="1" <?php $x = ($form_data['ipos2']['more_symptoms3'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                       <td class="cell3"><span>1</span><input type="radio" name="ipos2[more_symptoms3]" value="2" <?php $x = ($form_data['ipos2']['more_symptoms3'] == "2")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                       <td class="cell4"><span>2</span><input type="radio" name="ipos2[more_symptoms3]" value="3" <?php $x = ($form_data['ipos2']['more_symptoms3'] == "3")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                       <td class="cell5"><span>3</span><input type="radio" name="ipos2[more_symptoms3]" value="4" <?php $x = ($form_data['ipos2']['more_symptoms3'] == "4")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                       <td class="cell6"><span>4</span><input type="radio" name="ipos2[more_symptoms3]" value="5" <?php $x = ($form_data['ipos2']['more_symptoms3'] == "5")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                       <td class="cell7"><span>5</span><input type="radio" name="ipos2[more_symptoms3]" value="6" <?php $x = ($form_data['ipos2']['more_symptoms3'] == "6")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                    </tr>
+                   </table>
+                </td>
+              </tr>
+  
+  <!-- In den letzten 3 Tagen: -->               
+              <tr align="center">
+                 <td colspan="2" width="70%" align="center" class="patientenid spacing-row"><label><b>In den letzten 3 Tagen:</b></label></td>
+              </tr>
+                <tr>
+            <td class="spacing-row"  colspan="2">
+              <table width="98%">
+                    <tr>
+                     <th class="cell1">&nbsp;</th>
+                     <th class="cell2">Gar nicht</th>
+                     <th class="cell3"> Selten</th>
+                     <th class="cell4">  Manchmal</th>
+                     <th class="cell5">  Meistens</th>
+                     <th class="cell6">  Immer</th>
+                     <th class="cell7"> Nicht beurteilbar
+                           (z.B. bewusstlos)
+                    </th>
+                   </tr>
+                   <tr>
+                     <td class="cell1">3. War der Patient wegen seiner Erkrankung oder Behandlung besorg oder beunruhigt?</td>
+                     <td class="cell2"><span>0</span><input type="radio" name="ipos2[disease]" value="1" <?php $x = ($form_data['ipos2']['disease'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                     <td class="cell3"><span>1</span><input type="radio" name="ipos2[disease]" value="2" <?php $x = ($form_data['ipos2']['disease'] == "2")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell4"><span>2</span><input type="radio" name="ipos2[disease]" value="3" <?php $x = ($form_data['ipos2']['disease'] == "3")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell5"><span>3</span><input type="radio" name="ipos2[disease]" value="4" <?php $x = ($form_data['ipos2']['disease'] == "4")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell6"><span>4</span><input type="radio" name="ipos2[disease]" value="5" <?php $x = ($form_data['ipos2']['disease'] == "5")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell7"><span>5</span><input type="radio" name="ipos2[disease]" value="6" <?php $x = ($form_data['ipos2']['disease'] == "6")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                   </tr>
+                   <tr>
+                      <td class="cell1">4. Waren die Familie/ Freunde des Patienten seinetwegen besorgt oder beunruhigt?</td>
+                     <td class="cell2"><span>0</span><input type="radio" name="ipos2[concerned_worried]" value="1" <?php $x = ($form_data['ipos2']['concerned_worried'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                     <td class="cell3"><span>1</span><input type="radio" name="ipos2[concerned_worried]" value="2" <?php $x = ($form_data['ipos2']['concerned_worried'] == "2")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell4"><span>2</span><input type="radio" name="ipos2[concerned_worried]" value="3" <?php $x = ($form_data['ipos2']['concerned_worried'] == "3")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell5"><span>3</span><input type="radio" name="ipos2[concerned_worried]" value="4" <?php $x = ($form_data['ipos2']['concerned_worried'] == "4")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell6"><span>4</span><input type="radio" name="ipos2[concerned_worried]" value="5" <?php $x = ($form_data['ipos2']['concerned_worried'] == "5")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell7"><span>5</span><input type="radio" name="ipos2[concerned_worried]" value="6" <?php $x = ($form_data['ipos2']['concerned_worried'] == "6")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                   </tr>
+                    <tr>
+                     <td class="cell1">5. Denken Sie, dass er traurig bedrückt war?</td>
+                     <td class="cell2"><span>0</span><input type="radio" name="ipos2[depressed_sad]" value="1" <?php $x = ($form_data['ipos2']['depressed_sad'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                     <td class="cell3"><span>1</span><input type="radio" name="ipos2[depressed_sad]" value="2" <?php $x = ($form_data['ipos2']['depressed_sad'] == "2")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell4"><span>2</span><input type="radio" name="ipos2[depressed_sad]" value="3" <?php $x = ($form_data['ipos2']['depressed_sad'] == "3")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell5"><span>3</span><input type="radio" name="ipos2[depressed_sad]" value="4" <?php $x = ($form_data['ipos2']['depressed_sad'] == "4")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell6"><span>4</span><input type="radio" name="ipos2[depressed_sad]" value="5" <?php $x = ($form_data['ipos2']['depressed_sad'] == "5")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell7"><span>5</span><input type="radio" name="ipos2[depressed_sad]" value="6" <?php $x = ($form_data['ipos2']['depressed_sad'] == "6")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                   </tr>
+                    <tr>
+                     <td class="cell1">&nbsp;</td>
+                     <td class="cell2">Immer</td>
+                     <td class="cell3">Meistens</td>
+                      <td class="cell4">Manchmal</td>
+                      <td class="cell5">Selten</td>
+                      <td class="cell6">Gar nicht</td>
+                       <td class="cell7"> Nicht beurteilbar
+                           (z.B. bewusstlos)
+                    </td>
+                   </tr>
+                   <tr>
+                     <td class="cell1">6. Denken Sie, dass er im Frieden mit sich selbst war?</td>
+                     <td class="cell2"><span>0</span><input type="radio" name="ipos2[peace_yourself]" value="1" <?php $x = ($form_data['ipos2']['peace_yourself'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                     <td class="cell3"><span>1</span><input type="radio" name="ipos2[peace_yourself]" value="2" <?php $x = ($form_data['ipos2']['peace_yourself'] == "2")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell4"><span>2</span><input type="radio" name="ipos2[peace_yourself]" value="3" <?php $x = ($form_data['ipos2']['peace_yourself'] == "3")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell5"><span>3</span><input type="radio" name="ipos2[peace_yourself]" value="4" <?php $x = ($form_data['ipos2']['peace_yourself'] == "4")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell6"><span>4</span><input type="radio" name="ipos2[peace_yourself]" value="5" <?php $x = ($form_data['ipos2']['peace_yourself'] == "5")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell7"><span>5</span><input type="radio" name="ipos2[peace_yourself]" value="6" <?php $x = ($form_data['ipos2']['peace_yourself'] == "6")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                   </tr>
+                   <tr>
+                     <td class="cell1">7. Konnte der Patient seine Gefühle mit seiner Familie oder seinen Freunden teilen, so viel wie er wollte?</td>
+                     <td class="cell2"><span>0</span><input type="radio" name="ipos2[feelings_family]" value="1" <?php $x = ($form_data['ipos2']['feelings_family'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                     <td class="cell3"><span>1</span><input type="radio" name="ipos2[feelings_family]" value="2" <?php $x = ($form_data['ipos2']['feelings_family'] == "2")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell4"><span>2</span><input type="radio" name="ipos2[feelings_family]" value="3" <?php $x = ($form_data['ipos2']['feelings_family'] == "3")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell5"><span>3</span><input type="radio" name="ipos2[feelings_family]" value="4" <?php $x = ($form_data['ipos2']['feelings_family'] == "4")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell6"><span>4</span><input type="radio" name="ipos2[feelings_family]" value="5" <?php $x = ($form_data['ipos2']['feelings_family'] == "5")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell7"><span>5</span><input type="radio" name="ipos2[feelings_family]" value="6" <?php $x = ($form_data['ipos2']['feelings_family'] == "6")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                   </tr>
+                   <tr>
+                     <td class="cell1">8. Hat der Patient so viele Informationen erhalten, wie er wollte?</td>
+                     <td class="cell2"><span>0</span><input type="radio" name="ipos2[information_wanted]" value="1" <?php $x = ($form_data['ipos2']['information_wanted'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                     <td class="cell3"><span>1</span><input type="radio" name="ipos2[information_wanted]" value="2" <?php $x = ($form_data['ipos2']['information_wanted'] == "2")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell4"><span>2</span><input type="radio" name="ipos2[information_wanted]" value="3" <?php $x = ($form_data['ipos2']['information_wanted'] == "3")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell5"><span>3</span><input type="radio" name="ipos2[information_wanted]" value="4" <?php $x = ($form_data['ipos2']['information_wanted'] == "4")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell6"><span>4</span><input type="radio" name="ipos2[information_wanted]" value="5" <?php $x = ($form_data['ipos2']['information_wanted'] == "5")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell7"><span>5</span><input type="radio" name="ipos2[information_wanted]" value="6" <?php $x = ($form_data['ipos2']['information_wanted'] == "6")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                   </tr>
+                   <tr>
+                     <td class="cell1">&nbsp;</td>
+                     <td class="cell2">Probleme angegangen/ Keine Probleme</td>
+                     <td class="cell3"> Probleme größtenteils angegangen</td>
+                      <td class="cell4">Probleme teilweise angegangen</td>
+                      <td class="cell5"> Probleme kaum angegangen</td>
+                      <td class="cell6"> Probleme nicht angegan gen</td>
+                      <td class="cell7"> Nicht beurteilbar
+                           (z.B. bewusstlos)
+                    </td>
+                   </tr>
+                   <tr>
+                     <td class="cell1">9. Wurden praktische Probleme angegangen, die Folge seiner Erkrankungen sind (z.B. finanzieller oder persönlicher Art)?</td>
+                     <td class="cell2"><span>0</span><input type="radio" name="ipos2[practical_problems]" value="1" <?php $x = ($form_data['ipos2']['practical_problems'] == "1")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                     <td class="cell3"><span>1</span><input type="radio" name="ipos2[practical_problems]" value="2" <?php $x = ($form_data['ipos2']['practical_problems'] == "2")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell4"><span>2</span><input type="radio" name="ipos2[practical_problems]" value="3" <?php $x = ($form_data['ipos2']['practical_problems'] == "3")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell5"><span>3</span><input type="radio" name="ipos2[practical_problems]" value="4" <?php $x = ($form_data['ipos2']['practical_problems'] == "4")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell6"><span>4</span><input type="radio" name="ipos2[practical_problems]" value="5" <?php $x = ($form_data['ipos2']['practical_problems'] == "5")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                      <td class="cell7"><span>5</span><input type="radio" name="ipos2[practical_problems]" value="6" <?php $x = ($form_data['ipos2']['practical_problems'] == "6")? 'checked="checked"' : ''; echo $x; ?> /></td>
+                   </tr>
+                  </table>
+         </td>
+         </tr>
+       </table>
+       
+       
+     <table>
+		<tr>
+	      <td class="patientenid spacing-row"><label><i>* Um die Fragen möglichst kurz zu halten, wird im Folgenden nur &#8222;der Patient&#8221; genannt. Gemeint ist immer &#8222;die Patientin/der Patient&#8221;.</i></label></td>
+		</tr>
+  	</table>
+  	
+    <table class="bottom_footer">
+		<tr>
+   			<td>SAPV-Einzelfallevaluation Bayern - IPOS (Version 2015)</td>
+        </tr>
+	</table>
+	<div class="se_tabs_buttons">	
+		<button name="save_ipos2" type="submit"  data-page="ipos2" class="submit_form save_page btnsubmit_usersessions"><? echo $this->translate('save') ?><sup>*</sup></button>
+		<button name="pdf_ipos2" type="submit" data-page="ipos2" class="submit_form print_page btnsubmit_usersessions"><? echo $this->translate('generatepdf') ?><sup>*</sup></button>
+		<?php if($saved_data['ipos2'] == "1"):?>
+			<button name="reset_ipos2" type="submit" data-page="ipos2"  class="submit_form reset_page btnsubmit_usersessions"><? echo $this->translate('reset') ?><sup>*</sup></button>
+		<?php endif; ?>
+		<span>*) <? echo $this->translate('Action only for current tab: ipos2') ?></span>
+    </div>
+    
+	</div>  <!-- END tab ipos2 -->
+		
+<input type="hidden" name="save_page" value=""  class="form_action" id="save_page" />       
+<input type="hidden" name="print_page" value="" class="form_action" id="print_page" />       
+<input type="hidden" name="reset_page" value="" class="form_action" id="reset_page" />       
+       
+</div> <!-- END tab_container -->
+
+<div class="se_master_buttons">
+<input type="hidden" name="form_id" value="<?php echo $this->from_id ;?>"/>
+<!-- 	<input name="save" type="submit" value="<? echo $this->translate('save') ?>" id="btnsubmit" />&nbsp;&nbsp; -->
+    <input name="pdf" type="submit" id="general_pdf" value="<? echo $this->translate('generatepdf') ?>"  class="btnsubmit_usersessions"/>
+    <?php if($saved_data['all'] == "1"):?>
+<!--     <input name="reset" type="submit" value="<? echo $this->translate('reset') ?>" /> -->
+    <?php endif; ?>
+</div>
+       
+</form>
+<div id="patient_info4hospitalization">
+	<?php echo $this->patient_info; ?>
+</div>

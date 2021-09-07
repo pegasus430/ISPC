@@ -1,0 +1,180 @@
+<script type="text/javascript">
+
+	var jscount = 0;
+	var jsmedcount = '<?php echo $this->jsmedcount; ?>';
+	var medcount = '<?php echo $this->jsmedcount + 1 ?>';
+	var jsusers = <?php echo $this->jsusers ?>;
+	var medblur = Array();
+
+	$(document).ready(function(){
+		$('.livesearchmedinp').live('change', function() {
+			var input_row = parseInt($(this).attr('id').substr(('medication').length));
+			reset_medications(input_row);
+		}).liveSearch({
+			url: 'ajax/medications?q=',
+			id: 'livesearch_admission_medications',
+			aditionalWidth: '300',
+			noResultsDelay: '900',
+			typeDelay: '900',
+			returnRowId: function (input) {return parseInt($(input).attr('id').substr(('medication').length));}
+		});
+
+
+		$('.med_date').datepicker({
+			dateFormat: 'dd.mm.yy',
+			buttonImageOnly: true,
+			changeMonth: true,
+			changeYear: true,
+			nextText: '',
+			prevText: '',
+			onSelect: function(){
+				var input_row = parseInt($(this).attr('rel').substr(('med_date').length));
+				$('#edited' + input_row).val('1');
+
+			}
+
+		});
+
+		$(".med_date").mask("99.99.9999");
+
+		$('input.livesearchmedinp, input.med_date, input.dosage, input.med, input.comment, select.user_selector').live('change keyup', function() {
+
+			if ($(this).hasClass('livesearchmedinp')) {
+				var input_row = parseInt($(this).attr('id').substr(('medication').length)); //med name
+			} else if ($(this).hasClass('med_date')) {
+				var input_row = parseInt($(this).attr('rel').substr(('med_date').length)); //change date
+			} else if ($(this).hasClass('dosage')) {
+				var input_row = parseInt($(this).attr('id').substr(('dosage').length)); //dosage
+			} else if ($(this).hasClass('med') || $(this).hasClass('comment')) {
+				var input_row = parseInt($(this).attr('id').substr(('comment').length)); //comment
+			} else if ($(this).hasClass('user_selector')) {
+				var input_row = parseInt($(this).attr('id').substr(('verordnetvon-').length)); //comment
+			}
+
+			$('#edited' + input_row).val('1');
+		});
+
+	});
+
+	function reset_medications(input_row)
+	{
+		if($('#hidd_medication'+input_row).val()){
+			$('#hidd_medication'+input_row).val('');
+			$('#drid'+input_row).val('');
+		}
+	}
+
+	function selectMedications(mid, row)
+	{
+		$('#medication'+row).val($('#medi_me_'+mid).val());
+		$('#comment'+row).val($('#medi_comment_'+mid).val());
+		$('#hidd_medication'+row).val($('#medi_id_'+mid).val());
+
+	}
+
+	function createnewmedic()
+	{
+		var usrstr = "";
+		for(var i in jsusers)
+		{
+			usrstr +='<option value="'+i+'">'+jsusers[i]+'</option>';
+		}
+
+		var userdrop = '<select name="add[verordnetvon]['+medcount+']">'+usrstr+'</select>';
+		var trInnerHtml = $('<tr id="medadd'+medcount+'"><td align="left" valign="top"><input name="add[medication]['+medcount+']" value="" id="medication'+medcount+'" type="text" class="livesearchmedinp med"><input name="add[hidd_medication]['+medcount+']" value="" id="hidd_medication'+medcount+'" type="hidden"></td><td align="left" valign="top"><input  name="add[comments]['+medcount+']"  id="comment'+medcount+'" value=""  /></td><td width="60" align="left" valign="top"><a href="javascript:void(0)" onclick="delmedicationRow('+medcount+');removeElem(\'#medadd'+medcount+'\')"><img src="images/action_delete.png" border="0" /></a></td></tr>');
+
+		$('#medaddtable').append(trInnerHtml);
+		$('#medication'+medcount).bind('keyup keydown change paste',function(){
+			//livesearch medications ls
+			$(this).live('change', function() {
+				var input_row = parseInt($(this).attr('id').substr(('medication').length));
+				reset_medications(input_row);
+			}).liveSearch({
+				url: 'ajax/medicationstreatmentcare?q=',
+				id: 'livesearch_admission_medications',
+				aditionalWidth: '300',
+				noResultsDelay: '900',
+				typeDelay: '900',
+				returnRowId: function (input) {return parseInt($(input).attr('id').substr(('medication').length));}
+			});
+		});
+		medcount++;
+	}
+
+	function createnewmedicedit() //tr meds
+	{
+
+		var usrstr = "";
+
+		for(var i in jsusers)
+		{
+			usrstr +='<option value="'+i+'">'+jsusers[i]+'</option>';
+		}
+
+		var userdrop = '<select name="verordnetvon['+medcount+']">'+usrstr+'</select>';
+
+		var trInnerHtml = $('<tr id="line_'+medcount+' alt="'+medcount+'"><td align="left" class="date_line_'+medcount+'" valign="top">&nbsp;</td><td align="left" valign="top"> <input name="medication['+medcount+']" value="" id="medication'+medcount+'" type="text" autocomplete="off" class="livesearchmedinp med meds_line_'+medcount+'"><input name="hidd_medication['+medcount+']" value="" id="hidd_medication'+medcount+'" type="hidden"><input type="hidden" id="drid" name="drid['+medcount+']" value="" /><div id="medidropdown'+medcount+'" style="position:absolute;display:none;" class="listPatMedEd livesearchdropdown"></div></td><td align="left" id="line_'+medcount+'_row" valign="top"><input  name="comments['+medcount+']" class="med comm_line_'+medcount+'"    id="comment'+medcount+'" value=""  /></td>  </tr>');
+
+
+		$('#medicationedit').append(trInnerHtml);
+
+
+
+		$('#medication'+medcount).bind('keyup keydown change paste',function(){
+			//livesearch medications ls
+			$(this).live('keydown paste', function() {
+				var input_row = parseInt($(this).attr('id').substr(('medication').length));
+				reset_medications(input_row);
+			}).liveSearch({
+				url: 'ajax/medicationstreatmentcare?q=',
+				id: 'livesearch_admission_medications',
+				aditionalWidth: '300',
+				noResultsDelay: '900',
+				typeDelay: '900',
+				returnRowId: function (input) {return parseInt($(input).attr('id').substr(('medication').length));}
+			});
+		});
+
+		medcount++;
+	}
+</script>
+<form enctype="multipart/form-data"  action="<?php echo $this->act ?>" method="post" name="frmuser" id="frmuser" autocomplete="off" >
+	<div style="display: none;">
+		<img id="calImg" src="<?php echo RES_FILE_PATH; ?>/images/calendar.png" alt="Popup" class="trigger">
+	</div>
+	<?php echo $this->patientinfo ?>
+	<?php echo $this->tabmenus ?>
+	<div class="tab_container">
+		<div id="TableContentOuter">
+			<table width="100%" border="0" cellspacing="0" cellpadding="0">
+				<tr class="medication" >
+					<td  style="  padding: 10px 5px 0 5px; border-top:thin dashed black;border-left: thin dashed black;border-right:thin dashed black;border-collapse: collapse;" width="23" align="left"  valign="top">
+						<h1><?php echo $this->translate('medicationtreatmentcare'); ?></h1>
+					</td>
+				</tr>
+				<tr class="medication">
+					<td style="  padding: 0 5px 10px 5px;border-left: thin dashed black;border-right:thin dashed black;border-collapse: collapse;" colspan="2" align="left"  valign="top" height="20">
+						<div class="add_new_medi">
+							<a href="javascript:createnewmedicedit();"><img src="<?php echo RES_FILE_PATH; ?>/images/edit_add.png" width="32" height="32" />
+								<div class="add_new_medi_link" style="width: 300px;">
+									<?php echo $this->translate('addnewmedicationtreatmentcare'); ?>
+								</div>
+							</a>
+						</div>
+					</td>
+				</tr>
+				<tr class="medication">
+					<td  style="padding: 0 5px 10px 5px;  border-left: thin dashed black;border-right:thin dashed black;border-collapse: collapse;" align="left" valign="top"><?php echo $this->medicationtreatmentcare ?></td>
+				</tr>
+				<tr>
+					<td  style="padding: 0 5px 10px 5px;border-bottom:  thin dashed black; border-left: thin dashed black;border-right:thin dashed black;border-collapse: collapse;" align="left" valign="top">
+
+					</td>
+				</tr>
+				<tr>
+					<td width="23" align="left" valign="top"><input name="btnsubmut" type="submit" class="button" value="<?php echo $this->translate('submit'); ?>" /></td>
+				</tr>
+			</table>
+		</div>
+	</div>
+</form>

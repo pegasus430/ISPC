@@ -1,0 +1,482 @@
+<?php
+//Maria:: Migration CISPC to ISPC 22.07.2020
+//$this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/page-css/kvno_assessment_style.css');
+
+$this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/page-css/contact_form_style.css');
+//$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/autogrow/jquery.elastic.js');
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/autogrow/jquery.elastic.source_new.js');
+$this->headScript()->appendFile(RES_FILE_PATH . '/javascript/dragdiv/dragdivpatient.js');
+//$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/jquery.blockUI.js');
+
+
+
+
+
+$this->headScript()
+->appendFile(RES_FILE_PATH . '/javascript/inputmask-3.x/dist/jquery.inputmask.bundle.js')
+->appendFile(RES_FILE_PATH . '/javascript/pms/jquery.sum.js')
+->appendFile(RES_FILE_PATH . '/javascript/dateUtil.js');
+
+
+
+$contact_form_lang = $this->translate('contact_form_lang');
+
+
+$allowed_blocks = $this->allowed_blocks;
+$opened_blocks = $this->opened_blocks;
+
+?>
+
+<style>
+
+</style>
+<script>
+    var detailscookies = <?php echo $this->detailscookies; ?>;
+    var points = 0;
+    var points0 = 0;
+    var points1 = 0;
+    var points2 = 0;
+    var points3 = 0;
+    var points4 = 0;
+    var points5 = 0;
+    var auswertungen = [
+        'die meisten Tage sind gut; die Krankheit behindert bei der einen oder anderen Aktivität, dauerhafte Beschwerden gibt es jedoch nicht',
+        'Einige Tage in der Woche sind gut, an den meisten Tagen bereitet die COPD Probleme (Husten, Auswurf, Kurzatmigkeit)',
+        'COPD schränkt Lebensqualität und Belastbarkeit dauerhaft ein, im Alltag sind Beschwerden ständig vorhanden',
+        'Lebensqualität und Belastbarkeit sind sehr stark und dauerhaft eingeschränkt'
+    ];
+
+    var empfehlungen = [
+        '<ol><li>Raucherentwöhnung</li><li>körperliche Aktivität</li></ol>',
+        '<ol><li>Raucherentwöhnung</li><li>körperliche Aktivität</li><li> bedarforientierte Medikation</li></ol>',
+        '<ol><li>Raucherentwöhnung</li><li>körperliche Aktivität</li><li> bedarforientierte Medikation</li><li>medikamentöse Dauerbehandlung</li></ol>',
+        '<ol><li>Raucherentwöhnung</li><li>körperliche Aktivität</li><li> bedarforientierte Medikation</li><li>medikamentöse Dauerbehandlung</li><li>Sauerstoffbehandlung</li></ol>',
+
+    ];
+
+    $(document).ready(function(){
+        countAndShowPoints = function(){
+            $('#form_error').html('');
+
+            points0 = 0;
+            points1 = 0;
+            points2 = 0;
+            points3 = 0;
+            points4 = 0;
+            points5 = 0;
+
+            var points_husten =  parseInt($("input[name='cat[husten]']:checked").val());
+            var points_verschleimt = parseInt($("input[name='cat[verschleimt]']:checked").val());
+            var points_engegefuehl = parseInt($("input[name='cat[engegefuehl]']:checked").val());
+            var points_ausser_atem = parseInt($("input[name='cat[ausser_atem]']:checked").val());
+            var points_eingeschraenkt = parseInt($("input[name='cat[eingeschraenkt]']:checked").val());
+            var points_bedenken_haus_verlassen = parseInt($("input[name='cat[bedenken_haus_verlassen]']:checked").val());
+            var points_probleme_schlafen = parseInt($("input[name='cat[probleme_schlafen]']:checked").val());
+            var points_keine_energie = parseInt($("input[name='cat[keine_energie]']:checked").val());
+            var points_array = [
+                points_husten,
+                points_verschleimt,
+                points_engegefuehl,
+                points_ausser_atem,
+                points_eingeschraenkt,
+                points_bedenken_haus_verlassen,
+                points_probleme_schlafen,
+                points_keine_energie
+            ];
+
+            for(var i=0;i<points_array.length;i++ ){
+                switch (points_array[i]) {
+                    case 0:
+                        points0 +=1;
+                        break;
+                    case 1:
+                        points1 +=1;
+                        break;
+                    case 2:
+                        points2 += 1;
+                        break;
+                    case 3:
+                        points3 +=1;
+                        break;
+                    case 4:
+                        points4 +=1;
+                        break;
+                    case 5 :
+                        points5 +=1;
+                        break;
+
+
+                }
+
+            }
+
+            $('#points0').html(points0);
+            $('#points1').html(points1);
+            $('#points2').html(points2);
+            $('#points3').html(points3);
+            $('#points4').html(points4);
+            $('#points5').html(points5);
+            points = points1 + points2*2 + points3*3 + points4*4 + points5 * 5;
+            $('#points').val(points);
+            setEvaluation();
+        };
+
+        setEvaluation = function(){
+            var evaluation = '';
+            var recommendations = ''
+            if(points < 10){
+                evaluation = auswertungen[0];
+                recommendations = empfehlungen[0];
+            }else if(points >= 10 && points <=20){
+                evaluation = auswertungen[1];
+                recommendations = empfehlungen[1];
+            }else if(points >= 20 && points <=30){
+                evaluation = auswertungen[2];
+                recommendations = empfehlungen[2];
+            }else{
+                evaluation = auswertungen[3];
+                recommendations = empfehlungen[3];
+            }
+
+            $('#auswertung_text').html(evaluation + '<br><strong>Handlungsempfehlungen:</strong>' + recommendations);
+
+        }
+
+        $("input[name='cat[husten]']").change(function(){
+            countAndShowPoints();
+        })
+
+         $("input[name='cat[verschleimt]']").change(function(){
+            countAndShowPoints();
+        })
+
+         $("input[name='cat[engegefuehl]']").change(function(){
+            countAndShowPoints();
+        })
+
+         $("input[name='cat[ausser_atem]']").change(function(){
+            countAndShowPoints();
+        })
+
+         $("input[name='cat[eingeschraenkt]']").change(function(){
+            countAndShowPoints();
+        })
+
+         $("input[name='cat[bedenken_haus_verlassen]']").change(function(){
+            countAndShowPoints();
+        })
+
+          $("input[name='cat[probleme_schlafen]']").change(function(){
+            countAndShowPoints();
+        })
+
+          $("input[name='cat[keine_energie]']").change(function(){
+            countAndShowPoints();
+        })
+
+
+        $('.datepicker').datepicker();
+
+        $('#save_form').live('click', function(){
+            countAndShowPoints();
+            if($("input[name='cat[husten]']:checked").val() ==  undefined ||
+                $("input[name='cat[verschleimt]']:checked").val() == undefined ||
+                $("input[name='cat[engegefuehl]']:checked").val() == undefined ||
+                $("input[name='cat[ausser_atem]']:checked").val() == undefined ||
+                $("input[name='cat[eingeschraenkt]']:checked").val() == undefined ||
+                $("input[name='cat[bedenken_haus_verlassen]']:checked").val() == undefined ||
+                $("input[name='cat[probleme_schlafen]']:checked").val() == undefined ||
+                $("input[name='cat[keine_energie]']:checked").val() == undefined
+
+
+            ){
+               $('#form_error').html('Bitte beantworten Sie alle Fragen.');
+            }else{
+                $('#cat_form').submit();
+            }
+
+        });
+
+    });
+</script>
+<div class="clear"></div>
+
+<div style="display: none;"> <img id="calImg" src="<?php echo RES_FILE_PATH;  ?>/images/calendar.png" alt="Popup" class="trigger" /> </div>
+<?php echo $this->patientinfo ?>
+<?php echo $this->tabmenus ?>
+<form id="cat_form" name="cat_form" method="post">
+    <div id="cat">
+        <div class="cat-caption"><h1>COPD-Monitoring</h1></div>
+        <div><span id="form_error" style="color:red;"></span></div>
+        <table class="cat_table datatable" style="width:100%;">
+            <tr>
+                <td colspan="7">Geben Sie bitte an, was derzeit am besten auf Sie zutrifft</td>
+            </tr>
+
+            <tr>
+                <td><h4>Aussage </h4></td>
+            </tr>
+            <tr>
+                <td>
+                    Ich huste
+
+                </td>
+                <td>
+                    <input type="radio" name="cat[husten]" value="0" /> Nie
+                </td>
+                <td>
+                    <input type="radio" name="cat[husten]" value="1" /> Selten
+                </td>
+                <td>
+                    <input type="radio" name="cat[husten]" value="2" /> Manchmal
+                </td>
+                <td>
+                    <input type="radio" name="cat[husten]" value="3" /> Häufig
+                </td>
+                <td>
+                    <input type="radio" name="cat[husten]" value="4" /> Sehr häufig
+                </td>
+
+               <td>
+                    <input type="radio" name="cat[husten]" value="5" /> Stark ausgeprägt
+                </td>
+
+            </tr>
+
+           <tr>
+                <td>
+                    Ich bin verschleimt
+
+                </td>
+                <td>
+                    <input type="radio" name="cat[verschleimt]" value="0" /> Nie
+                </td>
+                <td>
+                    <input type="radio" name="cat[verschleimt]" value="1" /> Selten
+                </td>
+                <td>
+                    <input type="radio" name="cat[verschleimt]" value="2" /> Manchmal
+                </td>
+                <td>
+                    <input type="radio" name="cat[verschleimt]" value="3" /> Häufig
+                </td>
+                <td>
+                    <input type="radio" name="cat[verschleimt]" value="4" /> Sehr häufig
+                </td>
+
+               <td>
+                    <input type="radio" name="cat[verschleimt]" value="5" /> Stark ausgeprägt
+                </td>
+
+            </tr>
+
+           <tr>
+                <td>
+                    Ich spüre ein Engegefühl in der Brust
+
+                </td>
+                <td>
+                    <input type="radio" name="cat[engegefuehl]" value="0" /> Nie
+                </td>
+                <td>
+                    <input type="radio" name="cat[engegefuehl]" value="1" /> Selten
+                </td>
+                <td>
+                    <input type="radio" name="cat[engegefuehl]" value="2" /> Manchmal
+                </td>
+                <td>
+                    <input type="radio" name="cat[engegefuehl]" value="3" /> Häufig
+                </td>
+                <td>
+                    <input type="radio" name="cat[engegefuehl]" value="4" /> Sehr häufig
+                </td>
+
+               <td>
+                    <input type="radio" name="cat[engegefuehl]" value="5" /> Stark ausgeprägt
+                </td>
+
+            </tr>
+
+          <tr>
+                <td>
+                    Ich komme außer Atem, wenn ich eine Treppe hinaufgehe oder bergauf gehe
+
+                </td>
+                <td>
+                    <input type="radio" name="cat[ausser_atem]" value="0" /> Nie
+                </td>
+                <td>
+                    <input type="radio" name="cat[ausser_atem]" value="1" /> Selten
+                </td>
+                <td>
+                    <input type="radio" name="cat[ausser_atem]" value="2" /> Manchmal
+                </td>
+                <td>
+                    <input type="radio" name="cat[ausser_atem]" value="3" /> Häufig
+                </td>
+                <td>
+                    <input type="radio" name="cat[ausser_atem]" value="4" /> Sehr häufig
+                </td>
+
+               <td>
+                    <input type="radio" name="cat[ausser_atem]" value="5" /> Stark ausgeprägt
+                </td>
+
+            </tr>
+
+         <tr>
+                <td>
+                    Ich bin in meinen häuslichen Aktivitäten eingeschränkt
+
+                </td>
+                <td>
+                    <input type="radio" name="cat[eingeschraenkt]" value="0" /> Nie
+                </td>
+                <td>
+                    <input type="radio" name="cat[eingeschraenkt]" value="1" /> Selten
+                </td>
+                <td>
+                    <input type="radio" name="cat[eingeschraenkt]" value="2" /> Manchmal
+                </td>
+                <td>
+                    <input type="radio" name="cat[eingeschraenkt]" value="3" /> Häufig
+                </td>
+                <td>
+                    <input type="radio" name="cat[eingeschraenkt]" value="4" /> Sehr häufig
+                </td>
+
+               <td>
+                    <input type="radio" name="cat[eingeschraenkt]" value="5" /> Stark ausgeprägt
+                </td>
+
+            </tr>
+
+        <tr>
+                <td>
+                    Ich habe Bedenken, trotz meiner Lungenerkrankung das Haus zu verlassen
+
+                </td>
+                <td>
+                    <input type="radio" name="cat[bedenken_haus_verlassen]" value="0" /> Nie
+                </td>
+                <td>
+                    <input type="radio" name="cat[bedenken_haus_verlassen]" value="1" /> Selten
+                </td>
+                <td>
+                    <input type="radio" name="cat[bedenken_haus_verlassen]" value="2" /> Manchmal
+                </td>
+                <td>
+                    <input type="radio" name="cat[bedenken_haus_verlassen]" value="3" /> Häufig
+                </td>
+                <td>
+                    <input type="radio" name="cat[bedenken_haus_verlassen]" value="4" /> Sehr häufig
+                </td>
+
+               <td>
+                    <input type="radio" name="cat[bedenken_haus_verlassen]" value="5" /> Stark ausgeprägt
+                </td>
+
+            </tr>
+
+        <tr>
+                <td>
+                    Ich habe Probleme tief und fest zu schlafen
+
+                </td>
+                <td>
+                    <input type="radio" name="cat[probleme_schlafen]" value="0" /> Nie
+                </td>
+                <td>
+                    <input type="radio" name="cat[probleme_schlafen]" value="1" /> Selten
+                </td>
+                <td>
+                    <input type="radio" name="cat[probleme_schlafen]" value="2" /> Manchmal
+                </td>
+                <td>
+                    <input type="radio" name="cat[probleme_schlafen]" value="3" /> Häufig
+                </td>
+                <td>
+                    <input type="radio" name="cat[probleme_schlafen]" value="4" /> Sehr häufig
+                </td>
+
+               <td>
+                    <input type="radio" name="cat[probleme_schlafen]" value="5" /> Stark ausgeprägt
+                </td>
+
+            </tr>
+
+        <tr>
+                <td>
+                    Ich habe keine Energie
+
+                </td>
+                <td>
+                    <input type="radio" name="cat[keine_energie]" value="0" /> Nie
+                </td>
+                <td>
+                    <input type="radio" name="cat[keine_energie]" value="1" /> Selten
+                </td>
+                <td>
+                    <input type="radio" name="cat[keine_energie]" value="2" /> Manchmal
+                </td>
+                <td>
+                    <input type="radio" name="cat[keine_energie]" value="3" /> Häufig
+                </td>
+                <td>
+                    <input type="radio" name="cat[keine_energie]" value="4" /> Sehr häufig
+                </td>
+
+               <td>
+                    <input type="radio" name="cat[keine_energie]" value="5" /> Stark ausgeprägt
+                </td>
+
+            </tr>
+
+        <tr>
+                <td>
+
+
+                </td>
+                <td id="points0">
+
+                </td>
+                <td id="points1">
+
+                </td>
+                <td id="points2">
+
+                </td>
+                <td id="points3">
+
+                </td>
+                <td id="points4">
+
+                </td>
+
+               <td id="points5">
+
+                </td>
+
+            </tr>
+
+
+            <tr>
+                <td colspan="7">&nbsp;</td>
+            </tr>
+
+            <tr>
+                <td colspan="6">Punkte</td>
+                <td ><input type="text" readonly id="points" name="cat[points]" /></td>
+            </tr>
+
+           <tr>
+                <td >Auswertung</td>
+                <td colspan="6" id="auswertung_text" ></td>
+            </tr>
+
+
+
+        </table>
+        <input type="button" value="Speichern" id="save_form" />
+
+    </div>

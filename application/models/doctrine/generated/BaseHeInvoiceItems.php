@@ -1,0 +1,33 @@
+<?php
+
+	abstract class BaseHeInvoiceItems extends Doctrine_Record {
+
+		function setTableDefinition()
+		{
+			$this->setTableName('he_invoice_items');
+			$this->hasColumn('id', 'bigint', 20, array('type' => 'bigint', 'length' => 20, 'primary' => true, 'autoincrement' => true));
+			$this->hasColumn('invoice', 'int', 11, array('type' => 'integer', 'length' => 11));
+			$this->hasColumn('client', 'int', 11, array('type' => 'bigint', 'length' => 11));
+			$this->hasColumn('shortcut', 'string', 255, array('type' => 'string', 'length' => 255));
+			$this->hasColumn('related_shortcut', 'string', 255, array('type' => 'string', 'length' => 255));
+			$this->hasColumn('custom_dta_id', 'string', 255, array('type' => 'string', 'length' => 255));
+			$this->hasColumn('description', 'string', 255, array('type' => 'string', 'length' => 255));
+			$this->hasColumn('qty', 'int', 11, array('type' => 'integer', 'length' => 11));
+			$this->hasColumn('percent', 'decimal', 10, array('scale' => 2));
+			$this->hasColumn('price', 'int', 11, array('type' => 'integer', 'length' => 11));
+			$this->hasColumn('total', 'decimal', 10, array('scale' => 2));
+			$this->hasColumn('custom', 'int', 1, array('type' => 'integer', 'length' => 1));
+			$this->hasColumn('from_date', 'datetime', NULL, array('type' => 'datetime', 'length' => NULL));
+			$this->hasColumn('till_date', 'datetime', NULL, array('type' => 'datetime', 'length' => NULL));
+			$this->hasColumn('xbdt_action', 'int', 11, array('type' => 'integer', 'length' => 11));
+			$this->hasColumn('isdelete', 'int', 1, array('type' => 'integer', 'length' => 1));
+		}
+
+		function setUp()
+		{
+			$this->actAs(new Timestamp());
+		}
+
+	}
+
+?>

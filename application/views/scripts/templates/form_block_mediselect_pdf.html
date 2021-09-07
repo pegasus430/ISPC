@@ -1,0 +1,191 @@
+<!--  Maria:: Migration CISPC to ISPC 22.07.2020 -->
+<?php
+foreach ($this->med_array as $medclass => $cat) {
+	$this->med_array[$medclass]['has_elements_for_print'] = 0;
+	if($medclass==="isschmerzpumpe"){
+		foreach ($cat['pumpe'] as $pno=>$pumpe){
+			if ($pumpe['meta']['check']) {
+				$this->med_array[$medclass]['has_elements_for_print'] = $this->med_array[$medclass]['has_elements_for_print']+1;
+			}
+		}
+	} else{
+		foreach ($cat['medic'] as $med) {
+			if ($med['check']) {
+				$this->med_array[$medclass]['has_elements_for_print'] = true;
+			}
+		}
+	}
+}
+
+
+$maxltrcount=0;
+foreach ($this->med_array as $medclass => $cat){
+	if($medclass=="isschmerzpumpe"){
+		foreach ($cat['pumpe'] as $pno=>$pumpe){
+			foreach ($pumpe as $pindex=>$med){
+				$ltrcount=max(strlen($med['medication']),strlen($med['drug']));
+				$maxltrcount=max($maxltrcount, $ltrcount);
+			}
+		}
+	}else {
+		foreach ($cat['medic'] as $med) {
+			$ltrcount = max(strlen($med['medication']), strlen($med['drug']));
+			$maxltrcount = max($maxltrcount, $ltrcount);
+		}
+	}
+}
+
+$has_medis = false;
+foreach ($this->med_array as $medclass => $cat) {
+	if($cat['has_elements_for_print']){
+		$has_medis = true;
+		break;
+	}
+}
+
+$firstcol_width=4;
+if($maxltrcount>20){
+	$firstcol_width=5;
+}
+if($maxltrcount>27){
+	$firstcol_width=6;
+}
+
+
+$legal_where="nowhere";
+if(strlen($this->legaltext)) {
+	foreach ($this->med_array as $medclass => $cat) {
+		if($cat['has_elements_for_print']){
+			$legal_where = $medclass;
+		}
+	}
+}
+
+
+
+
+$col2_width=13-$firstcol_width;
+if($this->extramargin){
+	$col2_width=11-$firstcol_width;//new: 2cm margins left and right
+}
+$col2_width_half=str_replace(',','.',$col2_width/2);
+?>
+
+<!-- all with checked value but schmerzpumpe-->
+<?php foreach ($this->med_array as $medclass => $cat):?>
+<?php if($medclass =="isschmerzpumpe" || !$cat['has_elements_for_print']): {continue;} endif;?>
+	<tr><td><br>
+	</td></tr>
+	<tr nobr="true"><td><b><?php echo $cat['nice_name'];?></b><br><table style="font-size:9pt;" border="0.1" cellpadding="3">
+	<tr>
+		<th bgcolor="#ccc" width="<?php echo $firstcol_width;?>cm" rowspan="2">Name<br>Wirkstoff</th>
+		<th bgcolor="#ccc" width="<?php echo $col2_width;?>cm" colspan="<?php echo count($this->timescheme[$medclass]);?>">Dosierung</th>
+		<th bgcolor="#ccc" width="1.5cm" rowspan="2">Applika&shy;tionsart</th>
+		<th bgcolor="#ccc" width="4.5cm" rowspan="2">Indikation<br><i>Kommentar</i></th>
+	</tr>
+	<tr>
+		<?php foreach($this->timescheme[$medclass] as $time):?>
+			<th bgcolor="#ccc" align="center"><?php echo $time;?></th>
+		<?php endforeach;?>
+	</tr>
+	 <?php foreach ($cat['medic'] as $med):?>
+		<!-- only checked medis -->
+		<?php if(!$med['check']): {continue;} endif;?>
+	<?php
+			if(is_array($med['dosage'])){
+				$med_dos=$med['dosage'];
+			}else {
+				if($medclass=="isbedarfs"){
+					$med_dos=array($med['dosage']);
+				}else {
+					$med_dos = explode('-', $med['dosage']);
+				}
+			}
+
+			while (count($med_dos)<count($this->timescheme[$medclass])){
+				$med_dos[]="";
+			}
+	while (count($med_dos)>count($this->timescheme[$medclass]) && count($med_dos)>1){
+			$med_dos[count($med_dos)-2] = $med_dos[count($med_dos)-2] . ", " . $med_dos[count($med_dos)-1];
+			unset($med_dos[count($med_dos)-1]);
+	}
+	?>
+	<tr>
+		<td><?php $tbr="";if(strlen(trim($med['medication']))>0 && strlen(trim($med['drug']))>0)$tbr="<br>";echo $med['medication'];?><?php echo $tbr;?><?php echo $med['drug'];?></td>
+		<?php foreach ($med_dos as $dos):?>
+			<td align="center"><?php if (strlen($dos)>0){
+				echo $dos . " " . $med['unit'];
+				} ?>
+			</td>
+		<?php endforeach;?>
+			<td><?php echo trim($med['dosage_form'] . " " . $med['type']) ;?></td>
+		<td><?php if(strlen(trim($med['indication']))>0) $med['indication']="Indikation: ".$med['indication'];$tbr="";if(strlen(trim($med['indication']))>0 && strlen(trim($med['comments']))>0)$tbr="<br>";echo $med['indication'];?><?php echo $tbr;?><i><?php echo $med['comments'];?></i></td>
+	</tr>
+	<?php endforeach;?>
+	</table><?php if ($legal_where==$medclass){echo $this->legaltext;}?></td></tr>
+<?php endforeach;?><!--($this->med_array as $medclass => $cat):?-->
+
+<!-- only checked schmerzpumpen -->
+<?php $medclass = $this->med_array['isschmerzpumpe'];?>
+<?php if($medclass['has_elements_for_print']>0): ;?>
+	<?php foreach ($medclass['pumpe'] as $pno=>$pumpe):?>
+		<?php if(!$pumpe['meta']['check']): {continue;} endif;?>
+			<tr><td><br></td></tr>
+		<tr nobr="true"><td><b><?php echo $pno+1 . '. ' . $cat['nice_name'];?></b><br><table border="0.1" cellpadding="3" style="font-size:9pt;" nobr="true">
+			<tr>
+				<th bgcolor="#ccc" width="<?php echo $firstcol_width;?>cm" >Name<br>Wirkstoff</th>
+				<th bgcolor="#ccc" width="3cm">Dosierung / h</th>
+				<th bgcolor="#ccc" width="3cm">Dosierung in 24h</th>
+				<th bgcolor="#ccc" width="<?php echo $col2_width;?>cm">Indikation</th>
+			</tr>
+			<tr><td><br></td></tr>
+			<?php foreach ($pumpe as $pindex=>$med):?>
+			<?php
+			if ($pindex==="meta"){continue;}?>
+			<tr>
+				<td><?php echo $med['medication'];?><?php if(strlen($med['medication'])>0 && strlen($med['drug'])>0):?><br><?php endif;?><?php echo $med['drug'];?></td>
+				<td><?php if(strlen($med['dosage'])>0):?><?php echo $med['dosage'] . " " . $med['unit'];?><?php endif;?></td>
+				<td><?php if(strlen($med['dosage24h'])>0):?><?php echo $med['dosage24h'] . " " . $med['unit'];?><?php endif;?></td>
+				<td><?php echo $med['indication'];?></td>
+			</tr>
+			<?php endforeach;?>
+			<tr>
+				<td class="pumpecommcaption" bgcolor="#ddd" colspan="1">Kommentar</td>
+				<td class="pumpecommvals" colspan="3"><?php echo $pumpe['meta']['description']?></td>
+			</tr>
+			<tr>
+				<td class="pumpecommcaption" bgcolor="#ddd" colspan="1">Applikationsart</td>
+				<td class="pumpecommvals" colspan="3"><?php echo $pumpe['meta']['pumpe_medication_type']?></td>
+			</tr>
+			<tr>
+				<td class="pumpecommcaption" bgcolor="#ddd" colspan="1">Flussrate (ml/h)</td>
+				<td class="pumpecommvals" colspan="3"><?php echo $pumpe['meta']['flussrate']?></td>
+			</tr>
+			<tr>
+				<td class="pumpecommcaption" bgcolor="#ddd" colspan="1">Gesamtvolumen (ml)</td>
+				<td class="pumpecommvals" colspan="3"><?php echo $pumpe['meta']['carrier_solution']?></td>
+			</tr>
+			<?php if(strlen($pumpe['meta']['bolus_text'])>0):?>
+			<tr>
+				<td class="pumpecommcaption" bgcolor="#ddd" colspan="1">Bolus</td>
+				<td class="pumpecommvals" colspan="3"><?php echo $pumpe['meta']['bolus_text']?></td>
+			</tr>
+			<?php if(strlen($pumpe['meta']['max_bolus'])>0):?>
+			<tr>
+				<td class="pumpecommcaption" bgcolor="#ddd" colspan="1">Max Bolus</td>
+				<td class="pumpecommvals" colspan="3"><?php echo $pumpe['meta']['max_bolus']?></td>
+			</tr>
+			<?php endif;?>
+			<?php endif;?>
+			<?php if(strlen($pumpe['meta']['sperrzeit'])>0):?>
+			<tr>
+				<td class="pumpecommcaption" bgcolor="#ddd" colspan="1">Sperrzeit (in Min.)</td>
+				<td class="pumpecommvals" colspan="3"><?php echo $pumpe['meta']['sperrzeit']?></td>
+			</tr>
+			<?php endif;?>
+		</table><?php if ($legal_where=='isschmerzpumpe' && ($pno+1)==$medclass['has_elements_for_print']){echo $this->legaltext;}?></td></tr>
+
+	<?php endforeach;?><!-- foreach ($cat['pumpe'] as $pno=>$pumpe):? -->
+<?php endif; ?>
+
+

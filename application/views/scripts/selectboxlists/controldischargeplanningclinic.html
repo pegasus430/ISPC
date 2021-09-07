@@ -1,0 +1,501 @@
+<?php
+//Maria:: Migration CISPC to ISPC 22.07.2020
+    $this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/page-css/controldischargeplanningclinic.css?' . date('Ymd'));
+?>
+<script>
+
+
+    $(document).ready(function () {
+
+        /**
+         * remove the selected row from the list
+         */
+        $("#supplyrows").on('click', '.remove-supply-button', function (e) {
+
+            var whichtr = $(this).closest("tr");
+            confirm_and_remove(whichtr);
+        });
+
+        $("#dischargerows").on('click', '.remove-discharge-button', function (e) {
+            var whichtr = $(this).closest("tr");
+            confirm_and_remove(whichtr);
+        });
+
+
+        $("#contactrows").on('click', '.remove-contact-button', function (e) {
+
+
+
+            //the row
+            var whichtr = $(this).closest("tr");
+            //the category
+            var deleted_category = $(this).closest('.contactrow').find('.versorgertyp');
+
+
+            jConfirm('<? echo $this->translate('confirmdeleteonerecord'); ?>', '<? echo $this->translate('confirmdeletetitle'); ?>', function(r) {
+                if (r) {
+                    whichtr.remove();
+
+                    //add the deleted category to the other select-boxes again
+                    if (deleted_category.val() != 'suppliers') { //'suppliers' can be choosen several and isn't removed
+                        deleted_category.find('option:selected').clone().removeAttr('selected').appendTo($('.versorgertyp').not('#contactlistreferenz'));
+                    }
+
+                    $('.versorgertyp').not('#contactlistreferenz').each(function () {
+                        if ($(this).val() == 'CHOOSE_CONTACT')
+                            sort_select($(this));
+                    })
+                }
+            });
+
+        });
+
+
+        $("form").submit(function (event) {
+
+            if (!validate_dialog()) {
+                return false;
+
+            } else {
+                $('.versorgertyp').removeAttr("disabled"); //disabled selects are not send by POST-Request
+                return true;
+            }
+        });
+
+        //init the select-list
+        $('.versorgertyp').not('#contactlistreferenz').each(function () {//ignore the reference list
+            // the reference-value is selected in the current select
+            var val = $(this).find('option:selected').val();
+            if ($(this).val() != 'suppliers' && $(this).val() != 'CHOOSE_CONTACT') {
+                $('.versorgertyp').not('#contactlistreferenz').not(this).each(function () { ////ignore the reference list and the current item
+                    $(this).find('option[value="' + val + '"]').remove()    //remove the selected option from other lists
+                });
+            }
+        });
+
+        //init the input-fields
+        $('.versorgertyp').not('#contactlistreferenz').each(function () {//ignore the reference list
+            // the reference-value is selected in the current select
+            var val = $(this).find('option:selected').val();
+            var contactrow = $(this).closest('.contactrow');
+            if ($(this).val() == 'suppliers') {
+                $(contactrow).find('.contactname').attr('readonly', false);
+            } else {
+                $(contactrow).find('.contactname').attr('readonly', true);
+            }
+        });
+
+        //init help area
+
+        $('.display_help_icon').mouseover(function () {
+            $('.display_help').removeAttr('style');
+
+        });
+        $('.display_help_icon').mouseout(function () {
+            $('.display_help').attr('style', 'display:none');
+
+        });
+
+    });
+
+
+    $(document).on('change', '.supplyname', function () {
+        //http://jsfiddle.net/ambiguous/LAECx/
+        var last = $(this).closest('.supplyrow');
+
+        if ($(last).find('.supplyname').val() != "") {
+
+            var newel = last.clone();  //clone the last row
+            $(newel).find('.supplyname').val(''); //delete value of new row
+            $(last).find('.remove-supply-button').removeAttr('style'); //set the button of last row visible
+
+            last.after(newel);
+
+            newel.find('.supplyname').focus();
+        }
+        var last = $('.supplyname').last()[0];
+
+        $('.supplyname').each(function () {
+            if ($(this).val() == "") {
+                if (this != last) {
+                    $(this).parents('.supplyrow').remove();
+                }
+            }
+        });
+    })
+
+    $(document).on('change', '.versorgertyp', function () {
+        //http://jsfiddle.net/ambiguous/LAECx/
+        var last = $(this).closest('.contactrow');
+
+        //only clone the row,if the last select-box is changed
+        if ($(last).index() == $('.contactrow').size() - 1) {
+            //if ($(last).find('.versorgertyp').val() != "CHOOSE_CONTACT") {
+            var newel = last.clone();  //clone the last row
+            $(newel).find('.contactname').val(''); //delete value of name
+            $(newel).find('.versorgertyp').val('CHOOSE_CONTACT'); //det default value of typ
+            $(last).find('.remove-contact-button').removeAttr('style'); //set the button of last row visible
+
+            last.after(newel);
+
+            var rowcount = 0;
+            $('.contactrow').each(function () {
+                $(this).find('input, select').each(function () {
+                    var name = $(this).attr('name');
+                    name = name.replace(/\[[\d+]\]/, "[" + rowcount + "]");
+                    $(this).attr('name', name);
+                });
+                rowcount++;
+            });
+        }
+
+        //make field "other suppliers" editable if the selection "suppliers" is choosen
+        if ($(this).val() == 'suppliers') {
+            $(last).find('.contactname').attr('readonly', false);
+        } else {
+            $(last).find('.contactname').attr('readonly', true);
+            $(last).find('.contactname').val(''); //delete value of name
+        }
+
+        //remove the selected option from other selection.
+        // Each option can choosen one time - except the option 'suppliers'
+        if ($(this).val() != 'suppliers') { //suppliers can be choosen several
+
+            //remove the selected option from the other option fields
+            //take the reference-list for test
+            $('#contactlistreferenz option').each(function () {
+                var option = $(this);
+                var val = $(this).val();
+
+                $('.versorgertyp').not('#contactlistreferenz').each(function () {//ignore the reference list
+                    // the reference-value is selected in the current select
+                    if ($(this).val() == val && $(this).val() != 'suppliers') {                                  // the value is selected
+                        $('.versorgertyp').not('#contactlistreferenz').not(this).each(function () { ////ignore the reference list and the current list
+                            $(this).find('option[value="' + val + '"]').remove()    //remove the selected option from other lists
+                        });
+                    }
+                });
+            });
+        }
+
+
+        $(this).attr('disabled', true);
+    })
+
+    $(document).on('change', '.dischargename', function () {
+        //http://jsfiddle.net/ambiguous/LAECx/
+        var last = $(this).closest('.dischargerow');
+
+        //only clone the row,if the last input-field is changed
+        if ($(last).index() == $('.dischargerow').size() - 1) {
+
+
+            if ($(last).find('.dischargename').val() != "") {
+
+                var newel = last.clone();  //clone the last row
+                $(newel).find('.dischargename').val(''); //delete value of new row
+                $(last).find('.remove-discharge-button').removeAttr('style'); //set the button of last row visible
+
+                last.after(newel);
+
+                var rowcount = 0;
+                $('.dischargerow').each(function () {
+                    $(this).find('input, textarea').each(function () {
+                        var name = $(this).attr('name');
+                        name = name.replace(/\[[\d+]\]/, "[" + rowcount + "]");
+                        $(this).attr('name', name);
+                    });
+                    rowcount++;
+                });
+            }
+        }
+
+    })
+
+    function sort_select(versorgertyp) {
+        var sorted = $.makeArray(versorgertyp.find('option')).sort(function (a, b) {
+            return $(a).text() > $(b).text() ? 1 : -1;
+        });
+        versorgertyp.empty().append(sorted);
+    }
+
+    function validate_dialog() {
+
+        var isValid = true;
+
+        //check all fields
+        var a = 0;
+        var b = 0;
+
+        a += validate_versorger() ? 1 : 0;
+        a += validate_discharge() ? 1 : 0;
+        b += validate_duplicate_versorger() ? 1 : 0;
+
+        if (a < 2) {
+            $('.error_display_area').show();
+            $('#mandatory_fields').show();
+            isValid = false;
+        }
+
+        if (b < 1) {
+            $('.error_display_area').show();
+            $('#duplicate_fields').show();
+            isValid = false;
+        }
+
+        return isValid;
+
+    }
+
+    function validate_duplicate_versorger() {
+
+        var is_valid = true;
+        var arr = [];
+
+
+        $('.versorgertyp').not('#contactlistreferenz').each(function () {//ignore the reference list
+            // the reference-value is selected in the current select
+            if ($(this).val() == 'suppliers') {                                  // the value is selected
+                var input = $(this).closest('.contactrow').find('input');
+                var value = input.val().toLowerCase();
+                if (arr.indexOf(value) == -1){
+                    arr.push(value);
+                }
+                else {
+                    input.attr('class', 'contactname showerror');
+                    is_valid = false;
+                }
+            }
+        });
+
+        return is_valid;
+
+    }
+
+
+
+    function validate_versorger() {
+        var is_valid = true;
+
+        $('.versorgertyp').not('#contactlistreferenz').each(function () {//ignore the reference list
+            // the reference-value is selected in the current select
+            if ($(this).val() == 'suppliers') {                                  // the value is selected
+                var input = $(this).closest('.contactrow').find('input');
+                if (input.val() == "") {
+                    input.attr('class', 'contactname showerror');
+                    is_valid = false;
+                }
+
+            }
+        });
+
+        return is_valid;
+
+    }
+
+    function validate_discharge() {
+        var is_valid = true;
+
+        $('.dischargerow').each(function () {//ignore the reference list
+            var input = $(this).find('input');
+            if (input.val() == "") //the input field may be empty
+                return true;
+            var area = $(this).find('textarea');
+            //if the input field ist not empty, the textarea has to be filled too
+            if (area.val() == "") {
+                area.attr('class', 'dischargename showerror');
+                is_valid = false;
+            }
+        });
+        return is_valid;
+    }
+
+    function confirm_and_remove (whichtr){
+        jConfirm('<? echo $this->translate('confirmdeleteonerecord'); ?>', '<? echo $this->translate('confirmdeletetitle'); ?>', function(r) {
+            if(r){
+                whichtr.remove();
+            }
+        });
+    }
+</script>
+
+
+</br></br>
+<h1><?php echo $this->translate('dischargeplan');?></h1>
+<br>
+<?php $this->count=0 ?>
+<form method="post">
+
+    </br></br>
+    <h2><?php echo $this->translate('further_supply');?></h2>
+    <br>
+    <table id="supplyrows" width="50%" border="0" cellpadding="0" cellspacing="0"
+           class="datatable halflisttable fixed_team_header"
+           style="border-width:0px;border-collapse:collapse;margin-top: 5px;">
+        <thead class="main_table_header">
+        <tr>
+            <th><?php echo $this->translate('further_supply');?></th>
+            <th> <?php echo $this->translate('actions'); ?></th>
+        </tr>
+        </thead>
+        <tbody>
+        <?php foreach ($this->supplieslist as $supply):?>
+
+        <tr class="supplyrow">
+            <td>
+                <input type="text" name="supplieslist[]" class="supplyname" value="<?php echo $supply;?>" readonly>
+            </td>
+            <td>
+                <button type="button" value="1" class="remove-supply-button"
+                        title="<?php echo $this->translate(delete); ?>"><img
+                        src="<? echo RES_FILE_PATH;  ?>/images/action_delete.png"></button>
+            </td>
+        </tr>
+        </tr>
+        <?php endforeach;?>
+        <tr class="supplyrow">
+            <td><input type="text" name="supplieslist[]" class="supplyname" value=""></td>
+            <td>
+                <button type="button" class="remove-supply-button" style="visibility:hidden;" value="1"
+                        class="remove-supply-button" title="<?php echo $this->translate(delete); ?>"><img
+                        src="<? echo RES_FILE_PATH;  ?>/images/action_delete.png"></button>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+
+    </br></br>
+    <h2><?php echo $this->translate('contact_person');?></h2>
+    <br>
+
+    <select id="contactlistreferenz" class="versorgertyp" style="visibility:hidden;">
+        <?php foreach ($this->versorgerlist as $key=>$value):?>
+        <option value="<?php echo $key;?>">
+            <?php echo $value['label'];?>
+        </option>
+        <?php endforeach;?>
+    </select>
+
+    <?php $rowcount=0; ?>
+    <table id="contactrows" width="50%" border="0" cellpadding="0" cellspacing="0"
+           class="datatable halflisttable fixed_team_header"
+           style="border-width:0px;border-collapse:collapse;margin-top: 5px;">
+        <thead class="main_table_header">
+        <tr>
+            <th style="width:200px;"><?php echo $this->translate('versoroger');?></th>
+            <th><?php echo $this->translate('contact_person');?></th>
+            <th> <?php echo $this->translate('actions'); ?></th>
+        </tr>
+        </thead>
+        <tbody>
+
+        <?php foreach ($this->contactlist as $contact):?>
+        <tr class="contactrow">
+            <td>
+                <select name="contactlist[<?php echo $rowcount;?>][0]" class="versorgertyp" disabled>
+                    <option value="<?php echo $contact[0];?>" selected="selected">
+                        <?php echo $this->versorgerlist[$contact[0]]['label'];?>
+                    </option>
+                </select>
+            </td>
+            <td>
+                <input type="text" name="contactlist[<?php echo $rowcount;?>][1]" class="contactname"
+                       value="<?php echo $contact[1];?>" readonly>
+            </td>
+            <td>
+                <button type="button" value="1" class="remove-contact-button"
+                        title="<?php echo $this->translate(delete); ?>"><img
+                        src="<? echo RES_FILE_PATH;  ?>/images/action_delete.png"></button>
+            </td>
+        </tr>
+        <?php $rowcount++;?>
+        <?php endforeach;?>
+        <tr class="contactrow">
+            <td>
+                <select name="contactlist[<?php echo $rowcount;?>][0]" class="versorgertyp">
+                    <option value="CHOOSE_CONTACT">Bitte wählen Sie...
+                    </option>
+                    <?php foreach ($this->versorgerlist as $key=>$value):?>
+                    <option value="<?php echo $key;?>">
+                        <?php echo $value['label'];?>
+                    </option>
+                    <?php endforeach;?>
+                </select>
+            </td>
+            <td><input type="text" name="contactlist[<?php echo $rowcount;?>][1]" class="contactname" value="">
+            </td>
+            <td>
+                <button type="button" class="remove-contact-button" style="visibility:hidden;" value="1"
+                        class="remove-contact-button" title="<?php echo $this->translate(delete); ?>"><img
+                        src="<? echo RES_FILE_PATH;  ?>/images/action_delete.png"></button>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+
+    </br></br>
+    <h2 class="display_help_icon"><?php echo $this->translate('dischargepreparation');?></h2>
+    <div class="display_help" style="display:none"><?php echo $this->translate(clinic_help_001); ?></div>
+    <br>
+
+    <?php $rowcount=0; ?>
+    <table id="dischargerows" width="50%" border="0" cellpadding="0" cellspacing="0"
+           class="datatable halflisttable fixed_team_header"
+           style="border-width:0px;border-collapse:collapse;margin-top: 5px;">
+        <thead class="main_table_header">
+        <tr>
+            <th><?php echo $this->translate('dischargepreparation');?></th>
+            <th><?php echo $this->translate('activity');?></th>
+            <th><?php echo $this->translate('actions'); ?></th>
+        </tr>
+        </thead>
+        <tbody>
+        <?php foreach ($this->dischargelist as $key=>$discharge):?>
+
+        <div class="discharge">
+            <tr class="dischargerow">
+                <td>
+                    <input type="text" name="dischargelist[<?php echo $rowcount;?>][0]" class="dischargename"
+                           value="<?php echo $discharge[0];?>" readonly>
+                </td>
+                <td>
+                    <textarea
+                            name="dischargelist[<?php echo $rowcount;?>][1]"><?php echo $discharge[1];?></textarea><br>
+                </td>
+                <td>
+                    <button type="button" value="1" class="remove-discharge-button"
+                            title="<?php echo $this->translate(delete); ?>"><img
+                            src="<? echo RES_FILE_PATH;  ?>/images/action_delete.png"></button>
+                </td>
+            </tr>
+            </tr>
+        </div>
+        <?php $rowcount++; ?>
+        <?php endforeach;?>
+        <tr class="dischargerow">
+            <td><input type="text" name="dischargelist[<?php echo $rowcount;?>][0]" class="dischargename" value=""></td>
+            <td>
+                <textarea name="dischargelist[<?php echo $rowcount;?>][1]"></textarea>
+            </td>
+            <td>
+                <button type="button" class="remove-discharge-button" style="visibility:hidden;" value="1"
+                        class="remove-discharge-button" title="<?php echo $this->translate(delete); ?>"><img
+                        src="<? echo RES_FILE_PATH;  ?>/images/action_delete.png"></button>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+
+    </br></br>
+    <div class="error_display_area" style="display:none">
+        <div id="mandatory_fields" style="display:none">
+            <?php echo $this->translate('fill_mandatory_fields'); ?>
+        </div>
+        <div id="duplicate_fields" style="display:none">
+            <?php echo $this->translate('no_duplicate_entries'); ?>
+        </div>
+    </div>
+    <input type="submit" style="text-align:left;padding:8px;" value="Speichern">
+
+
+</form>

@@ -1,0 +1,281 @@
+<?php
+$order_data = $this->order_data;
+$patient_enc_id = $this->patient_enc_id;
+$lang = $this->translate('order_details');
+$client_materials = $this->client_materials;
+?>
+
+
+<!-- datapicker image -->
+<div id="calImgs" style="display: none;">
+    <img id="calImg" src="<?php echo RES_FILE_PATH; ?>/images/calendar.png" alt="Popup" class="trigger">
+</div>
+
+<form action="<?php echo APP_BASE.'orders/overview?step=order_dialog' ?>" method="post" id="save_order" class="order_form">
+	<input type="hidden" id="patient_ID" value="<?php echo $order_data['PatientsOrdersDetails']['patient']?>" name="data[PatientsOrdersDetails][patient]"   />
+	<fieldset>
+		<legend><?php echo $lang ['[Delivery For]'] ?> <b><?php echo $order_data['PatientsOrdersDetails']['patient_name']?></b></legend>
+
+		<fieldset>
+			<legend>1) <?php echo $lang ['[Dates]']; ?></legend>
+			<table>
+				<tr>
+					<td width="20%"><?php echo $lang ['[Order date]']; ?> </td>
+					<td width="20%"> <input type="text" value="<?php echo $order_data['PatientsOrdersDetails']['order_date']?>" name="data[PatientsOrdersDetails][order_date]" class="date" id="order_date" /></td>
+					<td class="button_td"><button type="button" id="set_delivery_date" onClick="onclick_set_delivery_date()">&gt;&gt;</button></td>
+					<td  width="20%"><?php echo $lang ['[Delivery date]']; ?> </td>
+					<td width="20%"> <input type="text" value="<?php echo $order_data['PatientsOrdersDeliveryDates']['delivery_date']?>" name="data[PatientsOrdersDeliveryDates][delivery_date]"  class="date"  id="delivery_date" /></td>
+				</tr>
+				<?php if(!empty($order_data['PatientsOrdersDeliveryDates']['order_deliveries'])):?>
+				<tr>
+					<td colspan="3"></td>
+					<td><?php echo $lang ['[previous delivery]']; ?></td>
+					<td>
+						<table>
+							<?php foreach($order_data['PatientsOrdersDeliveryDates']['order_deliveries'] as $k=>$del_Date):?>
+							<tr>
+								<td><?php echo $del_Date;?></td>
+							</tr>
+							<?php endforeach; ?>
+						</table>
+					</td>
+				</tr>
+				<?php endif;?>
+			</table>
+			
+			
+			
+			<br/>
+				<span style="font-size: 12px; text-align: right; display: block;  width:100%"><?php echo $this->translate('delivery_date_info'); ?></span>
+			
+			
+		</fieldset>
+
+
+
+
+
+
+		<fieldset>
+			<legend>2) <?php echo $lang ['[Order intervall]']; ?></legend>
+			<table>
+				<tr>
+					<td>
+						<?php 
+							$intervals =  array(
+								'once' => $lang['[Once]'],
+								'every_x_days' => $lang['[Every x days]'],
+								'selected_days_of_the_week' => $lang['[every week on the following work days]'],
+							);
+							echo $this->formRadio("data[PatientsOrdersDetails][order_interval]", $order_data['PatientsOrdersDetails']['order_interval'], array("class"=>"add_action_interval",  "onchange"=>"onclick_action_interval(this)") , $intervals , "\n");
+							
+							if($order_data['PatientsOrdersDetails']['order_interval'] == "every_x_days"){
+								$every_x_days_style = ' _show ';
+							} else {
+								$every_x_days_style = ' ';
+							}
+							if($order_data['PatientsOrdersDetails']['order_interval'] == "selected_days_of_the_week"){
+								$selected_days_of_the_week_style = ' _show ';
+							} else {
+								$selected_days_of_the_week_style = ' ';
+							}
+
+							?>
+						<div class='interval_options once'>
+							<?php echo $lang['interval_daily_infotext'];?>
+						</div>
+						
+						<div class='interval_options every_x_days <?=$every_x_days_style;?>'  >
+							<?php echo $lang['interval_every_x_days_infotext'];?>
+							<br />
+							<?php  
+							if($order_data['PatientsOrdersDetails']['order_interval'] == "every_x_days") {
+								echo $this->formText("data[PatientsOrdersDetails][order_interval_options]", $order_data['PatientsOrdersDetails']['order_interval_options'], array("class"=>"ioptions  every_x_days")); 
+							} else{
+								echo $this->formText("data[PatientsOrdersDetails][order_interval_options]", null, array("class"=>"ioptions  every_x_days","disabled"=>"disabled")); 
+							}
+							?>
+						</div>
+						
+						<div class='interval_options selected_days_of_the_week <?=$selected_days_of_the_week_style; ?>'>
+							<?php echo $lang['interval_selected_days_of_the_week_infotext'];?>
+							<br />
+							<?php 
+							if($order_data['PatientsOrdersDetails']['order_interval'] == "selected_days_of_the_week"){
+
+								$order_data['PatientsOrdersDetails']['order_interval_options'] = explode(',',$order_data['PatientsOrdersDetails']['order_interval_options']);
+								echo $this->formMultiCheckbox("data[PatientsOrdersDetails][order_interval_options]", $order_data['PatientsOrdersDetails']['order_interval_options'], array("class"=>"ioptions selected_days_of_the_week" ), $this->days_of_week_arr , "<br />\n");
+							} else{
+								echo $this->formMultiCheckbox("data[PatientsOrdersDetails][order_interval_options]", null, array("class"=>"ioptions selected_days_of_the_week","disabled"=>"disabled"), $this->days_of_week_arr , "<br />\n");
+							} 
+							?>
+						</div>
+						
+					</td>
+				</tr>
+			</table>
+		</fieldset>
+
+
+
+		<fieldset>
+			<legend>3) <?php echo $lang ['[Order Medication]']; ?></legend>
+			<div class="scrollfieldset_three">
+				<!-- ISPC-2639 pct.1 Lore 08.07.2020 -->			
+				<input id="buton_refresh_dosage" type="button" value="0" class="refresh_med_dosage" onClick="onclick_refresh_medication_dosage()" />
+
+    			<input type="button" class="refresh_med" data-patient="<?= $patient_enc_id; ?>"   onClick="onclick_refresh_medication(this)" />
+    				<!-- ISPC-2548 TODO-2848 Lore 06.02.2020 -->
+    				<?php if(in_array('actual',$this->medication_blocks)):?>
+    				<p style="font-weight: bold;"> Medikation</p>
+    				<table id="actual_medication_list" class="  datatable" style="width:100%;">
+    		              <tr>
+    		                  <td colspan="6"><?php echo $this->translate('loadingpleasewait');?></td>
+    		              </tr>
+    				</table>
+    				<?php endif;?>
+    				
+    				<?php if(in_array('isbedarfs',$this->medication_blocks)):?>
+    				<p style="font-weight: bold;"> Bedarfs Medikation</p>				
+    				<table id="bedarfs_medication_list" class="  datatable" style="width:100%;">
+    		              <tr>
+    		                  <td colspan="6"><?php echo $this->translate('loadingpleasewait');?></td>
+    		              </tr>
+    				</table>
+    				<?php endif;?>    				
+    				
+    				
+    				<?php if(in_array('iscrisis',$this->medication_blocks)):?>
+    				<p style="font-weight: bold;"> Krisen-/ Notfallmedikation</p>							
+    				<table id="krisen_medication_list" class="  datatable" style="width:100%;">
+    		              <tr>
+    		                  <td colspan="6"><?php echo $this->translate('loadingpleasewait');?></td>
+    		              </tr>
+    				</table>
+    				<?php endif;?>    				
+    				
+    				<?php if(in_array('isivmed',$this->medication_blocks)):?>
+    				<p style="font-weight: bold;"> I.v. / s.c. Medikation </p>								
+    				<table id="iv_medication_list" class="  datatable" style="width:100%;">
+    		              <tr>
+    		                  <td colspan="6"><?php echo $this->translate('loadingpleasewait');?></td>
+    		              </tr>
+    				</table>
+    				<?php endif;?>    				
+    				
+    				
+    				<?php if(in_array('isnutrition',$this->medication_blocks)):?>
+    				<p style="font-weight: bold;"> Ernährung</p> 
+    				<table id="isnutrition_medication_list" class="  datatable" style="width:100%;">
+    		              <tr>
+    		                  <td colspan="6"><?php echo $this->translate('loadingpleasewait');?></td>
+    		              </tr>
+    				</table>
+    				<?php endif;?>    				
+    				
+    				<?php if(in_array('isintubated',$this->medication_blocks)):?>
+    				<p style="font-weight: bold;"> Parenterale Ernährung</p>				
+    		        <table id="intubated_medication_list" class="  datatable" style="width:100%;">
+    		              <tr>
+    		                  <td colspan="6"><?php echo $this->translate('loadingpleasewait');?></td>
+    		              </tr>
+    				</table>      				
+    				<?php endif;?>    				
+    				 				
+    				<?php if(in_array('scheduled',$this->medication_blocks)):?>
+    				<p style="font-weight: bold;"> Intervall Medis</p> 
+    				<table id="intervall_medication_list" class="  datatable" style="width:100%;">
+    		              <tr>
+    		                  <td colspan="6"><?php echo $this->translate('loadingpleasewait');?></td>
+    		              </tr>
+    				</table>
+    				<?php endif;?>    						
+ 					<!-- //. -->
+			</div>	  				
+		</fieldset>
+
+		
+		<fieldset>
+			<legend>4) <?php echo $lang ['[Order Additional lists]']; ?></legend>
+			<div class="scrollfieldset_four">	
+    			<?php if(empty($this->client_materials)):?>
+    				<?php echo  $lang ['[no aditional items]'] ?>
+    			<?php else: ?>
+    			<?php $c=1; foreach($this->client_materials as $category => $items):?>
+    			<fieldset style="width: 95%; display: block; float: right">
+    			<legend class="category_legend <?php echo $category ?>"><?php echo $c.'. '. $lang ['[Category_'.$category.']']; ?></legend>
+    				<!-- ISPC-2639 pct.3 Lore 10.07.2020
+    				<?php 
+    				echo $this->formSelect(
+    							"data[PatientsOrdersMaterials][".$category."][]", 
+    							$order_data['PatientsOrdersMaterials'][$category], 
+    							array(
+    								"class" => "user_selectbox",
+    								"multiple" => true,
+    								"size" => 1,
+    								"disable" => array("0")
+    							),
+    							$items
+    						);
+    					?> -->
+    					<!-- ISPC-2639 pct.3 Lore 10.07.2020  -->
+    					<table id="PatientsOrdersMaterials_<?php echo $category ?>" class="  datatable" style="width:100%;">
+    		              	<?php foreach($client_materials[$category] as $kcm=>$valcm):?>
+							<tr>
+    		                  <td> <?php echo $valcm ?> </td>
+    		                  <td><input type="number" id="data[PatientsOrdersMaterials][<?php echo $category ?>][<?php echo $kcm ?>]" name="data[PatientsOrdersMaterials][<?php echo $category ?>][<?php echo $kcm ?>]" min="0" value="<?php echo $order_data['PatientsOrdersMaterials'][$category][$kcm]['quantity'] ?>"></td>
+							</tr>
+							<?php endforeach; ?>
+    					</table> 
+    					
+    			</fieldset>
+    			<?php $c++; endforeach; ?>	
+     			<?php endif; ?>
+     		</div>
+		</fieldset> 
+
+		<fieldset>
+			<legend>5) <?php echo $lang ['[Pharmacy]']; ?></legend>
+			<?php 
+				echo $this->formSelect(
+							"data[PatientsOrdersRecipients][]", 
+							$order_data['PatientsOrdersRecipients'],  
+							array(
+								"class" => "user_selectbox",
+								"multiple" => true,
+								"size" => 1,
+								//"onChange" => "todo_checkinput(this)",
+								"disable" => array("0")
+							),
+							$this->recipients
+						);
+					?>	
+		</fieldset>
+ 
+		<fieldset>
+			<legend>6) <?php echo $lang ['[Comment order]']; ?></legend>
+			<textarea id="order_comment" name="data[PatientsOrdersDetails][order_comment]" row="" cols="" style="width: 98%;"><?php echo  $order_data['PatientsOrdersDetails']['order_comment'] ?></textarea>
+		</fieldset>
+
+		<div id="error_messages" class="ErrorDiv" style="display: none;" ></div>
+		
+	</fieldset>
+	<div style="display: none">
+	order_status: 
+	<input type="text" id="order_status" value="<?php echo $order_data['PatientsOrdersDetails']['status']?>" name="data[PatientsOrdersDetails][status]"  />
+	<br/>
+	order_id: 
+	<input type="text" id="order_id" value="<?php echo $order_data['PatientsOrdersDetails']['id']?>" name="data[PatientsOrdersDetails][id]"  />
+	<br/>
+	step_parent_id: 
+	<input type="text" id="step_parent_id" value="<?php echo $order_data['PatientsOrdersDetails']['parent_id']?>" name="data[PatientsOrdersDetails][step_parent_id]"  />
+	<br/>
+	parent_id: 
+	<input type="text" id="parent_id" value="<?php echo $order_data['PatientsOrdersDetails']['parent_id']?>" name="data[PatientsOrdersDetails][parent_id]"  />
+	<br/>
+	is_parent:
+	<input type="text" id="is_parent" value="" name="data[PatientsOrdersDetails][is_parent]"  />
+	<br/>
+	</div>
+	
+</form>

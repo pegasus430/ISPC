@@ -1,0 +1,479 @@
+<link href="<?php echo RES_FILE_PATH; ?>/javascript/jgrowl/fileuploader.css" rel="stylesheet" type="text/css">
+<script src="<?php echo RES_FILE_PATH; ?>/javascript/jgrowl/fileuploader.js" type="text/javascript"></script>
+<link href="<?php echo RES_FILE_PATH; ?>/css/terminalimport.css" rel="stylesheet" type="text/css">
+<?php
+$csv_data = $this->csv_data;
+$mapped_data = $this->mapped_data;
+$csv_labels = $this->csv_labels;
+$session_import_type = $this->import_type;
+$targeted_patients = $this->targeted_patients;
+?>
+
+<script type="text/javascript">
+	var xhr;
+	var autoload_ids = '<?php echo json_encode($targeted_patients); ?>';
+
+	$(document).ready(function() {
+		<?php if(count($targeted_patients) != '0'): ?>
+		autoload(autoload_ids);
+		<?php endif; ?>
+		//init livesearch
+		$('.livesearch').liveSearch({
+			url: 'ajax/searchpatientimport?q=',
+			id: 'livesearch_global_patient',
+			aditionalWidth: '500',
+			noResultsDelay: '1200',
+			customStart: false,
+			typeDelay: '900',
+			returnRowId: function(input) {
+				return parseInt($(input).attr('id').substr(('ls_').length));
+			}
+		});
+		
+		$('#btnsubmit').attr('disabled', true);
+
+		//handle row radio change
+		$('tr.patient_dynamic_row input[type="radio"], td.col_checkbox input[type="radio"]').bind('change', function() { //for dom ready rows
+			var patientid = $(this).attr('alt');
+			var radio_name = $(this).attr('name');
+			var csv_row_id = $(this).attr('id').split('_');
+			csv_row_id = csv_row_id[2];
+
+			$('input[name="'+radio_name+'"]').not(':checked').each(function(){
+				var curent_radio_patientid = $(this).attr('alt');
+				$('input[alt="'+curent_radio_patientid+'"]').not(this).attr('disabled', false);
+			});
+
+			//disable all radios of same patient but not this one
+			$('input[alt="'+patientid +'"]').not(this).attr('disabled', true);
+			save_session_data(csv_row_id);
+
+		})
+		.live('change', function(){ //for newly created rows via livesearch
+			var patientid = $(this).attr('alt');
+			var radio_name = $(this).attr('name');
+			var csv_row_id = $(this).attr('id').split('_');
+			csv_row_id = csv_row_id[2];
+
+			$('input[name="'+radio_name+'"]').not(':checked').each(function(){
+				var curent_radio_patientid = $(this).attr('alt');
+				$('input[alt="'+curent_radio_patientid+'"]').not(this).attr('disabled', false);
+			});
+
+			//disable all radios of same patient but not this one
+			$('input[alt="'+patientid +'"]').not(this).attr('disabled', true);
+			save_session_data(csv_row_id);
+
+		});
+
+
+
+
+		//handle row click
+		$('tr.patient_dynamic_row td').bind('click', function() {
+			var radio_element = $(this).parent().first('td').find('input[type=radio]');
+			var clicked_row = $(this).parent();
+
+			var radio_id = radio_element.attr('id');
+
+			//0, id part 1; 1, id part 2; 2, csv row; 3, resulted data row
+			var radio_values = radio_id.split('_');
+			var patient = radio_element.val();
+
+			save_session_data(radio_values[2]);
+			load_compare_data(radio_values[2], patient);
+
+			$(this).parent().first('td').find('input[type=radio]').attr('checked', true);
+		}).live('click', function() {
+			var radio_element = $(this).parent().first('td').find('input[type=radio]');
+
+			var radio_id = radio_element.attr('id');
+
+			//0, id part 1; 1, id part 2; 2, csv row; 3, resulted data row
+			var radio_values = radio_id.split('_');
+			var patient = radio_element.val();
+			save_session_data(radio_values[2]);
+			load_compare_data(radio_values[2], patient);
+
+			$(this).parent().first('td').find('input[type=radio]').attr('checked', true);
+		});
+
+		//handle second form submit
+		$('#import').bind('click', function(event) {
+			event.preventDefault();
+			if (check_all_rows()) {
+				$('#allow_import').val('1');
+				$('#terminal_importer').submit();
+			} else {
+				$('#alert_rows_import_type').dialog('open');
+			}
+
+		});
+
+		$('#cancel_import').bind('click', function(event){
+			event.preventDefault();
+			$('#alert_cancel_import').dialog('open');
+		});
+
+		//handle manual change of import type
+		$('table#options_table input[type="radio"]').bind('change', function() {
+			var sel_value = $(this).val();
+			var input_id_values = $(this).attr('id').split('_');
+			var row = input_id_values[2];
+			save_session_data(row);
+			//import as new or no import
+			if (sel_value == '2' || sel_value == '3')
+			{
+				$('.values_box_' + row).hide();
+				$('#load_compare_' + row).html('');
+				$('input[name="target_patient[' + row + ']"]').attr('checked', false);
+			}
+		});
+
+		//declare dialog settings
+		$('#alert_rows_import_type').dialog({
+			autoOpen: false,
+			modal: true,
+			resizable: false,
+			draggable: false,
+			title: '<?php echo $this->translate('alert_import_types_title'); ?>',
+			buttons: {
+				"<?php echo $this->translate('Ok') ?>": function() {
+					$( this ).dialog( "close" );
+				}
+			}
+
+		});
+
+		$('#alert_cancel_import').dialog({
+			autoOpen: false,
+			modal: true,
+			resizable: false,
+			draggable: false,
+			buttons: {
+				"<?php echo $this->translate('yesconfirm') ?>": function() {
+					$('#cancel_import_value').val('1');
+					$('#terminal_importer').submit();
+					$( this ).dialog( "close" );
+				},
+				"<?php echo $this->translate('noconfirm') ?>": function() {
+					$('#cancel_import_value').val('0');
+					$( this ).dialog( "close" );
+				}
+				
+			}
+
+		});
+	});
+
+	function autoload(autoload_ids)
+	{
+		var autoloadids = jQuery.parseJSON(autoload_ids);
+
+		$.each(autoloadids, function(index, value){
+			if($('input[alt="'+value+'"]').length != 0) {
+				var element = $('input[alt="'+value+'"]');
+				var radio_id = element.attr('id');
+				var radio_values = radio_id.split('_');
+
+				var patient = element.val();
+
+				load_compare_data(radio_values[2], patient);
+			}
+		});
+	}
+
+	function import_select_patient(pid, row)
+	{
+		if (!row)
+		{
+			row = '0';
+		}
+
+		var rows = $('.patient_dynamic_' + row).length;
+		var rows_plus = (rows + 1);
+
+		if (rows_plus % 2) {
+			class_postfix = '';
+		} else {
+			class_postfix = '_alt';
+		}
+
+		//reset row selected radios
+		reset_radio_selections(row);
+
+		//select radio which represents update
+		$('#import_type_' + row + '_1').attr('checked', true);
+
+
+		//todo: this row must be before compare table!
+		var html = '';
+		html += '<tr id="patient_row_' + row + '_' + rows_plus + '" alt="' + pid + '"  class="ispc_row' + class_postfix + ' patient_dynamic_' + row + ' patient_dynamic_row" >';
+		html += '<td><input type="radio" name="target_patient[' + row + ']" alt="' + $('#patient_decid_' + pid).val() + '" value="' + $('#patient_id_' + pid).val() +'" checked="checked" id="target_patient_'+row+'_'+rows_plus+'" /></td>';
+		html += '<td>' + $('#patient_firstname_' + pid).val() + '</td>';
+		html += '<td>' + $('#patient_lastname_' + pid).val() + '</td>';
+		html += '<td>' + $('#patient_dob_' + pid).val() + '</td>';
+		html += '<td>';
+		html += '<input type="hidden" id="" name="" value="" />';
+		html += '</td>';
+		html += '</tr>';
+		$('tr.values_box_' + row).before(html)
+
+		//display the compare table
+		load_compare_data(row, pid);
+	}
+
+	function reset_radio_selections(row)
+	{
+		$('input[name="target_patient[' + row + ']"]').attr('checked', false);
+	}
+
+
+	function load_compare_data(row, patient)
+	{			
+ 
+
+			var url = '<?php echo APP_BASE; ?>ajax/comparepatient';
+			var delimiter = '<?php echo $this->delimiter; ?>';
+			//show a loading gif
+			$('.values_box_'+row).show();
+			$('#import_type_'+row+'_1').attr('checked', true);
+			$('input[value="'+patient+'"]').attr('checked', true);
+			
+
+			xhr = $.ajax({
+				url: url,
+				data:{"row":row, "patient":patient, "delimiter":delimiter},
+				beforeSend: function() {
+					$('#load_compare_'+row).html('<br/><div class="loadingdiv" align="center"><img src="<?php echo RES_FILE_PATH; ?>/images/ajax-loader.gif"><br /><?php echo $this->translate('loadingpleasewait'); ?></div><br/>');
+				},
+				success: function(response) {
+					$('#load_compare_'+row).html(response);
+				},
+				error: function()
+				{
+					$('.values_box_'+row).hide();
+					$('#import_type_'+row+'_1').attr('checked', false);
+				}
+			});
+	}
+
+	function check_all_rows()
+	{
+		var csv_rows = $('.csv_row').length;
+		var import_types = $('.import_type:checked').length;
+
+		if(csv_rows == import_types) {
+			return true;
+		} else {
+			return false;
+		}
+	}
+
+	function save_session_data(csv_row)
+	{
+
+		if(xhr)
+		{
+			xhr.abort();
+		}
+		
+		$('#saving_session_'+csv_row).show();
+		var url = '<?php echo APP_BASE ?>ajax/saveimportsession';
+		var data = $('input[name="target_patient['+csv_row+']"]').serialize();
+		var amper = '';
+
+		if(data){
+			amper = '&';
+		} else {
+			amper = '';
+		}
+
+		
+		if($('#load_compare_'+csv_row+' input[type="radio"]').length) {
+			data += amper+$('#load_compare_'+csv_row+' input[type="radio"]').serialize();
+		}
+
+		data += amper+$('input[name="import_type['+csv_row+']"]').serialize();
+
+		xhr = $.ajax({
+			url: url,
+			data:data,
+			success: function(response) {
+				$('#saving_session_'+csv_row).hide();
+			},
+			error: function()
+			{
+				$('#saving_session_'+csv_row).hide();
+			}
+		});
+	}
+</script>
+<h1><?php echo $this->translate('CONTACT person / number - imports and update'); ?></h1>
+<?php if(!empty($this->error)): ?>
+<div class="ErrorDiv">
+	<?php echo $this->translate($this->error); ?>
+</div>
+<?php endif; ?>
+
+<form action="" name="frmimport" id="frmimport" method="post" enctype="multipart/form-data" style="<?php if(count($csv_data)): ?>display:none;<?php endif;?>">
+<fieldset>
+	<?php if($_REQUEST['flg'] == 'suc' && empty($this->error)): ?>
+	<div class="SuccesDiv">
+		<p><?php echo $this->translate('import_complete'); ?></p>
+	</div>
+	<?php endif; ?>
+	<legend> <?php echo $this->translate('uploadfile'); ?></legend>
+		<table border="0" class="import_upload">
+			<tbody>
+				<tr>
+					<td  class="td_label"><?php echo $this->translate('separator'); ?></td>
+					<td>
+						<select name="csvdelimiter" id="csvdelimiter">
+							<option value=";" <?php if($this->delimiter == ';'): ?>selected="selected"<?php endif; ?>>;</option>
+							<option value="," <?php if($this->delimiter == ','): ?>selected="selected"<?php endif; ?>>,</option>
+							<option value="|" <?php if($this->delimiter == '|'): ?>selected="selected"<?php endif; ?>>|</option>
+						</select>
+					</td>
+				</tr>
+				<tr><td colspan="2">&nbsp;</td></tr>
+				<tr>
+					<td  class="td_label"><?php echo $this->translate('browse_file'); ?></td>
+					<td>
+						<div id="file-uploader-demo1">
+							<noscript>
+							Please enable JavaScript to use file uploader.
+							</noscript>
+						</div>
+
+						<script>
+							function createUploader() {
+								var uploader = new qq.FileUploader({
+									element: document.getElementById('file-uploader-demo1'),
+									allowedExtensions: ['csv', 'txt'],
+									action: appbase + 'import/uploadify',
+									params: {'terminal': '1'},
+									onSubmit: function(id, fileName) {
+										$('#btnsubmit').attr("disabled", "true");
+									},
+									onComplete: function(id, fileName, responseJSON) {
+										console.log(responseJSON);
+										$('#btnsubmit').removeAttr("disabled");
+									}
+								});
+							}
+
+							// in your app create uploader as soon as the DOM is ready
+							// don't wait for the window to load
+							window.onload = createUploader;
+						</script>
+					</td>
+				</tr>
+				<tr><td colspan="2">&nbsp;</td></tr>
+				<tr>
+					<td  class="td_label"></td>
+					<td>
+						<input type="submit" name="btnsubmit" id="btnsubmit" value="<?php echo $this->translate('import'); ?>" />
+					</td>
+				</tr>
+				
+			</tbody>
+		</table>
+	
+</fieldset>
+</form>
+
+<?php if(count($csv_data)): ?>
+	<form name="terminal_importer" id="terminal_importer" method="POST" action="">
+		<input type="hidden" name="csvdelimiter" value="<?php echo $this->delimiter; ?>" />
+		<table border="0" class="datatable">
+			<tbody>
+				<tr>
+					<th><?php echo $this->translate('#'); ?></th>
+					<th><?php echo $this->translate('firstname'); ?></th>
+					<th><?php echo $this->translate('lastname'); ?></th>
+					<th><?php echo $this->translate('dob'); ?></th>
+					<th><?php echo $this->translate('validtill'); ?></th>
+				</tr>
+				<?php foreach($csv_data as $k_csv_line=> $v_line_values): ?>
+
+					<!-- first row with csv patient data -->
+					<tr id="csv_row_<?php echo $k_csv_line; ?>" class="csv_row">
+						<!--<td>[R:1:<?php echo ($k_csv_line + 1); ?>]</td>-->
+						<td>CSV-<?php echo ($k_csv_line + 1); ?></td>
+						<td><?php echo $v_line_values['7']; ?></td>
+						<td><?php echo $v_line_values['9']; ?></td>
+						<td><?php echo date('d.m.Y',strtotime($v_line_values['10'])); ?></td>
+						<td><?php echo $v_line_values['15']; ?> <div class="left_icon"><img src="<?php echo APP_BASE ?>/images/ajax-loader.gif" width="16" id="saving_session_<?php echo $k_csv_line; ?>"/></div></td>
+					</tr>
+					<!-- dynamic result rows -->
+					<?php if($mapped_data[$k_csv_line]): ?>
+						<?php foreach($mapped_data[$k_csv_line] as $k_line_result_row=> $v_line_result_row): ?>
+							<tr id="patient_row_<?php echo $k_csv_line . '_' . $k_line_result_row; ?>" alt="<?php echo $v_line_result_row['encrypted_id']; ?>"  class="ispc_row<?php if($k_line_result_row % 2): ?>_alt<?php endif; ?>  patient_dynamic_<?php echo $k_csv_line; ?> patient_dynamic_row">
+								<td><input type="radio" name="target_patient[<?php echo $k_csv_line; ?>]" alt="<?php echo $v_line_result_row['id']; ?>" value="<?php echo $v_line_result_row['encrypted_id']; ?>" id="target_patient_<?php echo $k_csv_line; ?>_<?php echo $k_line_result_row; ?>" /> </td>
+								<td><?php echo $v_line_result_row['firstname']; ?></td>
+								<td><?php echo $v_line_result_row['lastname']; ?></td>
+								<td><?php echo $v_line_result_row['dob']; ?></td>
+								<td></td>
+							</tr>
+
+						<?php endforeach; ?>
+					<?php endif; ?>
+
+
+					<!--compare row-->
+
+					<tr class="values_box_<?php echo $k_csv_line; ?>" style="<?php if(count($mapped_data[$k_csv_line]) == '0'): ?> display:none;<?php endif; ?>">
+						<td colspan="5" id="load_compare_<?php echo $k_csv_line; ?>">
+
+						</td>
+					</tr>
+
+
+					<!-- last row with import options and liveserch -->
+					<tr  class="options_row_<?php echo $k_csv_line; ?>">
+						<td colspan="5">
+							<table id="options_table" border="0">
+								<tr>
+									<td>
+										<label for="ls_<?php echo $k_csv_line; ?>"><?php echo $this->translate('search'); ?></label>
+										<input type="text" name="search" value="" class="livesearch" id="ls_<?php echo $k_csv_line; ?>" />
+									</td>
+									<td>
+										<label for="import_type_<?php echo $k_csv_line; ?>_1"><?php echo $this->translate('import_data_as_update'); ?></label>
+										<input type="radio" name="import_type[<?php echo $k_csv_line; ?>]" id="import_type_<?php echo $k_csv_line; ?>_1" value="1" <?php if($session_import_type[$k_csv_line] == '1'): ?>checked="checked"<?php endif; ?> class="import_type" />
+									</td>
+									<td>
+										<label for="import_type_<?php echo $k_csv_line; ?>_2"><?php echo $this->translate('import_data_as_new'); ?></label>
+										<input type="radio" name="import_type[<?php echo $k_csv_line; ?>]" id="import_type_<?php echo $k_csv_line; ?>_2" value="2" <?php if($session_import_type[$k_csv_line] == '2'): ?>checked="checked"<?php endif; ?>  class="import_type" /> 
+									</td>
+									<td>
+										<label for="import_type_<?php echo $k_csv_line; ?>_3"><?php echo $this->translate('no_import'); ?></label>
+										<input type="radio" name="import_type[<?php echo $k_csv_line; ?>]" id="import_type_<?php echo $k_csv_line; ?>_3" value="3" <?php if($session_import_type[$k_csv_line] == '3' || empty($session_import_type[$k_csv_line])): ?>checked="checked"<?php endif; ?>  class="import_type" />
+									</td>
+								</tr>
+							</table>							
+						</td>
+					</tr>
+					<tr  class="clear_row">
+						<td colspan="5">&nbsp;</td>
+					</tr>
+				<?php endforeach; ?>
+
+			</tbody>
+		</table>
+		<input type="hidden" value="0" id="allow_import" name="allow_import" />
+		<input type="submit" value="<?php echo $this->translate('import'); ?>" id="import" name="import" />
+		
+		<input type="hidden" value="0" id="cancel_import_value" name="cancel_import_value" />
+		<input type="submit" value="<?php echo $this->translate('cancel'); ?>" id="cancel_import" name="cancel_import" />
+	</form>
+<?php endif; ?>
+
+<div id="alert_rows_import_type">
+	<p><?php echo $this->translate('select_rows_import_type'); ?></p>
+</div>
+
+<div id="alert_cancel_import">
+	<p><?php echo $this->translate('cancel_import_text'); ?></p>
+</div>

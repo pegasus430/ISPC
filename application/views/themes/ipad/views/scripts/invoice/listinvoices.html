@@ -1,0 +1,316 @@
+<style type="text/css">
+
+</style>
+<script type="text/javascript">
+	$(document).ready(function() {
+	$(".btn-slide").addClass('ui-state-default ui-corner-bottom');
+		$('.datesel').datepicker({
+			dateFormat: 'dd.mm.yy',
+			showOn: "both",
+			buttonImage: $('#calImg').attr('src'),
+			buttonImageOnly: true,
+			nextText: '',
+			prevText: ''
+		});
+	});
+</script>
+<?php
+$invoicesAll = $this->finalInvoices;
+$invoices = $invoicesAll[$_REQUEST['tab']];
+$patients = $this->patients;
+$patientsEpids = $this->epidsPatient;
+$clientUsers = $this->clientUsers;
+$storned_invoices = $this->storned_invoces;
+$statusArray = array("0" => "statusOpen", "1" => "statusPPaid", "2" => "statusPaid", "3" => "statusCanceled", "4" => "statusDraft");
+	$direction = "";
+if (strlen($_REQUEST['direction']) > 0)
+{
+	if ($_REQUEST['direction'] == "ASC")
+	{ //switch
+		$direction = "DESC";
+	}
+	else
+	{
+		$direction = "ASC";
+	}
+}
+else
+{ //default
+	$direction = "ASC";
+}
+
+$private_patients = $this->private_patients;
+$warnings_table_lang = $this->translate('warnings_table_lang');
+?>
+<input type="hidden" name="rehnung_orderby" id="rehnung_orderby" value="<?php if(!empty($_REQUEST['orderby'])): echo $_REQUEST['orderby']; else: 'ASC'; endif; ?>" />
+<input type="hidden" name="rehnung_direction" id="rehnung_direction" value="<?php if(!empty($_REQUEST['direction'])): echo $_REQUEST['direction']; else: 'ASC'; endif; ?>" />
+<div id="panel-<?php echo $_REQUEST['tab']; ?>" class="ui-helper-reset ui-helper-clearfix ui-widget-header ui-corner-all"  style="background: #DEEDF7;">
+	<div style="width:98%; float:left; padding-left:10px;">
+	<form action="" method="post" name="frmsearch" id="frmsearch" class="form_search" >
+			<fieldset>
+				<legend>Suche Rechnung</legend><!-- TODO-3664 Ancuta 04.12.2020-->
+				<input type="hidden" name="suche" id="suche" class="suchehidd" value="1" />
+				<label for="last_name" id="lbl_last_name_rechnung" accesskey="l">Nachname</label>
+				<input type="text" name="last_name" id="last_name" class="w200" value="<?php echo $_REQUEST['last_name']; ?>" tabindex="1" />
+				<?php if(strlen($_REQUEST['last_name'])>0){ echo '<a href="javascript:void(0);" id="removeAtribute"><img src="'.RES_FILE_PATH.'/images/action_remove.png" /></a>'; } ?>
+				<br />
+				<label for="first_name" id="lbl_first_name_rechnung" accesskey="e">Vorname</label>
+				<input type="text" name="first_name" id="first_name" class="w200" value="<?php echo $_REQUEST['first_name']; ?>" tabindex="2" />
+				<?php if(strlen($_REQUEST['first_name'])>0){ echo '<a href="javascript:void(0);" id="removeAtribute"><img src="'.RES_FILE_PATH.'/images/action_remove.png" /></a>'; } ?>
+				<br />
+				<label for="epid" id="lbl_epid_rechnung">Patientennummer</label>
+				<input type="text" name="epid" id="epid" class="w200" value="<?php echo $_REQUEST['epid']; ?>" tabindex="3" />
+				<?php if(strlen($_REQUEST['epid'])>0){ echo '<a href="javascript:void(0);" id="removeAtribute"><img src="'.RES_FILE_PATH.'/images/action_remove.png" /></a>'; } ?>
+				<br>
+				<label for="rnummer" id="lbl_rnummer_rechnung">Rechnungsnummer</label>
+				<input type="text" name="rnummer" id="rnummer" class="w200" value="<?php echo $_REQUEST['rnummer']; ?>" tabindex="4" />
+				<?php if(strlen($_REQUEST['rnummer'])>0){ echo '<a href="javascript:void(0);" id="removeAtribute"><img src="'.RES_FILE_PATH.'/images/action_remove.png" /></a>'; } ?>
+				<br />
+				<label for="document_date" id="lbl_admission_date_rechnung" accesskey="e">Datum</label>
+				<input type="text" name="document_date" id="document_date" class="w200 datesel" value="<?php echo $_REQUEST['document_date']; ?>" tabindex="5" />
+				<?php if(strlen($_REQUEST['document_date'])>0){ echo '<a href="javascript:void(0);" id="removeAtributeDate"><img src="'.RES_FILE_PATH.'/images/action_remove.png" /></a>'; } ?>
+				<br />
+
+				<label for="amount" id="lbl_amount_rechnung">Rechnungsbetrag</label>
+				<input type="text" name="amount" id="amount" class="w200" value="<?php echo $_REQUEST['amount']; ?>" tabindex="6" />
+				<?php if(strlen($_REQUEST['amount'])>0){ echo '<a href="javascript:void(0);" id="removeAtribute"><img src="'.RES_FILE_PATH.'/images/action_remove.png" /></a>'; } ?>
+				<br />
+
+				<div class="clearer"></div>
+				<input type="submit" name="btnsubmit" id="btnsubmit" value="Suchen" />
+			</fieldset>
+		</form>
+	</div>
+</div>
+<p class="slide"><a href="#" class="btn-slide">Suche</a></p>
+<form action="" id="invoices-<?php echo $_REQUEST['tab']; ?>" method="POST" >
+<input type="hidden" name="tabname" id="tabname" value="<?php echo $_REQUEST['tab']; ?>" />
+<input type="hidden" name="delmore" id="deletemore-<?php echo $_REQUEST['tab']; ?>" value="" />
+<input type="hidden" name="activate" id="activemore-<?php echo $_REQUEST['tab']; ?>" value="" />
+<input type="hidden" value="" name="warningmore">
+<input type="hidden" value="" name="warningmore_type">
+<input type="hidden" value="" name="warningmore_table">
+<div id="listItemsContainer" class="listItemsContainer">
+	<div class="listItemHeader">
+		<div class="documentTypeH"><a alt="<?php echo $_REQUEST['tab']; ?>" href="javascript:void(0);">Dokument</a></div>
+		<div class="documentCustomer"><a class="invoiceTotal" alt="<?php echo $_REQUEST['tab']; ?>" href="invoice/invoice?inv_id=<?php echo $_REQUEST['id']; ?>&tab=<?php echo $_REQUEST['tab']; ?>&page=<?php echo $_REQUEST['page']; ?>&suche=<?php echo $_REQUEST['suche']; ?>&first_name=<?php echo urlencode($_REQUEST['first_name']); ?>&last_name=<?php echo urlencode($_REQUEST['last_name']); ?>&epid=<?php echo urlencode($_REQUEST['epid']); ?>&amount=<?php echo urlencode($_REQUEST['amount']); ?>&document_date=<?php echo urlencode($_REQUEST['document_date']); ?>&rnummer=<?php echo $_REQUEST['rnummer']; ?>&orderby=epid&direction=<?php echo $direction; ?>">Patient</a></div>
+		<div class="documentrnummer"><a class="invoiceTotal" alt="<?php echo $_REQUEST['tab']; ?>" href="invoice/invoice?inv_id=<?php echo $_REQUEST['id']; ?>&tab=<?php echo $_REQUEST['tab']; ?>&page=<?php echo $_REQUEST['page']; ?>&suche=<?php echo $_REQUEST['suche']; ?>&first_name=<?php echo urlencode($_REQUEST['first_name']); ?>&last_name=<?php echo urlencode($_REQUEST['last_name']); ?>&epid=<?php echo urlencode($_REQUEST['epid']); ?>&amount=<?php echo urlencode($_REQUEST['amount']); ?>&document_date=<?php echo urlencode($_REQUEST['document_date']); ?>&rnummer=<?php echo $_REQUEST['rnummer']; ?>&orderby=rnummer&direction=<?php echo $direction; ?>">Rechnungsnummer</a></div>
+		<div class="documentdatum"><a class="invoiceTotal" alt="<?php echo $_REQUEST['tab']; ?>" href="invoice/invoice?inv_id=<?php echo $_REQUEST['id']; ?>&tab=<?php echo $_REQUEST['tab']; ?>&page=<?php echo $_REQUEST['page']; ?>&suche=<?php echo $_REQUEST['suche']; ?>&first_name=<?php echo urlencode($_REQUEST['first_name']); ?>&last_name=<?php echo urlencode($_REQUEST['last_name']); ?>&epid=<?php echo urlencode($_REQUEST['epid']); ?>&amount=<?php echo urlencode($_REQUEST['amount']); ?>&document_date=<?php echo urlencode($_REQUEST['document_date']); ?>&rnummer=<?php echo $_REQUEST['rnummer']; ?>&orderby=completedDate&direction=<?php echo $direction; ?>">Rechnungs datum</a></div>
+		<div class="documentDate"><a class="invoiceTotal" alt="<?php echo $_REQUEST['tab']; ?>" href="invoice/invoice?inv_id=<?php echo $_REQUEST['id']; ?>&tab=<?php echo $_REQUEST['tab']; ?>&page=<?php echo $_REQUEST['page']; ?>&suche=<?php echo $_REQUEST['suche']; ?>&first_name=<?php echo urlencode($_REQUEST['first_name']); ?>&last_name=<?php echo urlencode($_REQUEST['last_name']); ?>&epid=<?php echo urlencode($_REQUEST['epid']); ?>&amount=<?php echo urlencode($_REQUEST['amount']); ?>&document_date=<?php echo urlencode($_REQUEST['document_date']); ?>&rnummer=<?php echo $_REQUEST['rnummer']; ?>&orderby=create_date&direction=<?php echo $direction; ?>"><? echo $this->translate("due date")?></a></div>
+		<div class="documentAmount listItemHeaderRight"><a class="invoiceTotal" alt="<?php echo $_REQUEST['tab']; ?>" href="invoice/invoice?inv_id=<?php echo $_REQUEST['id']; ?>&tab=<?php echo $_REQUEST['tab']; ?>&page=<?php echo $_REQUEST['page']; ?>&suche=<?php echo $_REQUEST['suche']; ?>&first_name=<?php echo urlencode($_REQUEST['first_name']); ?>&last_name=<?php echo urlencode($_REQUEST['last_name']); ?>&epid=<?php echo urlencode($_REQUEST['epid']); ?>&amount=<?php echo urlencode($_REQUEST['amount']); ?>&document_date=<?php echo urlencode($_REQUEST['document_date']); ?>&rnummer=<?php echo $_REQUEST['rnummer']; ?>&orderby=invoiceTotal&direction=<?php echo $direction; ?>">Betrag</a></div>
+	</div>
+	<div class="clearFloat"></div>
+	<?php
+	if (count($invoices) > 0):
+		$i = 1;
+	foreach ($invoices as $keyid => $invoice):
+		?>
+			<div class="listItem" id="documentItem-<?php echo $invoice['id']; ?>">
+			
+				<?php // echo $i; ?>
+				
+			<div class="listItemData">
+				<div class="documentCheckBox">
+					<div class="listItemCell" style="padding-left:0px">
+						<?php if($invoice['status'] != '3' && $invoice['status'] != '1' && $invoice['status'] != '2'):  ?>
+						<input type="checkbox" class="checkBox" name="document[<?php echo $invoice['id'] ?>]" id="documentItem<?php echo $invoice['id'] ?>" value="<?php echo $invoice['id'] ?>">
+						<?php endif; ?>
+					</div>
+				</div>
+				<div class="documentType" title="Rechnung">
+					<div class="listItemCell">
+							<?php  if($invoice['storno'] == '0'): ?>
+						Rechnung
+							<?php else:  ?>
+							Storno
+							<?php endif;  ?>
+						<br>
+							<span style="color:#999;" id="i_status_<?php echo $invoice['id'] ?>"><?php echo $this->translate($statusArray[$invoice['status']]); ?></span>
+							<?php  if($invoice['isDelete'] == '0'): ?>
+							<?php  if($invoice['storno'] == '0'): ?>
+							<a href="invoice/editinvoice?invoiceid=<?php echo $invoice['id']; ?>&pdfquick=1" ><img align="top" src="<?php echo RES_FILE_PATH; ?>/images/page_white_magnify.png" alt="Vorschau" title="Vorschau" style="display:inline; border:0"></a>
+								<?php  elseif($invoice['storno'] == '1'): ?>
+									<a href="invoice/editinvoice?invoiceid=<?php echo $invoice['record_id']; ?>&storno=<?php echo $invoice['id']; ?>&pdfquick=1&stornopdf=1" ><img align="top" src="<?php echo RES_FILE_PATH; ?>/images/page_white_magnify.png" alt="Vorschau" title="Vorschau" style="display:inline; border:0"></a>
+							<?php endif;  ?>
+							<?php endif;  ?>
+					</div>
+				</div>
+				<div class="documentCustomer">
+					<div class="listItemCell">
+						<?php if(in_array($invoice['ipid'], $private_patients)):  ?>
+								<img src="<?php echo RES_FILE_PATH;  ?>/images/pv1.png" width="16px" border="0" alt="" style=" margin:0px 3px -3px 0;"/>
+						<?php endif;  ?>
+						<?php echo strtoupper($patients[$invoice['ipid']]['epid']); ?>
+					-
+							<?php echo $patients[$invoice['ipid']]['last_namee'] . ", " . $patients[$invoice['ipid']]['first_name']; ?>
+					</div>
+				</div>
+					<div class="documentrnummer">
+						<div class="listItemCell">
+									<?php echo $invoice['prefix'] . $invoice['rnummer']; ?>
+						</div>
+					</div>
+					<div class="documentdatum">
+						<div class="listItemCell">
+							<?php echo date('d.m.Y', strtotime($invoice['completedDate'])); ?>
+						</div>
+					</div>
+				<div class="documentDate">
+					<div class="listItemCell">
+							<div title="Datum :: "><span><?php echo date("d.m.Y", strtotime($invoice['dueDate'])); ?></span></div>
+						<div title="Zahlungsziel :: ">
+							<span id="dueDate-<?php echo $invoice['id']; ?>" style="display:none;"><?php echo date("d.m.Y", strtotime($invoice['dueDate'])); ?></span>
+							<?php
+							if ($invoice['dueDate'] != "0000-00-00 00:00:00" ) {
+									if (strtotime("now") > strtotime($invoice['dueDate']) && $invoice['paidDate'] == "0000-00-00 00:00:00") //overdue
+									{ //overdue
+										echo '<span class="toggle red">' . round(((strtotime("now") - strtotime($invoice['dueDate'])) / 86400)) . " Tage</span>";
+									}
+									else if (strtotime("now") < strtotime($invoice['dueDate']) && $invoice['status'] != "2" && $invoice['status'] != "3")
+									{
+										echo '<span class="toggle green" title="' . str_pad(round(((strtotime($invoice['dueDate']) - strtotime("now")) / 86400)) . 'Tage', 10, " ", STR_PAD_BOTH) . '">' . str_pad(round(((strtotime($invoice['dueDate']) - strtotime("now")) / 86400)) . 'Tage', 10, " ", STR_PAD_BOTH) . "</span>";
+								}
+							}
+							?>
+						</div>
+					</div>
+				</div>
+				<div class="documentAmount">
+					<?php
+
+					$style = '';
+					if ($invoice['invoiceTotal'] != '0.00')
+					{
+						if ($invoice['paidAmount'] >= $invoice['invoiceTotal'])
+						{
+							$style = "paid";
+						}
+						else if ($invoice['paidAmount'] > '0' && $invoice['paidAmount'] < $invoice['invoiceTotal'])
+						{
+							$style = "partial_paid";
+						}
+						else
+						{
+							$style = "not_paid";
+						}
+					}
+					?>
+					<div class="listItemCell" style="padding-right:5px">
+			<div class="invoice <?php echo $style; ?>" style="font-size:14px; font-weight:bold;">
+				<input type="hidden" value="<?php echo $invoice['invoiceTotal']; ?>" id="totalAmount-<?php echo $invoice['id']; ?>" />
+
+				<span id="totalAmount_span-<?php echo $invoice['id']; ?>" >
+					<?php  if($invoice['storno'] == '0'): ?>
+					<?php echo number_format($invoice['invoiceTotal'], '2', ',', '.'); ?>
+					<?php  else: ?>
+						<?php echo number_format(($invoice['invoiceTotal']*-1), '2', ',', '.'); ?>
+					<?php  endif; ?>
+				</span> €
+					</div>
+			<div class="invoice <?php echo $style; ?>" style="font-style:italic">
+				<input type="hidden" value="<?php echo $invoice['paidAmount']; ?>" id="totalPaidAmount-<?php echo $invoice['id']; ?>" />
+
+				<span id="totalPaidAmount_span-<?php echo $invoice['id']; ?>">
+					<?php if ($invoice['paidAmount']): ?><?php echo number_format($invoice['paidAmount'], '2', ',', '.'); ?> <?php else: ?>0,00<?php endif; ?>
+				</span> €
+				</div>
+
+							<?php
+								if(!empty($invoice['paidAmount'])){
+									$rest_to_pay = $invoice['invoiceTotal'] - $invoice['paidAmount'];
+								} else{
+									$rest_to_pay = $invoice['invoiceTotal'];
+								}
+
+ 								$rest_to_pay = number_format($rest_to_pay, '2', '.', '')
+ 							?>
+
+							<input type="hidden" value="<?php echo $rest_to_pay ; ?>" id="restToPay-<?php echo $invoice['id']; ?>" />
+			<div class="invoice" style="display:none;"  id="restToPay_div-<?php echo $invoice['id']; ?>">
+				<?php echo round(($invoice['invoiceTotal'] - $invoice['paidAmount']), 2); ?>
+			</div>
+		</div>
+					</div>
+				</div>
+			<div class="clearFloat"></div>
+			<div class="listItemControls hide">
+				<?php if ( ! empty($invoice[$_REQUEST['tab']]['InvoiceWarnings']) ): ?>
+					
+					<div class="listInvoiceWarnings">
+						<div class="Infos" >
+							<?php echo $warnings_table_lang['title'];?>
+						</div>
+						<table class="overalllistatable datatable">
+							<thead>
+								<tr>
+									<th><?php echo $warnings_table_lang['reminder_type'];?></th>
+									<th><?php echo $warnings_table_lang['reminder_date'];?></th>									
+								</tr>
+							</thead>
+						<?php foreach($invoice[$_REQUEST['tab']]['InvoiceWarnings'] as $war_row) :?>
+							<tr>							
+								<td><?php echo $warnings_table_lang[$war_row['reminder_type']];  ?></td>
+								<td>
+								<?php echo date("d.m.Y", strtotime($war_row['create_date'])); ?>		
+								</td>
+							</tr>
+					
+						<?php endforeach;?>
+						</table>
+					</div>
+					<?php endif; ?>
+				<div class="listItemControlsInfos">
+					<div>
+						Dieses Dokument wurde am <?php echo date("d.m.Y H:i", strtotime($invoice['create_date'])); ?> von
+						<span style="text-decoration: underline"><?php
+				echo $clientUsers[$invoice['create_user']];
+					?></span>
+						erstellt.
+						<?php
+						if (strtotime("now") > strtotime($invoice['dueDate']) && $invoice['status'] != "2" && $invoice['status'] != "3" && $invoice['status'] != "4") {
+							echo '<br /><span class="red">Diese Rechnung ist seit dem ' . date("d.m.Y", strtotime($invoice['dueDate'])) . ' (' . round(((strtotime("now") - strtotime($invoice['dueDate'])) / 86400)) . ' Tage) überfällig.</span>';
+						}
+						?>
+					</div>
+				</div>
+				<div class="listItemControlsButtons">
+						<?php  if($invoice['isDelete'] == '0' && $invoice['status'] != '3'): ?>
+						<?php  if($invoice['storno'] == '0'): ?>
+					<ul>
+							<li><div class="ui-icon-printer"><a class="print" target="_blank" href="invoice/editinvoice?invoiceid=<?php echo $invoice['id']; ?>&pdfquick=1">Drucken</a></div></li>
+							<li><div class="ui-icon-white-edit"><a class="edit" href="invoice/editinvoice?invoiceid=<?php echo $invoice['id']; ?>">Bearbeiten</a></div></li>
+							<li><div class="ui-icon-money"><a class="pay" href="javascript:void(0);" id="pay" alt="<?php echo $invoice['id']; ?>"><?php echo $this->translate('payNow'); ?></a></div></li>
+							<?php if($invoice['status'] != '4' && $style != "paid" && $this->create_bulk_warnings == "1") { ?>
+								<li><div class="ui-icon-1warn"><a  target="_blank"	href="invoicenew/generatereminderinvoice?invoiceids=<?php echo $invoice['id']; ?>&invoicetable=<?php echo 'by_invoice_old'; ?>&invoicewarning=<?php echo 'first_warning'; ?>&type=pdf" ><?php echo $this->translate('first_warning'); ?></a></div></li>
+								<li><div class="ui-icon-2warn"><a  target="_blank"	href="invoicenew/generatereminderinvoice?invoiceids=<?php echo $invoice['id']; ?>&invoicetable=<?php echo 'by_invoice_old'; ?>&invoicewarning=<?php echo 'second_warning'; ?>&type=pdf" ><?php echo $this->translate('second_warning'); ?></a></div></li>
+							<?php } ?>
+							<?php if($invoice['status'] != '3' && $invoice['status'] != '4' && !in_array($invoice['id'], $storned_invoices)): ?>
+							<li><div class="ui-icon-storno"><a class="storno" href="javascript:void(0);" id="storno" alt="<?php echo $invoice['id']; ?>" title="<?php echo strtoupper($patients[$invoice['ipid']]['epid']); ?>"><?php echo $this->translate('storno'); ?></a></div></li>
+							<?php endif; ?>
+							
+							<?php if($invoice['status'] == '4'): // only for draft ?>
+							<li><div class="ui-icon-white-delete"><a class="delete" href="invoice/invoice?invoiceid=<?php echo $invoice['id']; ?>&mode=delete">Löschen</a></div></li>
+							<?php endif; ?>
+					</ul>
+						<?php  elseif($invoice['storno'] == '1'): ?>
+							<ul>
+								<li><div class="ui-icon-printer"><a href="invoice/editinvoice?invoiceid=<?php echo $invoice['record_id']; ?>&storno=<?php echo $invoice['id']; ?>&pdfquick=1&stornopdf=1" >Drucken</a></div></li>
+							</ul>
+						<?php endif;  ?>
+						<?php endif;  ?>
+				</div>
+			</div>
+			<div class="clearFloat"></div>
+		</div>
+		<?php
+		$i++;
+
+	endforeach;
+	else:
+	?>
+	<div class="listItem" id="documentItem">
+			<?php echo $this->translate('noDocuments'); ?>
+	</div>
+	<?php endif; ?>
+</div>
+</form>

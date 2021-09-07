@@ -1,0 +1,369 @@
+<?php 
+//ISPC-2831 Dragos 15.03.2021
+$this->headScript()->appendFile( RES_FILE_PATH . '/javascript/livesearch/getdiagnosisicd.js' );
+
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/data_tables/dataTables.rowReorder.min.js');
+
+
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/data_tables/rowReorder.jqueryui.css');
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/data_tables/rowReorder.jqueryui.min.css');
+?>
+<script>
+var langurl = appbase + 'javascript/data_tables/de_language.json';
+var tablesource_icd = <?php echo json_encode($this->icd_data); ?>;
+ 
+var icd_order= <?php echo json_encode($this->order_str); ?>;
+
+var main_sort_column= <?php echo json_encode($this->order_multiple['main_sort_column']); ?>;
+var main_sort_order= <?php echo json_encode($this->order_multiple['main_sort_order']); ?>;
+var main_sec_column= <?php echo json_encode($this->order_multiple['main_sec_column']); ?>;
+var main_sec_order= <?php echo json_encode($this->order_multiple['main_sec_order']); ?>;
+
+
+var tablesource_icd_archived = <?php echo json_encode($this->icd_data_archived); ?>;
+var tablesource_icd_ended = <?php echo json_encode($this->icd_data_ended); ?>;
+
+// ISPC-2654 Carmen 07.10.2020
+$(document).off('click',"#add_single_icd").on('click', '#add_single_icd', function(){
+	$('#icd_modal').data('recid', '').data('subaction', 'edit').dialog('open');
+});
+
+
+$(document).ready(function(){
+	 var table = $('#table_icd').DataTable({
+			// ADD language
+			 "language": {
+		           "url": langurl
+		    },
+
+			"sDom"://'<"fg-toolbar ui-toolbar ui-widget-header ui-helper-clearfix ui-corner-tl ui-corner-tr"lfr>'+
+				't',//+
+				//'<"fg-toolbar ui-toolbar ui-widget-header ui-helper-clearfix ui-corner-bl ui-corner-br"<"#bottom_export">ip>',
+			// la sDom - este sa zic - declarat tablelu(t) - cu header - search, paginare(p)
+
+				
+			//"lengthMenu": [[15, 25, 50, 100], [15, 25, 50, 100]],
+				
+			"processing": true,
+
+			"info": false,
+			"filter": false,
+			"paginate": false,
+			"destroy": true,
+
+			//"serverSide": true,
+			"autoWidth": false,
+			"stateSave": false,
+			"scrollX": false,
+			"scrollCollapse": true,
+			
+			//"sAjaxSource" : window.location.href,
+			"data": tablesource_icd,
+ 
+			"createdRow": function( row, data, dataIndex){
+                $(row).attr('id', 'row-' + dataIndex);
+                $(row).addClass('tr-sort');
+                $(row).attr('data-order','order_' + data['order_value']);
+                
+                if( data['icd_end_date'] !='' ){
+                    $(row).addClass('lightGrayClass');
+                } 
+            },
+			"columnDefs": [
+			          {title: "", 		 			 					   "targets": 0,  "searchable": false, "orderable": false, data: "order", "width": "4%" },
+			          {title: translate('icd_start_date_hidden'), 	"bVisible": false, "targets": 1, "searchable": false, "orderable": true, data: "icd_start_date_hidden"},
+			          {title: translate('icd_end_date_hidden'), 	"bVisible": false, "targets": 2, "searchable": false, "orderable": true, data: "icd_end_date_hidden",},
+			          
+			          {title: translate('icd_category'), 								"targets": 3, "searchable": false, "orderable": true, data: "icd_category", "width": "9%"},
+			          {title: translate('icd_code'), 									"targets": 4, "searchable": false, "orderable": true, data: "icd_code", "width": "9%"},
+			          {title: translate('icd_description'), 							"targets": 5, "searchable": false, "orderable": true, data: "icd_description", "width": "21%"},
+			          {title: translate('relevant2admission'), 							"targets": 6, "searchable": false, "orderable": true, data: "relevant2admission", "width": "11%"},
+			          {title: translate('icd_start_date'),								"targets": 7, "searchable": false, "orderable": true, data: "icd_start_date", "width": "12%","iDataSort": 1},
+			          {title: translate('icd_end_date'), 								"targets": 8, "searchable": false, "orderable": true, data: "icd_end_date", "width": "12%","iDataSort": 2},
+			          {title: translate('icd_comment'),									"targets": 9, "searchable": false, "orderable": true, data: "icd_comment", "width": "13%"},
+			          //{title: translate('actions'), 									"targets": 10, "searchable": false, "orderable": false, data: "actions", "width": "9%"},
+					]
+            ,
+            "order": [[main_sort_column,main_sort_order],[main_sec_column,main_sec_order]]
+		});
+// 		table.draw();
+ 
+ 
+		
+	 var ended_table = $('#ended_table_icd').DataTable({
+			// ADD language
+			 "language": {
+		           "url": langurl
+		    },
+
+
+			"sDom"://'<"fg-toolbar ui-toolbar ui-widget-header ui-helper-clearfix ui-corner-tl ui-corner-tr"lfr>'+
+				't',//+
+				//'<"fg-toolbar ui-toolbar ui-widget-header ui-helper-clearfix ui-corner-bl ui-corner-br"<"#bottom_export">ip>',
+			// la sDom - este sa zic - declarat tablelu(t) - cu header - search, paginare(p)
+
+				
+			//"lengthMenu": [[15, 25, 50, 100], [15, 25, 50, 100]],
+				
+			"processing": true,
+			"info": false,
+			"filter": false,
+			"paginate": false,
+			"destroy": true,
+			//"serverSide": true,
+			"autoWidth": false,
+			"stateSave": false,
+			"scrollX": false,
+			"scrollCollapse": true,
+			
+			"data": tablesource_icd_ended,
+			 
+			"createdRow": function( row, data, dataIndex){
+                    $(row).addClass('ArclightGrayClass');
+            },
+ 
+			"columnDefs": [
+			          {title: translate('order'), 		 			"bVisible": false, "targets": 0,  "searchable": false, "orderable": true, data: "order", "orderable": true, "className":'reorder'},
+			          {title: translate('icd_start_date_hidden'), 	"bVisible": false, "targets": 1, "searchable": false, "orderable": true, data: "icd_start_date_hidden"},
+			          {title: translate('icd_end_date_hidden'), 	"bVisible": false, "targets": 2, "searchable": false, "orderable": true, data: "icd_end_date_hidden",},
+			          
+			          {title: translate('icd_category'), 								"targets": 3, "searchable": false, "orderable": true, data: "icd_category", "width": "14%"},
+			          {title: translate('icd_code'), 									"targets": 4, "searchable": false, "orderable": true, data: "icd_code", "width": "8%"},
+			          {title: translate('icd_description'), 							"targets": 5, "searchable": false, "orderable": true, data: "icd_description", "width": "21%"},
+			          {title: translate('relevant2admission'), 							"targets": 6, "searchable": false, "orderable": true, data: "relevant2admission", "width": "11%"},
+			          {title: translate('icd_start_date'),								"targets": 7, "searchable": false, "orderable": true, data: "icd_start_date", "width": "12%","iDataSort": 1},
+			          {title: translate('icd_end_date'), 								"targets": 8, "searchable": false, "orderable": true, data: "icd_end_date", "width": "12%","iDataSort": 2},
+			          {title: translate('icd_comment'),									"targets": 9, "searchable": false, "orderable": true, data: "icd_comment", "width": "13%"},
+			          //{title: translate('actions'), 									"targets": 10, "searchable": false, "orderable": false, data: "actions", "width": "9%"},
+					],
+			
+		});
+	 var archived_table = $('#archived_table_icd').DataTable({
+			// ADD language
+			 "language": {
+		           "url": langurl
+		    },
+
+
+			"sDom"://'<"fg-toolbar ui-toolbar ui-widget-header ui-helper-clearfix ui-corner-tl ui-corner-tr"lfr>'+
+				't',//+
+				//'<"fg-toolbar ui-toolbar ui-widget-header ui-helper-clearfix ui-corner-bl ui-corner-br"<"#bottom_export">ip>',
+			// la sDom - este sa zic - declarat tablelu(t) - cu header - search, paginare(p)
+
+				
+			//"lengthMenu": [[15, 25, 50, 100], [15, 25, 50, 100]],
+				
+			"processing": true,
+			"info": false,
+			"filter": false,
+			"paginate": false,
+			"destroy": true,
+			//"serverSide": true,
+			"autoWidth": false,
+			"stateSave": false,
+			"scrollX": false,
+			"scrollCollapse": true,
+			
+			"data": tablesource_icd_archived,
+			 
+			"createdRow": function( row, data, dataIndex){
+                    $(row).addClass('ArclightGrayClass');
+            },
+ 
+			"columnDefs": [
+			          {title: translate('order'), 		 			"bVisible": false, "targets": 0,  "searchable": false, "orderable": true, data: "order", "orderable": true, "className":'reorder'},
+			          {title: translate('icd_start_date_hidden'), 	"bVisible": false, "targets": 1, "searchable": false, "orderable": true, data: "icd_start_date_hidden"},
+			          {title: translate('icd_end_date_hidden'), 	"bVisible": false, "targets": 2, "searchable": false, "orderable": true, data: "icd_end_date_hidden",},
+			          
+			          {title: translate('icd_category'), 								"targets": 3, "searchable": false, "orderable": true, data: "icd_category", "width": "14%" },
+			          {title: translate('icd_code'), 									"targets": 4, "searchable": false, "orderable": true, data: "icd_code", "width": "8%"},
+			          {title: translate('icd_description'), 							"targets": 5, "searchable": false, "orderable": true, data: "icd_description", "width": "21%"},
+			          {title: translate('relevant2admission'), 							"targets": 6, "searchable": false, "orderable": true, data: "relevant2admission", "width": "11%"},
+			          {title: translate('icd_start_date'),								"targets": 7, "searchable": false, "orderable": true, data: "icd_start_date", "width": "12%","iDataSort": 1},
+			          {title: translate('icd_end_date'), 								"targets": 8, "searchable": false, "orderable": true, data: "icd_end_date", "width": "12%","iDataSort": 2},
+			          {title: translate('icd_comment'),									"targets": 9, "searchable": false, "orderable": true, data: "icd_comment", "width": "13%"},
+			          //{title: translate('actions'), 									"targets": 10, "searchable": false, "orderable": false, data: "actions", "width": "9%"},
+					],
+
+		
+			
+		});
+
+		
+	$(document).off('click',".diagno_category_filter").on('click', '.diagno_category_filter', function(){
+
+		var category_type = $(this).data('category_type');
+		var category_name = $(this).data('category_name');
+
+		//gell all checkboxes 
+			var main_values = new Array();
+			var secondary_values = new Array();
+			$.each($("input[name='filter_options']:checked"), function() {
+				if($(this).data('main_filter_value')){
+					main_values.push($(this).data('main_filter_value'));
+				}
+				if($(this).data('secondary_filter_value')){
+					secondary_values.push($(this).data('secondary_filter_value'));
+				}
+			});
+
+		var url = 'patientdiagnosis/tabsevents?id='+pid+'&action=filterdata&form=icd_filter';
+		$.ajax({
+			type: 'POST',
+			url: url,
+			data:{
+				'main_category':main_values,
+				'secondary_categories': secondary_values,
+			}, 
+			
+			success:function(data){
+
+				$('#table_icd').html();
+
+				if(data && data != 0 ){
+    				 var NewlyCreatedData = JSON.parse(data);
+    				 
+    				 table.clear().draw();
+    				 if(NewlyCreatedData.icd_data){
+	    				 table.rows.add(NewlyCreatedData.icd_data); // Add new data
+       				 }
+    				 table.columns.adjust().draw(); // Redraw the DataTable
+
+
+    				 
+    				 archived_table.clear().draw();
+    				 if(NewlyCreatedData.icd_data_archived){
+	    				 archived_table.rows.add(NewlyCreatedData.icd_data_archived); // Add new data
+       				 }
+    				 archived_table.columns.adjust().draw(); // Redraw the DataTable
+
+
+    				 ended_table.clear().draw();
+    				 if(NewlyCreatedData.icd_data_ended ) {
+	    				 ended_table.rows.add(NewlyCreatedData.icd_data_ended); // Add new data
+       				 }
+    				 ended_table.columns.adjust().draw(); // Redraw the DataTable
+				} else{
+    				 table.clear().draw();
+    				 
+    				 archived_table.clear().draw();
+    				 
+    				 ended_table.clear().draw();
+					}
+			}
+		});	
+
+		
+	});
+
+
+var fixHelper = function(e, ui) {
+    ui.children().each(function() {
+        $(this).width($(this).width());
+    });
+    return ui;
+};
+
+
+
+
+$('#table_icd tbody').sortable({
+    axis: "y",
+    cursor: "move",
+    helper: fixHelper,
+    handle: ".drag-sort",
+
+
+    stop: function(event, ui)
+    {
+        var data = $('#table_icd tbody').sortable(
+            "serialize",
+            { key: 'order[]', attribute: 'data-order' }
+        );
+
+	 var url = 'patientdiagnosis/tabsevents?id='+pid+'&action=roworder';
+     $.ajax({
+          type: "post",
+          async: true,
+          url: url,
+          data: data,
+          dataType: 'json',
+          error: function(data) {
+              alert("Error sorting options, please try again.");
+              return false;
+          },
+          success: function(data)
+          {
+				$('#table_icd').html();
+
+				if(data && data != 0 ){
+   				 //var NewlyCreatedData = JSON.parse(data);
+   				 var NewlyCreatedData = data;
+   				$.each($("input[name='filter_options']:checked"), function() {
+  						 $(this).prop('checked',false);
+  					});
+  					
+   				 table.clear().draw();
+      				 if(NewlyCreatedData.icd_data){
+	    				 table.rows.add(NewlyCreatedData.icd_data); // Add new data
+      				 }
+      			 table.order('0','asc');
+   				 table.columns.adjust().draw(); // Redraw the DataTable
+
+				} else{
+       				 table.clear().draw();
+				}
+          }
+        });
+    }
+}).disableSelection();
+
+});
+
+</script>
+<br/>
+ 
+<!-- FILTER  -->
+<div class="icd_filters">
+	<?php foreach($this->diagnosis_categories as $cat_id=>$cat) : ?>
+		<?php if(in_array($cat_id,$this->used_categories)):?>
+		
+		<span class="diagno_category_filter_cnt" data-category="<?php echo $cat_id; ?>" style="background:<?php echo $cat['color']?>" >
+		<?php if ($cat['filter_column'] == 'main_category'):?>
+    		<input id="<?php echo $cat_id; ?>" type="checkbox" class="diagno_category_filter filter_item" name="filter_options" value="1" data-filter_column = "<?php echo $cat['filter_column']?>" data-main_filter_value = "<?php echo $cat_id?>"  />
+		<?php else:?>
+    		<input id="<?php echo $cat_id; ?>" type="checkbox" class="diagno_category_filter filter_item" name="filter_options" value="1" data-filter_column = "<?php echo $cat['filter_column']?>" data-secondary_filter_value = "<?php echo $cat['filter_column']?>"  />
+		<?php endif;?>
+    		<label for="<?php echo $cat_id; ?>"  style="background:<?php echo $cat['color']?>">
+    		<?php echo $cat['shortcut'];?> - <?php echo $cat['name']?>
+    		</label>
+		</span>
+		<?php endif;?>
+	<?php endforeach;?>
+</div>
+
+<!-- ACTIVE  -->
+<div class="icd_block">
+<table id="table_icd" style="width: 100%;"></table>
+</div>
+
+
+<!-- ENDED -->
+<div class="ended_block">
+<h2>beendet, aber aus aktuellem Fall</h2>
+<table id="ended_table_icd" style="width: 100%;"></table>
+</div>
+
+<!-- ARCHIVED -->
+<div class="archived_block">
+<h1>Archiv der Diagnosen &amp; Symptome</h1>
+<table id="archived_table_icd" style="width: 100%;"></table>
+</div>
+
+
+
+
+<div id="icd_modal" class=" ">
+	<div class=" "></div>
+	<!-- load form -->
+</div>

@@ -1,0 +1,587 @@
+<script>
+var roster_page = '1';
+var national_holidays = '<?php echo $this->national_holidays_js; ?>';
+</script>
+
+<?php
+//css
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/page-css/usershiftsassignment.css?' . date('Ymd'));
+$this->headLink()->appendStylesheet(RES_FILE_PATH.'/javascript/chosen_v1.6.2/chosen_2016.09.22.css');
+
+//js
+$this->headScript()->appendFile(RES_FILE_PATH . '/javascript/portamento.js?' . date('Ymd'));
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/chosen_v1.6.2/chosen.jquery.js');
+
+
+
+
+
+$data = $this->data;
+$users = $data['users'];
+
+$doctor_users = $data['doctor_users'];
+$nurse_users = $data['nurse_users'];
+$other_users = $data['other_users']; //ISPC-2510 Carmen 26.02.2020
+
+$month_days_array = $data['selected_month_details']['month_days'];
+$patients = $data['patients'];
+$national_holidays = $data['national_holidays'];
+$users_select_box = $data['users_select_box'];
+$system_shifts  = array("day","night","pflege");
+$saved_data = $data['saved_data'];
+
+	//IE Freaking hack
+	$url = APP_BASE . "internalinvoice/usershiftsassignment?".$_SERVER['QUERY_STRING'];
+	if(str_replace("&month=".$_REQUEST['month']."", "", $url)){
+		$finalJsUrl = str_replace("&month=".$_REQUEST['month']."", "", $url);
+	} else {
+		$finalJsUrl = $url;
+	}
+
+?>
+<script>
+	var submited = false;
+	var allow_selection = false;
+
+	var users_details = jQuery.parseJSON('<?php echo json_encode($users ); ?>');
+	
+	var doctor_users = jQuery.parseJSON('<?php echo json_encode($doctor_users); ?>');
+	var nurse_users = jQuery.parseJSON('<?php echo json_encode($nurse_users); ?>');
+	var other_users = jQuery.parseJSON('<?php echo json_encode($other_users); ?>');
+	
+	
+	var do_ajax_load = '1';
+	
+
+	function changeMonth(data){
+		var url = "<?php echo $finalJsUrl; ?>&month="+data;
+		$(location).attr('href',url);
+			setTimeout(function () {$('input[type=submit]').attr('disabled', true);}, 150);
+			setTimeout(function () {$('input[type=submit]').attr('disabled', false);}, 8000);
+	}
+	
+	function select_user(user_id){
+		if (user_id) {
+			// deselect all day columns
+			$(".day_column").prop('checked', false);
+			$(".patient_row").prop('checked', false);
+			$(".select_all_days").prop('checked', false);
+			// shift rows 
+			
+			var color = users_details[user_id]['usercolor'];
+			var initials = users_details[user_id]['initials'];
+
+			$('.cell').each(function() {
+		       	$(this).removeClass(' prevent_strikethrough');
+		    });
+			
+			$('#select_all_days').prop('disabled', false);
+			$('#select_all_days').prop('checked', false);
+			$('.select_all_shifts').prop('checked', false);
+			
+			if(users_details[user_id].system_group == "doctor")
+			{
+				$('.chk_p_day').each(function() {
+			       	$(this).prop('disabled', false);
+			    });
+				$('.chk_p_night').each(function() {
+			       	$(this).prop('disabled', false);
+			    });
+				
+				
+				$('.pflege_cell').each(function() {
+			       	$(this).addClass(' prevent_strikethrough');
+			    });
+				$('.chk_p_pflege').each(function() {
+			       	$(this).prop('disabled', true);
+			    });
+				
+				$('#all_shift_day').prop('disabled', false);
+				$('#all_shift_night').prop('disabled', false);
+			    $('#all_shift_pflege').prop('disabled', true);
+				
+				
+			} else if(users_details[user_id].system_group == "pflege"){
+				$('.chk_p_pflege').each(function() {
+			       	$(this).prop('disabled', false);
+			    });
+				
+				$('.day_cell').each(function() {
+			       	$(this).addClass(' prevent_strikethrough');
+			    });
+				$('.chk_p_day').each(function() {
+			       	$(this).prop('disabled', true);
+			    });
+				
+				
+				$('.night_cell').each(function() {
+			       	$(this).addClass(' prevent_strikethrough');
+			    });
+				$('.chk_p_night').each(function() {
+			       	$(this).prop('disabled', true);
+			    });
+				
+				$('#all_shift_day').prop('disabled', true);
+				$('#all_shift_night').prop('disabled', true);
+				 $('#all_shift_pflege').prop('disabled', false);
+				
+			}
+			
+			$('#user_color_preview').css('background-color', "#" + color);
+			$('#user_color_preview').empty();
+			$('#user_color_preview').append(initials);
+			allow_selection = true;
+		} else {
+			$('#user_color_preview').css('background-color', "");
+			allow_selection = false;
+		}
+		
+	}
+	
+	
+	$(document).ready(function() {
+		/*
+		$("li#header_row").contents().appendTo("#container .header_dates");
+		$('#container').portamento({
+			wrapper: $('#example_wrapper'),
+			gap: 20,
+		});
+		*/
+		$('#user_selector').chosen({
+			placeholder_text_single: translate('please select'),
+			placeholder_text_multiple : translate('please select'),
+			multiple:0,
+			width:'250px',
+			"search_contains": true,
+			no_results_text: translate('noresultfound')
+		});
+		
+		$('#all_shift_day').prop('disabled', true);
+		$('#all_shift_night').prop('disabled', true);
+	    $('#all_shift_pflege').prop('disabled', true);
+	    $('#select_all_days').prop('disabled', true);
+
+		
+		
+		$('.patient_row').live('change', function(e) {
+			// check if user is selected
+			var selected_user_id = $('#user_selector').val();
+			var row_shift = $(this).data('shift');
+			var row_patient = $(this).data('patient');
+			
+			
+			if(selected_user_id){
+			  $('.day_column').each(function() {
+			        if ($(this).is(":checked")) {
+			        	var day = $(this).data('strtotime');
+			            $("#cell_"+day+'_'+ row_patient + '_' +row_shift).click(); 
+			        }
+			    });
+			}
+			
+		});
+		
+		
+		$('.day_column').live('change', function(e) {
+			// check if user is selected
+			var selected_user_id = $('#user_selector').val();
+			var day = $(this).data('strtotime');
+			
+			if(selected_user_id){
+			  $('.patient_row').each(function() {
+			        if ($(this).is(":checked")) {
+						var row_shift = $(this).data('shift');
+						var row_patient = $(this).data('patient');
+			            $("#cell_"+day+'_'+ row_patient + '_' +row_shift).click(); 
+			        }
+			    });
+			}
+			
+		});
+		
+// 		.select_all_shifts
+// 		.select_all_days
+		
+		$('.select_all_days').live('click', function(e) {
+			if($(this).is(':checked')){
+				$('.day_column').attr('checked', true).trigger('change');
+			} else{ 
+				$('.day_column').attr('checked', false).trigger('change');
+			}
+			
+		});
+		
+		$('.select_all_shifts').live('click', function(e) {
+			var shift = $(this).data('shift')
+			if($(this).is(':checked')){
+				$('.chk_p_'+shift).attr('checked', true).trigger('change');
+			} else{ 
+				$('.chk_p_'+shift).attr('checked', false).trigger('change');
+			}
+			
+		});
+		
+		
+		
+		
+	/* 	$('.row2select_multiple').live('change', function(e) {
+			$('.select_all_days').attr('checked', false);
+		});
+		
+		
+		
+		$('.select_all_days').live('click', function(e) {
+
+			var options2check = $('.row2select_multiple').val();
+			
+			if($(this).is(':checked')){
+				if(options2check == "days"){
+					
+					$('.day_column').attr('checked', true).trigger('change');
+				}
+				else if(options2check == "day"){
+					$('.chk_p_day').attr('checked', true).trigger('change');
+				}
+				else if(options2check == "night"){
+					$('.chk_p_night').attr('checked', true).trigger('change');
+				}
+				else if(options2check == "pflege"){
+					$('.chk_p_pflege').attr('checked', true).trigger('change');
+				}
+			} else {
+				if(options2check == "days"){
+					
+					$('.day_column').attr('checked', false).trigger('change');
+				}
+				else if(options2check == "day"){
+					$('.chk_p_day').attr('checked', false).trigger('change');
+				}
+				else if(options2check == "night"){
+					$('.chk_p_night').attr('checked', false).trigger('change');
+				}
+				else if(options2check == "pflege"){
+					$('.chk_p_pflege').attr('checked', false).trigger('change');
+				}
+			}
+			
+		});
+		 */
+		
+		
+		
+		//add/remove selected classes where checkbox/table cell is clicked
+		$('.cell').live('click', function(e) {
+			var checkbox = $(this).find('input[type="checkbox"]');
+			var selected_user_id = $('#user_selector').val();
+			var curent_user_id = checkbox.val();
+			var chk_id = checkbox.attr('id');
+			var checkbox_strtotime = checkbox.data("strtotime");
+			
+			var shift_row = checkbox.data('shift');
+			if (allow_selection === true) {
+					
+				
+				if ( shift_row == "pflege" && users_details[selected_user_id].system_group == "doctor"){
+					return false; // do not allow doctors to select pflege line
+				}
+				
+				if ( (shift_row == "day" || shift_row == "night") && users_details[selected_user_id].system_group == "pflege"){
+					return false; // do not allow pflefe to select pflege doctors
+				}
+				
+				if ( curent_user_id != selected_user_id
+						&& users_details[selected_user_id].valid_till_date !== null 
+						&& users_details[selected_user_id].valid_till_date < checkbox_strtotime
+				){
+					return false; //we are only allowed to disable this valid_till_shifts
+				}
+				
+				var shift_shortcut = users_details[selected_user_id]['initials'];
+					//change checkbox value with the id of selected shift
+					checkbox.val(selected_user_id);
+
+					//mark/unmark checkbox
+					checkbox.attr("checked", !checkbox.attr("checked"));
+					//get selected shift color
+					var color = users_details[checkbox.val()]['usercolor'];
+
+					//change class of parent td
+					if (checkbox.is(':checked')) {
+						//change color of the parent td
+						$(this).css('background-color', "#" + color);
+
+						if ($(this).hasClass('weekend')) {
+							$(this).addClass('selected_cell_weekend manually_selected');
+						} else {
+							$(this).addClass('selected_cell manually_selected');
+						}
+						
+						$('#span_'+chk_id).html(shift_shortcut);
+					} else {
+						
+						$(this).css('background-color', "");
+						checkbox.val('');
+						if ($(this).hasClass('weekend') || $(this).hasClass('selected_cell_weekend')) {
+							$(this).removeClass('selected_cell manually_selected selected_cell_weekend');
+						} else {
+							$(this).removeClass('selected_cell manually_selected');
+						}
+						$('#span_'+chk_id).html('');
+						$('#deleted_cells').val($('#deleted_cells').val() + ',' +chk_id); //add the cell to the deleted values
+					}
+				}
+			});
+
+			//allow submit without "leave page" alert
+			$('.save').on('click', function() {
+				
+				setTimeout(function () {$('.save_roster').attr('disabled', true);}, 150);
+				setTimeout(function () {$('.save_roster').attr('disabled', false);}, 8000);
+				
+				$('input[name="submit_buton"]').val('1');
+				submited = true;
+				$('#user_shift_assignment').submit();
+			});
+
+			//change month
+			$('#month').on('change', function() {
+				$('#new_dienstplan_form').submit();
+			});
+
+ 
+	});
+ 
+ 
+	//weird "leave page" function
+	var dontLeave = function(e) {
+		var selected_cells = $('#navcontainer input[type=checkbox]:checked').not('.auto_selected').length;
+		if (selected_cells > '0' && submited === false) {
+			return "<?php echo $this->translate('no_save_leave_alert'); ?>";
+		}
+	}
+
+	window.onbeforeunload = dontLeave;
+	
+</script>
+<style>
+.outer {
+	width: 100% !important;
+}
+
+#Wrapper {
+	width: 100% !important;
+	min-height: 5px;
+	overflow: hidden;
+}
+
+#Wrapper .LeftDiv {
+	float: left;
+	width: 200px;
+	overflow: hidden;
+	min-height: 100px;
+}
+
+#MainContent {
+	width: auto !important;
+	display: block; /*default display for div */
+	float: none; /*default float for div*/
+	padding-left: 10px;
+	padding-right: 30px;
+	min-height: 100px;
+	overflow: hidden;
+}
+
+body {
+	overflow-x: hidden;
+}
+#container {
+	z-index: 9999;
+}
+</style>
+	
+	<div id="example_wrapper" style="position:fixed;"></div>
+	
+	<div id="container" style="top:0px;">
+		<div class="bar_left">
+			<table>
+				<tr>
+					<td style='vertical-align: middle;'>
+						<label for="month" id="month_select_label"><?php echo $this->translate('selectmonth'); ?></label>
+					</td>
+					<td>
+						<?php echo $this->formSelect('month', $this->data['current_month'], array('onChange'=>'changeMonth(this.value)'), $this->data['months']) ?>
+					</td>
+					<td></td>
+				</tr>
+			</table>
+		</div>
+		<?php if(!empty($patients)): ?>
+		<div class="bar_center">
+			<table>
+				<tr>
+					<td>
+						<input type="button" value="<?php echo $this->translate('save'); ?>" class="save" />
+						<input type="hidden" name="submit_buton" value="" />
+					</td>
+				</tr>
+			</table>
+		</div>
+
+		<div class="bar_right">
+			<table>
+				<tr>
+					<td colspan="4">
+						<?php echo $this->translate('user_selector_exp');  ?>
+					</td>
+				</tr>
+				<tr>
+					<td style="width:100px;">
+						&nbsp;
+					</td>
+					<td>
+						<label><?php echo $this->translate('select_user_label'); ?></label>
+					</td>
+					<td>
+						<?php echo $this->formSelect(
+									'user', 
+									 null, 
+									 array(
+										"class" => "todo_selectbox",
+										"onChange" => "select_user(this.value)",
+										"multiple" => false,
+										"size" => 1,
+										"id"=>"user_selector"
+									), 
+									$users_select_box
+							);
+							?>
+					</td>
+					<td style="vertical-align: middle;">
+						<div id="user_color_preview">&nbsp;</div>
+					</td>
+					<td></td>
+				</tr>
+			</table>
+		</div>
+		
+		<div class="header_dates" style="clear:both;">
+		</div>
+		<?php endif; ?>
+	</div>
+	
+<?php if(!empty($patients)): ?>	
+<ul style="margin: 0;padding: 0; list-style-type: none; width: 1065px;">
+	<li class="header-row" id="header_row">
+		<div class="col_names new_selectors" >
+			
+			<span><label for="all_shift_day">alle Tags.</label><input type="checkbox" id="all_shift_day" class="select_all_shifts" data-shift="day" value="1"/></span>
+			<span><label for="all_shift_night">alle Nachts.</label><input type="checkbox" id="all_shift_night" class="select_all_shifts" data-shift="night" value="1" /></span>
+			<span><label for="all_shift_pflege">alle Pfleges.</label><input type="checkbox" id="all_shift_pflege" class="select_all_shifts" data-shift="pflege" value="1" /> </span>
+			<span class="last_selector"><label for="all_column_days"></label><input type="checkbox" id="all_column_days" class="select_all_days" value="1" /></span>
+			
+			
+		</div>
+		<?php foreach ($month_days_array as $day): $day_type = date('w', strtotime($day)); ?>
+		<div class="col header_row_cell <?php if(in_array($day, $national_holidays)):?> holiday_roster <?php endif; ?> <?php if ($day_type == 0 || $day_type == 6): ?> weekend <?php else: ?> normal_day <?php endif; ?> day_display">
+			<span><?php echo date('d', strtotime($day)); ?> <?php echo strftime('%a', strtotime($day)); ?></span>
+			
+			<input type="checkbox"
+			class="day_column"
+			data-strtotime="<?php echo strtotime($day);?>"
+			value="<?php echo $day;?>"
+			style="margin-top:40px;" 
+			/>
+		</div>
+		<?php endforeach; ?>
+	</li>
+</ul>
+<?php endif; ?>
+<form action="" name="user_shift_assignment" id="user_shift_assignment" method="POST">
+	<?php if(empty($patients)): ?>
+		 <div><span><?php echo $this->translate('No patients active in this month'); ?></span></div> 
+	<?php else: ?>
+		<?php $pt_nr = 1; foreach ($patients as $pateint_ipid => $patient_data): ?>
+			<?php
+				$patient_full_name = mb_substr($patient_data['nice_name'], 0, 25, "UTF-8");
+				if(strlen($patient_data['nice_name']) > '25')
+				{
+					$patient_full_name = $patient_full_name.'...';
+				}
+			?>
+			<ul class="sortable3" id="grouped-row-users-data-row_<?php echo $patient_data['epid']?>"  style="margin: 0; margin-bottom: 30px;  padding: 0; list-style-type: none; width: 1065px;">
+				<?php foreach($system_shifts as $shift): ?>
+				
+					<li class="row_<?php echo $patient_data['epid'];?>   row_<?php echo $shift;?>" style="width: 100%;float: left;">
+						<div class="col_names cell_names" style='background: url("<?php echo RES_FILE_PATH; ?>/images/<?php echo $shift; ?>.png") center right no-repeat'>
+							<span style="  float: left; width: 80%"> <?php echo $shift == "day" ? $patient_full_name : ""; ?> </span>
+							<span style="float: right; width: 20%">
+							<input type="checkbox"
+							class="patient_row chk_p_<?php echo $shift;?>"
+							data-shift="<?php echo $shift;?>" 
+							data-patient="<?php echo $patient_data['epid'];?>" 
+							value="1" 
+							/>
+							</span>
+						</div>
+						
+							<?php foreach ($month_days_array as $k_day => $day):?> 
+							<?php $day_type = date('w', strtotime($day)); ?>
+								
+							<?php 
+								$col_cell_class = "";
+
+								if($shift == "pflege"){
+									$col_cell_class .= "last_user_row"; 
+								}
+
+								if ( !in_array($day,$patient_data['active_dats_Ymd']) ) {
+									//$col_cell_class .= " strikethrough ";	
+								} 
+
+								if(in_array($day, $national_holidays)){
+									$col_cell_class .= " holiday_roster";
+								} 
+								if ($day_type == 0 || $day_type == 6){
+									$col_cell_class .= " weekend"; 
+								} 
+								else
+								{ 
+									if(strlen($saved_data[$patient_data['epid']][$day][$shift]) > '0' && ($day_type == 0 || $day_type == 6))
+									{  
+										$col_cell_class .= "selected_cell_weekend";
+								 	}
+									elseif(strlen($saved_data[$patient_data['epid']][$day][$shift]) > '0')
+									{  
+										$col_cell_class .= "selected_cell"; 
+									}  
+							 	}
+
+							?>
+								
+								<div class="col cell  <?php echo 'col_' . (date('j', strtotime($day)) - 1); ?> <?php echo $shift;?>_cell  <?php echo $col_cell_class; ?>" 
+								id="cell_<?php echo strtotime($day) . '_' . $patient_data['epid']; ?>_<?php echo $shift;?>" 
+								<?php if(strlen($saved_data[$patient_data['epid']][$shift][$day]) > '0'): echo 
+								'style="background-color:#'.$users[$saved_data[$patient_data['epid']][$shift][$day]]['usercolor'].';"'; endif;  ?> align="center" >
+									<span id="span_<?php echo strtotime($day) . '_' . $patient_data['epid']; ?>_<?php echo $shift;?>"> 
+										<?php echo $users[$saved_data[$patient_data['epid']][$shift][$day]]['initials']; ?>
+									</span>
+									<input type="checkbox" 
+									data-strtotime="<?php echo strtotime($day);?>" 
+									data-shift="<?php echo $shift;?>" 
+									id="<?php echo strtotime($day) . '_' . $patient_data['epid']; ?>_<?php echo $shift;?>" 
+									name="form_data[<?php echo $patient_data['epid']; ?>][<?php echo $shift;?>][<?php echo strtotime($day); ?>]" 
+									value="<?php echo $saved_data[$patient_data['epid']][$shift][$day]; ?>" 
+									class="day_checkbox <?php if (strlen($saved_data[$patient_data['epid']][$shift][$day]) > '0'): ?> auto_selected <?php endif; ?>" 
+									<?php if (strlen($saved_data[$patient_data['epid']][$shift][$day]) > '0'): ?>checked="checked"<?php endif; ?> 
+									/>
+								</div>
+							<?php endforeach; ?>
+						</li>
+						<?php endforeach;?>
+					</ul>
+ <br/>&nbsp;<br/>
+		<?php $pt_nr++; endforeach; ?>
+	<?php endif; ?>
+<input type="hidden" name="form_data[deleted_cells]" id="deleted_cells" />
+</form>
+

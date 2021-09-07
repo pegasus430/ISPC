@@ -1,0 +1,607 @@
+<script>
+var roster_page = '0';
+</script>
+<?php
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/jquery.blockUI.js');
+?>
+
+<link rel='stylesheet' type='text/css' href='<?php echo RES_FILE_PATH;  ?>/css/fullcalendar/fullcalendar.css?<?php echo date('Ymd');  ?>' />
+<script type="text/javascript" src="<?php echo RES_FILE_PATH;  ?>/javascript/fullcalendar/fullcalendar.js?<?php echo date('Ymd');  ?>"></script>
+<script type="text/javascript" src="<?php echo RES_FILE_PATH;  ?>/javascript/calendars.js?<?php echo date('Ymd');  ?>"></script>
+<script type="text/javascript" src="<?php echo RES_FILE_PATH;  ?>/javascript/jquery.uiforms.js?<?php echo date('Ymd');  ?>"></script>
+<link href="<?php echo RES_FILE_PATH;  ?>/javascript/jgrowl/filepatient.css?<?php echo date('Ymd');  ?>" rel="stylesheet" type="text/css">
+<?php
+$logininfo= new Zend_Session_Namespace('Login_Info');
+
+if ($_GET['cid'] == $logininfo->clientid)
+{
+	$clintid = $_GET['cid'];
+}
+else
+{
+	$clintid = $logininfo->clientid;
+}
+?>
+
+<script type="text/javascript">
+$(document).ready(function(){
+		$( ".docGroups" ).accordion({
+			autoHeight: false
+		});
+
+
+		<?php
+			if($_POST['month'])
+			{
+				$ym_values = explode('_', $_POST['month']);
+
+				echo "$('#teamCalendar').fullCalendar('gotoDate', '".$ym_values[0]."', '".($ym_values[1]-1)."', '1');";
+			}
+		?>
+		$(".selectorDuty").each(function(){ //change id`s of select elements to be the same so we can block all selected options in remaining selects
+			var elemArr = $(this).attr('name').split("_");
+			var elemId = elemArr[0]+'_'+elemArr[1]+'_'+elemArr[2]+'_'+elemArr[3]+'_'+elemArr[4];
+
+			if($(this).attr('id') == elemId+'_'+elemArr[5]){
+				$(this).attr('id', elemId);
+			}
+		});
+
+
+		$(".fullshift").each(function(){
+			if($(this).is(':checked')){
+				$('#customShift-'+$(this).attr('id')).hide();
+			} else {
+				$('#customShift-'+$(this).attr('id')).show();
+				$('#sst-'+$(this).attr('id')).timepicker({
+					minutes: {
+						interval: 5
+					},
+					showPeriodLabels: false,
+					rows: 4,
+					hourText: 'Stunde',
+					minuteText: 'Minute'
+				});
+				$('#est-'+$(this).attr('id')).timepicker({
+					minutes: {
+						interval: 5
+					},
+					showPeriodLabels: false,
+					rows: 4,
+					hourText: 'Stunde',
+					minuteText: 'Minute'
+				});
+			}
+		}).live('change', function(){
+			if($(this).is(':checked')){
+				$('#customShift-'+$(this).attr('id')).hide();
+				$('#sst-'+$(this).attr('id')).timepicker('destroy');
+				$('#est-'+$(this).attr('id')).timepicker('destroy');
+			} else {
+				$('#customShift-'+$(this).attr('id')).show();
+				$('#sst-'+$(this).attr('id')).timepicker({
+					minutes: {
+						interval: 5
+					},
+					showPeriodLabels: false,
+					rows: 4,
+					hourText: 'Stunde',
+					minuteText: 'Minute'
+				});
+				$('#est-'+$(this).attr('id')).timepicker({
+					minutes: {
+						interval: 5
+					},
+					showPeriodLabels: false,
+					rows: 4,
+					hourText: 'Stunde',
+					minuteText: 'Minute'
+				});
+			}
+		});
+
+
+		$('.selectorDuty').change(function(){
+			var sel_class = $(this).attr('id');
+
+			selectedValues = getDaySelectedValues(sel_class, true);
+			clearDayDisabled(sel_class);
+			disableDaySelected(selectedValues, true, sel_class);
+
+			if($('option:selected',this).val() > 0){
+				var idCheckbox = $(this).attr('id')+ '-' + $(this).attr('alt');
+				$('#'+idCheckbox).attr('disabled', false);
+			} else {
+				var idCheckbox = $(this).attr('id')+ '-' + $(this).attr('alt');
+				$('#'+idCheckbox).attr('disabled', true);
+			}
+		}).each(function(){
+			if($('option:selected',this).val() > 0){
+				var idCheckbox = $(this).attr('id')+ '-' + $(this).attr('alt');
+				$('#'+idCheckbox).attr('disabled', false);
+			} else {
+				var idCheckbox = $(this).attr('id')+ '-' + $(this).attr('alt');
+				$('#'+idCheckbox).attr('disabled', true);
+			}
+		});
+
+		var selectedValues = getSelectedValues(true);
+		disableSelected(selectedValues, true);
+		$('.tab_container').append('<a onclick="printaction()"><img src="images/print.gif" /></a>');
+
+		$('#btnsubmit').bind('click', function(){
+			$('#saverosterfile').submit();
+		});
+	});
+	function getValues(val,chk,stime,etime,uid,eid){
+
+		if(chk.is(':checked')){
+			var chkvalue = "1";
+		} else {
+			var chkvalue = "0";
+		}
+
+		$.ajax({
+			type: 'POST',
+			url: 'roster/insertroster',
+			async: true,
+			data: 'dt='+val.attr('name')+'&cid='+'<?=$clintid ?>'+'&id='+val.val()+'&uid='+uid+'&eid='+eid+'&chk='+chkvalue+'&stime='+stime.val()+'&etime='+etime.val(),
+			success: function(responseText) {
+				var object = jQuery.parseJSON(responseText);
+				if(object.callBackParameters.aid != ""){
+					$('.selectorDuty').each(function(){
+						if($(this).attr('id') == val.attr('id')){
+							//select
+							$("select[name="+val.attr('name')+"]").attr('onChange', "getValues($("+"'select[name="+val.attr('name')+"]'),$("+"'#"+chk.attr('id')+"'),$("+"'#"+stime.attr('id')+"'),$("+"'#"+etime.attr('id')+"'),'0','"+object.callBackParameters.aid+"')");
+							$("#"+chk.attr('id')+"").attr('onChange', "getValues($("+"'select[name="+val.attr('name')+"]'),$("+"'#"+chk.attr('id')+"'),$("+"'#"+stime.attr('id')+"'),$("+"'#"+etime.attr('id')+"'),'0','"+object.callBackParameters.aid+"');");
+							$("#"+chk.attr('id')+"").attr('onClick', 'toggleTimePeriods($(this));');
+							$("#"+stime.attr('id')+"").attr('onChange', "getValues($("+"'select[name="+val.attr('name')+"]'),$("+"'#"+chk.attr('id')+"'),$("+"'#"+stime.attr('id')+"'),$("+"'#"+etime.attr('id')+"'),'0','"+object.callBackParameters.aid+"')");
+							$("#"+etime.attr('id')+"").attr('onChange', "getValues($("+"'select[name="+val.attr('name')+"]'),$("+"'#"+chk.attr('id')+"'),$("+"'#"+stime.attr('id')+"'),$("+"'#"+etime.attr('id')+"'),'0','"+object.callBackParameters.aid+"')");
+
+						}
+					});
+				}
+			}
+		});
+	}
+	var errorcallBack = function(params)
+	{
+		$('#PatientspermissionError').removeClass('ErrorDivHide');
+		document.getElementById('PatientspermissionError').innerHTML = params.eror_msg;
+	}
+
+	function getSelectedValues(ids) {
+
+		var selectedValues = []
+		, $selected = $('.selectorDuty').children('option:selected');
+
+		$selected.each(function(){
+			if(this.value != 0){
+				if(ids == true){
+					selectedValues.push(this.value+'-'+$(this).parent().attr('id'));
+				} else {
+					selectedValues.push(this.value);
+				}
+			}
+		});
+		return selectedValues;
+	}
+
+
+	function clearDisabled() {
+		$('.selectorDuty').children(':disabled').attr('disabled', false);
+	}
+
+	function disableSelected(selectedValues,id) {
+
+		sv = selectedValues || [];
+
+		if(id === true){
+			var selectedIds  = [];
+			var selectedVals = [];
+
+			$.each(selectedValues, function(key, value) {
+				values = value.split('-');
+
+				selectedVals.push(values[0]);
+				selectedIds.push(values[1]);
+
+			});
+
+			for (var i=0;i<selectedVals.length;i++) {
+				$('.selectorDuty').each(function(){
+					if($(this).attr('id') == selectedIds[i]){
+						$('option[value=' + selectedVals[i] + ']',this).not(':selected').attr('disabled', true);
+					}
+				});
+			}
+		}
+	}
+
+//	PER DAYS ACTIONS some optimization
+	function getDaySelectedValues(elem_class, ids){
+		var selectedValues = []
+		, $selected = $('.'+elem_class).children('option:selected');
+
+		$selected.each(function(){
+			if(this.value != 0){
+				if(ids == true){
+					selectedValues.push(this.value+'-'+$(this).parent().attr('id'));
+				} else {
+					selectedValues.push(this.value);
+				}
+			}
+		});
+
+		return selectedValues;
+	}
+
+	function clearDayDisabled(day_sel_class) {
+		$('.'+day_sel_class).children(':disabled').attr('disabled', false);
+	}
+
+	function disableDaySelected(selectedValues,id, day_class) {
+
+		sv = selectedValues || [];
+
+		if(id === true){
+			var selectedIds  = [];
+			var selectedVals = [];
+
+			$.each(selectedValues, function(key, value) {
+				values = value.split('-');
+
+				selectedVals.push(values[0]);
+				selectedIds.push(values[1]);
+
+			});
+
+			for (var i=0;i<selectedVals.length;i++) {
+				$('.'+day_class).each(function(){
+					if($(this).attr('id') == selectedIds[i]){
+						$('option[value=' + selectedVals[i] + ']',this).not(':selected').attr('disabled', true);
+					}
+				});
+			}
+		}
+	}
+
+
+	//TO BE DELETED
+	function printObject(o) {
+		var out = '';
+		for (var p in o) {
+			out += p + ': ' + o[p] + '\n';
+		}
+		alert(out);
+	}
+
+	//IE8 live() bug in jq 1.3.2, functions required
+	function toggleTimePeriods(element){
+		if(element.is(':checked')){
+			$('#customShift-'+element.attr('id')).hide();
+		} else {
+			$('#customShift-'+element.attr('id')).show();
+		}
+	}
+	function toggleEventType(element){
+		if($('#'+element.attr('id')+' option:selected').val() == 4){
+			$('#endDateRow').hide();
+			//			$('#startDateRow').hide();
+			$('#eventNameRow').hide();
+			$('#allDayRow').hide();
+			$('#usersSelect').show();
+
+		} else if ($('#'+element.attr('id')+' option:selected').val() == 12){
+
+			$('#startDateRow').show();
+			$('#endDateRow').show();
+
+			$('#eventNameRow').show();
+			$('#allDayRow').show();
+			$('#usersSelect').hide();
+		}
+	}
+	function toggleEventAllDayT(element){
+		if ($("input[name='"+element.attr('name')+"']:checked").val() == '1') {
+			//disable and hide time selects
+			$('#startDateTimeT').val(" ");
+			$('#startDateTimeT').hide();
+
+			$('#endDateTimeT').val(" ");
+			$('#endDateTimeT').hide();
+		} else {
+			//enable and show time selects
+			$('#startDateTimeT').val(" ");
+			$('#startDateTimeT').show();
+
+			$('#endDateTimeT').val(" ");
+			$('#endDateTimeT').show();
+		}
+	}
+</script>
+<style type="text/css">
+	.ui-accordion .ui-accordion-header a { display: block; font-size: .9em; padding: .3em .3em .3em 2em; }
+</style>
+<div style="display: none;"><img id="calImg" src="<?php echo RES_FILE_PATH;  ?>/images/calendar.png" alt="Popup" class="trigger"></div>
+<fieldset>
+	<legend><?php echo $this->translate('roster')?></legend>
+
+	<form action="" method="post" name="frmmonth" id="frmmonth">
+		<div id="PatientsError" class="err"><?php echo $this->error_message ?></div>
+		<div id="PatientspermissionError" class="err"></div>
+		<br />
+		<label><?php echo $this->translate('selectmonth') ?></label>
+
+
+		<?php echo $this->formSelect('month',$this->curmonth,array("onChange"=>"form.submit()"),$this->options) ?>
+	</form>
+	<br />
+	<form action="" method="post" name="frmroster" id="frmroster">
+		<table style="width: 100%;">
+			<?php echo $this->rostergrid ?>
+
+		</table>
+	</form>
+	<br /><br />
+
+	<!-- tabs-3 => to have loading screen, tab_container => jquery touch enabler , calendarRoster=> limit calendar width-->
+	<div id="tabs-3" class="tab_container calendarRoster">
+		<div id="teamCalendar" ></div>
+	</div>
+	<div id="editEventTeam" >
+		<div id="contactArea" >
+			<table border="0" cellspacing="2" cellpadding="2" width="100%">
+				<tbody>
+					<tr id="nameRow">
+						<td style="width:135px;"><label>Name Termin: </label></td>
+						<td colspan="2">
+							<input type="text" name="eventTitleET" value="" id="eventTitleET" />
+							<input type="hidden" name="eventIdET" value="" id="eventIdET" />
+							<input type="hidden" name="eventTypeET" id="eventTypeET">
+						</td>
+					</tr>
+					<tr id="startDateRowET">
+						<td style="width:135px;">Begin Datum: </td>
+						<td colspan="2" style="width:auto;">
+							<input type="text" name="startDateET" value="" id="startDateET" readonly="readonly"/>
+							<input type="text" name="startDateTimeET" value="" id="startDateTimeET" style="width: 50px;"/>
+						</td>
+					</tr>
+					<tr id="endDateRowET">
+						<td style="width:135px;">Ende Datum: </td>
+						<td style="width:auto;">
+							<input type="text" name="endDateET" value="" id="endDateET" readonly="readonly"/>
+							<input type="text" name="endDateTimeET" value="" id="endDateTimeET" style="width: 50px;" />
+						</td>
+					</tr>
+					<tr id="allDayET">
+						<td style="width:135px;">ganztags: </td>
+						<td>
+							<label for="allDayOnET">Ja</label>
+							<input type="radio" name="allDayET" id="allDayOnET" value="1" onclick="toggleEventAllDayET($(this));" />
+							<label for="allDayOffET">Nein</label>
+							<input type="radio" name="allDayET" id="allDayOffET" value="0" onclick="toggleEventAllDayET($(this));" />
+						</td>
+						<td></td>
+					</tr>
+					<tr id="dayplan_inform_Row">
+					<td style="width:135px;"><?php echo $this->translate('customevent_inform_dayplaning') ?>:</td>
+					<td>
+						<label for="dayplan_inform_on">Ja</label>
+						<input type="radio" name="dayplan_inform" id="dayplan_inform_on" value="1" />
+						<label for="dayplan_inform_off">Nein</label>
+						<input type="radio" name="dayplan_inform" id="dayplan_inform_off" value="0" />
+					</td>
+					<td></td>
+				</tr>
+				</tbody>
+			</table>
+		</div>
+	</div>
+
+	<div id="addneweventteam" >
+		<div id="contactArea" >
+			<table border="0" cellspacing="2" cellpadding="2" width="100%">
+				<tbody>
+					<tr id="eventNameRow">
+						<td style="width:135px;">Name Termin: </td>
+						<td colspan="2"><input type="text" width="100%" name="eventTitleT" value="" id="eventTitleT" /></td>
+					</tr>
+					<tr id="usersSelect">
+						<td colspan="3">
+							<div class="" style="width:580px; height: auto;">
+								<div id="groups">
+									<?php
+									foreach($this->groups as $gKey=>$group){
+									echo '<h3><a href="#">'.$group['groupname'].'</a></h3>';
+									echo '<div id="duty">';
+										echo '<div class="container" style="font-weight: 700;">
+											<div style="float:left;width: 130px;">Benutzer auswählen</div>
+											<div class="containerChk">ganztags</div>
+											<div id="customShift" class="timeContainer" style="width: 300px;">
+												<div class="inputContainer" style="width: 150px;">Begin datum</div>
+												<div class="inputContainer" style="width: 140px;">Ende datum</div>
+											</div>
+										</div>';
+										for($i=1;$i<=4;$i++){
+										echo '<div class="container">';
+											echo $this->formSelect('userGroup[]', null, array("class"=>"selectUser"), $this->groupUsers[$group['id']]);
+											echo '<div class="containerChk"><label for="'.$gKey.'-'.$i.'">ganztags</label><input type="checkbox" value="1" name="fullShift[]" id="'.$gKey.'-'.$i.'" class="fullshift" checked="checked" onclick="toggleTimePeriods($(this));"/></div>';
+											echo '
+											<div id="customShift-'.$gKey.'-'.$i.'" class="timeContainer">
+												<div class="inputContainer"><input type="text" class="datepick" name="startShiftDate[]" id="ssd-'.$gKey.'-'.$i.'" readonly="readonly"/></div>
+												<div class="inputContainer"><input type="text" class="timepick" name="startShiftTime[]" id="sst-'.$gKey.'-'.$i.'" /></div>
+												<div class="inputContainer" style="padding-left:35px;"><input type="text" class="datepick" name="endShiftDate[]" id="esd-'.$gKey.'-'.$i.'" readonly="readonly"/></div>
+												<div class="inputContainer"><input type="text" class="timepick" name="endShiftTime[]" id="est-'.$gKey.'-'.$i.'" /></div>
+											</div>
+											';
+											echo '</div>';
+										}
+
+										echo '</div>';
+
+									}
+									?>
+								</div>
+							</div><!-- End demo -->
+						</td>
+					</tr>
+					<tr id="startDateRow">
+						<td style="width:135px;">Begin Datum: </td>
+						<td colspan="2" style="width:auto;">
+							<input type="text" name="startDateT" value="" id="startDateT" readonly="readonly"/>
+							<input type="text" name="startDateTimeT" value="" id="startDateTimeT" style="width: 50px;"/>
+						</td>
+					</tr>
+					<tr id="endDateRow">
+						<td style="width:135px;">Ende Datum: </td>
+						<td style="width:auto;">
+							<input type="text" name="endDateT" value="" id="endDateT" readonly="readonly"/>
+							<input type="text" name="endDateTimeT" value="" id="endDateTimeT" style="width: 50px;" />
+						</td>
+					</tr>
+					<tr id="allDayRow">
+						<td style="width:135px;">ganztags: </td>
+						<td>
+							<label for="allDayOn">Ja</label>
+							<input type="radio" name="allDayT" id="allDayOnT" value="1" onclick="toggleEventAllDayT($(this));" />
+							<label for="allDayOff">Nein</label>
+							<input type="radio" name="allDayT" id="allDayOffT" value="0" onclick="toggleEventAllDayT($(this));" />
+						</td>
+						<td></td>
+					</tr>
+					<tr>
+						<td style="width:135px;">Art des Termin:</td>
+						<td>
+							<select name="eventTypeT" id="eventTypeT" onchange="toggleEventType($(this));">
+								<option value="4">Dienstplan</option>
+								<option value="12">Ferien</option>
+								<option value="13">Team Sitzungen</option>
+								<option value="14">Fortbildung</option>
+								<option value="15">Supervision</option>
+								<option value="16">Kongress</option>
+								<option value="17">Rufbereitschaft</option>
+								<option value="20">Einsatzleitung</option>
+								<option value="21">Termin</option>
+							</select>
+						</td>
+						<td></td>
+					</tr>
+					<tr>
+					<td style="width:135px;"><?php echo $this->translate('customevent_inform_dayplaning') ?>:</td>
+					<td>
+						<label for="dayplan_inform_on">Ja</label>
+						<input type="radio" name="dayplan_inform" id="dayplan_inform_on" value="1" />
+						<label for="dayplan_inform_off">Nein</label>
+						<input type="radio" name="dayplan_inform" id="dayplan_inform_off" value="0" />
+					</td>
+					<td></td>
+				</tr>
+				</tbody>
+			</table>
+		</div>
+	</div>
+	<div id="delEventT" >
+		<div id="contactArea" >
+			<input type="hidden" name="parentModalT" id="parentModalT" value="" />
+			<?php echo $this->translate('deleteCustomEvents') ?>
+		</div>
+	</div>
+	<form action="" method="post" name="calendarprint" id="calendarprint" autocomplete="off" >
+
+	</form>
+	<br /><br />
+	<h1><?php echo $this->translate('rosterUploadedFiles') ?></h1>
+	<table width="85%" border="0" align="left" cellpadding="0" cellspacing="0" class="datatable" id="listpatientfiles_contenttable">
+		<tr>
+			<th height="20" align="left" valign="top"><strong><?php echo $this->translate('date');?></strong></th>
+			<th height="20" align="left" valign="top"><strong><?php echo $this->translate('title');?></strong></th>
+			<th align="left" valign="top"><strong><?php echo $this->translate('filetype');?></strong></th>
+			<th align="left" valign="top"><strong><?php echo $this->translate('uploadby');?></strong></th>
+			<th align="left" valign="top"><strong><?php echo $this->translate('deletes');?></strong></th>
+		</tr>
+		<?php
+		$filetypearray = array("zip"=>"zip.png","msword"=>"word.png","vnd.openxmlformats-officedocument.wordprocessingml.document"=>"word.png","docx"=>"word.png","excel"=>"excel.png","xls"=>"excel.png","XLSX"=>"excel.png","vnd.openxmlformats-officedocument.spreadsheetml.sheet"=>"excel.png","pdf"=>"pdf.png","txt"=>"text.png","text"=>"text.png","plain"=>"text.png","vnd.ms-powerpoint"=>"powerpoint.png","vnd.openxmlformats-officedocument.presentationml.presentation"=>"powerpoint.png","jpeg"=>"file-jpg.png","jpg"=>"file-jpg.png","gif"=>"file-gif.png");
+
+		foreach($this->filesData as $keyf=>$fileData){
+
+		$filetype = strtoupper($fileData['file_type']);
+		$file_type = $filetypearray[$fileData['file_type']];
+		$allUsers = $this->allusers;
+
+		if($fileData['isdeleted'] == 1){
+			$title = "<strike>".$fileData['title']."</strike>";
+			$deltete = " - ";
+			$prefix = " - ".$this->translate('deleted');
+		} else {
+			$title = '<a href="roster/rosterfile?doc_id='.$fileData[id].'">'.$fileData['title'].'</a>';
+			$delete = '<a href="roster/roster?delid='.$fileData[id].'"><img src="'.RES_FILE_PATH.'/images/action_delete.png" border="0" /></a>';
+			$prefix = "";
+		}
+		echo '
+		<tr class="row">
+			<td height="20" align="left" valign="top">'.date("d.m.Y", strtotime($fileData['create_date'])).'</td>
+			<td height="20" align="left" valign="top">'.$title.$prefix.'</td>
+			<td align="left" valign="top">'.$filetype.'</td>
+			<td align="left" valign="top">'.$allUsers[$fileData['create_user']].'</td>
+			<td align="left" valign="top">'.$delete.'</td>
+		</tr>
+		';
+		}
+		?>
+	</table>
+	<br />
+	<br />
+	<h1><?php echo $this->translate('rosterUploadFiles') ?></h1>
+	<form action="" method="post" name="saverosterfile" id="saverosterfile" autocomplete="off">
+		<table width="100%" border="0" cellspacing="0" cellpadding="0">
+			<tr>
+				<td width="35%" height="28" align="left" valign="top"><?php echo $this->translate('file_upload_title')?></td>
+				<td width="23%" height="28" align="left" valign="top"><label>
+						<input type="text" name="title" id="title" />
+						(<?php echo $this->translate('maxfilesize'); ?>: <?php echo ini_get('upload_max_filesize'); ?>B)
+						<input type="hidden" name="fileuploads" value="1" />
+					</label></td>
+				<td height="28" align="left" valign="top" class="err" colspan="2"><?php echo $this->error_title;?></td>
+			</tr>
+			<tr>
+				<td height="28" align="left" valign="top"><?php echo $this->translate('uploadfile_user')?>*</td>
+				<td height="28" align="left" valign="top">
+					<div id="file-uploader-demo1">
+						<noscript>
+						Please enable JavaScript to use file uploader.
+						</noscript>
+					</div>
+					<script src="<?php echo RES_FILE_PATH;  ?>/javascript/jgrowl/fileuploader.js" type="text/javascript"></script>
+
+					<script>
+						function createUploader(){
+							var uploader = new qq.FileUploader({
+								element: document.getElementById('file-uploader-demo1'),
+								action: appbase+'roster/rosteruploadify',
+								allowedExtensions: ['pdf','doc','docx','xls','xlsx','odt','rtf', 'ods'],
+								onSubmit: function(id, fileName){$('#btnsubmit').attr("disabled", "true");
+								},
+					        	onComplete: function(id, fileName, responseJSON){$('#btnsubmit').removeAttr("disabled");}
+							});
+						}
+
+						// in your app create uploader as soon as the DOM is ready
+						// don't wait for the window to load
+						window.onload = createUploader;
+					</script>
+				</td>
+				<td height="28" align="left" valign="top" colspan="2"></td>
+			</tr>
+			<tr>
+				<td height="28" align="left" valign="top">&nbsp;</td>
+				<td height="28" align="left" valign="top"><label>
+						<input type="button" name="btnsubmit" id="btnsubmit" value="<?php echo $this->translate('submit')?>" class="button">
+					</label></td>
+				<td height="28" align="left" valign="top">&nbsp;</td>
+				<td height="28" align="left" valign="top">&nbsp;</td>
+			</tr>
+
+		</table>
+	</form>

@@ -1,0 +1,170 @@
+<?php
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/chosen_v1.6.2/chosen.jquery.js');
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/dateUtil.js');
+
+
+$this->headLink()->appendStylesheet(RES_FILE_PATH.'/javascript/chosen_v1.6.2/chosen_2016.09.22.css');
+$this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/page-css/sgbvleistungsnachweispdf.css');
+?>
+<?php
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/data_tables/jquery.dataTables.js?'.date('Ymd'));
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/data_tables/dataTables.jqueryui.js?'.date('Ymd'));
+$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/data_tables/dataTables.jqueryui.css?' . date('Ymd'));
+?>
+<?php
+$page_lang = $this->translate('sgbvleistungsnachweispdf_lang');
+?>
+
+
+<script type="text/javascript">
+
+	var selected_month_details = <?php echo json_encode($this->selected_month_details); ?>;
+	var saved_data_groups_counter = <?php if(is_array($this->saved_data_groups)) { echo count($this->saved_data_groups);} else { echo "0";} ?>;
+	
+</script>
+
+<!-- datapicker image -->
+<div id="CalImg" style="display: none;">
+	<img id="calImg" src="<?php echo RES_FILE_PATH;  ?>/images/calendar.png" alt="Popup" class="trigger left" style="margin-top:5px;">
+</div>
+	
+	
+<form name="form_sgbv" method="post" id="form_sgbv" >	
+	<?php echo $this->formSelect("selected_month", $this->selected_month, array("id"=>"selected_month", "onchange"=>"selected_month_change()"), $this->selected_month_arr); ?>
+	
+	<!-- top table with patient/client details -->
+	<?php echo $this->tabulate($this->top_table, array("class"=>"datatable top_table", "id"=>"top_table")); ?>
+	
+
+	<div class="scrollholder" id="scrollholder">
+		<?php 
+		echo $this->formButton(
+			"show_header", 
+			$page_lang['show_header'], 
+			array("class"=>"button",
+				"onclick"=> "$('#top_table').toggle()",
+				"style"=>"float:right; margin:5px;"
+			)
+		); 
+		?> &nbsp;&nbsp;&nbsp;
+		<?php 
+		echo $this->formButton(
+			"scrollholder_expand", 
+			$page_lang['expand_table'], 
+			array("class"=>"button",
+				"onclick"=> "$('#scrollholder').toggleClass('scrollholder')",
+				"style"=>"float:right; margin:5px;"
+			)
+		); 
+		?>&nbsp;
+		<!-- table with the data -->
+		<?php echo $this->tabulate($this->data_arr, array("class"=>"datatable second_table", "id"=>"data_table")); ?>
+	</div>
+	
+	<?php echo $this->tabulate($this->blank_data_group, array("class"=>"datatable", "id"=>"blank_data_group" , "style"=>"display:none")); ?>
+
+	<?php 
+	echo $this->formButton(
+		"add_new_group", 
+		$page_lang["add_group_button"], 
+		array("class"=>"button add_new_group",
+			"onclick"=> "append_new_group(this)")
+	); 
+	?>
+	<?php 
+	echo $this->formButton(
+		"save", 
+		$page_lang["save"], 
+		array("class"=>"button save",
+			"onclick"=> "save_form(this)")
+	); 
+	?>
+	<?php 
+	echo $this->formButton(
+		"save_and_pdf", 
+		$page_lang["save_and_pdf"], 
+		array("class"=>"button save_and_pdf",
+			"onclick"=> "save_form(this)")
+	); 
+	?>
+</form>
+
+
+<!-- add/change hour dialog -->
+<div id="add_hour_dialog" style="overflow-y: none; display:none">
+	<input type="text" style="width: 0; height: 0; top: -100px; position: absolute;"/>
+	<div class="info">
+	</div>
+	
+	<div>
+		<?php echo $page_lang["add_hour_date"]; ?>
+		<br />
+		<input name="add_hour_dialog_date" class="add_hour_dialog_date" type="text" style=" background:url(<?php echo RES_FILE_PATH;  ?>/images/calendar.png) no-repeat right top; "/>
+	</div>
+
+</div>
+
+
+<!-- add/change hour dialog -->
+<div id="add_action_dialog" class="add_action_dialog" style="overflow-y: none; display:none">
+	<input type="text" style="width: 0; height: 0; top: -100px; position: absolute;"/>
+
+	<div class="add_action_option">		
+		<?php echo $page_lang["add_action_dialog_actions"]; ?>
+		<br />
+		<?php echo $this->formSelect("add_action_actions", "1", array("class"=>"add_action_actions"), $this->action_actions_arr); ?>
+		</div>
+	<br />
+	
+	<div class="add_action_option">
+		<?php echo $page_lang["add_action_dialog_startdate"]; ?>
+		<br />
+		<?php echo $this->formText("add_action_startdate", "", array("class"=>"add_action_startdate")); ?>
+	</div>
+	<br />
+
+	<div class="add_action_option">
+		<?php echo $page_lang["add_action_dialog_interval"]; ?>
+		<br />
+		<?php 
+		$intervals =  array(
+			'daily' => $page_lang['interval_daily'],
+			'every_x_days' => $page_lang['interval_every_x_days'],
+			'selected_days_of_the_week' => $page_lang['interval_selected_days_of_the_week'],
+			'user_defined_days' => $page_lang['interval_user_defined_days'],
+		);
+		echo $this->formRadio("add_action_interval", "1", array("class"=>"add_action_interval",  "onchange"=>"onclick_action_interval(this)") , $intervals , "\n");
+		?>
+		
+		<div class='interval_options daily'>
+			<?php echo $page_lang['interval_daily_infotext'];?>
+		</div>
+		
+		<div class='interval_options every_x_days'>
+			<?php echo $page_lang['interval_every_x_days_infotext'];?>
+			<br />
+			<?php echo $this->formText("every_x_days", null, array("class"=>"every_x_days")); ?>
+		</div>
+		
+		<div class='interval_options selected_days_of_the_week'>
+			<?php echo $page_lang['interval_selected_days_of_the_week_infotext'];?>
+			<br />
+			<?php echo $this->formMultiCheckbox("selected_days_of_the_week", null, array("class"=>"selected_days_of_the_week"), $this->days_of_week_arr , "<br />\n"); ?>
+		</div>
+        
+		<div class='interval_options user_defined_days'>
+			<?php echo $page_lang['interval_user_defined_days_infotext'];?>
+			<br />
+            <?php echo $this->formTextarea("user_defined_days", null, array("class"=>"user_defined_days multidatepicker", "rows" =>3, "cols" => 40)); ?>
+		</div>
+		
+	</div>
+</div>
+
+
+<!-- remove group dialog -->
+<div id="remove_groupid_dialog" style="overflow-y: none; display:none">
+	<div class="info">
+		<?php echo $page_lang["remove_groupid_dialog_infotext"]; ?>
+	</div>
+</div>

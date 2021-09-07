@@ -1,0 +1,257 @@
+<script type="text/javascript">
+    var loading = function(){
+
+	var dlist = '<div class="DropDwnTable" style="position:absolute;"><table border="0" align="left" cellpadding="0" cellspacing="0" class="Dropdwntble"><tr class="bluerow"><td valign="top"><img src="<?php echo RES_FILE_PATH; ?>/images/loading.gif"></td></tr></table></div>';
+	document.getElementById('doctdropdown').style.display = "";
+	document.getElementById('doctdropdown').innerHTML=dlist;
+
+    }
+
+    function dropDownchange(ltrval)
+    {
+	ajaxCallserver({url:'patient/fetchdropdown?ltr='+ltrval,callLoading:loading});
+    }
+
+
+    var doctors;
+    var docdropdiv = function(params){
+
+	var dlist = '<div class="DropDwnTable"><table border="0" align="left" cellpadding="0" cellspacing="0" class="Dropdwntble">';
+	doctors = params.doctors;
+	if(doctors.length>0){dlist+='<tr class="bluerow"><td class="first" valign="top"><strong><?php echo $this->translate('name'); ?></strong></td><td class="first" valign="top"><strong><?php echo $this->translate('firstname'); ?></strong></td><td class="first" valign="top"><strong><?php echo $this->translate('city'); ?></strong></td><td valign="top">&nbsp;</td></tr>';}
+	else
+	{
+	    dlist+='<tr><td colspan="2" class="BlueBox" valign="top"><?php echo $this->translate('noresultsaddfamilydoctor'); ?></td></tr>';
+	}
+
+	for(i=0;i<params.doctors.length;i++)
+	{
+	    dlist+='<tr class="bluerow" onclick="selectDoctor('+i+')"><td class="first" valign="top">'+params.doctors[i].last_name +'</td><td class="first" valign="top">'+params.doctors[i].first_name +'</td><td class="first" valign="top">'+params.doctors[i].city +'</td><td valign="top"><?php echo $this->translate('select'); ?></td></tr>';
+	}
+	dlist+= "</table></div>";
+
+	document.getElementById('doctdropdown').style.display = "";
+	document.getElementById('doctdropdown').innerHTML=dlist;
+	document.getElementById('msg').innerHTML = "<?php echo $this->translate('ifnoresultfamilydoctor'); ?>";
+
+    }
+
+    function selectDoctor(i)
+    {
+	document.getElementById('familydoc_id').value =doctors[i].last_name;
+	document.getElementById('doctdropdown').style.display = "none";
+	document.getElementById('hidd_docid').value =doctors[i].id;
+    }
+
+
+    function refDropDownchange(ltrval)
+    {
+	ajaxCallserver({url:'patient/fetchreferreddropdown?ltr='+ltrval,callLoading:r_loading});
+    }
+
+    var locationblur = Array();
+
+    $(function() {
+
+	$('#recording_date').datepicker({
+		dateFormat: 'dd.mm.yy',
+		showOn: "both",
+		buttonImage: $('#calImg').attr('src'),
+		buttonImageOnly: true,
+		changeMonth: true,
+		changeYear: true,
+		nextText: '',
+		prevText: ''
+	});
+	$('#admission_date').datepicker({
+		dateFormat: 'dd.mm.yy',
+		showOn: "both",
+		buttonImage: $('#calImg').attr('src'),
+		buttonImageOnly: true,
+		changeMonth: true,
+		changeYear: true,
+		nextText: '',
+		prevText: '',
+		minDate: '<?php echo $this->mindate; ?>',
+		maxDate: '<?php echo $this->disdate; ?>'
+	});
+
+	$('#birthd').datepicker({
+		dateFormat: 'dd.mm.yy',
+		showOn: "both",
+		buttonImage: $('#calImg').attr('src'),
+		buttonImageOnly: true,
+		changeMonth: true,
+		changeYear: true,
+		nextText: '',
+		prevText: '',
+		maxDate: '<?php echo date('d.m.Y'); ?>',
+		yearRange: '-100:+10'
+	});
+
+	$("#location_id").bind('keydown',function(e){livesearchlocationkeup(e,$(this))});
+
+	$("#location_id").blur(function(){
+
+	    locationblur = true;
+	    setTimeout(function(){closeloc()},100);
+	});
+
+
+    });
+
+    function closeloc(){
+
+	$('#locdropdown').hide();
+    }
+
+
+    function checkLocationStatus()
+    {
+	var loc_id = $('#location_id').find("option:selected").val();
+	ajaxCallserver({url:'locations/getlocationtype?lid='+loc_id});
+    }
+
+    var LocBack = function(params){
+
+	if(params.location_type=="1")
+	{
+	    $('#reasonDiv').show();
+	    $('#hospdocDiv').show();
+	}
+	else
+	{
+	    $('#reasonDiv').hide();
+	    $('#hospdocDiv').hide();
+	    $('#reason').val("");
+	    $('#hospdoc').val("");
+	}
+
+    }
+
+    var isdischarged = <?php echo $this->isdischarged ?>;
+</script>
+<script type="text/javascript" src="<?php echo RES_FILE_PATH; ?>/javascript/livesearch/referredby.js"></script>
+<script type="text/javascript" src="<?php echo RES_FILE_PATH; ?>/javascript/livesearch/patlocation.js"></script>
+
+<form action="<?php echo $this->act ?>" method="post" name="frmuser" id="frmuser" autocomplete="off" >
+<div style="display: none;">
+	<img id="calImg" src="<?php echo RES_FILE_PATH;  ?>/images/calendar.png" alt="Popup" class="trigger">
+</div>
+<?php echo $this->patientinfo ?>
+<?php echo $this->tabmenus ?>
+<div id="PatentEditDiv" class="tab_container">
+<br />
+<fieldset id="feldset_PatentEditDiv">
+<legend id="legnd_PatentEditDiv"><?php echo $this->translate('editpatient') ?></legend>
+
+<label id="PatDet_AdminDate"> <?php echo $this->translate('administrativedata') ?></label>
+<div class="clearer"></div>
+    <label for="referred_by" id="PtEdit_lbl_referred_by"><?php echo $this->translate('referredby') ?></label>
+     <?php echo $this->formSelect('referred_by', $this->referred_by, null, $this->referredbyarray) ?>
+    <div id="PatentEditDivError" class="error"><?php echo $this->error_ref_by; ?></div><div class="clearer"></div>
+	    
+	    <?php  if ($this->admins == 1) {?>
+  <label for="admission_date" id="lbl_admission_date1"><?php echo $this->translate('adminssiondate') ?></label>
+  <input type="text" name="admission_date" id="admission_date"  style="width:177px;" readonly="readonly" value="<?php echo $this->admission_date ?>" >
+   <?php echo $this->formSelect('adm_timeh', $this->adm_timeh, null, $this->hours) ?>
+   <?php echo $this->formSelect('adm_timem', $this->adm_timem, null, $this->minutes) ?>
+	<input type="hidden" name="previous_discharge_date" value="<?php echo $this->previous_discharge_date; ?>" />
+    <div id="patientMsterAd_ErrorMsg" class="error" style="height: auto; width:100%; "><?php echo $this->error_re_admission_date ?></div><div class="clearer"></div>
+ <?php }?>
+   <label for="name" id="PtEdit_lbl_first_name"><?php echo $this->translate('firstname') ?></label>
+    <input type="text" name="first_name" id="name" value="<?php echo htmlspecialchars($this->first_name); ?>" >
+    <div id="PatentEditDivError" class="error"><?php echo $this->error_first_name ?></div><div class="clearer"></div>
+
+	<label for="last_name" id="PtEdit_lbl_last_name"><?php echo $this->translate('lastname') ?></label>
+    <input type="text" name="last_name" id="last_name" value="<?php echo htmlspecialchars($this->last_name); ?>">
+    <div id="PatentEditDivError" class="error"><?php echo $this->error_last_name ?></div><div class="clearer"></div>
+
+  <label for="street1" id="PtEdit_lbl_street1"><?php echo $this->translate('street1') ?></label>
+  <input type="text" name="street1" id="street1" value="<?php echo htmlspecialchars($this->street1); ?>">
+    <div id="PatentEditDivError" class="error"><?php echo $this->error_street1 ?></div><div class="clearer"></div>
+
+	<label for="zip" id="PtEdit_lbl_zip"><?php echo $this->translate('postcode') ?></label>
+    <input type="text" name="zip" id="zip" value="<?php echo htmlspecialchars($this->zip); ?>">
+    <div id="PatentEditDivError" class="error"><?php echo $this->error_zip ?></div><div class="clearer"></div>
+
+  <label for="city" id="PtEdit_lbl_city"><?php echo $this->translate('city') ?></label>
+    <input type="text" name="city" id="city" value="<?php echo htmlspecialchars($this->city); ?>">
+    <div id="PatentEditDivError" class="error"><?php echo $this->error_city ?></div><div class="clearer"></div>
+
+  <label for="phone" id="PtEdit_lbl_phone"><?php echo $this->translate('phone') ?></label>
+   <input type="text" name="phone" id="phone" value="<?php echo $this->phone ?>">
+   <div id="PatentEditDivError" class="error"> <?php echo $this->error_phone ?></div><div class="clearer"></div>
+
+  <label for="mobile" id="PtEdit_lbl_mobile"><?php echo $this->translate('mobile') ?></label>
+   <input type="text" name="mobile" id="mobile" value="<?php echo $this->mobile ?>">
+   <div id="PatentEditDivError" class="error"><?php echo $this->error_mobile ?></div><div class="clearer"></div>
+	    <div class="clearer"></div>
+	    
+	    <label for="email" id="PtEdit_lbl_email"><?php echo $this->translate('email') ?></label>
+   <input type="text" name="email" id="email" value="<?php echo $this->email ?>">
+   <div id="PatentEditDivError" class="error"><?php echo $this->error_email ?></div><div class="clearer"></div>
+	    <div class="clearer"></div>
+
+  <label for="birthd" id="PtEdit_lbl_birthd"><?php echo $this->translate('birthd') ?></label>
+   <input type="text" name="birthd" id="birthd"  style="width:177px;" value="<?php echo $this->birthd ?>" >
+   <div id="PatentEditDivError" class="error"><?php echo $this->error_birthd ?></div>
+   
+   <label for="birth_name" id="PtEdit_lbl_birth_name"><?php echo $this->translate('birthname') ?></label>
+    <input type="text" name="birth_name" id="birth_name" value="<?php echo htmlspecialchars($this->birth_name); ?>">
+    <div id="PatentEditDivError" class="error"><?php echo $this->error_birth_name ?></div><div class="clearer"></div>
+    
+  <label for="birth_city" id="PtEdit_lbl_birth_city"><?php echo $this->translate('birthcity') ?></label>
+	 <input type="text" name="birth_city" id="birth_city" value="<?php echo htmlspecialchars($this->birth_city); ?>">
+	 <div id="PatentEditDivError" class="error"><?php echo $this->error_birth_city ?></div><div class="clearer"></div>  
+
+  <label for="sex" id="PtEdit_lbl_sex"><?php echo $this->translate('sex') ?></label>
+  <?php echo $this->formSelect('sex', $this->sex, null, $this->genders) ?>
+   <div id="PatentEditDivError" class="error"><?php echo $this->error_sex ?></div><div class="clearer"></div>
+
+	<?php if($this->show_height_detail == 1):?>	
+  <label for="birthd" id="PtEdit_lbl_birthd"><?php echo $this->translate('height_edit') ?></label>
+   <input type="text" name="height" id="height"  style="width:177px;" value="<?php echo $this->height ?>" >
+   <div class="clearer"></div>
+	<?php endif; ?>
+
+	<label for="fdoc_caresalone" id="PtEdit_lbl_fdoc_caresalone"><?php echo $this->translate('familycare') ?></label>
+   <?php echo  $this->formCheckbox('fdoc_caresalone', $this->fdoc_caresalone, null, array('1')); ?>
+    <div id="PatentEditDivError" class="error"><?php echo $this->error_familydoc_id ?></div><div class="clearer"></div>
+
+   <br/><br/>
+    <label for="real_contact_number" id="PtEdit_lbl_kontactnumber">ist die Kontakt-Telefonnummer</label>
+    
+    <?php echo  $this->formCheckbox('real_contact_number', $this->real_contact_number, array('id'=>'real_contact_number'), array('checkedValue'=>1)); ?>
+    <!-- 
+	<input type="checkbox" id="real_contact_number" name="real_contact_number" value="1" <?php
+if (!empty($this->real_contact_number) && ($this->real_contact_number == $this->phone || $this->real_contact_number == $this->mobile) && $this->kontactnumbertype == '0')
+{
+    echo "checked=checked";
+}
+?> />
+ -->
+  <br/>
+<div class="clearer"> &nbsp;</div>
+<div class="clearer">&nbsp; </div>
+  <br/>
+  <label>&nbsp;</label>
+
+      <input type="button" name="btnsubmit" id="btnsubmit-save" value="<?php echo $this->translate('submit') ?>" class="button" onclick="checkdischargednew('frmuser')">
+
+
+
+</fieldset>
+</div>
+</form>
+<div id="popupContact">
+		<a id="popupContactClose">x</a>
+		<p id="contactArea">
+		 <iframe id='add_family_doc' frameborder='0' src='' scrolling="no" style="margin:0 auto;"></iframe>
+		</p>
+	</div>
+	<div id="backgroundPopup"></div>
+
+<script type="text/javascript">
+<?php echo $this->locstat;?>
+</script>

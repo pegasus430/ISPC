@@ -1,0 +1,252 @@
+<table id="samtab" class="patientMasterStab1Table livesearchdropdown" style="width:100%;">
+	<tr id="liAdmDia_tr1">
+		<td valign="top" width="15%">Datum</td>
+		<td valign="top" width="85%">Vorgang</td>
+	</tr>
+	<gridrow>
+		<phpscript>
+$cntr++;
+
+//NOTICE
+//get medications array **  TO DO if user can in future delete the medication this list must be all client medications!! **
+//currently this array is the same as the existing medis in btm buch client history/stock table
+$medisarray = $view->medicationarray;
+
+//get methods
+$methodsarray = $view->methodsarray;
+$grid_methods_arr = $view->grid_methods_arr;
+//get stock values
+$stocksarray = $view->stocksarray;
+
+//get doctors array
+$doctorsarray = $view->all_users;
+
+$patientsSelector = $view->patientsDoctorSelectHistory;
+
+
+$cols = "";
+$ch = "";
+
+foreach($sumary as $clienthistoryid => $ch)
+{
+
+	if(!in_array($ch['id'], $skippedid))
+	{
+		if($ch['userid'] == '0' && $ch['methodid'] <= '6')
+		{
+			$string_key = 'tresor';
+		}
+		elseif($ch['userid'] > '0' && ($ch['methodid'] <= '6' || $ch['methodid'] == '12'))
+		{
+			$string_key = 'user';
+		}
+		elseif($ch['methodid'] >= '7' && $ch['methodid'] != '12')
+		{
+			$string_key = 'patient';
+		}
+
+		switch($ch['methodid'])
+		{
+			//PLUS OPERATION
+			case "1":
+				if($ch['type'] == "C")
+				{ 
+					//Übergabe von
+					//set next id to be skipped
+					$skippedid = array("0" => ($ch['stid']));
+					if($ch['amount'] < 0)
+					{
+						$ch['amount'] = ($ch['amount'] * (-1));
+					}
+
+					$direction = "übergibt " . $ch['amount'] . " <b>" . $medisarray[$ch['medicationid']]['name'] . "</b> an";
+					$next_user = $sumary[($ch['id'] + 1)]['userid'];
+
+					if($ch['stid'] == 0)
+					{
+						$cols .= $grid_methods_arr[$string_key][$ch['methodid']] . ": " . $doctorsarray[$ch['userid']] . " " . $direction . " " . $doctorsarray[$next_user] . " <br />";
+					}
+					else
+					{
+						$cols .= $grid_methods_arr[$string_key][$ch['methodid']] . ": " . $doctorsarray[$ch['userid']] . " " . $direction . " Gruppe / Tresor <br />";
+					}
+				}
+
+				if($ch['type'] == "CS")
+				{
+					//set next id to be skipped
+					$skippedid = array("0" => ($ch['stid']));
+					if($ch['amount'] < 0)
+					{
+						$ch['amount'] = ($ch['amount'] * (-1));
+					}
+
+					$direction = "übergibt " . $ch['amount'] . " <b>" . $medisarray[$ch['medicationid']]['name'] . "</b> an";
+					$next_user = $sumary[($ch['id'] + 1)]['userid'];
+
+					$cols .= $grid_methods_arr[$string_key][$ch['methodid']] . ": Gruppe / Tresor " . $direction . "  " . $doctorsarray[$ch['userid']] . "<br />";
+				}
+				break;
+
+			case "2": //liferung
+				if($ch['amount'] < 0)
+				{
+					$direction = "Bestand von <b>" . $medisarray[$ch['medicationid']]['name'] . "</b> um " . $ch['amount'] . " verringert durch";
+					$ch['amount'] = ($ch['amount'] * (-1));
+				}
+				else
+				{
+					$direction = "Bestand von <b>" . $medisarray[$ch['medicationid']]['name'] . "</b> um " . $ch['amount'] . " erhöht durch";
+				}
+
+				$cols .= $doctorsarray[$ch['userid']] . " " . $direction . " " . $grid_methods_arr[$string_key][$ch['methodid']] . "<br />";
+				break;
+
+			case "3": //sonstige
+				if($ch['amount'] < 0)
+				{
+					$direction = "Bestand von <b>" . $medisarray[$ch['medicationid']]['name'] . "</b> um " . $ch['amount'] . " verringert durch";
+					$ch['amount'] = ($ch['amount'] * (-1));
+				}
+				else
+				{
+					$direction = "Bestand von <b>" . $medisarray[$ch['medicationid']]['name'] . "</b> um " . $ch['amount'] . " erhöht durch";
+				}
+				
+				$sonstige_more = '';
+				if(strlen($ch['sonstige_more']))
+				{
+					$sonstige_more = " [". $ch['sonstige_more'] ."]";
+				}
+				
+
+				$cols .= $doctorsarray[$ch['userid']] . " " . $direction . " " . $grid_methods_arr[$string_key][$ch['methodid']] . $sonstige_more ."<br />";
+				break;
+
+			//MINUS OPERATION
+			case "4":
+				if($ch['type'] == "C")
+				{ 
+					//Übergabe von
+					//set next id to be skipped
+					$skippedid = array("0" => ($ch['stid']));
+					if($ch['amount'] < 0)
+					{
+						$ch['amount'] = ($ch['amount'] * (-1));
+					}
+					$direction = "übergibt " . $ch['amount'] . " <b>" . $medisarray[$ch['medicationid']]['name'] . "</b> an";
+					$next_user = $sumary[($ch['id'] + 1)]['userid'];
+
+					if($ch['stid'] == 0)
+					{ 
+						//afisare transfer de la user la alt user
+						$cols .= $grid_methods_arr[$string_key][$ch['methodid']] . ": " . $doctorsarray[$next_user] . " " . $direction . " " . $doctorsarray[$ch['userid']] . "<br />";
+					}
+					else
+					{ 
+						//afisare transfer de la grup la user >ubergabe an...
+						$cols .= $grid_methods_arr[$string_key][$ch['methodid']] . ": Gruppe / Tresor " . $direction . "  " . $doctorsarray[$ch['userid']] . "<br />";
+					}
+				}
+
+				if($ch['type'] == "CS")
+				{
+					//set next id to be skipped
+					$skippedid = array("0" => ($ch['stid']));
+					if($ch['amount'] < 0)
+					{
+						$ch['amount'] = ($ch['amount'] * (-1));
+					}
+					$direction = "übergibt " . $ch['amount'] . " <b>" . $medisarray[$ch['medicationid']]['name'] . "</b> an";
+					$next_user = $sumary[($ch['id'] + 1)]['userid'];
+
+					$cols .= $grid_methods_arr[$string_key][$ch['methodid']] . ": " . $doctorsarray[$ch['userid']] . " " . $direction . " Gruppe / Tresor<br />";
+				}
+				break;
+
+			case "5":
+				$ch['amount'] = ($ch['amount'] * (-1));
+				$cols .= $grid_methods_arr[$string_key][$ch['methodid']] . ": <b>" . $patientsSelector[0][$ch['ipid']] . "</b> erhält " . $ch['amount'] . " <b>" . $medisarray[$ch['medicationid']]['name'] . "</b> vom " . $doctorsarray[$ch['userid']] . "<br />";
+				break;
+
+			case "6": //sonstiges
+				if($ch['amount'] < 0)
+				{
+					$direction = "Bestand von <b>" . $medisarray[$ch['medicationid']]['name'] . "</b> verringert durch";
+					$ch['amount'] = ($ch['amount'] * (-1));
+				}
+				else
+				{
+					$direction = "Bestand von <b>" . $medisarray[$ch['medicationid']]['name'] . "</b> erhöht durch";
+				}
+
+				$sonstige_more = '';
+				if(strlen($ch['sonstige_more']))
+				{
+					$sonstige_more = " [". $ch['sonstige_more'] ."]";
+				}
+				
+				$cols .= $doctorsarray[$ch['userid']] . " " . $direction . " " . $ch['amount'] . "  " . $grid_methods_arr[$string_key][$ch['methodid']] . $sonstige_more . "<br />";
+				break;
+
+			case "7":
+				$ch['amount'] = ($ch['amount'] * (-1));
+				$cols .= $grid_methods_arr[$string_key][$ch['methodid']] . ": <b>" . $patientsSelector[0][$ch['ipid']] . "</b> erhält " . $ch['amount'] . " <b>" . $medisarray[$ch['medicationid']]['name'] . "</b> vom " . $doctorsarray[$ch['userid']] . "<br />";
+				break;
+
+			case "9":
+				$cols .= $grid_methods_arr[$string_key][$ch['methodid']] . ": <b>" . $patientsSelector[0][$ch['ipid']] . "</b> übergibt " . $ch['amount'] . " <b>" . $medisarray[$ch['medicationid']]['name'] . "</b> an " . $doctorsarray[$ch['userid']] . "<br />";
+				break;
+				
+			case "8":
+				$amount = ($ch['amount']*(-1));
+				
+				$suffix = '';
+				if($ch['source'] == 'u')
+				{
+					$suffix = $view->translate('btm_used_source_user');
+					$suffix = str_replace('%user_fullname', $doctorsarray[$ch['userid']], $suffix);
+				}
+				else if($ch['source'] == 'p')
+				{
+					$suffix = $view->translate('btm_used_source_patient');
+				}
+				
+				if(strlen($suffix)>0)
+				{
+					$cols .= $grid_methods_arr['patient'][$ch['methodid']].": <b>" . $patientsSelector[0][$ch['ipid']] . "</b> ".$amount." <b>".$medisarray[$ch['medicationid']]['name']."</b> ".$suffix."<br />";
+				}
+				else
+				{
+					$cols .= $grid_methods_arr['patient'][$ch['methodid']].": <b>" . $patientsSelector[0][$ch['ipid']] . "</b> ".$doctorsarray[$ch['userid']]." ".$amount." <b>".$medisarray[$ch['medicationid']]['name']."</b> ".$suffix."<br />";
+				}
+
+				break;
+			
+			case "12":
+				$cols .= $grid_methods_arr[$string_key][$ch['methodid']] . ": <b>" . $doctorsarray[$ch['userid']] . "</b> erhält " . $ch['amount'] . " <b>" . $medisarray[$ch['medicationid']]['name'] . "</b> an " .$patientsSelector[0][$ch['ipid']] . "<br />";
+				break;
+
+			default:
+				if($ch['type'] == "N")
+				{
+					$cols .= $medisarray[$ch['medicationid']]['name'] . " wurde hinzugefügt<br />";
+				}
+				break;
+		}
+	}
+	else
+	{
+		$cols .= "<br/>";
+	}
+}
+		</phpscript>
+		<tr>
+			<td valign="top" >[[date]] <br /> [[creator_full_name]]</td>
+			<td valign="top">
+				[[cols]]
+			</td>
+		</tr>
+	</gridrow>
+
+</table>

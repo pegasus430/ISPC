@@ -1,0 +1,206 @@
+<!--  Maria:: Migration CISPC to ISPC 22.07.2020 -->
+<style>
+    .help-infotext{
+        padding:1em;
+        background-color: #ffffe0;
+    }
+</style>
+
+<script>
+    $(document).on('change', '.sendabletags-row select.tags_sendable', function(){
+        multilinecleanup();
+        if($(this).val() == "2"){
+            $(this).parents('tr').find('input[type="checkbox"]').prop('checked', true);
+            $(this).parents('tr').find('.tags_form_type_multigroup').show();
+        }else{
+            $(this).parents('tr').find('.tags_form_type_multigroup').hide();
+            $(this).parents('tr').find('.tags_form_type_multigroup select').val('');
+        };
+        if($(this).val() >0){
+            $(this).parents('tr').find('input[type="text"]').show();
+        }else{
+            $(this).parents('tr').find('input[type="text"]').hide();
+        }
+    });
+
+    $(document).ready(function(){
+        $('.sendabletags-row select.tags_form_type').each(function(){
+            multilinecleanup(this);
+        });
+    });
+    $(document).on('change', '.sendabletags-row select.tags_form_type', function(){
+        multilinecleanup(this);
+    });
+
+    function multilinecleanup(myelem){
+        var any_elem=$(myelem).clone();
+        $(any_elem).val('');
+        var myparent=$(myelem).parents('.tags_form_type_multigroup');
+        $(myparent).find('select.tags_form_type').each(function(){
+            if($(this).val()==""){
+                $(this).remove();
+            }
+        });
+        $(myparent).append(any_elem);
+    }
+
+</script>
+<div style="margin:10px 2px; 10px;">
+    <a href="client/clinicconfig"><< weitere Clinic-Konfiguration</a>
+</div>
+<h1>Dateien mit Tags versendbar machen</h1>
+
+<div class="help-infotext">
+    <p><b>restricted:</b>Benutzer können dieses Tag nicht an beliebige Dateien anhängen. </p>
+    <p><b>versendbar:</b><br>
+        "einfache Datei": gut für Dateien, die von Usern mit Tags markiert werden können. <br>
+        "PMD-Bericht": Dieses Tag wird Berichten aus Kontaktformularen angeheftet. "Restricted": wird deshalb automatisch gesetzt.</p>
+    <p><b>extrainfo:</b>Spezielle Codes, die in der Nachricht mitgeschickt werden oder die Programmlogik beeinflussen sollen.</p>
+    <p><b>Kommentar:</b>Beliebiger Text für Notizen. Wird nur hier in dieser Übersicht angezeigt.</p>
+</div>
+
+<?php if(count($this->available_tags)):?>
+<form method="post">
+    <table class="datatable">
+
+        <tr>
+            <th>Tag-ID</th>
+            <th>Tag-Name</th>
+            <th>restricted</th>
+            <th>versendbar</th>
+            <th style="width:200px;">extrainfo</th>
+            <th style="width:200px;">Kommentar</th>
+        </tr>
+        <?php foreach($this->available_tags as $no=>$tag):?>
+            <tr class="sendabletags-row">
+                <td>
+                    <?php echo $tag['id'];?>
+                    <input type="hidden" name="tag[<?php echo $no;?>][id]" value="<?php echo $tag['id'];?>">
+                </td>
+                <td>
+                    <b><?php echo $tag['tag'];?></b>
+                    <input type="hidden" name="tag[<?php echo $no;?>][tag]" value="<?php echo $tag['tag'];?>">
+                </td>
+                <td>
+                    <input type="checkbox" name="tag[<?php echo $no;?>][restricted]" value="restricted" <?php if($tag['restricted']){echo "checked";};?>>
+
+                </td>
+                <td>
+                    <?php
+                    echo $this->formSelect("tag[".$no."][sendable]", $tag['sendable'], ['class'=>'tags_sendable'], [''=>'nicht versendbar', '1'=>'einfache Datei', '2'=>'PMD-Bericht']);
+                    $mstyle="display:none;";
+                    if($tag['sendable']==2){
+                        $mstyle="";
+                    }
+                    $tno=0;
+                    echo " <div class='tags_form_type_multigroup' style='".$mstyle."'>";
+                    foreach($tag['form_type'] as $type_val){
+                        if(strlen($type_val)) {
+                            echo $this->formSelect("tag[" . $no . "][form_type][]", $type_val, ['class' => 'tags_form_type'], $this->formtypes);
+                            $tno++;
+                        }
+                    }
+
+                    echo $this->formSelect("tag[".$no."][form_type][]", '', ['class'=>'tags_form_type'], $this->formtypes);
+                    echo " </div>";
+                    ?>
+
+                </td>
+                <td>
+                    <input type="text" name="tag[<?php echo $no;?>][extrainfo]" value="<?php echo $tag['extrainfo'];?>" <?php if(!$tag['sendable']):?>style="display:none;"<?php endif;?>>
+                </td>
+                <td>
+                    <input type="text" name="tag[<?php echo $no;?>][comment]" value="<?php echo $tag['comment'];?>" <?php if(!$tag['sendable']):?>style="display:none;"<?php endif;?>>
+                </td>
+            </tr>
+        <?php endforeach;?>
+    </table>
+    <div style="padding:8px;">
+        <input type="submit" value="<?php echo $this->translate('save');?>">
+    </div>
+</form>
+<?php else:?>
+    <p>Es gibt noch keine Tags.</p>
+<?php endif;?>
+
+
+
+<div style="margin-top:20px;">
+
+<input type="button" value="Tags bearbeiten" onclick="$(this).next().toggle();">
+    <div style="margin:4px;border:1px solid red;padding:4px;margin:4px;width:400px;">
+
+        <form  method="post">
+            <input type="text" name="new_tag">
+            <input type="submit" value="Tag erstellen">
+        </form>
+        <br><br>
+        <a href="client/clienttags?lf=list">Tags bearbeiten>></a>
+    </div>
+</div>
+
+
+<div style="margin-top:20px;">
+    <script>
+        $(document).ready(function(){
+            $('body').on('change', '.multiselect select',function(){
+                var emptyrows=0;
+                $(this).parents('ul').find('li select').each(function(){
+                    if ($(this).val()==0){
+                        emptyrows++;
+                    }
+                });
+                if(emptyrows==0){
+                    var newel=$(this).parents('li').clone();
+                    $(newel).find('select').val('');
+                    $(this).parents('ul').append(newel);
+                }
+                $(this).parents('ul').find('select').each(function(){
+                    if ($(this).val()=="" && emptyrows>1){
+                        $(this).parents('li').remove();
+                        emptyrows=emptyrows-1;
+                    }
+                });
+                var rowcount=0;
+
+                $(this).parents('ul').find('li select').each(function(){
+                    var name=$(this).attr('name');
+                    name =name.replace(/\[[\d]+\]/,"["+rowcount+"]");
+                    $(this).attr('name',name);
+                    rowcount++;
+                });
+
+            });
+
+        });
+
+    </script>
+    <input type="button" value="Benutzerrechte" onclick="$(this).next().toggle();">
+    <div style="margin:4px;border:1px solid red;padding:4px;margin:4px;width:400px;">
+<p>Diese User dürfen finale Berichte erstellen. Alle anderen können nur vorläufige Berichte erstellen.-</p>
+        <form  method="post">
+            <ul class="multiselect">
+                <?php $this->hl7_create_final_reports_users[]=0;?>
+                <?php foreach ($this->hl7_create_final_reports_users as $row=>$suser):?>
+                    <li>
+
+                        <select name="hl7_create_final_reports_users[<?php echo $row;?>]">
+
+                            <option value="">----</option>
+                            <?php foreach ($this->cusers as $userid=>$user):?>
+                                <?php if ($user['userid']>1):?>
+                                    <option  <?php if($user['userid']==$suser) echo "selected";?> value="<?php echo $user['userid'];?>"><?php echo $user['username'];?></option>
+                                <?php endif;?>
+                            <?php endforeach;?>
+
+                        </select>
+
+                    </li>
+                <?php endforeach;?>
+            </ul>
+            <input type="submit" value="speichern">
+
+        </form>
+
+    </div>
+</div>

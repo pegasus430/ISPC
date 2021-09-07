@@ -1,0 +1,888 @@
+<?php
+// Maria:: Migration ISPC to CISPC 08.08.2020 
+//css
+	$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/color_picker/colorpicker.css?' . date('Ymd'));
+	$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/color_picker/layout.css?' . date('Ymd'));
+
+//js
+	$this->headScript()->appendFile(RES_FILE_PATH . '/javascript/colorpicker/colorpicker.js?' . date('Ymd'));
+	$this->headScript()->appendFile(RES_FILE_PATH . '/javascript/colorpicker/eye.js?' . date('Ymd'));
+	$this->headScript()->appendFile(RES_FILE_PATH . '/javascript/colorpicker/utils.js?' . date('Ymd'));
+?>
+
+<script>
+var activateyes_settings = '<?php echo json_encode($this->activate_shortcut_yes_settings);?>';
+
+	$(document).ready(function() {
+		$('#client_users_modal').dialog({
+			autoOpen: false,
+			modal: true,
+			title: "<?php echo $this->translate('select_btm_responsible_title'); ?>",
+			width: '615',
+			height: 'auto',
+			resizable: false,
+			draggable: false,
+			buttons: {
+				"<?php echo $this->translate('submit'); ?>": function() {
+//					$( this ).dialog( "close" );
+					$('#save_btm_notification_users').submit();
+				},
+				"<?php echo $this->translate('cancel'); ?>": function() {
+					$(this).dialog("close");
+				}
+			}
+		});
+
+		$('#btm_modal_notifications').on('click', function() {
+			$('#client_users_modal').dialog('open');
+		});
+		
+		$('#dgp_transfer_date').datepicker({
+			dateFormat: 'dd.mm.yy',
+			showOn: "both",
+			buttonImage: $('#calImg').attr('src'),
+			buttonImageOnly: true,
+			changeMonth: true,
+			changeYear: true,
+			nextText: '',
+			prevText: ''
+		});
+		
+		$('.colorSelector').ColorPicker({
+		    onShow: function (colpkr) {
+		        $(colpkr).fadeIn(500);
+		        return false;
+		    },
+		    onHide: function (colpkr) {
+		        $(colpkr).fadeOut(500);
+		        return false;
+		    },
+		    onChange: function (hsb, hex, rgb) {
+		        var el = $(this).data('colorpicker').el;
+		        $(el).css('backgroundColor', '#' + hex).val('#' + hex);
+		    }
+		});
+		
+		$( "#sap_annually" ).datepicker({
+			dateFormat: 'dd.MM',
+			showOn: "both",
+			
+			altField: "#sap_annually_hidden",
+			altFormat: "yy-mm-dd",
+			
+			buttonImage: $('#calImg').attr('src'),
+			buttonImageOnly: true,
+			changeMonth: true,
+			changeYear: false,
+			nextText: '',
+			prevText: '',
+ 
+			beforeShow :function(e, o) {
+				o.dpDiv.addClass('calendar_hide_year');		
+			}
+			
+		});
+		
+		$(document).on("change", '#activate_v_shortcut', function(){
+			if($(this).val() == 'yes')
+			{
+				var parent_form = "activate_shortcut_settings";
+				
+				$.get(appbase + 'ajax/createformactivateyesshortcutvclientsettings?parent_form='+parent_form, function(result) {
+	
+					var newFieldset =  $(result).insertAfter($('#activate_v_shortcut').parents('table'));
+				});
+			}
+			else
+			{
+				$(this).closest('fieldset').find('fieldset').remove();
+			}
+		});
+		
+		if($('#activate_v_shortcut').val() == 'yes')
+		{
+			var parent_form = "activate_shortcut_settings";
+			
+			$.get(appbase + 'ajax/createformactivateyesshortcutvclientsettings?parent_form='+parent_form+'&activateyes_settings='+activateyes_settings, function(result) {
+
+				var newFieldset =  $(result).insertAfter($('#activate_v_shortcut').parents('table'));
+			});
+		}
+		<?php //ISPC-2806 Dragos 28.01.2021 ?>
+		$('#activate_complaint_settings').on("change", function () {
+
+			if($(this).val() == 'disabled')
+			{
+				$("#fieldset-complaing_emails").find("input,textarea").prop("disabled",true);
+			} else {
+				$("#fieldset-complaing_emails").find("input,textarea").prop("disabled",false);
+			}
+		})
+		<?php // -- // ?>
+		
+	});
+		
+	function checkedall(allid)
+    {
+		$('.group-chks').attr('checked', allid.checked);
+    }
+	
+	function checkedall_plans(allid)
+    {
+		$('.group-chks1').attr('checked', allid.checked);
+    }
+</script>
+<div id="calImgs" style="display: none;">
+<img id="calImg" src="<?php echo RES_FILE_PATH; ?>/images/calendar.png" alt="Popup" class="trigger">
+</div>
+<div id="clinetadddiv client_mainOuter_div">
+	<form action="<?php echo $this->action ?>" method="post" name="frmclient" id="frmclient" >
+
+		<fieldset id="client_FormFieldset">
+
+			<legend id="client_FormLegend"><?php echo $this->translate('Client') ?></legend>
+			<div id="client_Error_msg" class="err"><?php echo $this->error_message ?></div>
+			<br />
+
+			<label id="lbl_add_client_client_name" for="add_client_client_name"><?php echo $this->translate('clientname') ?> :</label>
+			<input name="client_name" type="text" id="add_client_client_name" tabindex="1" value="<?php echo $this->client_name ?>" class="w200">
+			<div class="clearer"></div>
+			<label for="ammount_nurse_visits_calculated" id="lbl_add_client_client_name_2">&nbsp;</label>
+			<div id="client_ClientNameError" class="error_new"><?php echo $this->error_client_name ?></div>
+			<div class="clearer"></div>
+
+			<label for="add_client_epid_chars" id="lbl_add_client_epid_chars"><?php echo $this->translate('epid_chars') ?> :</label>
+			<input name="epid_chars" type="text" id="add_client_epid_chars" tabindex="2" value="<?php echo $this->epid_chars ?>" class="w200">
+			<div id="client_epidChars_error" class="error"><?php echo $this->error_epid_chars ?></div>
+
+			<label for="add_client_epid_start_no" id="lbl_add_client_epid_start_no"><?php echo $this->translate('epid_start_no') ?> :</label>
+			<input name="epid_start_no" type="text" id="add_client_epid_start_no" tabindex="3" value="<?php echo $this->epid_start_no ?>" class="w200">
+			<div id="client_epidStart_error" class="error"><?php echo $this->error_epid_start_no ?></div>
+
+
+			<label for="add_client_street1" id="lbl_add_client_street1"><?php echo $this->translate('street1') ?> :</label>
+			<input name="street1" type="text" id="add_client_street1" tabindex="4" value="<?php echo $this->street1 ?>" class="w200">
+			
+			<div class="clearer"></div>
+			<label for="ammount_nurse_visits_calculated" id="lbl_add_client_street1_2">&nbsp;</label>
+			<div id="client_streetOne_error" class="error_new"><?php echo $this->error_street1 ?></div>
+			<div class="clearer"></div>
+			
+
+			<label for="add_client_street2" id="lbl_add_client_street2"><?php echo $this->translate('street2') ?> :</label>
+			<input type="text" name="street2" id="add_client_street2" tabindex="5" value="<?php echo $this->street2 ?>"  class="w200">
+			<div id="client_streetTwo_error" class="error"><?php echo $this->error_street2 ?></div>
+
+			<label for="add_client_postcode" id="lbl_add_client_postcode"><?php echo $this->translate('postcode') ?> :</label>
+			<input type="text" name="postcode" id="add_client_postcode" tabindex="6" value="<?php echo $this->postcode ?>" class="w200">
+			<div class="clearer"></div>
+			<label for="ammount_nurse_visits_calculated" id="lbl_add_client_postcode_2">&nbsp;</label>
+			<div id="client_postcode_error" class="error_new"><?php echo $this->error_postcode ?></div>
+			<div class="clearer"></div>
+
+			<label for="add_client_city" id="lbl_add_client_city"><?php echo $this->translate('city') ?> :</label>
+			<input type="text" name="city" id="add_client_city" value="<?php echo $this->city ?>" tabindex="7"  class="w200">
+			<div id="client_city_error" class="error"><?php echo $this->error_city ?></div>
+
+			<label for="district" id="lbl_add_client_district"><?php echo $this->translate('districtoffice') ?> :</label>
+			<?php echo $this->formSelect('district', $this->district, null, $this->districtarray) ?>
+			<div id="client_district_error" class="error"><?php echo $this->error_district ?></div>
+
+			<label for="country" id="lbl_add_client_country"><?php echo $this->translate('region') ?> :</label>
+			<?php echo $this->formSelect('country', $this->country, null, $this->regions) ?>
+			<div id="client_country_error" class="error"><?php echo $this->error_country ?></div>
+
+			<label for="preregion" id="lbl_add_client_preregion"><?php echo $this->translate('preselectedregion') ?> :</label>
+			<?php echo $this->formSelect('preregion', $this->preregion, null, $this->regions) ?>
+			<div id="client_preregion_error" class="error"> <?php echo $this->error_preregion ?></div>
+
+			<label for="add_client_firstname" id="lbl_add_client_firstname"><?php echo $this->translate('firstname') ?> :</label>
+			<input type="text" name="firstname" id="add_client_firstname" tabindex="9" value="<?php echo $this->firstname ?>" class="w200">
+			<div class="clearer"></div>
+			<label for="ammount_nurse_visits_calculated" id="lbl_add_client_firstname_2">&nbsp;</label>
+			<div id="client_firstname_error" class="error_new">  <?php echo $this->error_firstname ?></div>
+			<div class="clearer"></div>
+
+			<label for="add_client_lastname" id="lbl_add_client_lastname"><?php echo $this->translate('lastname') ?> :</label>
+			<input type="text" name="lastname" id="add_client_lastname" tabindex="10" value="<?php echo $this->lastname ?>"   class="w200">
+			<div class="clearer"></div>
+			<label for="ammount_nurse_visits_calculated" id="lbl_add_client_lastname_2">&nbsp;</label>
+			<div id="client_lastname_error" class="error_new"><?php echo $this->error_lastname ?></div>
+			<div class="clearer"></div>
+
+			<label for="add_client_emailid" id="lbl_add_client_emailid"><?php echo $this->translate('email') ?> :</label>
+			<input type="text" name="emailid" id="add_client_emailid" tabindex="11" value="<?php echo $this->emailid ?>"  class="w200">
+			<div class="clearer"></div>
+			<label for="ammount_nurse_visits_calculated" id="lbl_add_client_emailid_2">&nbsp;</label>
+			<div id="client_emailid_error" class="error_new">  <?php echo $this->error_emailid ?></div>
+			<div class="clearer"></div>
+
+
+			<label for="add_client_phone" id="lbl_add_client_phone"><?php echo $this->translate('phone') ?> :</label>
+			<input type="text" name="phone" id="add_client_phone" tabindex="12" value="<?php echo $this->phone ?>" class="w200">
+			<div id="client_phone_error" class="error"> <?php echo $this->error_phone ?></div>
+
+			<div class="clearer"></div>
+			<label for="add_client_fax" id="lbl_add_client_fax"><?php echo $this->translate('fax') ?> :</label>
+			<input type="text" name="fax" id="add_client_fax" tabindex="12" value="<?php echo $this->fax ?>" class="w200">
+			<div id="client_fax_error" class="error"> <?php echo $this->error_fax ?></div>
+
+			<div class="clearer"></div>
+			<label for="add_client_fax" id="lbl_add_client_fax">Team Name:</label>
+			<input type="text" name="team_name" id="add_client_team_name" tabindex="12" value="<?php echo $this->team_name ?>" class="w200">
+			<div id="client_fax_error" class="error"> <?php echo $this->error_team_name ?></div>
+
+
+			<div class="clearer"></div>
+			<label for="add_institutskennzeichen" id="lbl_add_institutskennzeichen"><?php echo $this->translate('institutskennzeichen') ?> :</label>
+			<input type="text" name="institutskennzeichen" id="add_institutskennzeichen" tabindex="12" value="<?php echo $this->institutskennzeichen ?>" class="w200">
+			<div id="institutskennzeichen_error" class="error"> <?php echo $this->error_institutskennzeichen ?></div>
+
+			<div class="clearer"></div>
+			<label for="add_betriebsstattennummer" id="lbl_add_betriebsstattennummer"><?php echo $this->translate('betriebsstattennummer') ?> :</label>
+			<input type="text" name="betriebsstattennummer" id="add_betriebsstattennummer" tabindex="12" value="<?php echo $this->betriebsstattennummer ?>" class="w200">
+			<div id="betriebsstattennummer_error" class="error"> <?php echo $this->error_betriebsstattennummer ?></div>
+
+			<div class="clearer"></div>
+			<label for="maxcontact" id="lbl_maxcontact"><?php echo $this->translate('maxcontact') ?> :</label>
+			<input type="text" name="maxcontact" id="maxcontact" tabindex="13" value="<?php echo $this->maxcontact ?>" class="w200">
+			<div class="clearer"></div>
+			<label for="ammount_nurse_visits_calculated" id="lbl_maxcontact_2">&nbsp;</label>
+			<div id="maxcontact_error" class="error_new"> <?php echo $this->error_maxcontact ?></div>
+			<div class="clearer"></div>
+
+			<div class="clearer"></div>
+			<label for="discharge_day_period" id="lbl_discharge_day_period"><?php echo $this->translate('discharge_day_period') ?> :</label>
+			<input type="text" name="discharge_day_period" id="discharge_day_period" tabindex="14" value="<?php echo $this->discharge_day_period ?>" class="w200">
+			<div class="clearer"></div>
+			<label for="ammount_nurse_visits_calculated" id="lbl_discharge_day_period_2">&nbsp;</label>
+			<div id="discharge_day_period_error" class="error_new"> <?php echo $this->error_discharge_day_period ?></div>
+			<div class="clearer"></div>
+
+			<div class="clearer"></div>
+			<label id="lbl_add_client_inactivetime" for="add_client_inactivetime"><?php echo $this->translate('inactivetime') ?></label>
+			<input type="text" name="inactivetime" id="add_client_inactivetime" value="<?php echo $this->inactivetime ?>"  class="w200">
+			( Zeit in Minuten )
+			<div class="clearer"></div>
+
+			<label id="lbl_add_client_dgp_user" for="add_client_dgp_user"><?php echo $this->translate('dgp_username') ?></label>
+			<input type="text" name="dgp_user" id="add_client_dgp_user" value="<?php echo $this->dgp_user ?>"  class="w200">
+			<div class="clearer"></div>
+
+			<label id="lbl_add_client_dgp_pass" for="add_client_dgp_pass"><?php echo $this->translate('dgp_password') ?></label>
+			<input type="password" name="dgp_pass" id="add_client_dgp_pass" value=""  class="w200">
+			<div class="clearer"></div>
+
+			<?php echo $this->commentbox ?>
+			<br/>&nbsp;
+			<div class="clearer"></div>
+
+			<label for="txt_Client_greetings" id="lbl_add_client_phone"><?php echo $this->translate('Symptomatology_scale') ?></label>
+			<select name="symptomatology_scale">
+				<option value="n" <?php if($this->symptomatology_scale == 'n'): ?> selected="selected" <?php endif; ?>  > 0-10 </option>
+				<option value="a" <?php if($this->symptomatology_scale == 'a'): ?> selected="selected" <?php endif; ?> > kein / leicht / mittel / schwer</option>
+			</select>
+			<br/>&nbsp;
+			<div class="clearer"></div>
+
+			<label for="txt_client_recipient" id="lbl_add_client_phone"><?php echo $this->translate('Recipient') ?></label>
+			<textarea name="recipient" id="txt_client_recipient"  cols="35" rows="5"><?php echo $this->recipient ?></textarea>
+			<div id="client_recipient_error" class="error"> <?php echo $this->error_recipient ?></div>
+			<div class="clearer"></div>
+
+			<label for="health_insurance_client" id="lbl_health_insurance_client"><?php echo $this->translate('health insurance') ?></label>
+			<select name="health_insurance_client" id="health_insurance_client">
+				<option value="0" <?php if($this->health_insurance_client == '0'): ?> selected="selected" <?php endif; ?>  > <?php echo $this->translate('show all health insurance lists') ?></option>
+				<option value="1" <?php if($this->health_insurance_client == '1'): ?> selected="selected" <?php endif; ?> > <?php echo $this->translate('show only client specific lists') ?></option>
+			</select>
+
+			<br/>&nbsp;
+			<div class="clearer"></div>
+			<label for="automatically_assign_users" id="lbl_automatically_assign_users"><?php echo $this->translate('automatically_assign_users') ?></label>
+			<select name="automatically_assign_users" id="automatically_assign_users">
+				<option value="0" <?php if($this->automatically_assign_users == '0'): ?> selected="selected" <?php endif; ?>  > Nein</option>
+				<option value="1" <?php if($this->automatically_assign_users == '1'): ?> selected="selected" <?php endif; ?> > Ja </option>
+			</select>
+
+			<?php if($this->new_client != '1'): ?>
+					<br/>&nbsp;
+					<div class="clearer"></div>
+					<table>
+						<tr>
+							<td>
+								<label id="lbl_select_btm_notification_users"><?php echo $this->translate('btm_responsible'); ?></label>
+							</td>
+							<td>
+								<label id="lbl_select_btm_notification_users">
+									<a href="javascript:void(0);" id="btm_modal_notifications"><?php echo $this->translate('activate_btm_notification_modal'); ?></a>
+								</label>
+							</td>
+						</tr>
+						<tr>
+							<td>&nbsp;</td>
+							<td>
+								<?php if(strlen($this->selected_usr_str) > '0'): ?>
+									<?php echo $this->selected_usr_str; ?>
+								<?php else: ?>
+									<?php echo $this->translate('no_btm_responsible_users'); ?>
+								<?php endif; ?>
+							</td>
+						</tr>
+					</table>
+				<?php endif; ?>
+			<br/>&nbsp;
+			<div class="clearer"></div>
+
+			<br/>&nbsp;
+			<div class="clearer"></div>
+			<label for="ammount_nurse_visits_calculated" id="lbl_ammount_nurse_visits_calculated"><?php echo $this->translate('ammount_nurse_visits_calculated') ?></label>
+			<input type="text" name="max_nurse_visits" id="ammount_nurse_visits_calculated" value="<?php echo $this->max_nurse_visits; ?>" >
+			
+			<div class="clearer"></div>
+			<label for="ammount_nurse_visits_calculated" id="lbl_ammount_nurse_visits_calculated_2">&nbsp;</label>
+			<div id="client_epidChars_error" class="error_new"><?php echo $this->error_max_nurse_visits; ?></div>
+			<div class="clearer"></div>
+
+			<h5 class="LineHeading"><?php echo $this->translate('Anlage 6 details'); ?></h5>
+			<div class="bank_settings_row_ed">
+				<label class="settings_row_ed_master" for="lbg_sapv_provider"><?php echo $this->translate('sapv_provider') ?></label>
+				<input type="text" name="lbg_sapv_provider" id="lbg_sapv_provider" value="<?php echo $this->lbg_sapv_provider; ?>" />
+			</div>
+
+			<div class="bank_settings_row_ed">
+				<label class="settings_row_ed_master" for="lbg_street"><?php echo $this->translate('street'); ?></label>
+				<input type="text" name="lbg_street" value="<?php echo $this->lbg_street; ?>" id="lbg_street"  />
+			</div>
+
+			<div class="bank_settings_row_ed">
+				<label class="settings_row_ed_master" for="lbg_postcode"><?php echo $this->translate('zip') ?></label>
+				<input type="text" name="lbg_postcode" id="lbg_postcode" value="<?php echo $this->lbg_postcode; ?>" />
+			</div>
+			<div class="bank_settings_row_ed">
+				<label class="settings_row_ed_master" for="lbg_city"><?php echo $this->translate('city') ?></label>
+				<input type="text" name="lbg_city" id="lbg_city" value="<?php echo $this->lbg_city; ?>" />
+			</div>
+
+			<div class="bank_settings_row_ed">
+				<label class="settings_row_ed_master" for="lbg_institutskennzeichen"><?php echo $this->translate('IK-Nummer') ?></label>
+				<input type="text" name="lbg_institutskennzeichen" id="lbg_institutskennzeichen" value="<?php echo $this->lbg_institutskennzeichen; ?>" />
+			</div>
+
+			<div class="clearer"></div><br/>
+			<h5 class="LineHeading"><?php echo $this->translate('Invoice number settings'); ?></h5>
+			<div class="bank_settings_row_ed">
+				<label class="settings_row_ed_master" for="invoice_number_type_individual"><?php echo $this->translate('invoice_number_type_individual') ?></label>
+				<input type="radio" name="invoice_number_type" id="invoice_number_type_individual" value="0" style="width: 50px;" <?php if($this->invoice_number_type == '0'): ?>checked="checked"<?php endif; ?>/>
+
+			</div>
+			<div class="clearer"></div>
+			<div class="bank_settings_row_ed">
+				<label class="settings_row_ed_master" for="invoice_number_type_collective"><?php echo $this->translate('invoice_number_type_collective') ?></label>
+				<input type="radio" name="invoice_number_type" id="invoice_number_type_collective" value="1" style="width: 50px;" <?php if($this->invoice_number_type == '1'): ?>checked="checked"<?php endif; ?>/>
+			</div>
+
+			<br/>&nbsp;
+			<div class="clearer"></div>
+
+			<h5 class="LineHeading"><?php echo $this->translate('emergency_numbers'); ?></h5>
+			<div class="bank_settings_row_ed">
+				<label class="settings_row_ed_master" for="emergencynr_a"><?php echo $this->translate('emergency_1') ?></label>
+				<input type="text" name="emergencynr_a" value="<?php echo $this->emergencynr_a; ?>" id="emergencynr_a"  />
+
+			</div>
+			<div class="clearer"></div>
+			<div class="bank_settings_row_ed">
+				<label class="settings_row_ed_master" for="emergencynr_b"><?php echo $this->translate('emergency_2') ?></label>				
+				<input type="text" name="emergencynr_b" value="<?php echo $this->emergencynr_b; ?>" id="emergencynr_b"  />
+			</div>
+			
+			
+			<?php if($this->new_client != '1'): ?>
+			<br/>&nbsp;
+			<div class="clearer"></div>
+			
+			<h5 class="LineHeading"><?php echo $this->translate('sh_anlage14specialgroups'); ?></h5>
+			<ul id="listgroups">
+				<li>
+					<label for="checkall">
+						<input name="all_id[]" onclick="checkedall(this)" value="" type="checkbox" id="checkall">&nbsp;<?php echo $this->translate('selectall'); ?>
+					</label>
+				</li>
+				<?php $chk_data = $this->client_groups; ?>
+				<?php foreach($chk_data as $k_u => $v_u): ?>
+				<?php $checked = ''; ?>
+				<?php if(in_array($k_u, $this->client_groups_data)): $checked = 'checked="checked"'; endif; ?>
+				<li>
+					<label for="checkall-<?php echo $k_u; ?>">
+						<input name="client_groups[]" alt="<?php echo $k_u; ?>" value="<?php echo $k_u; ?>" type="checkbox" id="checkall-<?php echo $k_u; ?>" class="group-chks" <?php echo $checked; ?>>&nbsp;<?php echo $v_u; ?>
+					</label>
+				</li>
+				<?php endforeach;?>
+			</ul>
+			
+			<br/>&nbsp;
+			<div class="clearer"></div>
+			<?php endif; ?>
+			
+			<br/>&nbsp;
+			<div class="clearer"></div>
+
+			<h5 class="LineHeading"><?php echo $this->translate('invoices_settings'); ?></h5>
+			<div class="bank_settings_row_ed">
+				<label class="settings_row_ed_master" for="billing_method"><?php echo $this->translate('accounting') ?></label>
+				<select name="billing_method" id="billing_method">
+					<option value="month" <?php if($this->billing_method == "month"): ?>selected="selected"<?php endif; ?>><?php echo $this->translate('month_billing_methods'); ?></option>
+					<option value="sapv" <?php if($this->billing_method == "sapv"): ?>selected="selected"<?php endif; ?>><?php echo $this->translate('sapv_fall_billing_methods'); ?></option>
+					<option value="admission" <?php if($this->billing_method == "admission"): ?>selected="selected"<?php endif; ?>><?php echo $this->translate('admissions_billing_methods'); ?></option>
+					<option value="quarter" <?php if($this->billing_method == "quarter"): ?>selected="selected"<?php endif; ?>><?php echo $this->translate('quarter_billing_methods'); ?></option>
+					<option value="both" <?php if($this->billing_method == "both"): ?>selected="selected"<?php endif; ?>><?php echo $this->translate('both_billing_methods'); ?></option>
+				</select>
+			</div>
+						
+			<div class="bank_settings_row_ed">
+				<label class="settings_row_ed_master" for="membership_billing_method"><?php echo $this->translate('Membership invoicing') ?></label>
+				<select name="membership_billing_method" id="membership_billing_method">
+					<option value="calendar" <?php if($this->membership_billing_method == "calendar"): ?>selected="selected"<?php endif; ?>><?php echo $this->translate('calendar year'); ?></option>
+					<option value="membership" <?php if($this->membership_billing_method == "membership"): ?>selected="selected"<?php endif; ?>><?php echo $this->translate('membership year'); ?></option>
+				</select>
+			</div>
+
+			<div class="bank_settings_row_ed">
+				<label class="settings_row_ed_master" for="sepa_iban"><?php echo $this->translate('sepa_iban') ?></label>
+				<input type="text" name="sepa_iban" value="<?php echo $this->sepa_iban; ?>" id="sepa_iban" />
+			</div>
+			<div class="error"><?php echo $this->error_sepa_iban ?></div>
+			<div class="bank_settings_row_ed">
+				<label class="settings_row_ed_master" for="sepa_bic"><?php echo $this->translate('sepa_bic') ?></label>
+				<input type="text" name="sepa_bic" value="<?php echo $this->sepa_bic; ?>" id="sepa_bic" />
+			</div>
+			<div class="error"><?php echo $this->error_sepa_bic ?></div>
+
+
+			<div class="bank_settings_row_ed">
+				<label class="settings_row_ed_master" for="sepa_creditor_identifier"><?php echo $this->translate('sepa_creditor_identifier') ?></label>
+				<input type="text" name="sepa_ci" value="<?php echo $this->sepa_ci; ?>" id="sepa_creditor_identifier" />
+			</div>
+			<div class="error"><?php echo $this->error_sepa_ci ?></div>
+
+			<!-- ISPC-2272 (07.11.2018)  START -->
+			<div class="bank_settings_row_ed">
+				<label class="settings_row_ed_master" for="company_number"><?php echo $this->translate('client_company_number') ?></label>
+				<input type="text" name="company_number" value="<?php echo $this->company_number; ?>" id="company_number" />
+			</div>
+			<div class="error"><?php echo $this->error_company_number ?></div>
+
+			<div class="bank_settings_row_ed">
+				<label class="settings_row_ed_master" for="cost_center"><?php echo $this->translate('client_cost_center') ?></label>
+				<input type="text" name="cost_center" value="<?php echo $this->cost_center; ?>" id="cost_center" />
+			</div>
+			<div class="error"><?php echo $this->error_cost_center ?></div>
+			<!-- ISPC-2272 (07.11.2018)  END -->
+
+
+
+
+
+						
+			<h5 class="LineHeading"><?php echo $this->translate('Invoice due days '); ?></h5>
+			<div class="bank_settings_row_ed">
+				<label class="settings_row_ed_master" for="invoice_due_days"><?php echo $this->translate('invoice number of days'); ?></label>
+				<input type="text" name="invoice_due_days" value="<?php echo $this->invoice_due_days; ?>" id="invoice_due_days" />
+			</div>
+			
+			
+			
+			<h5 class="LineHeading"><?php echo $this->translate('Sap export settings'); ?></h5>
+			<div class="bank_settings_row_ed">
+				<label class="settings_row_ed_master" for="rlp_past_revenue"><?php echo $this->translate('past_revenue_account'); ?></label>
+				<input type="text" name="rlp_past_revenue" value="<?php echo $this->rlp_past_revenue; ?>" id="rlp_past_revenue" />
+			</div>
+			
+			<?php
+			$rlp_books_end_day = $this->rlp_books_end_day; 
+			$rlp_books_end_month =  $this->rlp_books_end_month;
+			?>
+			<div class="bank_settings_row_ed">
+				<label class="settings_row_ed_master" for="sap_annually"><?php echo $this->translate('sap_books_closeday'); ?></label>
+				<input type="text" name="sap_annually" id="sap_annually" 
+				<?php 
+				if( !empty($rlp_books_end_day) && !empty(rlp_books_end_month) ) {
+					echo ' value="' .$rlp_books_end_day. '.' . strftime("%B", mktime(null, null, null, $rlp_books_end_month, 1)).'" ';
+				}
+				?> />
+				<input type="hidden" name="sap_annually_hidden" id="sap_annually_hidden" <?php echo ' value="'. date("Y") .'-'.$rlp_books_end_month.'-' . $rlp_books_end_day.'" '; ?> />
+			</div>
+<!-- 			ISPC-2171 Ancuta 08.01.2020 -->
+			<div class="bank_settings_row_ed">
+				<label class="settings_row_ed_master" for="rlp_document_header_txt"><?php echo $this->translate('rlp_export_document_header_txt'); ?></label>
+				<input type="text" name="rlp_document_header_txt" value="<?php echo $this->rlp_document_header_txt; ?>" id="rlp_document_header_txt" />
+			</div>
+			
+			
+			
+			
+			
+			
+			<h5 class="LineHeading"><?php echo $this->translate('Sap II export settings'); ?></h5>
+			<div class="bank_settings_row_ed">
+				<label class="settings_row_ed_master" for="rlp_hi_account_number"><?php echo $this->translate('health_insurance_account_number'); ?></label>
+				<input type="text" name="rlp_hi_account_number" value="<?php echo $this->rlp_hi_account_number; ?>" id="rlp_hi_account_number" />
+			</div>
+			<div class="bank_settings_row_ed">
+				<label class="settings_row_ed_master" for="rlp_pv_account_number"><?php echo $this->translate('private_patients_account_number'); ?></label>
+				<input type="text" name="rlp_pv_account_number" value="<?php echo $this->rlp_pv_account_number; ?>" id="rlp_pv_account_number" />
+			</div>
+			<div class="bank_settings_row_ed">
+				<label class="settings_row_ed_master" for="rlp_terms_of_payment"><?php echo $this->translate('sap_terms_of_payment'); ?></label>
+				<input type="text" name="rlp_terms_of_payment" value="<?php echo $this->rlp_terms_of_payment; ?>" id="rlp_terms_of_payment" />
+			</div>
+			
+ 
+
+   <!-- ISPC-2171 Lore 15.11.2019 -->
+ 			<?php		
+			 	if($this->hospiz_sap_export_settings): ?>
+			<h5 class="LineHeading"><?php echo $this->translate('HOSPIZ SAP Export settings'); ?></h5>
+			<div class="bank_settings_row_ed">
+				<label class="settings_row_ed_master" for="hospiz_hi_cont"><?php echo $this->translate('hospiz_hi_cont'); ?></label>
+				<input type="text" name="hospiz_hi_cont" value="<?php echo $this->hospiz_hi_cont; ?>" id="hospiz_hi_cont" />
+			</div>
+			<div class="bank_settings_row_ed">
+				<label class="settings_row_ed_master" for="hospiz_pv_cont"><?php echo $this->translate('hospiz_pv_cont'); ?></label>
+				<input type="text" name="hospiz_pv_cont" value="<?php echo $this->hospiz_pv_cont; ?>" id="hospiz_pv_cont" />
+			</div>
+			<div class="bank_settings_row_ed">
+				<label class="settings_row_ed_master" for="hospiz_const_center"><?php echo $this->translate('hospiz_const_center'); ?></label>
+				<input type="text" name="hospiz_const_center" value="<?php echo $this->hospiz_const_center; ?>" id="hospiz_const_center" />
+			</div>		
+			<?php endif; ?>
+			
+			
+			
+			
+			
+			<h5 class="LineHeading"><?php echo $this->translate('dayplanning'); ?></h5>
+			<div>
+				<label class="settings_row_ed_master" for="tagesplanung_standby_patients"><?php echo $this->translate('Show standby patients in dayplanning'); ?></label>
+				<select name="tagesplanung_standby_patients" id="tagesplanung_standby_patients">
+				<option value="0" <?php if($this->tagesplanung_standby_patients == '0'): ?> selected="selected" <?php endif; ?>  > Nein</option>
+				<option value="1" <?php if($this->tagesplanung_standby_patients == '1'): ?> selected="selected" <?php endif; ?> > Ja </option>
+			</select>
+			</div>
+			
+			<div>
+				<label class="settings_row_ed_master" for="tagesplanung_default_visit_time"><?php echo $this->translate('tagesplanung_default_visit_time'); ?></label>
+				<input type="text"  name="tagesplanung_default_visit_time" pattern="\d*" value="<?php  if (!empty($this->tagesplanung_default_visit_time)){echo $this->tagesplanung_default_visit_time;} else{ echo '20';} ?>" id="tagesplanung_default_visit_time" />
+			</div>
+
+			<div>
+				<label class="settings_row_ed_master" for="tagesplanung_only_user_with_shifts"><?php echo $this->translate('tagesplanung_only_user_with_shifts'); ?></label>
+				<select name="tagesplanung_only_user_with_shifts" id="tagesplanung_only_user_with_shifts">
+				<option value="0" <?php if($this->tagesplanung_only_user_with_shifts == '0'): ?> selected="selected" <?php endif; ?>  > Nein</option>
+				<option value="1" <?php if($this->tagesplanung_only_user_with_shifts == '1'): ?> selected="selected" <?php endif; ?> > Ja </option>
+			</select>
+			</div>
+			<div class="error"><?php echo $this->error_tagesplanung; ?></div>			
+
+            <div class="clearer"></div>
+            
+            <?php //ISPC-2095 ?>
+            <!--  teammeeting settings -->
+            <?php 
+                //$this->tourenplanung_settings->removeDecorator("Fieldset");
+                echo $this->tourenplanung_settings;
+            ?>
+
+
+
+			<h5 class="LineHeading"><?php echo $this->translate('contactform'); ?></h5>
+			<div >
+				<label class="settings_row_ed_master" for="invoice_due_days"><?php echo $this->translate('tagesplanung_default_visit_time'); ?></label>
+				<input type="text" name="contactform_default_visit_length" pattern="\d*" value="<?php  if (!empty($this->contactform_default_visit_length)){echo $this->contactform_default_visit_length;} else{ echo '15';} ?>" />
+			</div>
+			<label class="settings_row_ed_master">&nbsp;</label>
+			<div class="error_new"><?php echo $this->error_contactform_default_visit_length; ?></div>	
+			<div class="clearer"></div>
+ 
+			<h5 class="LineHeading"><?php echo $this->translate('receipt'); ?></h5>
+			<div>
+				<label class="settings_row_ed_master" for="receipt_print_style"><?php echo $this->translate('Print style'); ?></label>
+				<select name="receipt_print_style" id="receipt_print_style">
+				<option value="mmi_receipt" <?php if($this->receipt_print_style == 'mmi_receipt'): ?> selected="selected" <?php endif; ?> ><?php echo $this->translate('mmi receipt'); ?></option>
+				<option value="kv_receipt" <?php if($this->receipt_print_style == 'kv_receipt'): ?> selected="selected" <?php endif; ?>  ><?php echo $this->translate('kv receipt'); ?></option>
+			</select>
+			</div>
+			
+			<h5 class="LineHeading"><?php echo $this->translate('member management'); ?></h5>
+			<div>
+				<label class="settings_row_ed_master" for="mandate_reference"><?php echo $this->translate('mandate_reference'); ?></label>
+				<input type="text" name="mandate_reference" value="<?php  echo $this->mandate_reference; ?>" id="cl_mandate_reference" />
+			</div>
+			
+			
+			<?php if($this->ppun_perms == "1"): ?>
+			<br/>&nbsp;
+			<div class="clearer"></div>
+
+			<h5 class="LineHeading"><?php echo $this->translate('ppun_settings'); ?></h5>
+			<div class="bank_settings_row_ed">
+				<label class="settings_row_ed_master" for="ppun_start"><?php echo $this->translate('priv_pat_unique_nr_start'); ?></label>
+				<input type="text" name="ppun_start" value="<?php echo $this->ppun_start; ?>" id="ppun_start" />
+			</div>
+			<?php endif; ?>
+			
+			
+			<?php if($this->hi_debitornumber_perms == "1"): ?>
+			<br/>&nbsp;
+			<div class="clearer"></div>
+
+			<h5 class="LineHeading"><?php echo $this->translate('hi_debitor_settings'); ?></h5>
+			<div class="bank_settings_row_ed">
+				<label class="settings_row_ed_master" for="hi_debitor_start"><?php echo $this->translate('hi_debitor_nr_start'); ?></label>
+				<input type="text" name="hi_debitor_start" value="<?php echo $this->hi_debitor_start; ?>" id="hi_debitor_start" />
+			</div>
+			<?php endif; ?>
+			
+			
+			<!-- medi plans print ------------------------------------------------------>
+			<br/>&nbsp;
+			<div class="clearer"></div>
+			<?php $plans = $this->plan_medi; ?>
+			<h5 class="LineHeading"><?php echo $this->translate('plans_medi_print'); ?></h5>
+			
+			<label for="checkall1" style="font-size: 14px;">
+						<input   name="all_id[]" onclick="checkedall_plans(this)" value="" type="checkbox" id="checkall1">&nbsp;<?php echo $this->translate('selectall'); ?>
+			</label>
+			
+			<ul id="listgroups">
+				<?php $chk_data = $this->client_groups; ?>
+				<?php foreach($plans as $k_p => $v_p): ?>
+				<?php $checked = ''; ?>
+				<?php if(in_array($k_p, $this->client_plans_medi)): $checked = 'checked="checked"'; endif; ?>
+				<li>
+					<label for="checkall1-<?php echo $k_p; ?>">
+						<input name="client_plans[]" alt="<?php echo $k_p; ?>" value="<?php echo $k_p; ?>" type="checkbox" id="checkall1-<?php echo $k_p; ?>" class="group-chks1" <?php echo $checked; ?>>&nbsp;<?php echo $v_p; ?>
+					</label>
+				</li>
+				<?php endforeach;?>
+			</ul>
+			
+			<br/>&nbsp;
+						
+			<div class="clearer"></div>
+			<br/>&nbsp;
+			<!-- ISPC-2636 Lore 29.07.2020 -->
+			<div class="bank_settings_row_ed" >
+				<label class="settings_row_ed_master" for="client_medi_sort" style="width: 350px;"><?php echo $this->translate('Sort order of the medication uniformly across the client'); ?></label>
+				<select name="client_medi_sort" id="client_medi_sort">
+					<option value="0" <?php if($this->client_medi_sort == ''):                      ?> selected="selected" <?php endif; ?> > Auswählen...</option>
+					<option value="importance"  <?php if($this->client_medi_sort == 'importance'):  ?> selected="selected" <?php endif; ?> > <?php echo  $this->translate('medication_importance');?> </option>
+					<option value="medication"  <?php if($this->client_medi_sort == 'medication'):  ?> selected="selected" <?php endif; ?> > <?php echo  $this->translate('medication_medication');?> </option>
+					<option value="drug" 		<?php if($this->client_medi_sort == 'drug'): 	    ?> selected="selected" <?php endif; ?> > <?php echo  $this->translate('medication_drug');?> </option>
+					<option value="indication"  <?php if($this->client_medi_sort == 'indication'):  ?> selected="selected" <?php endif; ?> > <?php echo  $this->translate('medication_indication');?> </option>
+					<option value="change_date" <?php if($this->client_medi_sort == 'change_date'): ?> selected="selected" <?php endif; ?> > <?php echo  $this->translate('medication_change_date');?> </option>
+				</select>
+			
+			</div>
+			<div class="clearer"></div>				
+			<div class="bank_settings_row_ed">
+				<label class="settings_row_ed_master" for="user_overwrite_medi_sort_option" style="width: 350px;"><?php echo $this->translate('user_overwrite_medi_sort_settings'); ?></label>
+				<select name="user_overwrite_medi_sort_option" id="user_overwrite_medi_sort_option">
+					<option value="0" <?php if($this->user_overwrite_medi_sort_option == '0'): ?> selected="selected" <?php endif; ?> > Nein</option>
+					<option value="1" <?php if($this->user_overwrite_medi_sort_option == '1'): ?> selected="selected" <?php endif; ?> > Ja </option>
+				</select>
+			</div>
+			<br/>&nbsp;
+			<!-- //. -->
+			
+			<div class="clearer"></div>
+			<!-- -------------------------------------------------------------------------->
+            
+            <!-- ISPC-1848 F p.7 removed next lines -->
+            <?php if(!1) : ?>  
+             <h5 class="LineHeading"><?php echo $this->translate('Medicatin new fields'); ?></h5>
+			<div class="bank_settings_row_ed">
+				<label class="settings_row_ed_master" for="tagesplanung_standby_patients"><?php echo $this->translate('Use new medication fields'); ?></label>
+				<select name="new_medication_fields" id="tagesplanung_standby_patients">
+				<option value="0" <?php if($this->new_medication_fields == '0'): ?> selected="selected" <?php endif; ?>  > Nein</option>
+				<option value="1" <?php if($this->new_medication_fields == '1'): ?> selected="selected" <?php endif; ?> > Ja </option>
+			</select>
+			</div>
+			<?php endif; ?>
+			<!-- -------------------------------------------------------------------------->
+            
+             <h5 class="LineHeading"><?php echo $this->translate('Enable route calculation in forms'); ?></h5>
+			<div class="bank_settings_row_ed">
+				<label class="settings_row_ed_master" for="route_calculation"><?php echo $this->translate('Calculate route'); ?></label>
+				<select name="route_calculation" id="route_calculation">
+				<option value="0" <?php if($this->route_calculation == '0'): ?> selected="selected" <?php endif; ?>  > Nein</option>
+				<option value="1" <?php if($this->route_calculation == '1'): ?> selected="selected" <?php endif; ?> > Ja </option>
+			</select>
+			</div>
+             
+
+			<!-- -------------------------------------------------------------------------->
+            
+            <h5 class="LineHeading"><?php echo $this->translate('Dgp settings'); ?></h5>
+			<div class="bank_settings_row_ed">
+				<label class="settings_row_ed_master" for="dgp_start_date"><?php echo $this->translate('Dgp transfer date'); ?></label>
+				<input type="text" id="dgp_transfer_date" name="dgp_transfer_date" value="<?php if($this->dgp_transfer_date !='0000-00-00 00:00:00'): echo date('d.m.Y',strtotime($this->dgp_transfer_date)); else: echo ''; endif; ?>" />
+			</div>
+             
+             
+              
+            <?php //ISPC-2161 ?>
+            <!--  teammeeting settings -->
+            <?php echo $this->teammeeting_settings_form;?>
+            
+             <?php //ISPC-2271 ?>
+            <!--  teammeeting settings -->
+            <?php echo $this->notfall_messages_settings_form;?>
+  
+              <?php //ISPC-2417 ?>
+            <!--  days_after_todo settings -->
+            <?php echo $this->days_after_todo_form;?>          
+           <div id="" class="error_new"><?php echo $this->error_days_after_todo ?></div> 
+            
+			
+			<?php //ISPC-2327 ?>	
+			<h5 class="LineHeading"><?php echo $this->translate('working_schedule'); ?></h5>
+			<div>
+				<label class="settings_row_ed_master" for="working_schedule"><?php echo $this->translate('working_schedule'); ?></label>
+				<textarea name="working_schedule" id="working_schedule"  cols="35" rows="5"><?php echo $this->working_schedule ?></textarea>
+			</div>
+			
+			<?php //ISPC-2311 ?>
+            <!--  patient course settings -->
+            <?php echo $this->patient_course_settings_form;?>
+            
+            <?php //ISPC-2163 ?>
+            <!--  activate shortcut v settings -->
+            <?php echo $this->activate_shortcut_settings_form;?>
+            
+            <?php //ISPC-2163 ?>
+            <!--  activate shortcut v settings -->
+            <?php 
+				//if($this->activate_shortcut_yes_settings_form)
+				//{
+					//echo $this->activate_shortcut_yes_settings_form;
+				//}
+			?>		
+			
+			<!-- ISPC-2593 Lore 19.05.2020 -->
+			<div class="clearer"></div><br/>
+			<h5 class="LineHeading"><?php echo $this->translate('client_header_option'); ?></h5>
+			<div class="bank_settings_row_ed">
+				<label class="settings_row_ed_master" for="head_option_loca"><?php echo $this->translate('show_location') ?></label>
+				<input type="radio" name="header_option" id="head_option_loca" value="show_location" style="width: 50px;" <?php if($this->client_header_option == 'show_location'): ?>checked="checked"<?php endif; ?>/>
+
+			</div>
+			<div class="clearer"></div>
+			<div class="bank_settings_row_ed">
+				<label class="settings_row_ed_master" for="head_option_age"><?php echo $this->translate('show_age_weight') ?></label>
+				<input type="radio" name="header_option" id="head_option_age" value="show_age_weight" style="width: 50px;" <?php if($this->client_header_option == 'show_age_weight'): ?>checked="checked"<?php endif; ?>/>
+			</div>
+			<!-- //. -->
+			
+			
+						
+			<!-- ISPC-2459 Ancuta 04.08.2020 -->
+			<div class="clearer"></div><br/>
+			<h5 class="LineHeading"><?php echo $this->translate('client_movement_number'); ?></h5>
+			<div class="bank_settings_row_ed">
+				<label class="settings_row_ed_master" for="head_option_loca"><?php echo $this->translate('zbe_start_number') ?></label>
+				<input type="text" id="movement_start_number" name="movement_start_number" value="<?php echo $this->movement_start_number;?>" />
+			</div>
+			<!-- //. -->			
+						
+			<?php //TODO-3365 Carmen 21.08.2020 ?>
+            <!--  pharmaindex settings -->
+            <?php echo $this->pharmaindex_settings_form;?>
+			
+			
+			<!-- ISPC-2769 Lore 06.01.2021 -->
+			<div class="clearer"></div>
+			<br/>&nbsp;
+			<div class="clearer"></div>		
+			<h5 class="LineHeading"><?php echo $this->translate('show_medi_times_when_given'); ?></h5>
+			<div class="bank_settings_row_ed">
+				<label class="settings_row_ed_master" for="show_medi_times_when_given" style="width: 350px;"><?php echo $this->translate('show_medi_times_when_given'); ?></label>
+				<select name="show_medi_times_when_given" id="show_medi_times_when_given">
+					<option value="0" <?php if($this->show_medi_times_when_given == '0'): ?> selected="selected" <?php endif; ?> > Nein</option>
+					<option value="1" <?php if($this->show_medi_times_when_given == '1'): ?> selected="selected" <?php endif; ?> > Ja </option>
+				</select>
+			</div>
+			<br/>&nbsp;
+			<!-- //. -->
+
+			<?php //ISPC-2806 Dragos 27.01.2021 ?>
+			<!--  complaint settings -->
+			<?php echo $this->compliant_settings_form;?>
+			
+			<!-- ISPC-2827 Ancuta 26.03.2021 -->
+			<div class="clearer"></div>
+			<br/>&nbsp;
+			<div class="clearer"></div>		
+			<h5 class="LineHeading"><?php echo $this->translate('ELSA EFA'); ?></h5>
+			<div class="bank_settings_row_ed">
+				<label class="settings_row_ed_master" for="efa_client" style="width: 350px;"><?php echo $this->translate('Is this client an EFA client? '); ?></label>
+				<select name="efa_client" id="efa_client">
+					<option value="0" <?php if($this->efa_client == '0'): ?> selected="selected" <?php endif; ?> > Nein</option>
+					<option value="1" <?php if($this->efa_client == '1'): ?> selected="selected" <?php endif; ?> > Ja </option>
+				</select>
+			</div>
+			<br/>&nbsp;
+			<!-- //. -->
+			
+			<!-- ISPC-2864 Ancuta 20.04.2021 -->
+			<div class="clearer"></div>
+			<br/>&nbsp;
+			<div class="clearer"></div>		
+			<h5 class="LineHeading"><?php echo $this->translate('ELSA Behandlungsprozess extension'); ?></h5>
+			<div class="bank_settings_row_ed">
+				<label class="settings_row_ed_master" for="efa_problem_extension" style="width: 350px;"><?php echo $this->translate('PLease select - which extension to be listed in Behandlungsprozess '); ?></label>
+				<select name="efa_problem_extension" id="efa_problem_extension">
+					<option value=""></option>
+					<option value="sapv" <?php if($this->efa_problem_extension == 'sapv'): ?> selected="selected" <?php endif; ?> > Show SAPV </option>
+					<option value="bpss" <?php if($this->efa_problem_extension == 'bpss'): ?> selected="selected" <?php endif; ?> > Show Biopschosoziales Modell </option>
+				</select>
+			</div>
+			<br/>&nbsp;
+			<!-- //. -->
+			
+			
+			
+			
+			<h5 class="LineHeading"></h5>
+			<input name="btnsubmit" type="submit" id="Client_SubmitBtn" class="button" tabindex="13" value="<?php echo $this->translate('submit') ?>">
+			
+		</fieldset>
+	</form>
+</div>
+
+<div id="client_users_modal">
+	<div id="btm_users_container">
+		<form id="save_btm_notification_users" action="" method="POST">
+			<table id="btm_users_ids">
+				<tr>
+					<?php $i = '1';
+						foreach($this->all_client_users as $k_usr => $v_usr): ?>
+							<?php if($k_usr > '0'): ?>
+								<td>
+									<input type="checkbox" name="btm_users[]" id="btm_user_<?php echo $k_usr; ?>" value="<?php echo $k_usr; ?>" <?php if(in_array($k_usr, $this->user_ids_arr)): ?> checked="checked"<?php endif; ?>>
+									<label for="btm_user_<?php echo $k_usr; ?>"><?php echo $v_usr; ?></label>
+								</td>
+								<?php if($i == '3'): ?>
+									<?php $i = '1'; ?>
+								</tr><tr>
+								<?php else: ?>
+									<?php $i++; ?>
+								<?php endif; ?>
+							<?php endif; ?>
+						<?php endforeach; ?>
+				</tr>
+			</table>
+			<input type="hidden" name="save_btm_notification_users" value="1" />
+		</form>
+	</div>
+</div>

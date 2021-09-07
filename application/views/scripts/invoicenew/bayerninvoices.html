@@ -1,0 +1,666 @@
+<?php
+$this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/page-css/invoice/new_bay_invoice_style.css?'.date('Ymd'));
+$this->headScript()->appendFile(RES_FILE_PATH . '/javascript/number_format.js?'.date('Ymd'));
+
+
+
+//ISPC-2069 Ancuta 07.09.2020
+
+if($this->show_print_jobs == 1 ){
+	$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/data_tables/jquery.dataTables.js?'.date('Ymd'));
+	$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/data_tables/dataTables.jqueryui.js?'.date('Ymd'));
+	$this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/data_tables/dataTables.jqueryui.css?' . date('Ymd'));
+	$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/views/invoicenew/printjobinfo.js');
+}
+
+//-- 
+
+?>
+<script>
+//ISPC-2069 Ancuta 07.09.2020
+var client_allowed_invoice = "<?php echo $this->allowed_invoice?>"; 
+//--
+
+
+	function getoveralllist(page) {
+		var url = '<?php echo APP_BASE; ?>invoicenew/fetchbayinvoicelist';
+		var filters = '';
+		var sortby = $('#sortby').val();
+		var sortdir = $('#sortdir').val();
+
+		//show a loading gif
+		$('#overall_bay_invoice_list').html('<br/><div class="loadingdiv" align="center"><img src="<?php echo RES_FILE_PATH; ?>/images/ajax-loader.gif"><br /><?php echo $this->translate(loadingpleasewait); ?></div><br/>');
+
+		filters = $('#overalllist_form').serialize() + '&page=' + page;
+
+		if(sortby) {
+			filters = filters + '&ord=' + sortby;
+		}
+
+		if(sortdir) {
+			filters = filters + '&sort=' + sortdir;
+		}
+		xhr = $.ajax({
+			url : url + '?' + filters,
+			success : function(response) {
+				$('#overall_bay_invoice_list').html(response);
+				$('span#tab-count-unpaid').html("("+$('#status_unpaid').val()+")");
+				$('span#tab-count-paid').html("("+$('#status_paid').val()+")");
+				$('span#tab-count-draft').html("("+$('#status_draft').val()+")");
+				$('span#tab-count-deleted').html("("+$('#status_deleted').val()+")");
+				$('span#tab-count-overdue').html("("+$('#status_overdue').val()+")");
+				$('span#tab-count-all').html("("+$('#status_all').val()+")");
+				$('span#tab-count-archived').html("("+$('#status_archived').val()+")");
+			}
+		});
+
+	}
+
+	$(document).ready(function() {
+		var checkButton = function () {
+			
+		    $('.checkBox').each(function (index, obj) {
+		    	
+		        if (this.checked === true) {
+		        	
+		        	$(".warnings_invoices_more").removeAttr("disabled");
+		        	$("#warnings2_invoices_more").css('color', '#2779aa');
+		        	$("#warnings1_invoices_more").css('color', '#2779aa');
+		        	return false;
+		        }
+		        else
+		        {
+		        	if (!$(".warnings_invoices_more").attr('disabled')) {
+			        	$(".warnings_invoices_more").attr("disabled", true);
+			        	$("#warnings2_invoices_more").css('color', '#777777');
+			        	$("#warnings1_invoices_more").css('color', '#777777');
+		        	}
+		        }
+		    });
+
+			
+		};
+		
+		$(".checkBox").live("click", function() { checkButton();});
+		
+		
+		$("#paneln").hide();
+		$(".btn-slide-n_p").live('click',function(){
+			$("#paneln").slideToggle("slow");
+			$(this).toggleClass("active");
+			return false;
+		});
+		$(".btn-slide-n_p").addClass('ui-state-default ui-corner-bottom');
+		$( "#hiinvoicelisttabs" ).tabs();
+		$( "#tabsModal" ).tabs({selected: 0});
+
+		getoveralllist(1);
+
+		$('#apply').click(function() {
+			//reset pages and sorting
+			$('#sortby').val('');
+			$('#sortdir').val('');
+			$('#current_page').val('');
+			getoveralllist();
+			return false;
+
+		});
+
+		$('.overallpages').live('click',function(){
+			getoveralllist($(this).attr('rel'));
+		});
+
+		$('.overallsort').live('click',function(){
+			$('#sortby').val($(this).attr('rel'));
+			$('#sortdir').val($(this).attr('title'));
+			$('#current_page').val('');
+			getoveralllist();
+		});
+
+		$("#hiinvoicelisttabs").bind("tabsselect", function(event, ui) {
+			xhr.abort(); //added abort of previous request...causing columns misbehaving when changing tabs
+			$('#sortby').val('id')//change sort to defaul value "ln"
+// 			var tabsid2string = new Array("all", "draft","unpaid", "paid", "deleted", "overdue");
+			var tabsid2string = new Array("unpaid", "paid","overdue","draft", "deleted", "all", "archived");
+			$('#f_status').val(tabsid2string[ui.index]);
+			$('#savecols').val('0'); //reset save method each time a tab is changed
+
+			//reset filters when changing tabs
+			$(':input','#overalllist_form')
+				.not(':button, :submit, :reset, :hidden, .checkcolumns, select[name=f_dob_start], select[name=f_dob_end], input[name="icon_sys[]"], input[name="icon_cust[]"], .icon_input')
+				.val('')
+				.removeAttr('checked')
+				.removeAttr('selected');
+			$('select[name=f_dob_start] option:last-child').attr('selected', true);
+			$('select[name=f_dob_end] option:first-child').attr('selected', true);
+
+			$('td#filters_row input[type=checkbox]').removeAttr('checked');
+			//load list
+			getoveralllist();
+		});
+
+		$('tr.row td:not(td.col-0)').live('click', function(){
+			$(this).parent().next('.sub_row').toggle();
+		});
+
+		$('#invoice_select_all').live('change', function(){
+			if($(this).is(':checked')){
+				$('.invoice_checkbox').attr('checked', true);
+			} else {
+				$('.invoice_checkbox').removeAttr('checked');
+			}
+		});
+
+	$('#payModal').dialog({
+		autoOpen: false,
+		modal: true,
+		width:640,
+		height:400,
+		resize:false,
+		draggable: false,
+		title:'Zahlungseingang vermerken',
+		open: function(event, ui) {
+			$(".ui-icon-closethick").html("");
+
+			$('#tabsModal').tabs( "select" , 0 ); //always open default tab
+			$('#paymentComment').val("");
+			$('#paymentAmount').val("")
+			$('#paymentAmountErr').html("");
+
+		},
+		buttons: {
+		<?php echo $this->translate('invoiceSubmit'); ?>: function() {
+
+		if($('#paymentAmount').val() != ""){ //not empty
+
+			var amount = $('#paymentAmount').val().replace(/[^\d.,]/g,'').replace(/[^\d\.\-\ ]/g, '.');
+
+			if(amount.match(/[.]/g)){
+				//leave last comma with digits
+				if(amount.match(/[.]/g).length >= 1){
+					amount = amount.replace(/[.](?![\w]{1,3}$)/g,'');
+				}
+
+			} else { //simple ammount no comma or dots
+
+				var amount = $('#paymentAmount').val().replace(/[^\d.]/g,'');
+			}
+
+			//make sure amount is number with 2 decimal digits only
+			amount = new Number(amount).toFixed(2);
+
+			$('#paymentAmountErr').hide("slow");
+
+			var positiveNumber = "0";
+
+			if(amount < 0){
+				positiveNumber = 1;
+
+				$('#paymentAmountErr').show("slow");
+				$('#paymentAmountErr').html("<?php echo $this->translate("amountBiggerThan"); ?>");
+			} else {
+				$('#paymentAmountErr').hide("slow");
+				positiveNumber = 0;
+			}
+			
+//			console.log(amount+' - ' +new Number($('#documentAmountPayd').val()));
+			if(amount <= new Number($('#documentAmountPayd').val())){ //amount lower or equal than rest to pay
+
+				if(positiveNumber == 0){
+					$('#paymentAmountErr').hide("slow");
+					$('#paymentAmount').val(''+amount+'');
+					$('#payment').submit();
+					$( this ).dialog( "close" );
+				}
+			} else {
+
+				$('#paymentAmountErr').show("slow");
+				$('#paymentAmountErr').html("<?php echo $this->translate("amountLowerThan"); ?> "+$('#documentAmountPayd_span').html()+" &euro;");
+			}
+		} else {
+			$('#paymentAmountErr').show("slow");
+			$('#paymentAmountErr').html("<?php echo $this->translate("amountRequired"); ?>");
+		}
+
+
+	},
+	<?php echo $this->translate('cancelModalRechnung'); ?>: function(){
+			$( this ).dialog( "close" );
+
+				//update invoice sum in list if user cancels the modal after deleting payments
+				var invoiceId = new Number($('#invoiceId').val());
+				var totalInvoiceAmount = new Number($('#documentTotalAmount').html());
+				var restToPay = new Number($('#documentAmountPayd').val());
+
+
+				var amountPaydOverall = (totalInvoiceAmount.toFixed(2) - restToPay.toFixed(2));
+
+				$('#totalPaidAmount-'+invoiceId).val(amountPaydOverall.toFixed(2));
+				$('#documentItem-'+invoiceId).stop().effect("highlight", {}, 1500);
+
+			}
+		}
+	});
+
+	$('.pay').live('click', function(){
+		var totalAmount = $('#totalAmount-'+$(this).attr('alt')).val();
+		var totalPaidAmount = $('#totalPaidAmount-'+$(this).attr('alt')).val();
+		var invoiceId = $(this).attr('alt');
+
+		$('#payModal').dialog('open');
+		$('#invoiceId').val(invoiceId);
+
+
+		$('#documentTotalAmount').html(number_format(totalAmount,'2',',','.'));
+		$('#documentAmountPayd').val($('#restToPay-'+invoiceId).val());
+		$('#documentAmountPayd_span').html(number_format($('#restToPay-'+invoiceId).val(),'2',',','.'));
+
+
+		$('#documentDueDate').html($('#dueDate-'+invoiceId).html());
+	});
+
+	$('#paymentDate').datepicker({
+		dateFormat: 'dd.mm.yy',
+		showOn: "both",
+		buttonImage: $('#calImg').attr('src'),
+		buttonImageOnly: true,
+		nextText: '',
+		prevText: ''
+	});
+
+	$("#tabsModal").bind("tabsselect", function(event, ui) {
+
+		if(ui.index == "1"){
+			$("#payments-list").html('<div style="width: 100%;text-align: center;margin-top:20px;height: 120px;"><img src="<?php echo RES_FILE_PATH;?>/images/ajax-loader.gif" alt="Loading"/></div>');
+			$("#payments-list").load("invoicenew/bayernlistpayments?invoiceid="+$('#invoiceId').val());
+		}
+	});
+
+	$('.delPayment').live('click',function(){
+		var restToPay = new Number($('#documentAmountPayd').val());
+		var deletedPayment = new Number($('#reduceAmntPaid-'+$(this).attr('alt')).html());
+		var paidAmount = new Number($('#totalPaidAmount-'+$('#invoiceId').val()).val())
+		$("#payments-list").html('<div style="width: 100%;text-align: center;margin-top:20px;height: 120px;"><img src="<?php echo RES_FILE_PATH;?>/images/ajax-loader.gif" alt="Loading"/></div>');
+		
+		if(deletedPayment > 0){ //reduce only the positive values ( double -  becomes +)
+			var newRestToPay  = (Number(restToPay.toFixed(2))+Number(deletedPayment.toFixed(2)));
+
+			$('#documentAmountPayd_span').html(number_format(newRestToPay, '2',',','.'));
+			$('#documentAmountPayd').val(newRestToPay);
+
+			$('#restToPay-'+$('#invoiceId').val()).val(newRestToPay);
+			$('#restToPay_div-'+$('#invoiceId').val()).html(newRestToPay);
+
+			var new_paid_amount = (Number(paidAmount.toFixed(2))-Number(deletedPayment.toFixed(2)));
+
+			$('#totalPaidAmount-'+$('#invoiceId').val()).val(new_paid_amount.toFixed(2));
+			//here set the formated number in html
+			$('#totalPaidAmount_span-'+$('#invoiceId').val()).html(number_format(new_paid_amount.toFixed(2), '2', ',','.'));
+
+
+			//change invoice status
+			if($('#i_status_'+$('#invoiceId').val()).html() == '<?php echo $this->translate('statusPaid'); ?>'){ //was fully paid
+				$('#i_status_'+$('#invoiceId').val()).html('<?php echo $this->translate('statusPPaid'); ?>'); //now parial paid
+			}
+
+			//change total paid amount color
+			if($('#totalPaidAmount-'+$('#invoiceId').val()).parent().hasClass('paid'))
+			{
+				$('#totalPaidAmount-'+$('#invoiceId').val()).parent().removeClass('paid');
+			}
+
+			//change total amount color
+			if($('#totalAmount-'+$('#invoiceId').val()).parent().hasClass('paid'))
+			{
+				$('#totalAmount-'+$('#invoiceId').val()).parent().removeClass('paid');
+			}
+		}
+
+		$("#payments-list").load("invoicenew/bayernlistpayments?op=del&paymentid="+$(this).attr('alt')+"&invoiceid="+$('#invoiceId').val());
+	});
+
+	
+	/*################################################################*/
+	/* delete bulk */	
+	$('#delmore').live('click',function(event){
+		event.preventDefault();
+		$('#deletemore').val("1");
+		$('#confirmDelete').dialog('open');
+	});
+		
+	$('#confirmDelete').dialog({
+		autoOpen:false,
+		resize:false,
+		draggable:false,
+		width:300,
+		height:200,
+		title: '<?php echo $this->translate('confirmdeletetitle'); ?>',
+		buttons: {
+		<?php echo $this->translate('delete'); ?>: function() {
+				
+				$('#bay_invoices').submit();
+		},
+		<?php echo $this->translate('cancelModalRechnung'); ?>: function(){
+					$('input[name=deletemore]').val("");
+					$( this ).dialog( "close" );
+		}
+	},
+	close: function(){
+		$('input[name=deletemore]').val("");
+	}
+});
+	/*################################################################*/
+
+	/*################################################################*/
+	/* 1 warnings bulk */	
+	$('#warnings1_invoices_more').live('click',function(event){
+		event.preventDefault();
+		$('#warningmore').val("1");
+		$('#warningmore_type').val("first_warning");
+		$('#warningmore_table').val('bayern_sapv_invoice_new');
+		
+		$('#confirm_generate_warnings1').dialog('open');
+	}); 
+		
+	$('#confirm_generate_warnings1').dialog({
+		autoOpen:false,
+		resize:false,
+		draggable:false,
+		width:300,
+		height:200,
+		title: '<?php echo $this->translate('confirmdeletetitle'); ?>',
+		buttons: {
+		<?php echo $this->translate('create'); ?>: function() {
+			$('#bay_invoices').submit();
+			$('#warningmore').val("");
+			$('#warningmore_type').val("");
+			$('#warningmore_table').val("");
+			$( this ).dialog( "close" );
+		},
+		<?php echo $this->translate('cancelModalRechnung'); ?>: function(){
+					$('#warningmore').val("");
+					$('#warningmore_type').val("");
+					$('#warningmore_table').val("");
+					$( this ).dialog( "close" );
+		}
+	},
+	close: function(){
+		$('#warningmore').val("");
+		$('#warningmore_type').val("");
+		$('#warningmore_table').val("");
+	}
+	 
+});
+	/*################################################################*/
+
+	/*################################################################*/
+	/* 2 warnings bulk */	
+	$('#warnings2_invoices_more').live('click',function(event){
+		event.preventDefault();
+		$('#warningmore').val("1");
+		$('#warningmore_type').val("second_warning");
+		$('#warningmore_table').val('bayern_sapv_invoice_new');
+	
+		$('#confirm_generate_warnings2').dialog('open');
+	}); 
+		
+	$('#confirm_generate_warnings2').dialog({
+		autoOpen:false,
+		resize:false,
+		draggable:false,
+		width:300,
+		height:200,
+		title: '<?php echo $this->translate('confirmdeletetitle'); ?>',
+		buttons: {
+		<?php echo $this->translate('create'); ?>: function() {
+			$('#bay_invoices').submit();
+			$('#warningmore').val("");
+			$('#warningmore_type').val("");
+			$('#warningmore_table').val("");
+			$( this ).dialog( "close" );
+		},
+		<?php echo $this->translate('cancelModalRechnung'); ?>: function(){
+					$('#warningmore').val("");
+					$('#warningmore_type').val("");
+					$('#warningmore_table').val("");
+					$( this ).dialog( "close" );
+		}
+	},
+	close: function(){
+		$('#warningmore').val("");
+		$('#warningmore_type').val("");
+		$('#warningmore_table').val("");
+	}
+});
+	/*################################################################*/
+	
+
+	/*################################################################*/
+	/* delete single invoice */	
+	$('.delete').live('click',function(event){
+		event.preventDefault();
+		$('#delete_selected_invoice').val($(this).attr('rel'));
+		$('#confirm_single_delete').dialog('open');
+		
+	});
+	
+	$('#confirm_single_delete').dialog({
+		autoOpen:false,
+		resize:false,
+		draggable:false,
+		width:300,
+		height:200,
+		title: '<?php echo $this->translate('confirmdeletetitle'); ?>',
+		buttons: {
+		<?php echo $this->translate('delete'); ?>: function() {
+			set_delete($('#delete_selected_invoice').val());
+			$( this ).dialog( "close" );
+		},
+		<?php echo $this->translate('cancelModalRechnung'); ?>: function(){
+			$('#delete_selected_invoice').val("");
+			$( this ).dialog( "close" );
+		}
+	}});
+	/*################################################################*/
+	
+
+	
+	
+	
+	$('.storno').live('click', function(){
+		$('#storno_selected_invoice').val($(this).attr('title'));
+		$('#storno_selected_invoice_id').val($(this).attr('alt'));
+		$('#storno_dialog').dialog('open');
+	});
+	
+	$('#storno_dialog').dialog({
+		autoOpen:false,
+		modal:true,
+		draggable: false,
+		resizable: false,
+		buttons: {
+			"<?php echo $this->translate('yesconfirm'); ?>": function() {
+				set_storno($('#storno_selected_invoice_id').val());
+				$( this ).dialog( "close" );
+			},
+			"<?php echo $this->translate('noconfirm'); ?>": function() {
+				$( this ).dialog("close");
+
+			}
+		},
+		open: function(){
+			$( "#storno_dialog" ).dialog( "option", "title", "<?php echo $this->translate('storno_invoice_no'); ?> "+$('#storno_selected_invoice').val());
+		},
+		close: function(){
+			$('#storno_selected_invoice').val('');
+			$('#storno_selected_invoice_id').val('');
+		}
+	});
+	
+	//check all checkboxes
+	$("#check_all").live('click', function(){
+		$('.checkBox').attr('checked', $(this).is(':checked'));
+	});
+});
+function set_delete(invoice_id) {
+	var url = '<?php echo APP_BASE; ?>invoicenew/bayerninvoices';
+	window.location = url + '?' + 'mode=delete&invoiceid='+invoice_id;
+}
+	
+function set_storno(invoice_id) {
+	var url = '<?php echo APP_BASE; ?>invoicenew/bayerninvoices';
+	window.location = url + '?' + 'mode=setstorno&inv_id='+invoice_id;
+	
+}
+</script>
+<h1><?php echo $this->translate('bayern_invoices_headline');  ?></h1>
+<form action="<?php echo APP_BASE; ?>invoicenew/createcustominvoice" id="new_invoice" method="POST" >
+     <div class="buttonsBar">
+		<button value="1" name="newinvoice" class="bigbutton ui-state-default ui-corner-all newinvoice" id="newinvoice" onclick="javascript:if ($.browser.msie  && parseInt($.browser.version, 10) <= 7) { submitForm(); }" /><?php echo $this->translate('newInvoice'); ?></button>
+	</div>
+</form>
+<br />
+
+
+<!-- ISPC-2609 Ancuta 07.09.2020-->
+<?php if($this->show_print_jobs == 1 && !empty($_REQUEST['msg'])): ?>
+	<div class="success" id="print_job_success_info"> <?php echo $this->translate($_REQUEST['msg']); ?> </div> 
+<?php endif;?>
+<!-- // -->
+<div class="listfilters">
+	<div id="CalImg" style="display: none;">
+	       <img id="calImg" src="<?php echo RES_FILE_PATH;  ?>/images/calendar.png" alt="Popup" class="trigger left" style="margin-top:5px;">
+	</div>
+	<div id="hiinvoicelisttabs">
+		<ul>
+			<li><a href="#paneln" rel="0" class="tabs" id="tab-0" ><?php echo $this->translate('tabName-open')?> <span id="tab-count-unpaid"></span></a> </li>
+			<li><a href="#paneln" rel="1" class="tabs" id="tab-1" ><?php if($this->change_tab_name == "1") : echo $this->translate('tabName-transfer');  else:  echo $this->translate('tabName-paid'); endif;?> <span id="tab-count-paid"></span></a> </li>
+			<li><a href="#paneln" rel="2" class="tabs" id="tab-2" ><?php echo $this->translate('tabName-overdue')?> <span id="tab-count-overdue"></span></a></li>
+			<li><a href="#paneln" rel="3" class="tabs" id="tab-3" ><?php echo $this->translate('tabName-draft')?> <span id="tab-count-draft"></span></a> </li>
+			<li><a href="#paneln" rel="4" class="tabs" id="tab-4" ><?php echo $this->translate('tabName-canceled')?> <span id="tab-count-deleted"></span></a> </li>
+			<li><a href="#paneln" rel="5" class="tabs" id="tab-5" ><?php echo $this->translate('tabName-all')?> <span id="tab-count-all"></span></a> </li>
+			<li><a href="#paneln" rel="6" class="tabs" id="tab-6" ><?php echo $this->translate('tabName-archived')?> <span id="tab-count-archived"></span></a> </li>
+		</ul>
+		<div id="paneln" class="ui-helper-reset ui-helper-clearfix ui-widget-header ui-corner-all" style="background:#deedf7">
+		<div class="filtertable" style="padding-left:20px;">
+			<form id="overalllist_form">
+			<table border="1" cellspacing="10" cellpadding="10" style="width:99%;">
+				<tr>
+					<td class="tdlabel"><?php echo $this->translate('lastname') ?></td>
+					<td class="lnamefilter" colspan="3">
+						<input type="text" name="last_name" value="" id="last_name" />
+					</td>
+				</tr>
+				<tr>
+					<td class="tdlabel"><?php echo $this->translate('firstname') ?></td>
+					<td class="lnamefilter" colspan="3">
+						<input type="text" name="first_name" value="" id="first_name" />
+					</td>
+				</tr>
+				<tr>
+					<td class="tdlabel"><?php echo $this->translate('epid') ?></td>
+					<td class="lnamefilter" colspan="3">
+						<input type="text" name="epid" value="" id="epid" />
+					</td>
+				</tr>
+				<tr>
+					<td class="tdlabel"><?php echo $this->translate('rnummer') ?></td>
+					<td class="lnamefilter" colspan="3">
+						<input type="text" name="rnummer" value="" id="rnummer_x" />
+					</td>
+				</tr>
+				<tr>
+					<td class="tdlabel"><?php echo $this->translate('Period') ?></td>
+					<td class="lnamefilter" colspan="3">
+						<?php echo $this->months_selector; ?>
+					</td>
+				</tr>
+				<tr>
+					<td colspan="4" align="center">
+						<input type="hidden" value="" name="f_status" id="f_status" />
+						<input type="submit" name="apply" id="apply" class="ui-button ui-widget ui-state-default ui-corner-all ui-button-text-only" value="<?php echo $this->translate('submitfilter') ?>" />
+					</td>
+
+				</tr>
+
+			</table>
+	</form>
+	</div>
+	</div>
+	<p class="slide_p"><a href="#" id="searchlink" class="btn-slide-n_p"><?php echo $this->translate('slidefilter')?></a></p>
+
+	<div id="overall_bay_invoice_list">
+	<!-- content loaded by AJAX request -->
+	</div>
+
+	</div>
+</div>
+<div id="payModal">
+	<div class="hintBox" style="margin-bottom:10px">
+		<div style="float:right;" id="documentDueDate"></div><div style="text-align:left;">Zahlungsziel:</div>
+		<div class="clearFloat"></div>
+		<div style="float:right; font-size:18px; font-weight:bold;" id="documentAmount"><span id="documentTotalAmount"></span> €</div><div style="text-align:left;">Betrag:</div>
+		<div class="clearFloat"></div>
+		<div id="formPayment[hintToPay]" class="">
+			<input type="hidden" id="documentAmountPayd" value="" />
+			<div style="float:right; font-size:14px; font-weight:bold;">
+				<span class="marked" style="background:none">
+					<span id="documentAmountPayd_span"></span> €
+				</span>
+			</div>
+			<div style="text-align:left;">Noch zu zahlen:</div>
+			<div class="clearFloat"></div>
+		</div>
+	</div>
+
+	<div id="tabsModal">
+		<ul>
+			<li><a href="#payp">Neuer Zahlungseingang</a></li>
+			<li><a href="#paymentHistory">Erfasste Zahlungseingänge</a></li>
+		</ul>
+		<div id="payp">
+			<form action="" id="payment" method="POST" >
+				<input type="hidden" value="1" name="payment" id="paymentinvoice" />
+				<input type="hidden" value="0" name="invoiceId" id="invoiceId" />
+				<table width="100%" class="table-form" cellpadding="3" cellspacing="0">
+					<tbody><tr>
+							<td class="label"><font><font><?php echo $this->translate('entrydate'); ?>:</font></font></td>
+							<td><input class="datepicker" type="text" name="paymentDate" id="paymentDate" value="<?php echo date("d.m.Y"); ?>"></td>
+						</tr>
+
+						<tr>
+							<td class="label"><font><font class=""><?php echo $this->translate('comment'); ?>:</font></font></td>
+							<td><textarea style="width:320px;" class="text" name="paymentComment" id="paymentComment" rows="3"></textarea></td>
+						</tr>
+						<tr>
+							<td class="label"><font><font class=""><?php echo $this->translate('amount'); ?>:</font></font></td>
+							<td>
+								<input style="width:160px;" name="paymentAmount" id="paymentAmount" type="text" class="text" />
+								<a href="javascript:;" onclick="$('#paymentAmount').val($('#documentAmountPayd_span').html());"><font><?php echo $this->translate('payFullAmount'); ?></font></a>
+								<div id="paymentAmountErr"></div>
+							</td>
+						</tr>
+					</tbody>
+				</table>
+			</form>
+		</div>
+		<div id="paymentHistory">
+			<div id="loadingmodal"></div>
+			<div id="payments-list">
+			</div>
+		</div>
+	</div>
+</div>
+<input type="hidden" name="delete_selected_invoice" id="delete_selected_invoice" value="" />
+<input type="hidden" id="storno_selected_invoice" value="" />
+<input type="hidden" id="storno_selected_invoice_id" value="" />
+<div id="storno_dialog">
+	<p>
+		<?php echo $this->translate('storno_dialog_text');  ?>
+	</p>
+
+</div>
+<div id="confirm_generate_warnings1"><?php echo $this->translate('confirm_generate_warnings1'); ?></div>
+<div id="confirm_generate_warnings2"><?php echo $this->translate('confirm_generate_warnings2'); ?></div>
+<div id="confirmDelete"><?php echo $this->translate('confirm_invoice_delete'); ?></div>
+<div id="confirm_single_delete"><?php echo $this->translate('confirm_invoice_delete'); ?></div>

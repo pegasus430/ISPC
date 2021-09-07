@@ -1,0 +1,2189 @@
+<!-- Maria:: Migration ISPC to CISPC 08.08.2020 -->
+<link href="<?php echo RES_FILE_PATH; ?>/css/new_buttons.css" media="all" rel="stylesheet" type="text/css" />
+<?php $this->headScript()->appendFile(RES_FILE_PATH.'/javascript/pharmaindex/medi_pharmaindex.js?'.date('Ymd'));?>
+<?php $this->headLink()->appendStylesheet(RES_FILE_PATH.'/css/pharmaindex/medi_pharmaindex.css?'.date('Ymd'));?>
+<script type="text/javascript">
+var detailscookies  =<?php echo $this->detailscookies?>;
+</script>
+
+<?php
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/livesearch/patientcontact.js');
+$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/dragdiv/dragdivpatient.js');
+
+	$this->headScript()->appendFile(RES_FILE_PATH.'/javascript/views/patientnew/hospizregisterv3.js?'.date('Ymd'));
+?>
+<script type="text/javascript" src="<?php echo RES_FILE_PATH; ?>/javascript/livesearch_new/livesearch.js"></script>
+<style type="text/css">
+	.standby_class.ui-widget-content {
+		border:2px solid #ff0000;
+}
+
+	.standby_class.ui-widget-content .ui-dialog-buttonpane {
+	border:0px;
+}
+
+	.standby_class .ui-widget-header {
+	color: #ff0000;
+	font-size: 16px;
+	background: #fef8f6;
+	border-color: #ff0000;
+}
+</style>
+<script type="text/javascript">
+	var jscount = "<?php echo $this->jscount + 1 ?>";
+	var jcount = "<?php echo $this->jscount + 1 ?>";
+	var medcount = " ";
+	var jsmedcount = '<?php echo $this->jsmedcount + 1 ?>';
+	var jsbmedcount = '<?php echo $this->jsbmedcount + 1 ?>';
+	var dcntr = '<?php echo $this->dcntr ?>';
+	var mcntr = '<?php echo $this->mcntr ?>';
+// 	var jsdiagnosismeta = <?php echo $this->jsdiagnosismeta ?>;
+	var error_exists = "<?php echo $this->error_present; ?>";
+	var jarr = <?php if($this->jdarr != 'null') { echo $this->jdarr; } else { echo "''"; } ?>;
+	var fdocblur = true;
+	var healthblur = true;
+	var verblur = true;
+	var diagnosisblur = Array();
+	var icddiagnosisblur = Array();
+	var medblur = Array();
+	var locationblur = Array();
+	var period_start = '<?php echo $this->period_start ?>';
+	var period_end = '<?php echo $this->period_end ?>';
+	var healthinsuranceik = '';
+
+	<?php if($this->show_mmi == "1"):?>
+	//used in mmi dialog
+	var active_recipe_row = null;
+
+	$(document).on('click', '.mmi_search_button', function(){
+		var receipt_field = $(this).parent().find('input.livesearchmedinp');
+		active_recipe_row = receipt_field;
+	});
+	<?php endif; ?>
+	
+	$(document).ready(function(){
+
+		<?php if($this->show_mmi == "1"):?>
+		 //INSTALL MEDIINDEX-WIDGET
+		var pi = new pharmaindex();
+//		pi.input_medname = ".medication";
+		pi.input_medname = ".med";
+		pi.input_rowparent = "tr";
+		pi.input_receipe_butt = ".mmi_search_button";
+		pi.input_to_recipe = ".to_recipe";
+		pi.mode="recipe";
+		pi.ikno = "#ikno_input";
+		pi.use_suggestions = '0';
+		pi.otcWarningSw = '0';
+
+		//PATH FOR THE AJAX SCRIPTS
+		pi.ajaxPath = "pharmaindex";
+
+		//PATH FOR THE IMAGE FOLDER
+		pi.imagePath="images/pharmaindex";
+
+		// ISPC-2329 Ancuta 03.04.2020
+		//Commented lines: 
+		//pi.callback = function(recipe){
+		//	$(active_recipe_row).val(recipe);
+		//}; 
+		
+		//Added lines:
+		pi.callback = function(recipe, drug, extra_object ){
+			
+ 			var input_row = (active_recipe_row.attr('id').substr(('medication').length));
+			var res = input_row.split("_"); 
+			var medication_type = res[0];
+			
+			var pzn = 0;
+			var source = "custom";
+			var dbf_id = 0;
+			
+			//extra_object
+			if (arguments.length == 3 && typeof arguments[2] == 'object') {
+
+				if (arguments[2]['source'] == "mmi_dialog_price" && typeof arguments[2]['PRICE_ITEM'] == 'object') {
+					//this is a medication selected from the mmi pricelist
+					var PRICE_ITEM = arguments[2]['PRICE_ITEM'];
+					pzn = PRICE_ITEM.PZN;
+					dbf_id = PRICE_ITEM.ID;
+					source = arguments[2]['source'];
+				} else if (arguments[2]['source'] == "mmi_dialog_product" && typeof arguments[2]['PRODUCT'] == 'object') {
+					var PRODUCT = arguments[2]['PRODUCT']
+					dbf_id = PRODUCT.ID;
+					source = arguments[2]['source'];
+					
+					//ISPC-2329 Ancuta 03.04.2020
+					//We now take the PZN for the FIRST item in PACKAGE_LIST
+					var PACKAGE_ITEM_0 = arguments[2]['PRODUCT']['PACKAGE_LIST'][0];
+					pzn = PACKAGE_ITEM_0.PZN;
+					//dbf_id = PACKAGE_ITEM_0.ID; // ?? 
+					
+				} else {
+					//error
+					pzn = 0;
+					source = "custom";
+					dbf_id = 0;
+				}
+			}
+			
+			//ISPC-2554 pct.3 Carmen 26.03.2020
+			var atcstring = '';
+			if(!$.isEmptyObject(extra_object) && extra_object.hasOwnProperty('PRODUCT'))
+			{
+				if(extra_object.PRODUCT.hasOwnProperty('ITEM_LIST') && !$.isEmptyObject(extra_object.PRODUCT.ITEM_LIST[0]))
+				{
+					if(extra_object.PRODUCT.ITEM_LIST[0].hasOwnProperty('ATCCODE_LIST') && !$.isEmptyObject(extra_object.PRODUCT.ITEM_LIST[0].ATCCODE_LIST[0]))
+					{
+			
+			            var atclist = extra_object.PRODUCT.ITEM_LIST[0].ATCCODE_LIST[0];
+			            var atcarr = {};
+			            
+			            atcarr['atc_code'] = atclist.CODE;
+			            atcarr['atc_description'] = atclist.NAME;
+			            atcarr['atc_groupe_code'] = atclist.PARENT.CODE;
+			            atcarr['atc_groupe_description'] = atclist.PARENT.NAME;
+			            
+			            atcstring = JSON.stringify(atcarr);
+					}
+				}
+			}
+			//--
+							
+            var parent_tr;
+            if (parent_tr = $(active_recipe_row).closest("tr")) {
+            	 $('.medication_pzn', parent_tr).val(pzn.toString().escapeValue());
+    	   	     $('.medication_source', parent_tr).val(source.toString().escapeValue());
+    	   	     $('.medication_dbf_id', parent_tr).val(dbf_id.toString().escapeValue());
+    	   	     $('.medication_atc', parent_tr).val(atcstring); //ISPC-2554 pct.3 Carmen 26.03.2020 < NOT SAVED YET
+            }
+   	     
+			
+			if( medication_type != "isschmerzpumpe"){
+			
+				if(drug){
+					$('#drug'+input_row).val(drug);
+				}else{
+					$('#drug'+input_row).val('');
+				}
+				
+				$('#medication'+input_row).val(recipe);
+				$('#hidd_medication'+input_row).val('');
+			} 
+			else
+			{
+
+			 	input_row = res[1];
+			 	var extra_pumpe_number = res[3];
+			 
+				$('#medication_'+medication_type+'_'+extra_pumpe_number+'_'+input_row).val(recipe);
+
+			 	if(drug){
+					$('#drug_'+medication_type+'_'+extra_pumpe_number+'_'+input_row).val(drug);
+				}else{
+					$('#drug_'+medication_type+'_'+extra_pumpe_number+'_'+input_row).val('');
+				}
+			 
+			 	$( "input[id^='hidd_medication_']" , $(active_recipe_row).parent()).val('');
+			 	$( "input[id^='edited_']" , $(active_recipe_row).parent()).val('1');
+			 	
+			 	
+				
+			}
+		};
+		// -- Until here! 
+
+		pi.install();
+		
+		$('.livesearchmedinp').live('change', function() {
+			var input_row = parseInt($(this).attr('id').substr(('medication').length));
+			reset_medications(input_row);
+		}).liveSearch({
+			url: 'pharmaindex/getproductsmedils?ik_no='+healthinsuranceik+'&sm=0&searchtext=',
+			id: 'livesearch_admission_medications',
+			aditionalWidth: '300',
+			noResultsDelay: '900',
+			typeDelay: '900',
+			returnRowId: function (input) {return parseInt($(input).attr('id').substr(('medication').length));}
+		});
+		<?php else: ?>
+		$('.livesearchmedinp').live('change', function() {
+			var input_row = parseInt($(this).attr('id').substr(('medication').length));
+			reset_medications(input_row);
+		}).liveSearch({
+			url: 'ajax/medications?q=',
+			id: 'livesearch_admission_medications',
+			aditionalWidth: '200',
+			noResultsDelay: '900',
+			typeDelay: '900',
+			returnRowId: function (input) {return parseInt($(input).attr('id').substr(('medication').length));}
+		});
+		<?php endif; ?>
+
+		$('#admission_date').datepicker({
+			dateFormat: 'dd.mm.yy',
+			showOn: "both",
+			buttonImage: $('#calImg').attr('src'),
+			buttonImageOnly: true,
+			changeMonth: true,
+			changeYear: true,
+			nextText: '',
+			prevText: '',
+			maxDate:'<?php echo date("d.m.Y")?>'
+		});
+		
+		
+		$('#birthd').datepicker({
+			dateFormat: 'dd.mm.yy',
+			showOn: "both",
+			buttonImage: $('#calImg').attr('src'),
+			buttonImageOnly: true,
+			changeMonth: true,
+			changeYear: true,
+			nextText: '',
+			prevText: '',
+			maxDate: '<?php echo date('d.m.Y'); ?>',
+			yearRange: '1900:+10',
+			onSelect:function(){
+				checkpatientexist();
+		}
+		});
+
+		$('#verordnungam').datepicker({
+			dateFormat: 'dd.mm.yy',
+			showOn: "both",
+			buttonImage: $('#calImg').attr('src'),
+			buttonImageOnly: true,
+			changeMonth: true,
+			changeYear: true,
+			nextText: '',
+			prevText: '',
+			onClose:function(){
+				var fromdate = $('#verordnungam').val();
+				fromdate = fromdate.split(".");
+				var from_year = fromdate[2];
+				if (from_year< period_start || from_year > period_end ) {
+					alert('<?php echo $this->translate('noticebeginyearperiode'); ?> '+from_year+'. <?php echo $this->translate('areyousure'); ?>  ');
+	}
+	}
+		});
+		$('#verordnungbis').datepicker({
+			dateFormat: 'dd.mm.yy',
+			showOn: "both",
+			buttonImage: $('#calImg').attr('src'),
+			buttonImageOnly: true,
+			changeMonth: true,
+			changeYear: true,
+			nextText: '',
+			prevText: '',
+			onClose:function(){
+				var tilldate = $('#verordnungbis').val();
+				tilldate = tilldate.split(".");
+				var till_year = tilldate[2];
+				if (till_year > period_end  || till_year < period_start) {
+					alert('<?php echo $this->translate('noticeendyearperiode'); ?> '+till_year+'. <?php echo $this->translate('areyousure'); ?>  ');
+				}
+			}
+
+		});
+
+		$("#verordnungam").mask("99.99.9999");
+		$("#verordnungbis").mask("99.99.9999");
+
+		//sapv ls
+		$('#verordnet_von').live('change', function() {
+			$('#hidd_verordnet_von').val('');
+		}).liveSearch({
+			//url: 'ajax/getsapvverordnung?q=',
+			url: 'ajax/sgetsapvverordnung?q=',
+			id: 'livesearch_admission_sapv',
+			noResultsDelay: '900',
+			typeDelay: '900'
+		});
+		//familydoc ls
+		$('#familydoc_id').live('change', function() {
+			$('#hidd_docid').val('');
+		}).liveSearch({
+			url: 'ajax/familydoctor?q=',
+			id: 'livesearch_admission_familydoc',
+			noResultsDelay: '900',
+			typeDelay: '900'
+		});
+		//healthinsurance ls
+		$('#company_name').live('change', function() {
+			$('#hdn_companyid').val('');
+		}).liveSearch({
+			url: 'ajax/healthinsurance?q=',
+			id: 'livesearch_admission_healthinsurance',
+			aditionalWidth: '120',
+			noResultsDelay: '900',
+			typeDelay: '900'
+		});
+		//livesearch icd ls
+		$('.livesearchicdinp').live('change', function() {
+			var input_row = parseInt($(this).attr('id').substr(('icdnumber').length));
+			reset_diagnosis(input_row);
+		}).liveSearch({
+			url: 'ajax/diagnosis?mode=icdnumber&q=',
+			id: 'livesearch_admission_diagnosis',
+			aditionalWidth: '300',
+			noResultsDelay: '900',
+			typeDelay: '900',
+			returnRowId: function (input) {return parseInt($(input).attr('id').substr(('icdnumber').length));}
+		});
+
+		//livesearch description ls
+		$('.livesearchinp').live('change', function() {
+			var input_row = parseInt($(this).attr('id').substr(('diagnosis').length));
+			reset_diagnosis(input_row);
+		}).liveSearch({
+			url: 'ajax/diagnosis?q=',
+			id: 'livesearch_admission_diagnosis',
+			aditionalWidth: '50',
+			noResultsDelay: '900',
+			typeDelay: '900',
+			returnRowId: function (input) {return parseInt($(input).attr('id').substr(('diagnosis').length));}
+		});
+
+		//livesearch medications ls
+		$('.livesearchmedinp').live('change', function() {
+			var input_row = parseInt($(this).attr('id').substr(('medication').length));
+			reset_medications(input_row);
+		}).liveSearch({
+			url: 'ajax/medications?q=',
+			id: 'livesearch_admission_medications',
+			aditionalWidth: '200',
+			noResultsDelay: '900',
+			typeDelay: '900',
+			returnRowId: function (input) {return parseInt($(input).attr('id').substr(('medication').length));}
+		});
+
+
+		$('#patient_status').live('change',function(){
+			$('#select_error').hide();
+		});
+
+		$('#change_status').click(function(){
+			$( "#standbypatient" )
+			.data('change_status','1')
+			.data('status',$('#isstandby').val())
+			.dialog('open');
+		});
+
+		$( "#standbypatient" ).dialog({
+			autoOpen: false,
+			resizable: false,
+			draggable: false,
+			height: 250,
+			width: 400,
+			modal: true,
+			title: "Aufnahme",
+			closeOnEscape: false,
+			dialogClass:'standby_class',
+			open: function(event, ui) {
+				$(".ui-dialog-titlebar-close").hide();
+				
+				var change_status = "0";
+				    change_status  = $(this).data('change_status');
+				var status  = $(this).data('status');
+				
+				if(status){
+					$('.patient_status_select option[value='+status+']').attr('selected','selected');
+				}
+				
+				$(this).dialog( "option", "buttons", 
+						[ 
+							{
+								text: function() {
+										var name = "<?php echo $this->translate('Speichern')?>";
+										return name;
+									}, 
+									
+							      click: function() {
+										if($('#patient_status').val()==''){
+											$('#select_error').show();
+										}else if( $('#patient_status').val()=='1' ){
+											$('#isstandby').val('1');
+											$('#pat_status').html("Standby / Anfrage");
+											$( "#standbypatient" ).dialog('close');
+										} else if( $('#patient_status').val()=='0' ){
+											$('#isstandby').val('0');
+											$('#pat_status').html("regulärer Patient");
+
+											$( "#standbypatient" ).dialog('close');
+										}
+							      }
+							},
+							{
+								text: function() {
+									if(change_status == "0"){
+										var name = "<?php echo $this->translate('cancel_admission')?>";
+									} else {
+										var name = "<?php echo $this->translate('cancel_modal')?>";
+									}
+									return name;
+									}, 
+							      click: function() {
+							    	  if(change_status == "0"){
+								    	  	var url = '<?php  echo APP_BASE."overview/overview"; ?>';
+									   		$(location).attr('href',url);		
+							    	  } 
+							    	  else
+							    	  {
+							    		  $( "#standbypatient" ).dialog('close');
+							    	  }
+							      }
+							}
+						]
+				);
+				
+											
+			}
+//			,
+//			buttons: {
+//				"Speichern": function(){
+//					if($('#patient_status').val()==''){
+//						$('#select_error').show();
+//					}else if( $('#patient_status').val()=='1' ){
+//						$('#isstandby').val('1');
+//						$('#pat_status').html("Standby / Anfrage");
+//						$( "#standbypatient" ).dialog('close');
+//					} else if( $('#patient_status').val()=='0' ){
+//						$('#isstandby').val('0');
+//						$('#pat_status').html("regulärer Patient");
+
+//						$( "#standbypatient" ).dialog('close');
+//					}
+//				}
+//			}
+		});
+
+
+		// conditions
+		if(error_exists !=='1'){
+			$( "#standbypatient" )
+			.data('change_status','0')
+			.dialog('open');
+		}
+		if($('#isstandby').val() != ""){
+			if($('#isstandby').val() == "1"){
+				$('#pat_status').html("Standby / Anfrage");
+			}
+
+			if($('#isstandby').val() == "0"){
+				$('#pat_status').html("regulärer Patient");
+			}
+		} else {
+			$('#pat_status').html("bitte wählen");
+		}
+
+		// ISPC-2318, elena, 09.09.2020
+		if($('#insurance_options').val() !== 'privatepatient')	{
+			$('#beihilfe').hide();
+		}
+
+		$('#insurance_options').on('change', function() {
+			console.log(this.value);
+			if(this.value == 'privatepatient'){
+			$('#beihilfe').show();
+
+		}else{
+			$('#beihilfe').hide();
+		}
+		});
+
+
+
+	});
+
+	function selectSapvDoctor(doc_id, doc_type)
+	{
+		if(doc_type == 'locations')
+		{
+			if($('#sapv_ln_'+doc_id).length > 0) {
+				var input_text = $('#sapv_ln_'+doc_id).html();
+			}		
+		}
+		else 
+		{
+		if($('#sapv_fn_'+doc_id).html().length > 0 &&  $('#sapv_ln_'+doc_id).html().length > 0){
+			var input_text = $('#sapv_ln_'+doc_id).html() +', '+ $('#sapv_fn_'+doc_id).html()
+		} else if($('#sapv_ln_'+doc_id).length > 0) {
+			var input_text = $('#sapv_ln_'+doc_id).html();
+		//} else if($('#sapv_dn_'+doc_id).length > 0) {
+		  } else if($('#sapv_fn_'+doc_id).length > 0) {
+			var input_text = $('#sapv_fn_'+doc_id).html();
+		}
+		}
+		
+		$('#verordnet_von').val(input_text);
+		$('#hidd_verordnet_von').val($('#sapv_id_'+doc_id).val());
+		$('#hidd_verordnet_von_type').val($('#sapv_'+doc_type+'_'+doc_id).val());
+
+	}
+
+	function selectFamilyDoctor(doc_id)
+	{
+		if($('#fdoc_fn_'+doc_id).val().length > 0 && $('#fdoc_ln_'+doc_id).val().length > 0){
+			var input_text = $('#fdoc_tn_'+doc_id).val()+ ' '+ $('#fdoc_ln_'+doc_id).val() +', '+ $('#fdoc_fn_'+doc_id).val()
+		} else if($('#fdoc_ln_'+doc_id).length > 0) {
+			var input_text = $('#fdoc_tn_'+doc_id).val()+ ' '+ $('#fdoc_ln_'+doc_id).val();
+		} else if($('#fdoc_dn_'+doc_id).length > 0) {
+			var input_text = $('#fdoc_tn_'+doc_id).val()+ ' '+ $('#fdoc_fn_'+doc_id).val();
+		}
+
+		$('#familydoc_id').val(input_text);
+		$('#hidd_docid').val($('#fdoc_id_'+doc_id).val());
+
+		
+		$('#fd_title').val($('#fdoc_tn_'+doc_id).val());
+		$('#fd_last_name').val($('#fdoc_ln_'+doc_id).val());
+		$('#fd_first_name').val($('#fdoc_fn_'+doc_id).val());
+		$('#fd_salutation').val($('#fdoc_sal_'+doc_id).val());
+		
+		$('#phone_practice').val($('#fdoc_ph_'+doc_id).val());
+		$('#doc_street1').val($('#fdoc_st_'+doc_id).val());
+		$('#doc_zip').val($('#fdoc_zip_'+doc_id).val());
+		$('#doc_city').val($('#fdoc_ci_'+doc_id).val());
+		$('#doc_fax').val($('#fdoc_fax_'+doc_id).val());
+		$('#doc_email').val($('#fdoc_email_'+doc_id).val());
+
+	}
+
+	function selectHealthInsurance(hid)
+	{
+		$('#hdn_companyid').val($('#hinsu_id_'+hid).val());
+		$('#company_name').val($('#hinsu_nm_'+hid).val());
+		$('#kvk_no').val($('#hinsu_kv_'+hid).val());
+		$('#institutskennzeichen').val($('#hinsu_ik_'+hid).val());
+		$('#debitor_number').val($('#hinsu_dn_'+hid).val());
+	}
+	function reset_diagnosis(input_row){
+		if($('#hidd_tab'+input_row).val() != 'text'){
+			$('#hidd_icdnumber'+input_row).val('');
+			$('#hidd_diagnosis'+input_row).val('');
+			$('#hidd_tab'+input_row).val('text');
+		}
+	}
+	function selectDiagnosis(did, row)
+	{
+		$('#icdnumber'+row).val($('#diag_icd_'+did).val());
+		$('#diagnosis'+row).val($('#diag_de_'+did).val());
+		$('#hidd_icdnumber'+row).val($('#diag_id_'+did).val());
+		$('#hidd_diagnosis'+row).val($('#diag_id_'+did).val());
+		$('#hidd_tab'+row).val('dig');
+	}
+
+	function reset_medications(input_row)
+	{
+		if($('#hidd_medication'+input_row).val()){
+			$('#hidd_medication'+input_row).val('');
+			$('#drid'+input_row).val('');
+		}
+		
+		//ISPC-2329 Ancuta 03.04.2020
+		$('#drug'+input_row).val();
+		$('#pzn'+input_row).val();
+		$('#dbf_id'+input_row).val();
+		$('#source'+input_row).val();
+		//--
+		
+	}
+
+	function selectMedications(mid, row, mmi_handler)
+	{
+		$('#medication'+row).val($('#medi_me_'+mid).val());
+		//ISPC-2329 Ancuta 03.04.2020
+		$('#drug'+row).val($('#medi_wirkstoffe_'+mid).val());
+		$('#pzn'+row).val($('#medi_PZN_'+mid).val());
+		$('#dbf_id'+row).val($('#medi_DBF_ID_'+mid).val());
+		$('#source'+row).val($('#medi_TYPE_'+mid).val());
+		//--
+
+		if(!mmi_handler)
+		{
+			$('#comment'+row).val($('#medi_comment_'+mid).val());
+			$('#hidd_medication'+row).val($('#medi_id_'+mid).val());
+		}
+
+	}
+
+	function refDropDownchange(ltrval)
+	{
+		ajaxCallserver({url:'<?php echo APP_BASE ?>patient/fetchreferreddropdown?ltr='+ltrval,callLoading:r_loading});
+	}
+
+	function getMetaIcd(mid)
+	{
+		ajaxCallserver({url:'<?php echo APP_BASE ?>diagnosis/fetchicdmeta?mid='+mid});
+	}
+
+
+
+	var callMeta = function(params){
+
+		if(params.icdnumber.length>0)
+		{
+			$("#meta_icdnumber").val(params.icdnumber);
+		}
+
+	}
+
+	function removeElem(ids)
+	{
+
+		$(ids).remove();
+	}
+
+	function closepopup()
+	{
+		disablePopup();
+	}
+
+	
+
+
+	$(function() {
+
+		$(".PatientCheck").blur(function(){
+
+			if($(this).val()==''){
+
+				return;
+			}
+
+			checkpatientexist();
+		})
+	});
+
+	function checkpatientexist()
+	{
+		var fnval = $('#first_name').val();
+		var lnval  = $('#last_name').val();
+		var bdval = $('#birthd').val();
+
+		if(fnval.length>0 && lnval.length>0 && bdval.length>0)
+		{
+			ajaxCallserver({url:'patient/checkpatientexist?fnval='+fnval+'&lnval='+lnval+'&bdval='+bdval});
+		}
+	}
+
+	var patlist = "";
+	var PatientExist = function(params){
+
+		if(params.arraycount>0)
+		{
+			patlist = params.patientlist;
+			$("#add_family_doc").contents().find('body').html('');
+			centerPopup({sr:'patient/checkpatientexist?isframe=1',ht:400,wt:450});
+			loadPopup();
+
+
+		}
+	}
+
+	function getpatientexistlist()
+	{
+		return patlist;
+
+	}
+
+	function closediaearch(ele)
+	{
+		id = $(ele).attr('id');
+		$('#diagnodropdown'+id).hide();
+		$('#icddiagnodropdown'+id).hide();
+		$('#medidropdown'+id).hide();
+		$('.focused').removeClass('focused');
+
+	}
+
+	function checkDiagnosisTypeSelected(rd)	{
+		
+		$.fn.userSession().checksession('abort', function(result) {
+			if(result === true) {
+				var err = "";
+				var finalc = 0;
+		
+				for(var j=1;j<=dcntr;j++) {
+					var ct = 0;
+		
+					if(document.getElementById("diagnosis"+j) && $("#diagnosis"+j).val().length>0){
+						var ltrs = document.getElementsByName('dtype['+j+']');
+		
+						for(var i=0;i<ltrs.length;i++) {
+							if(ltrs[i].checked==true) {
+								ct++;
+							}
+						}
+		
+						if(ct==0) {
+							finalc++;
+						}
+					}
+				}
+		
+				<?php if($this->allowedFormBoxes['29']) : ?>
+				
+				if($('#verordnungam').val().length>1 || $('#verordnungbis').val().length >1 || $('.inptMrgn').is(':checked') || $("input[name='status']").is(':checked')){
+					if($("#verordnet_von").val().length == 0){
+						jAlert('<?php echo $this->translate('verordnet_von_err_aufnahme'); ?>');
+						return false;
+					}
+				}
+				<?php endif; ?>
+		
+				if(finalc>0) {
+					jAlert('<?php echo $this->translate('selectdiagnosisfor'); ?>');
+					return false;
+				} else {
+					if(rd == 1) {
+						document.getElementById('srd').value = 1;
+					}
+		
+					document.getElementById('btnsubmitnew').disabled = true;
+					document.getElementById('btnsubmit-details').disabled = true;
+		
+					document.frmpatient.submit();
+				}
+			}	
+		});
+	}
+
+
+	function closeautosearch(val)
+	{
+		$('medidropdown'+val).hide();
+		$('.focused').removeClass('focused');
+	}
+
+	function admission_selectdignosis()
+	{
+		dcntr = jcount;
+		cns = jcount;
+		var radiostr = "";
+
+		for(var i=0;i<jarr.length;i++)
+		{
+
+			radiostr += '<td><input type="radio" name="dtype['+cns+']" id="dtype'+cns+'" value="'+jarr[i].id+'"></td>';
+		}
+
+
+		var trInnerHtml = $('<tr id="stab'+cns+'"><td valign="top" id="listadmissiondiagnosistd_i'+cns+'"><input name="icdnumber['+cns+']" id="icdnumber'+cns+'" value="" size="10" class="livesearchicdinp diagicd" type="text" /><div id="icddiagnodropdown'+cns+'" style="position: absolute; display:none;" class="medicationDiagnDrp icdlivesearchdropdown"></div></td><td valign="top" id="listadmissiondiagnosistd_d'+cns+'"><input name="diagnosis['+cns+']" id="diagnosis'+cns+'" value="" size="33" class="livesearchinp diagdesc" type="text" /><input name="hidd_icdnumber['+cns+']" value="" id="hidd_icdnumber'+cns+'" type="hidden"><input name="hidd_diagnosis['+cns+']" value="" id="hidd_diagnosis'+cns+'" type="hidden"><input type="hidden" id="hidd_tab'+cns+'" name="hidd_tab['+cns+']" value="text" /><div id="diagnodropdown'+cns+'" style="position: absolute; display:none;" class="medicationDiagnDrp livesearchdropdown"></div></td>'+radiostr+'<td  valign="middle" align="center"><a href="javascript:void(0)" onclick="removeElements(\'#stab'+cns+'\',\'#meta_'+cns+'\')"><img src="_ipad/images/action_delete.png" border="0" /></a></td></tr>');
+
+		
+		
+		$('#samtab').append(trInnerHtml);
+
+		$('#icdnumber'+cns).bind('keyup keydown change paste',function(){
+			$(this).live('change', function() {
+				var input_row = parseInt($(this).attr('id').substr(('icdnumber').length));
+				reset_diagnosis(input_row);
+			}).liveSearch({
+				url: 'ajax/diagnosis?mode=icdnumber&q=',
+				id: 'livesearch_admission_diagnosis',
+				aditionalWidth: '300',
+				noResultsDelay: '900',
+				typeDelay: '900',
+				returnRowId: function (input) {return parseInt($(input).attr('id').substr(('icdnumber').length));}
+			});
+		});
+
+		$('#diagnosis'+cns).bind('keyup keydown change paste',function(e){
+			$(this).live('change', function() {
+				var input_row = parseInt($(this).attr('id').substr(('diagnosis').length));
+				reset_diagnosis(input_row);
+			}).liveSearch({
+				url: 'ajax/diagnosis?q=',
+				id: 'livesearch_admission_diagnosis',
+				aditionalWidth: '50',
+				noResultsDelay: '900',
+				typeDelay: '900',
+				returnRowId: function (input) {return parseInt($(input).attr('id').substr(('diagnosis').length));}
+			});
+		});
+
+		cns++;
+		dcntr++;
+		jcount++;
+	}
+
+	function selectmedication()
+	{
+		var cn = jsmedcount;
+		var row = document.createElement('tr');
+		row.id = "tab"+cn;
+		var cell1 = document.createElement('td');
+		var cell2 = document.createElement('td');
+		var cell3 = document.createElement('td');
+		var cell4 = document.createElement('td');
+
+		var ip1 = document.createElement('input');
+		ip1.name = "medication["+cn+"]";
+		ip1.id = "medication"+cn;
+		ip1.type = "text";
+		<?php if($this->show_mmi == "1"):?>
+			ip1.className = "livesearchmedinp med mmi";
+		<?php else: ?>
+		ip1.className = "livesearchmedinp med";
+		<?php endif; ?>
+		ip1.value = "";
+
+		var ipelement = document.createElement('input');
+		ipelement.name = "hidd_medication["+cn+"]";
+		ipelement.id = "hidd_medication"+cn;
+		ipelement.type = "hidden";
+
+		//ISPC-2329 Ancuta 03.04.2020
+		var ipelement_drug = document.createElement('input');
+		ipelement_drug.name = "drug["+cn+"]";
+		ipelement_drug.id = "drug"+cn;
+		ipelement_drug.type = "hidden";
+		
+		var ipelement_pzn = document.createElement('input');
+		ipelement_pzn.name = cn+"[pzn]";
+		ipelement_pzn.id = "pzn"+cn;
+		ipelement_pzn.type = "hidden";
+		ipelement_pzn.className = "medication_pzn";
+		
+		var ipelement_dbf_id = document.createElement('input');
+		ipelement_dbf_id.name = cn+"[dbf_id]";
+		ipelement_dbf_id.id = "dbf_id"+cn;
+		ipelement_dbf_id.type = "hidden";
+		ipelement_dbf_id.className = "medication_dbf_id";
+		
+		var ipelement_source = document.createElement('input');
+		ipelement_source.name = cn+"[source]";
+		ipelement_source.id = "source"+cn;
+		ipelement_source.type = "hidden";	
+		ipelement_source.className = "medication_source";
+		// --
+		
+		var ip2 = document.createElement('input');
+		ip2.name = "dosage["+cn+"]";
+		ip2.id = "dosage"+cn;
+		ip2.type = "text";
+		ip2.className = "dosage";
+		ip2.value = "";
+
+		var ip3 = document.createElement('input');
+		ip3.name = "comments["+cn+"]";
+		ip3.id = "comment"+cn;
+		ip3.type = "text";
+		ip3.className = "med";
+		ip3.value = "";
+		
+		var ip5 = document.createElement('input');
+		ip5.name = "mmi_search_["+cn+"]";
+		ip5.id = "mmi_search_"+cn;
+		ip5.type = "button";
+		ip5.className = "mmi_search_button";
+		ip5.value = "<?php echo $this->translate('mmi_button'); ?>";
+
+		cell4.innerHTML = '<a href="javascript:void(0)" onclick="removeElem(\'#tab'+cn+'\')"><img src="'+appbase+'/_ipad/images/action_delete.png" border="0" /></a>';
+
+		cell1.appendChild(ip1);
+		cell2.appendChild(ip2);
+		cell3.appendChild(ip3);
+		cell1.appendChild(ipelement);
+		
+		cell1.appendChild(ipelement_drug);
+		cell1.appendChild(ipelement_pzn);
+		cell1.appendChild(ipelement_dbf_id);
+		cell1.appendChild(ipelement_source);
+		<?php if($this->show_mmi == "1"):?>
+		cell1.appendChild(ip5);
+		<?php endif; ?>
+
+		row.appendChild(cell1);
+		row.appendChild(cell2);
+		row.appendChild(cell3);
+		row.appendChild(cell4);
+
+		$('#medicationgrid_contenttable').append(row);
+
+
+		$('#medication'+cn).bind('keyup keydown change paste',function(){
+			//livesearch medications ls
+			<?php if($this->show_mmi == "1"): ?>
+			$(this).live('change', function() {
+				var input_row = parseInt($(this).attr('id').substr(('medication').length));
+				reset_medications(input_row);
+			}).liveSearch({
+				url: 'pharmaindex/getproductsmedils?ik_no='+healthinsuranceik+'&sm=0&searchtext=',
+				id: 'livesearch_admission_medications',
+				aditionalWidth: '200',
+				noResultsDelay: '900',
+				typeDelay: '900',
+				returnRowId: function (input) {return parseInt($(input).attr('id').substr(('medication').length));}
+			});
+			<?php else: ?>
+			//livesearch medications ls
+			$(this).live('change', function() {
+				var input_row = parseInt($(this).attr('id').substr(('medication').length));
+				reset_medications(input_row);
+			}).liveSearch({
+				url: 'ajax/medications?q=',
+				id: 'livesearch_admission_medications',
+				aditionalWidth: '200',
+				noResultsDelay: '900',
+				typeDelay: '900',
+				returnRowId: function (input) {return parseInt($(input).attr('id').substr(('medication').length));}
+			});
+			<?php endif; ?>
+		});
+
+		cn++;
+		jsmedcount++;
+	}
+
+	function selectbmedication()
+	{
+		var cntr = jsbmedcount;
+		var row = document.createElement('tr');
+		row.id = "tab"+cntr;
+		var cell1 = document.createElement('td');
+		var cell2 = document.createElement('td');
+		var cell3 = document.createElement('td');
+		var cell4 = document.createElement('td');
+
+		var ip1 = document.createElement('input');
+		ip1.name = "add[medication]["+cntr+"]";
+		ip1.id = "medication"+cntr;
+		ip1.type = "text";
+		<?php if($this->show_mmi == "1"):?>
+			ip1.className = "livesearchmedinp med mmi";
+		<?php else: ?>
+		ip1.className = "livesearchmedinp med";
+		<?php endif; ?>
+		ip1.value = "";
+
+		var ipelement = document.createElement('input');
+		ipelement.name = "add[hidd_medication]["+cntr+"]";
+		ipelement.id = "hidd_medication"+cntr;
+		ipelement.type = "hidden";
+
+		
+		//ISPC-2329 Ancuta 03.04.2020
+		var ipelement_drug = document.createElement('input');
+		ipelement_drug.name = "add[drug]["+cntr+"]";
+		ipelement_drug.id = "drug"+cntr;
+		ipelement_drug.type = "hidden";
+		
+		var ipelement_pzn = document.createElement('input');
+		ipelement_pzn.name = "add["+cntr+"][pzn]";
+		ipelement_pzn.id = "pzn"+cntr;
+		ipelement_pzn.type = "hidden";
+		ipelement_pzn.className = "medication_pzn";
+		
+		var ipelement_dbf_id = document.createElement('input');
+		ipelement_dbf_id.name = "add["+cntr+"][dbf_id]";
+		ipelement_dbf_id.id = "dbf_id"+cntr;
+		ipelement_dbf_id.type = "hidden";
+		ipelement_dbf_id.className = "medication_dbf_id";
+		
+		var ipelement_source = document.createElement('input');
+		ipelement_source.name = "add["+cntr+"][source]";
+		ipelement_source.id = "source"+cntr;
+		ipelement_source.type = "hidden";	
+		ipelement_source.className = "medication_source";
+		// --
+		
+		var ip2 = document.createElement('input');
+		ip2.name = "add[dosage]["+cntr+"]";
+		ip2.id = "dosage"+cntr;
+		ip2.type = "text";
+		ip2.className = "dosage";
+		ip2.value = "";
+
+		var ip3 = document.createElement('input');
+		ip3.name = "add[comments]["+cntr+"]";
+		ip3.id = "comment"+cntr;
+		ip3.type = "text";
+		ip3.className = "med";
+		ip3.value = "";
+
+		var ip4 = document.createElement('input');
+		ip4.name = "mmi_search_["+cntr+"]";
+		ip4.id = "mmi_search_"+cntr;
+		ip4.type = "button";
+		ip4.className = "mmi_search_button";
+		ip4.value = "<?php echo $this->translate('mmi_button'); ?>";
+
+		cell4.innerHTML = '<a href="javascript:void(0)" onclick="removeElem(\'#tab'+cntr+'\')"><img src="'+appbase+'/_ipad/images/action_delete.png" border="0" /></a>';
+
+		cell1.appendChild(ip1);
+		cell2.appendChild(ip2);
+		cell3.appendChild(ip3);
+		cell1.appendChild(ipelement);
+		cell1.appendChild(ipelement_drug);
+		cell1.appendChild(ipelement_pzn);
+		cell1.appendChild(ipelement_dbf_id);
+		cell1.appendChild(ipelement_source);
+		<?php if($this->show_mmi == "1"):?>
+			cell1.appendChild(ip4);
+		<?php endif; ?>
+
+		row.appendChild(cell1);
+		row.appendChild(cell2);
+		row.appendChild(cell3);
+		row.appendChild(cell4);
+
+		$('#medicationbgrid_contenttable').append(row);
+
+
+		$('#medication'+cntr).bind('keyup keydown change paste',function(){
+			<?php if($this->show_mmi == "1"): ?>
+			$(this).live('change', function() {
+				var input_row = parseInt($(this).attr('id').substr(('medication').length));
+				reset_medications(input_row);
+			}).liveSearch({
+				url: 'pharmaindex/getproductsmedils?ik_no='+healthinsuranceik+'&sm=0&searchtext=',
+				id: 'livesearch_admission_medications',
+				aditionalWidth: '300',
+				noResultsDelay: '900',
+				typeDelay: '900',
+				returnRowId: function (input) {return parseInt($(input).attr('id').substr(('medication').length));}
+			});
+			<?php else: ?>
+			//livesearch medications ls
+			$(this).live('change', function() {
+				var input_row = parseInt($(this).attr('id').substr(('medication').length));
+				reset_medications(input_row);
+			}).liveSearch({
+				url: 'ajax/medications?q=',
+				id: 'livesearch_admission_medications',
+				aditionalWidth: '300',
+				noResultsDelay: '900',
+				typeDelay: '900',
+				returnRowId: function (input) {return parseInt($(input).attr('id').substr(('medication').length));}
+			});
+			<?php endif; ?>
+		});
+		cntr++;
+		jsbmedcount++;
+	}
+	
+	function removeElements(id1,id2)
+	{
+		$(id1).remove();
+		$(id2).remove();
+
+	}
+	function removeElementsfromTab(id1,id2,rid)
+	{
+		if(rid>0)
+		{
+		   ajaxCallserver({url:'diagnosis/removerecord?rid='+rid});
+		}
+		$(id1).remove();
+		$(id2).remove();
+	}
+	function delmedicationRow(did,patidencrypted, rid)
+	{
+		if(did && $('#hidd_medication'+rid).val())
+		{
+			ajaxCallserver({
+				url:'patient/patientmedication?id='+patidencrypted+'&delid='+did+'&mid='+did+'&act=del&noredir=1' //mid for trigger when deleteing the row
+			});
+		}
+	}
+		
+	function addcontactpersontemp()
+	{
+		var street1 = $("#street1").val() || "";
+		var zip = $("#zip").val() || "";
+		var city = $("#city").val() || "";
+		var extra_get_params = "&street1=" + encodeURIComponent(street1) + "&zip=" + encodeURIComponent(zip) + "&city=" + encodeURIComponent(city);
+		
+		centerPopup({sr:'contactpersonmaster/addcontactpersontemp?popup=popup'+extra_get_params,ht:'800px',wt:'440px'});
+		loadPopup();
+	}
+</script>
+<div id="calImgs" style="display: none;">
+<img id="calImg" src="<?php echo RES_FILE_PATH; ?>/images/calendar.png" alt="Popup" class="trigger">
+</div>
+
+<form action=""  name="frmpatient" id="frmpatient" method="post" autocomplete="off">
+<input type="hidden" name="srd" id="srd" value="0" />
+
+<fieldset id="feldset_patientMsterAd">
+<legend id="legnd_feldset_patientMsterAd"><?php echo $this->translate('addpatient') ?></legend>
+<div>
+
+    <div id="patientMsterAd_ErrorMsg" class="<?echo $this->errorclass?>"><?php echo $this->translate('missedsthtofill'); ?></div>
+    <div class="error"><?php echo $this->error_clientid?></div>
+	<h4 class="LineHeading"><?php echo $this->translate('administrativedata') ?></h4>
+    <br />
+    <label for="clientname" id="lbl_clientname_by"><?php echo $this->translate('clientname') ?>: </label>
+    <label id="nameclientname" style="font-weight:bold; margin-left:32px;"><?php echo $this->clientname;?></label>
+ 	<div class="clearer"></div>
+    <br />
+    <label for="referred_by" id="lbl_referred_by"><?php echo $this->translate('referredby') ?></label>
+     <?php echo $this->formSelect('referred_by', $this->referred_by, null, $this->referredbyarray) ?>
+    <div id="patientMsterAd_ErrorMsg" class="error"><br/><?php echo $this->error_ref_by; ?></div>
+
+    <!-- nursing service participating -->
+	<?php if($this->nurse_practicing_visibility == 1): ?>
+	<br />
+	<br />
+	<label for="nurse_practicing" class="label_patientmasteradd"><?php echo $this->translate('nurse') ?></label>
+	<?php echo $this->formSelect('nurse_practicing', $this->nurse_practicing, null, $this->nurse_practicing_array) ?>
+	<div id="patientMsterAd_ErrorMsg" class="error"><?php echo $this->error_nurse_practicing; ?></div>
+	<?php endif;?>
+	<!--  nursing service participating -->
+
+	<!-- Patienten Auftrag bei Kontaktaufnahme -->
+	<?php if($this->Kontaktaufnahme_select == 1): ?>
+	<br />
+	<br />
+		<label for="orderadmission" class="label_patientmasteradd"><?php echo $this->translate('orderer') ?></label>
+		<?php echo $this->formSelect('orderadmission', $this->orderer, null, $this->Kontaktaufnahme) ?>
+	<?php endif;?>
+	<!-- Patienten Auftrag bei Kontaktaufnahme -->
+   <br />
+			&nbsp;
+   <br />
+
+   <br />
+   <label for="admission_date" id="lbl_admission_date"><?php echo $this->translate('adminssiondate') ?></label>
+	<input type="text" name="admission_date" id="admission_date"  style="width:177px;" value="<?php echo $this->admission_date ?>"  class="adm_datepicker">
+   <?php echo $this->formSelect('adm_timeh', $this->adm_timeh, null, $this->hours) ?>
+   <?php echo $this->formSelect('adm_timem', $this->adm_timem, null, $this->minutes) ?>
+   <div id="patientMsterAd_ErrorMsg" class="error"><br/><?php echo $this->error_admission_date ?></div>&nbsp;
+   <br />
+
+	<!-- Special medical assistance (BRA) -->
+	<?php if($this->special_assistance_option == 1): ?>
+		<div class="special_medical_assistance">
+			<input type="checkbox" name="special_medical_assistance"  id="special_medical_assistance" value="1" />
+			<label for="special_medical_assistance" id="special_medical_assistance"><?php echo $this->translate('special_medical_assistance') ?></label>
+		</div>
+			<br/>
+	<?php endif;?>
+	<!-- Special medical assistance END -->
+
+	<!-- Patienten status -->
+
+	<div class="standby_patient_status">
+	   <label><?php echo $this->translate('Patient status') ?></label>
+	   <div class="status_show">
+	   	<span id="pat_status"></span>
+	   	<a href="javascript:void(0)" id="change_status"><?php echo $this->translate('change status') ?></a>
+	   	<input type="hidden" name="isstandby" id="isstandby" value="<?php echo $this->isstandby;?>"/>
+	   </div>
+	</div>
+
+	<!-- Patienten status -->
+
+
+			<!-- Patienten Stammdaten -->
+<!-- 			$this->allowedFormBoxes['27']  ALWAS ALLOWED-->
+		<?php if( 1 ) { ?>
+    <div style="position: relative; opacity: 1; left: 0px; top: 0px;" class="dragboxpatient" id="item91">
+	<h2 class=""><?php echo $this->translate('patientmasterdata'); ?></h2>
+	<div style="display: none;" id="grow27" class="patientdragbox-content">
+	<div id="PatMAddPatie_Stamm" >
+	  	<label for="first_name" class="label_patientmasteradd"><?php echo $this->translate('firstname') ?></label>
+	   	<input type="text" name="first_name" id="first_name" value="<?php echo $this->first_name ?>" class="PatientCheck">
+	  	<div id="patientMsterAd_ErrorMsg" class="error"><br/><?php echo $this->error_first_name?></div>
+	    &nbsp;
+	   	<br />
+	   	
+	  	<label for="last_name" class="label_patientmasteradd"><?php echo $this->translate('lastname') ?></label>
+	   	<input type="text" name="last_name" id="last_name" value="<?php echo $this->last_name ?>" class="PatientCheck">
+	  	<div id="patientMsterAd_ErrorMsg" class="error"><br/><?php echo $this->error_last_name ?></div>
+	    &nbsp;
+	   	<br />
+	
+	  	<label for="street1" id="lbl_street1"><?php echo $this->translate('street1') ?></label>
+	   	<input type="text" name="street1" id="street1" value="<?php echo $this->street1 ?>">
+	   	<div id="patientMsterAd_ErrorMsg" class="error"><br/><?php echo $this->error_street1 ?></div>&nbsp;
+	   	<br />
+	   	
+	  	<label for="zip" id="lbl_zip"><?php echo $this->translate('zip') ?></label>
+	  	<input type="text" name="zip" id="zip" value="<?php echo $this->zip ?>">
+	   	<div id="patientMsterAd_ErrorMsg" class="error"><br/><?php echo $this->error_zip ?></div>&nbsp;
+	   	<br />
+	   	
+	  	<label for="city" id="lbl_city"><?php echo $this->translate('city') ?></label>
+	  	<input type="text" name="city" id="city" value="<?php echo $this->city ?>">
+	  	<div id="patientMsterAd_ErrorMsg" class="error"><br/><?php echo $this->error_city ?></div>&nbsp;
+	  	<br />
+	  	
+	  	<label for="phone" id="lbl_phone"><?php echo $this->translate('phone') ?></label>
+	  	<input type="text" name="phone" id="phone" value="<?php echo $this->phone ?>">
+	   	<div id="patientMsterAd_ErrorMsg" class="error"><br/> <?php echo $this->error_phone ?></div>&nbsp;
+	   	<br />
+	   	
+	  	<label for="mobile" id="lbl_mobile"><?php echo $this->translate('mobile') ?></label>
+	   	<input type="text" name="mobile" id="mobile" value="<?php echo $this->mobile ?>">
+	  	<div id="patientMsterAd_ErrorMsg" class="error"><br/> <?php echo $this->error_mobile ?></div>&nbsp;
+	   	<br />
+	   	
+		<label for="birthd" id="lbl_birthd"><?php echo $this->translate('birthd') ?></label>
+	  	<input type="text" name="birthd" id="birthd"  style="width:177px;" value="<?php echo $this->birthd ?>" class="PatientCheck adm_datepicker" />
+	 	<div id="patientMsterAd_ErrorMsg" class="error"><br/> <?php echo $this->error_birthd ?></div>&nbsp;
+	 	<br />
+		
+		<label for="birth_city" id="lbl_birth_city"><?php echo $this->translate('birthcity') ?></label>
+		<input type="text" name="birth_city" id="birth_city" value="<?php echo $this->birth_city ?>" />
+		<div id="patientMsterAd_ErrorMsg" class="error"><br/> <?php echo $this->error_birth_city ?></div>&nbsp;
+		<br />
+		
+		<label for="sex" id="lbl_sex"><?php echo $this->translate('sex') ?></label>
+	   	<?php echo $this->formSelect('sex', $_POST['sex'], null, $this->genders) ?>
+	   	<div id="patientMsterAd_ErrorMsg" class="error"><br/> <?php echo $this->error_sex ?></div>&nbsp;
+	    <br />
+   </div>
+   
+   </div>
+   </div>&nbsp;
+   <?php } ?>
+    <!-- End Patienten Stammdaten -->
+
+	<!-- Family doctor -->
+	<?php if($this->allowedFormBoxes['28']) { ?>
+    <div style="position: relative; opacity: 1; left: 0px; top: 0px;" class="dragboxpatient" id="item01">
+	<h2 class=""><?php echo $this->translate('familydoc'); ?></h2>
+	<div style="display: none;" id="grow28" class="patientdragbox-content">
+  	<div id="PatMaAdd_Hausarzt">
+  	<label for="familydoc_id" id="lbl_familydoc_id"><?php echo $this->translate('familydoc') ?></label>
+	<input type="text" name="familydoc_id" id="familydoc_id" value="<?php echo $this->familydoc_id ?>" >
+	<input type="hidden" name="hidd_docid" id="hidd_docid" value="<?php echo $this->hidd_docid ?>"  /><br />
+	<div id="doctdropdown" style="height:175px; orverflow:auto; position:absolute; display:none;"></div>
+	<div class="clearer"></div>
+
+	<label for="fd_title" id="lbl_title"><?php echo $this->translate('title') ?></label>
+	<input type="text" name="fd_title" class="left input_style" id="fd_title" value="<?php echo $this->title ?>" >
+	<div id="FamilyDrError" class="error" style="margin-top:5px; margin-left:535px; display:none;"><?php echo $this->error_title ?></div><div class="clearer"></div>
+						
+	<label for="fd_last_name" id="lbl_lastname"><?php echo $this->translate('lastname') ?></label>
+	<input type="text" name="fd_last_name" class="left input_style" id="fd_last_name" value="<?php echo $this->last_name ?>" >
+	<div id="FamilyDrError" class="error" style="margin-top:5px; margin-left:535px;"><?php echo $this->error_doc_last_name ?></div><div class="clearer"></div>
+						
+	<label for="first_name" id="lbl_firstname"><?php echo $this->translate('firstname') ?></label>
+	<input type="text" name="fd_first_name" class="left input_style" id="fd_first_name" value="<?php echo $this->first_name; ?>" >
+	<div id="FamilyDrError" class="error" style="margin-top:5px; margin-left:535px;"><?php echo $this->error_doc_first_name ?></div><div class="clearer"></div>
+						
+	<label for="salutation" id="lbl_salutation"><?php echo $this->translate('salutation') ?></label>
+	<input type="text" name="fd_salutation" class="left input_style" id="fd_salutation" value="<?php echo $this->salutation; ?>" >
+		<div id="FamilyDrError" class="error" style="margin-top:5px; margin-left:535px; display:none;"><?php echo $this->error_salutation ?></div><div class="clearer"></div>
+						
+    <label for="street1" id="lbl_street1"><?php echo $this->translate('address') ?></label>
+	<input type="text" name="doc_street1" class="left" id="doc_street1" value="<?php echo $this->doc_street1 ?>" >
+    <div id="FamilyDrError" class="error" style="margin-top:5px; margin-left:535px; display:none;"><?php echo $this->error_doc_street1 ?></div>
+    <div class="clearer"></div>
+    
+     <label for="zip" id="lbl_zip"><?php echo $this->translate('zip') ?></label>
+	<input type="text" name="doc_zip" class="left" id="doc_zip" value="<?php echo $this->doc_zip ?>" >
+    <div id="FamilyDrError" class="error" style="margin-top:5px; margin-left:535px; display:none;"><?php echo $this->error_doc_zip ?></div>
+    <div class="clearer"></div>
+    
+     <label for="city" id="lbl_city"><?php echo $this->translate('city') ?></label>
+	<input type="text" name="doc_city" class="left" id="doc_city" value="<?php echo $this->doc_city ?>" >
+    <div id="FamilyDrError" class="error" style="margin-top:5px; margin-left:535px; display:none;"><?php echo $this->error_doc_city ?></div>
+    <div class="clearer"></div>
+    
+    <label for="fax" id="lbl_phone"><?php echo $this->translate('practice_phone') ?></label>
+	<input type="text" name="phone_practice" class="left" id="phone_practice" value="<?php echo $this->phone_practice ?>" >
+	<div id="FamilyDrError" class="error" style="margin-top:5px; margin-left:535px; display:none;"><?php echo $this->error_doc_phone ?></div><div class="clearer"></div>
+						
+    
+    <label for="fax" id="lbl_fax"><?php echo $this->translate('fax') ?></label>
+	<input type="text" name="doc_fax" class="left" id="doc_fax" value="<?php echo $this->doc_fax ?>" >
+    <div id="FamilyDrError" class="error" style="margin-top:5px; margin-left:535px; display:none;"><?php echo $this->error_doc_fax ?></div>
+    <div class="clearer"></div>
+    
+    <label for="email" class="label_patientmasteradd"><?php echo $this->translate('email') ?></label>
+	<input type="text" name="doc_email" class="left" id="doc_email" value="<?php echo $this->doc_email ?>" >
+    <div id="FamilyDrError" class="error" style="margin-top:5px; margin-left:535px; display:none;"><?php echo $this->error_doc_email ?></div>
+    <div class="clearer"></div>
+
+    <div id="loading"></div>
+    <div class="error"> <?php echo $this->error_familydoc_id ?></div>&nbsp;<div id="loading"></div>
+	<br />
+   	<label for="fdoc_caresalone" id="lbl_fdoc_caresalone"><?php echo $this->translate('familycare') ?></label>
+    <?php if($POST['fdoc_caresalone']==1) {$ischeckedhd="checked='checked'";} else {$ischeckedhd="";} ?>
+     <?php echo  $this->formCheckbox('fdoc_caresalone', $_POST['fdoc_caresalone'], null, array('1')); ?>
+    <div class="error"><?php echo $this->error_familydoc_id ?></div>&nbsp;
+    	<div class="clearer">&nbsp;</div>
+    </div>
+    </div></div>
+    <?php } ?>
+
+	<!-- Sapv  -->
+	<?php if($this->allowedFormBoxes['29']) { ?>
+     <div style="position: relative; opacity: 1; left: 0px; top: 0px;" class="dragboxpatient" id="item1">
+	<h2 class=""><?php echo $this->translate('sapvverordnungttl'); ?></h2>
+	<div style="display: none;" id="grow29" class="patientdragbox-content">
+    <div id="PatMaAdd_SAPVVeror">
+ 	<label for="sapvverordnung" id="lbl_sapvverordnung"><?php echo $this->translate('sapvverordnung') ?></label>
+	<input type="text" name="verordnet_von" id="verordnet_von" value="<?php echo $this->verordnet_von ?>" >
+	<input type="hidden" name="hidd_verordnet_von" id="hidd_verordnet_von" value="<?php echo $this->hidd_verordnet_von ?>"  />
+	<input type="hidden" name="hidd_verordnet_von_type" id="hidd_verordnet_von_type" value="<?php echo $this->hidd_verordnet_von_type ?>"  />
+	<br />
+	
+	<div id="sapvverordnungdropdown" class="Grid" style="height:175px; orverflow:auto; position:absolute; display:none;"></div>
+    <div id="patientMsterAd_ErrorMsg" class="error"> <?php echo $this->error_verordnet_von;  ?></div>&nbsp;<div id="s_loading"></div>
+    <br />
+    
+   <label for="verordnungam" id="lbl_verordnungam"><?php echo $this->translate('verordnungam') ?></label>
+   <input type="text" name="verordnungam" id="verordnungam"  style="width:177px;" value="<?php echo $this->verordnungam ?>" class="adm_datepicker" >
+   <div id="patientMsterAd_ErrorMsg" class="error"><br/><?php echo $this->error_verordnungam ?></div>&nbsp;
+   <br />
+   
+   <label for="verordnungbis" id="lbl_verordnungbis"><?php echo $this->translate('verordnungbis') ?></label>
+   <input type="text" name="verordnungbis" id="verordnungbis"  style="width:177px;" value="<?php echo $this->verordnungbis ?>" class="adm_datepicker" >
+   <div id="patientMsterAd_ErrorMsg" class="error"><br/><?php echo $this->error_verordnungbis ?></div>&nbsp;
+   <br /><br />
+
+   <label class="left" id="lbl_verordnet" for="verordnet" ><?php echo $this->translate('verordnet') ?></label>
+
+	<div id="editionid" class="Tableradiobox">
+   <?php echo $this->formMultiCheckbox('verordnet[]', $this->verordnet, array('class'=>'inptMrgn'), $this->verordnetarray,"&nbsp;"); ?></div>
+   <div id="patientMsterAd_ErrorMsg" class="error"> <?php echo $this->error_verordnet;  ?></div>
+   <div class="clearer"></div>
+   </div>
+
+	<label class="left" id="lbl_status"for="status" ><?php echo $this->translate('status') ?></label>
+	<div id="editionid" class="Tableradiobox">
+	<div class="sapv_status_set">
+		<?php echo $this->formRadio('status', $this->status, null, $this->radioarr,"&nbsp;"); ?>
+		<div id="patientMsterAd_ErrorMsg" class="error"><?php echo $this->error_status;  ?></div>
+	</div>
+	</div>
+
+
+	<div class="clearer"></div>
+	<label class="left" id="lbl_status" for="status" ><?php echo $this->translate('') ?></label>
+		<div id="editionid" class="Tableradiobox">
+			<?php if($this->sapv_extra): ?>
+			<div class="sapv_extra_set">
+				<?php echo $this->formRadio('extra_set', $this->extra_set, array("class"=>"extra_set"), $this->extraradioarr_old, "&nbsp;"); ?>
+			</div>
+			<?php endif; ?>
+		</div>
+	<div class="clearer"></div>
+	<div id="editionid" class="Tableradiobox">
+
+
+	<?php if($this->sapv_primary_status): ?>
+		<div class="clearer"></div>
+		<table border="0">
+			<tr>
+				<td width="121px"><?php echo $this->translate('Primary Status') ?></td>
+				<td class="status_set">
+				<?php // echo $this->formRadio('primary_set', $this->primary_set, array("class"=>"primary_set"), $this->extraradioarr, "&nbsp;"); ?>
+				<? echo $this->formSelect('primary_set', $this->primary_set, null, $this->extraradioarr); ?>
+				
+				</td>
+		</table>
+		<div id="patientMsterAd_ErrorMsg" class="error"><?php echo $this->error_primary_set ?></div>&nbsp;
+	<?php endif; ?>
+	
+
+	<?php if($this->sapv_secondary_status): ?>
+		<table border="0">
+			<tr>
+				<td width="121px"><?php echo $this->translate('2nd Page') ?></td>
+				<td class="status_set">
+				<?php// echo $this->formRadio('secondary_set', $this->secondary_set, array("class"=>"secondary_set"), $this->extraradioarr, "&nbsp;"); ?>
+				<? echo $this->formSelect('secondary_set', $this->secondary_set, null, $this->extraradioarr); ?>
+				</td>
+		</table>
+		<div id="patientMsterAd_ErrorMsg" class="error"><?php echo $this->error_secondary_set ?></div>&nbsp;
+	<?php endif; ?>
+
+	</div>
+	
+	<?php if($this->sapv_bra_options): ?>
+		<label class="left label_class100px"><?php echo $this->translate('Sapv bra options') ?></label>
+		<div class="sapv_bra_options">
+			<?php echo $this->formMultiCheckbox('bra_options[]', $this->bra_options, array('class'=>'inptMrgn'), $this->bra_options_array,"&nbsp;"); ?>
+		</div>
+		<div class="clearer"></div>
+	<?php endif; ?>
+	<div class="clearer"></div>
+	<br /><br />
+	</div>
+	</div>
+	<?php } ?>
+
+<?php if($this->allowedFormBoxes['30']) { ?>
+   <div class="dragboxpatient" id="item03">
+			<h2 class=""><?php echo $this->translate('contactperson') ?></h2>
+			<div style="display: none;" id="grow30" class="patientdragbox-content">
+
+	<!-- 	Contact person -->
+	<div id="PaMaAdd_Ansprech">
+		<div class="add_new_medi">
+			<a href="javascript:addcontactpersontemp()" class="resultlink"><img src="<?php echo RES_FILE_PATH;  ?>/images/edit_add.png" width="20" height="20" /><div class="add_new_medi_link"><?php echo $this->translate('addnewcontactperson'); ?></div></a>
+		</div>
+	    <div class="clearer"></div>
+	   	<div id="contact" class="grid">
+	     <table width="100%" border="0" cellspacing="0" cellpadding="0" class="datatable" id="PatieContactMasAdd_table">
+			  <tr id="PatieMasAdd_tr">
+			    <th id="PatieMasAdd_tr_th1" width="20%" align="left"><strong><?php echo $this->translate('name')?></strong></th>
+			    <th id="PatieMasAdd_tr_th2" width="30%" align="left"><strong><?php echo $this->translate('phone')?></strong></th>
+			    <th width="20%" align="left" id="PatieMasAdd_tr_th3"><strong><?php echo $this->translate('handy')?></strong></th>
+			    <th width="20%" align="left" id="PatieMasAdd_tr_th4"><strong><?php echo $this->translate('address')?></strong></th>
+			    <th id="PatieMasAdd_tr_th5" width="10%" align="left"><strong><?php echo $this->translate('delete')?></strong></th>
+			  </tr>
+	  <?php echo $this->contactgrid;?>
+	  </table>
+	  </div>
+	  <div class="clearer"></div>
+  </div>
+  </div></div>
+  <?php } ?>
+  <br />
+  
+  <!-- 	Health insurance -->
+  <?php if($this->allowedFormBoxes['31']) { ?>
+    <div style="position: relative; opacity: 1; left: 0px; top: 0px;" class="dragboxpatient" id="item02">
+		<h2 class=""><?php echo $this->translate('patient_health_insurance') ?></h2>
+		<div style="display: none;" id="grow31" class="patientdragbox-content">
+	   <div id="PatMaAdd_Krankenk">
+		<label for="company_name" id="lbl_company_name"><?php echo $this->translate('company_name') ?></label>
+	   	 <input type="text" name="company_name" id="company_name" value="<?php echo $this->company_name ?>" class="healthdesc"  >
+	     <input type="hidden" name="hdn_company_name" id="hdn_company_name"  />
+						<input type="hidden" name="hdn_companyid" id="hdn_companyid" value="<?php echo $this->hdn_companyid; ?>"  /><br /><div id="healthinsudropdown" class="livesearchdropdown" style="position:absolute;display:none;"></div>
+	  	<div id="patientMsterAd_ErrorMsg" class="error" style="display:none;"> <?php echo $this->error_company_name ?></div>
+	   	<div class="clearer"></div>
+	    <label for="company_na23" id="lbl_company_na23"><?php echo $this->translate('kassenno') ?></label>
+	   	<input type="text" name="kvk_no" id="kvk_no" value="<?php echo $this->kvk_no ?>" class="healthdesc"  >
+	    <div id="patientMsterAd_ErrorMsg" class="error" style="display:none;"> <?php echo $this->error_kvk_no ?></div>&nbsp;
+
+
+	   	<br />
+	   	<br />
+	   	
+	  	<label for="insurance_no" id="lbl_insurance_no"><?php echo $this->translate('Institutskennzeichen (IK) ') ?></label>
+	   	<input type="text" name="institutskennzeichen" id="institutskennzeichen" value="<?php echo $this->institutskennzeichen ?>">
+	   	<div id="patientMsterAd_ErrorMsg" class="error"><?php echo $this->error_institutskennzeichen ?></div>&nbsp;
+	   	<br />
+
+	   	<br />
+	
+	  	<label for="insurance_no" id="lbl_insurance_no"><?php echo $this->translate('insuranceno') ?></label>
+	   	<input type="text" name="insurance_no" id="insurance_no" value="<?php echo $this->insurance_no ?>">
+	   	<div id="patientMsterAd_ErrorMsg" class="error"><br/><?php echo $this->error_insurance_no ?></div>&nbsp;
+	   	<br />
+	   	
+	  	<label for="insurance_status" id="lbl_insurance_status"><?php echo $this->translate('insurancestatus') ?></label>
+	  	<?php echo $this->formSelect('insurance_status',$this->insurance_status,NULL,$this->status_array); ?>
+	   	<div id="patientMsterAd_ErrorMsg" class="error"><br/><?php echo $this->error_insurance_status ?></div>
+	   	<div class="clearer"></div>
+		<div>
+		<label for="rezeptgebuhrenbefreiung-1" id="lbl_Rezeiung" class="phi_label" ><?php echo $this->translate('gebuhrenbefreit');?></label>
+		<?php echo  $this->formRadio('rezeptgebuhrenbefreiung', $this->rezeptgebuhrenbefreiung, null, array("1"=>" ")); ?>
+		</div>
+		<br />
+		<div>
+		<label for="rezeptgebuhrenbefreiung-2" id="lbl_Rezeiung" class="phi_label" ><?php echo $this->translate('gebuhrenpflichtig');?></label>
+		<?php echo  $this->formRadio('rezeptgebuhrenbefreiung', $this->rezeptgebuhrenbefreiung, null, array("2"=>" ")); ?>
+   		 </div>
+	 	<div class="clearer"></div>
+		<label for="insurance_options" id="lbl_privatepatient"><?php echo $this->translate('insurance_options_label');  ?></label>
+		<select name="insurance_options" id="insurance_options">
+			 <option value=""> <?php echo $this->translate('Select option');  ?></option>
+			 <option value="privatepatient" <?php if($this->privatepatient == "1"): ?>selected="selected"<?php endif;  ?>><?php echo $this->translate('privatepatient');  ?></option>
+			 <option value="direct_billing" <?php if($this->direct_billing == "1"): ?>selected="selected"<?php endif;  ?>><?php echo $this->translate('direct_billing');  ?></option>
+			 <option value="bg_patient" <?php if($this->bg_patient == "1"): ?>selected="selected"<?php endif;  ?>><?php echo $this->translate('bg_patient');  ?></option>
+		 </select>
+		 <input type="hidden" name="ins_debtor_number" id="debitor_number" value="<?php echo $this->debitor_number ?>">
+		<div class="clearer"></div>
+		   <!-- ISPC-2318, elena, 09.09.2020 -->
+		   <div id="beihilfe">
+			   <div class="clearer"></div>
+			   <span id="lbl_contribution" class="phi_label">Beihilfeberechtigt</span>
+			   <div class="valid_contribution">
+				   <div class="contribution_radio_group" >
+				   <?php echo  $this->formRadio('valid', $this->private_valid_contribution, null, array("1"=>" ")); ?> Ja
+				   </div>
+				   <div class="clearer"></div>
+
+				   <div class="contribution_radio_group">
+				   <?php echo  $this->formRadio('valid', $this->private_valid_contribution, null, array("0"=>" ")); ?> Nein
+				   </div>
+			   </div>
+			   <div class="clearer"></div>
+			   <label for="private_contribution" id="lbl_private_contribution" class="phi_label">Beihilfe:</label>
+			   <input type="text" name="privatecontribution" id="private_contribution" value="<?php echo $this->private_contributon; ?>">
+
+		   </div>
+
+	    </div>
+	    <div class="clearer"></div>
+	    </div>
+    </div>
+<?php } ?>
+
+    <div class="clearer"></div><div id="patientmasteradd_InfoDenPatie">
+<div style="width:100%;" id="PatAddM_contentInfdenPa">
+<div style="-moz-user-select: none;" unselectable="off" class="patientcolumn ui-sortable" id="column1">
+
+		<?php  if($THISISDISABLED)  {?>
+		<div class="dragboxpatient" id="item2">
+			<h2 class=""><?php echo $this->translate('lives')?></h2>
+			<div style="display: none;" id="grow1" class="patientdragbox-content">
+
+			<table width="100%" id="InfoDenPatie_table">
+			  <tbody id="InfoDenPatie_tbody1">
+			    <tr id="InfoDenPatie_tbody1_tr2">
+			      <td id="InfoDenPatie_tbody1_tr2_td1" width="20%" height="23"><label for="alone" id="InfoDenPatie_alleAlo"><?php echo $this->translate('alone')?></label></td>
+			      <td width="16%" height="23" id="InfoDenPatie_tbody1_tr2_td2"><?php echo  $this->formCheckbox('alone', $_POST['alone'], null, array('1')); ?></td>
+			    </tr>
+			    <tr id="InfoDenPatie_tbody1_tr3">
+			      <td width="20%" height="23" id="InfoDenPatie_tbody1_tr3_td1"><label id="InfoDenPatie_HouDer" for="house_of_relatives"><?php echo $this->translate('houseofrelatives')?><br />
+			      </label></td>
+			      <td width="16%" height="23" id="InfoDenPatie_tbody1_tr3_td2"><?php echo  $this->formCheckbox('house_of_relatives', $_POST['house_of_relatives'], null, array('1')); ?></td>
+			    </tr>
+			    <tr id="InfoDenPatie_tbody1_tr4">
+			      <td width="20%" height="23" id="InfoDenPatie_tbody1_tr4_td1"><label for="apartment" id="InfoDenPatie_WohApa"><?php echo $this->translate('apartment')?></label></td>
+			      <td width="16%" height="23" id="InfoDenPatie_tbody1_tr4_td2"><?php echo  $this->formCheckbox('apartment', $_POST['apartment'], null, array('1')); ?></td>
+			    </tr>
+			    <tr id="InfoDenPatie_tbody1_tr5">
+			      <td width="20%" height="23" id="InfoDenPatie_tbody1_tr5_td1"><label for="home" id="InfoDenPatie_HeimHo"><?php echo $this->translate('home')?></label></td>
+			      <td width="16%" height="23" id="InfoDenPatie_tbody1_tr5_td2"><?php echo  $this->formCheckbox('home', $_POST['home'], null, array('1')); ?></td>
+			    </tr>
+			    <tr id="InfoDenPatie_tbody1_tr6">
+			      <td width="20%" height="23" id="InfoDenPatie_tbody1_tr6_td1"><?php echo $this->translate('hospice')?></td>
+			      <td width="16%" height="23" id="InfoDenPatie_tbody1_tr6_td2"><?php echo  $this->formCheckbox('hospiz', $_POST['hospiz'], null, array('1')); ?></td>
+			    </tr>
+			    <tr id="InfoDenPatie_tbody1_tr6">
+			      <td width="20%" height="23" id="InfoDenPatie_tbody1_tr6_td1"><?php echo $this->translate('sonstiges')?></td>
+			      <td width="16%" height="23" id="InfoDenPatie_tbody1_tr6_td2"><?php echo  $this->formCheckbox('sonstiges', $_POST['sonstiges'], null, array('1')); ?></td>
+			    </tr>
+			  </tbody>
+			</table>
+			</div>
+		</div>
+		<?php }//Patientlives?>
+
+    <?php  if($THISISDISABLED)  { ?>
+		<div class="dragboxpatient" id="item3">
+			<h2 class=""><?php echo $this->translate('supply')?></h2>
+			<div style="display: none;" id="grow4" class="patientdragbox-content">
+
+		 <table width="100%" id="InfoDenPatie_table">
+		  <tbody id="InfoDenPatie_tbody1">
+		    <tr id="InfoDenPatie_tbody1_tr2">
+		      <td width="20%" height="23" id="InfoDenPatie_tbody1_tr2_td3"><label for="even" id="InfoDenPatie_selEv"><?php echo $this->translate('even')?></label></td>
+		      <td width="16%" height="23" id="InfoDenPatie_tbody1_tr2_td4"><?php echo  $this->formCheckbox('even', $_POST['even'], null, array('1')); ?></td>
+		    </tr>
+		    <tr id="InfoDenPatie_tbody1_tr3">
+		      <td width="20%" height="23" id="InfoDenPatie_tbody1_tr3_td3"><label for="spouse" id="InfoDenPatie_Eherpar"><?php echo $this->translate('spouse')?></label></td>
+		      <td width="16%" height="23" id="InfoDenPatie_tbody1_tr3_td4"><?php echo  $this->formCheckbox('spouse', $_POST['spouse'], null, array('1')); ?></td>
+		    </tr>
+		    <tr id="InfoDenPatie_tbody1_tr4">
+		      <td width="20%" height="23" id="InfoDenPatie_tbody1_tr4_td3"><label for="member" id="InfoDenPatie_AngMem"><?php echo $this->translate('supply_member')?></label></td>
+		      <td width="16%" height="23" id="InfoDenPatie_tbody1_tr4_td4"><?php echo  $this->formCheckbox('member', $_POST['member'], null, array('1')); ?></td>
+		    </tr>
+		    <tr id="InfoDenPatie_tbody1_tr5">
+		      <td width="20%" height="23" id="InfoDenPatie_tbody1_tr5_td3"><label for="private_support" id="InfoDenPatie_privaHilfe"><?php echo $this->translate('support'); ?><br />
+		      </label></td>
+		      <td width="16%" height="23" id="InfoDenPatie_tbody1_tr5_td4"><?php echo  $this->formCheckbox('private_support', $_POST['private_support'], null, array('1')); ?></td>
+		    </tr>
+		    <tr id="InfoDenPatie_tbody1_tr6">
+		      <td width="20%" height="23" id="InfoDenPatie_tbody1_tr6_td3"><label for="nursing" id="InfoDenPatie_pflnst"><?php echo $this->translate('nursing')?></label></td>
+		      <td width="16%" height="23" id="InfoDenPatie_tbody1_tr6_td4"><?php echo  $this->formCheckbox('nursing', $_POST['nursing'], null, array('1')); ?></td>
+		    </tr>
+		    <tr id="InfoDenPatie_tbody1_tr6">
+		      <td width="20%" height="23" id="InfoDenPatie_tbody1_tr6_td3"><label for="heimpersonal" id="InfoDenPatie_pflnst">Heimpersonal</label></td>
+		      <td width="16%" height="23" id="heimpersonal"><?php echo  $this->formCheckbox('heimpersonal', $_POST['heimpersonal'], null, array('1')); ?></td>
+		    </tr>
+		    <tr id="InfoDenPatie_tbody1_tr6">
+		      <td width="20%" height="23" id="InfoDenPatie_tbody1_tr6_td3">&nbsp;</td>
+		      <td width="16%" height="23" id="InfoDenPatie_tbody1_tr6_td4"></td>
+		    </tr>
+		  </tbody>
+		</table>
+			</div>
+		</div>
+   <?php } // PatientSupply ?>
+
+
+
+        <?php if($THISISDISABLED){?>
+        <div style="position: relative; opacity: 1; left: 0px; top: 0px;" class="dragboxpatient" id="item1">
+			<h2 class=""><?php echo $this->translate('mobility')?></h2>
+			<div style="display: none;" id="grow5" class="patientdragbox-content">
+
+             <table width="100%" id="InfoDenPatie_table">
+			  <tbody id="InfoDenPatie_tbody1">
+			    <tr id="InfoDenPatie_tbody1_tr2">
+			      <td width="13%" height="23" id="InfoDenPatie_tbody1_tr2_td5"><label id="InfoDenPatie_BettBe" for="bed"><?php echo $this->translate('bed')?></label></td>
+			      <td width="16%" height="23" id="InfoDenPatie_tbody1_tr2_td6"><?php echo  $this->formCheckbox('bed', $_POST['bed'], null, array('1')); ?></td>
+			    </tr>
+			    <tr id="InfoDenPatie_tbody1_tr3">
+			      <td width="13%" height="23" id="InfoDenPatie_tbody1_tr3_td5"><label for="walker" id="InfoDenPatie_Rollato"><?php echo $this->translate('walker')?></label></td>
+			      <td width="16%" height="23" id="InfoDenPatie_tbody1_tr3_td6"><?php echo  $this->formCheckbox('walker', $_POST['walker'], null, array('1')); ?></td>
+			    </tr>
+			    <tr id="InfoDenPatie_tbody1_tr4">
+			      <td width="13%" height="23" id="InfoDenPatie_tbody1_tr4_td5"><label for="wheelchair" id="InfoDenPatie_RollWhe"><?php echo $this->translate('wheelchair')?></label></td>
+			      <td width="16%" height="23" id="InfoDenPatie_tbody1_tr4_td6"><?php echo  $this->formCheckbox('wheelchair', $_POST['wheelchair'], null, array('1')); ?></td>
+			    </tr>
+			    <tr id="InfoDenPatie_tbody1_tr5">
+			      <td width="13%" height="23" id="InfoDenPatie_tbody1_tr5_td5"><label for="goable" id="InfoDenPatie_gehfa"><?php echo $this->translate('goable')?></label></td>
+			      <td width="16%" height="23" id="InfoDenPatie_tbody1_tr5_td6"><?php echo  $this->formCheckbox('goable', $_POST['goable'], null, array('1')); ?></td>
+			    </tr>
+			    <tr id="InfoDenPatie_tbody1_tr6">
+			      <td width="13%" height="23" id="InfoDenPatie_tbody1_tr6_td5"><label id="PatMaAdd_Nachu" for="inpPatMaAdd_Nacht" class="HidePatMaAdd">Nachtstuhl</label></td>
+			      <td width="16%" height="23" id="InfoDenPatie_tbody1_tr6_td6"><input type="checkbox" id="inpPatMaAdd_Nacht" class="HidePatMaAdd" /></td>
+			    </tr>
+			    <tr id="InfoDenPatie_tbody1_tr6">
+			      <td width="13%" height="23" id="InfoDenPatie_tbody1_tr6_td5"><label id="PatMaAdd_Wecraze" for="inpPatMaAdd_Wecrazs" class="HidePatMaAdd">Wechseldruckmatraze</label></td>
+			      <td width="16%" height="23" id="InfoDenPatie_tbody1_tr6_td6"><input type="checkbox" id="inpPatMaAdd_Wecrazs" class="HidePatMaAdd" /></td>
+			    </tr>
+			  </tbody>
+			</table>
+			</div>
+		</div>
+<?php } // Mobilityblock ?>
+
+       <?php if($THISISDISABLED) { ?>
+        <div style="position: relative; opacity: 1; left: 0px; top: 0px;" class="dragboxpatient" id="item7">
+			<h2 id="InfoDenPatie_paverg"><?php echo $this->translate('livingwill')?></h2>
+			<div style="display: none;" id="grow6" class="patientdragbox-content">
+			<table width="100%" id="InfoDenPatie_table">
+			  <tbody id="InfoDenPatie_tbody1">
+			    <tr id="InfoDenPatie_tr9">
+			      <td width="20%" height="23" id="InfoDenPatie_tr9_td1"><label for="living_will" id="InfoDenPatie_pfja"><?php echo $this->translate('ja')?></label></td>
+			      <td width="16%" height="23" id="InfoDenPatie_tr9_td2"><?php echo  $this->formCheckbox('living_will', $_POST['living_will'], null, array('1')); ?> </td>
+			    </tr>
+			  </tbody>
+			</table>
+			</div>
+		</div>
+		<?php } // PatientLivesblock ?>
+</div>
+<div style="-moz-user-select: none;" unselectable="off" class="patientcolumn ui-sortable" id="column2">
+		<?	if($THISISDISABLED) { ?>
+		<div class="dragboxpatient" id="item4">
+			<h2 class=""><?php echo $this->translate('moreinformation')?></h2>
+			<div style="display: none;" id="grow3" class="patientdragbox-content">
+
+            <table width="100%" id="InfoDenPatie_table">
+			  <tbody id="InfoDenPatie_tbody1">
+			    <tr id="InfoDenPatie_tr9">
+			      <td width="20%" height="23" id="InfoDenPatie_tr9_td3"><label for="dk" id="InfoDenPatie_pfdk"><?php echo $this->translate('dk')?> </label></td>
+			      <td width="16%" height="23" id="InfoDenPatie_tr9_td4"><?php echo  $this->formCheckbox('dk', $_POST['dk'], null, array('1')); ?></td>
+			    </tr>
+			    <tr id="InfoDenPatie_tr10">
+			      <td width="20%" height="23" id="InfoDenPatie_tr10_td3"><label for="peg" id="InfoDenPatie_bepeg"><?php echo $this->translate('peg')?></label></td>
+			      <td width="0%" height="23" id="InfoDenPatie_tr10_td4"><?php echo  $this->formCheckbox('peg', $_POST['peg'], null, array('1')); ?></td>
+			    </tr>
+			    <tr id="InfoDenPatie_tr11">
+			      <td width="20%" height="23" id="InfoDenPatie_tr11_td3"><label for="port" id="InfoDenPatie_beport"><?php echo $this->translate('port')?></label></td>
+			      <td width="0%" height="23" id="InfoDenPatie_tr11_td4"><?php echo  $this->formCheckbox('port', $_POST['port'], null, array('1')); ?></td>
+			    </tr>
+			    <tr id="InfoDenPatie_tr12">
+			      <td width="20%" height="23" id="InfoDenPatie_tr12_td3"><label for="pumps" id="InfoDenPatie_bepume"><?php echo $this->translate('pumps')?></label></td>
+			      <td width="0%" height="23" id="InfoDenPatie_tr12_td4"><?php echo  $this->formCheckbox('pumps', $_POST['pumps'], null, array('1')); ?></td>
+			    </tr>
+			    <tr id="InfoDenPatie_tr13">
+			      <td width="20%" height="23" id="InfoDenPatie_tr13_td3"><label for="zvk" id="InfoDenPatie_zvkbe"><?php echo $this->translate('zvk')?></label></td>
+			      <td width="0%" height="23" id="InfoDenPatie_tr13_td4"><?php echo  $this->formCheckbox('zvk', $_POST['zvk'], null, array('1')); ?></td>
+			    </tr>
+			  </tbody>
+			  <tr id="PatMaAdd_Religiontr1">
+			    <td height="23" id="PatMaAdd_Religiontr1_td3">&nbsp;</td>
+			    <td height="23" id="PatMaAdd_Religiontr1_td4">&nbsp;</td>
+			  </tr>
+			</table>
+
+			</div>
+		</div>
+		<?php } // MoreinfoBLock ?>
+
+
+		<?php if ($THISISDISABLED) { ?>
+		<div class="dragboxpatient" id="item5">
+			<h2 class=""><?php echo $this->translate('carelevel')?></h2>
+			<div style="display: none;" id="grow7" class="patientdragbox-content">
+			<table width="100%" id="InfoDenPatie_table">
+			  <tbody id="InfoDenPatie_tbody1">
+			    <tr id="InfoDenPatie_tr9">
+			      <td width="16%" height="23" colspan="2" id="InfoDenPatie_tr9_td5"><select name="stage" style="width: 200px;" class="combo" id="InfoDenPatie_pfdk">
+			        <option selected="selected" id="InfoDenPatie_biweh"><?php echo $this->translate('pleaseselect')?>...</option>
+			        <option value="1" id="InfoDenPatie_pf1bi" <?php if($this->stage=="1"){echo "selected='selected'";}?>>1</option>
+			        <option value="2" id="InfoDenPatie_pf2bi" <?php if($this->stage=="2"){echo "selected='selected'";}?>>2</option>
+			        <option value="3" id="InfoDenPatie_pf3bi" <?php if($this->stage=="3"){echo "selected='selected'";}?>>3</option>
+			        <option value="3+" id="InfoDenPatie_pf3bi" <?php if($this->stage=="3+"){echo "selected='selected'";}?>>3+</option>
+			        <option value="keine" id="InfoDenPatie_pf3bi" <?php if($this->stage=="keine"){echo "selected='selected'";}?>>Keine</option>
+			        <option value="beantragt" id="InfoDenPatie_pf3bi" <?php if($this->stage=="beantragt"){echo "selected='selected'";}?>>Beantragt</option>
+			      </select></td>
+			    </tr>
+			    <tr id="InfoDenPatie_tr10">
+			      <td width="12%" height="23" id="InfoDenPatie_tr10_td4"><label id="patMaAdd_Ersrag" class="HidePatMaAdd" for="inppatMaAdd_Ersrag">Erstantrag</label></td>
+			      <td width="16%" height="23" id="InfoDenPatie_tr10_td4"><input type="checkbox" class="HidePatMaAdd" name="erstantrag" id="inppatMaAdd_Ersrag" value="1" /></td>
+			    </tr>
+			    <tr id="InfoDenPatie_tr11">
+			      <td width="12%" height="23" id="InfoDenPatie_tr11_td4"><label id="patMaAdd_hrstng" for="inppatMaAdd_hrstng" class="HidePatMaAdd">H&#246;herstufung </label></td>
+			      <td width="16%" height="23" id="InfoDenPatie_tr11_td4"><input type="checkbox" name="horherstufung" class="HidePatMaAdd" id="inppatMaAdd_hrstng" value="1" /></td>
+			    </tr>
+			  </tbody>
+			  <tr id="PatMaAdd_Religiontr1">
+			    <td height="23" id="PatMaAdd_Religiontr1_td5">&nbsp;</td>
+			    <td height="23" id="PatMaAdd_Religiontr1_td6">&nbsp;</td>
+			  </tr>
+			</table>
+
+			</div>
+		</div>
+		<?php } //Carelevel?>
+
+
+
+		<?php  if($THISISDISABLED) { ?>
+		<div class="dragboxpatient" id="item6">
+			<h2 class="">Religionszugeh&#246;rigkeit</h2>
+			<div style="display: none;" id="grow8" class="patientdragbox-content">
+			<div id="patineDetaFamiOuter" class="patientDetail_radio">
+          <div id="year_id"  class="Tableradiobox">
+   		<?php echo $this->formRadio('religion', $this->religion, null, $this->religions,'<div class="clearer"></div><br />'); ?></div>
+	    <div class="clearer"></div>
+   		</div>
+		</div>
+		</div>
+		<?php } //religions ?>
+		</div>
+		<div class="clearer"></div>
+		</div>
+		</div>
+
+ 	<!-- Patient location -->
+	<?php if($this->allowedFormBoxes['32']) { ?>
+ 	<div style="position: relative; opacity: 1; left: 0px; top: 0px;" class="dragboxpatient" id="item32">
+	<h2 class=""><?php echo $this->translate('patientlocation') ?></h2>
+	<div style="display: none;" id="grow32" class="patientdragbox-content">
+  	<div id="PaMaAdd_Aufentha">
+    <br />
+
+    <label for="location_id" id="lbl_referred_by"><?php echo $this->translate('selectlocation') ?></label>
+    <?php echo $this->formSelect('location_id', $_POST['location_id'], null, $this->locationarray) ?>
+   <div id="patientMsterAd_ErrorMsg" class="error"><br/> <?php echo $this->error_ref_by; ?></div>
+    <br/>
+     <div class="ClrBoth"></div>
+    </div></div></div>
+	<?php } ?>
+   <!-- END Patient location -->
+
+
+   <!-- Diagnosis -->
+	<?php if($this->allowedFormBoxes['33']) { ?>
+    <div style="position: relative; opacity: 1; left: 0px; top: 0px;" class="dragboxpatient" id="item32">
+	<h2 class=""><?php echo $this->translate('diagnosis') ?></h2>
+	<div style="display: none;" id="grow33" class="patientdragbox-content">
+	<div>
+	 <?php echo $this->diagno ?> <?php echo $this->diagnogrid ?><br />
+	</div>
+	<div class="add_new_medi"><a href="javascript:admission_selectdignosis()"><img src="<?php echo RES_FILE_PATH;  ?>/images/edit_add.png" width="20" height="20" /><div class="add_new_medi_link"><?php echo $this->translate('addnewdiagnosis'); ?></div></a></div><div class="clearer"></div>
+	</div></div>
+	<?php } ?>
+   <!-- End Diagnosis -->
+
+
+   <!-- Medication -->
+   <?php if($this->allowedFormBoxes['34']) { ?>
+    <div style="position: relative; opacity: 1; left: 0px; top: 0px;" class="dragboxpatient" id="item32">
+	<h2 class=""><?php echo $this->translate('medication') ?></h2>
+	<div style="display: none;" id="grow34" class="patientdragbox-content">
+	<div id="med">
+		<h4 class="LineHeading"><?php echo $this->translate('medication') ?></h4>
+
+		<?php echo $this->medicgrid ;?>
+	</div><div class="clearer"></div>
+	<div class="add_new_medi"><a href="javascript:selectmedication()"><img src="<?php echo RES_FILE_PATH;  ?>/images/edit_add.png" width="20" height="20" /><div class="add_new_medi_link"><?php echo $this->translate('addnewmedication'); ?></div></a></div><div class="clearer"></div>
+	</div></div>
+	<?php } ?>
+	<!-- End Medication -->
+
+
+	<div class="clear"></div>
+   <!-- Bedarf Medication -->
+   <?php if($this->allowedFormBoxes['57']) { ?>
+   <div style="position: relative; opacity: 1; left: 0px; top: 0px;" class="dragboxpatient" id="item32">
+	   <h2 class=""><?php echo $this->translate('bedarfsmedication') ?></h2>
+	   <div style="display: none;" id="grow35" class="patientdragbox-content">
+		   <div id="med">
+			   <?php echo $this->b_medicgrid ;?>
+		   </div>
+		   <div class="clearer"></div>
+		   <div class="add_new_medi">
+			   <a href="javascript:selectbmedication()">
+				   <img src="<?php echo RES_FILE_PATH;  ?>/images/edit_add.png" width="20" height="20" />
+				   <div class="add_new_medi_link">
+					   <?php echo $this->translate('addbedarfsmedication'); ?>
+				   </div>
+			   </a>
+		   </div>
+		   <div class="clearer"></div>
+	   </div>
+   </div>
+   <?php } ?>
+   <!-- End Bedarf Medication -->
+   
+   
+				<!-- First contact / Erstkontakt durch -->
+				<?php //if($this->first_contact == "1"): ?>
+				<?php if($this->allowedFormBoxes['58']) { ?>
+				<div style="position: relative; opacity: 1; left: 0px; top: 0px;" class="dragboxpatient" id="item302">
+					<h2 class=""><?php echo $this->translate('first_contact') ?></h2>
+					<div style="display: none;" id="grow36" class="patientdragbox-content">
+						<table class="table_msp1" style="width: 90%!important;" >
+					<!-- Erstkontakt durch:  -->    
+					         <tr>
+					        	 <td width="20%"><b>Erstkontakt durch: </b></td>
+								 <td width="5%"><input type="radio" name="first_contact" value="1" id="first_contact1" /></td> 
+								 <td width="75%"><label for="first_contact1" > Patient/Angehörige </label></td>
+							</tr>
+					         <tr>
+					        	 <td width="20%"></td>
+								 <td width="5%"><input type="radio" name="first_contact" value="2"  id="first_contact2"/></td> 
+								 <td width="75%"><label for="first_contact2" > Beratungsdienst</label></td>
+					        </tr>
+					         <tr>
+					        	 <td width="20%"></td>
+								 <td width="5%"><input type="radio" name="first_contact" value="3"  id="first_contact3" /></td> 
+								 <td width="75%"><label for="first_contact3" > Hausarzt </label></td>        
+					        </tr>
+					         <tr>
+					        	<td width="20%"></td>
+								<td width="5%"><input type="radio" name="first_contact" value="4"  id="first_contact4" /></td> 
+								<td width="75%"><label for="first_contact4"> Stationäres Hospiz</label></td>
+							</tr>
+					         <tr>
+					        	 <td width="20%"></td>
+								<td width="5%"><input type="radio" name="first_contact" value="5"  id="first_contact5" /></td> 
+								<td width="75%"><label for="first_contact5"> Krankenhaus</label></td>
+							</tr>
+					         <tr>
+					        	 <td width="20%"></td>
+								<td width="5%"><input type="radio" name="first_contact" value="6"  id="first_contact6" /></td> 
+								<td width="75%"><label for="first_contact6"> Palliativstation </label></td>
+							</tr>
+					         <tr>
+					        	 <td width="20%"></td>
+								<td width="5%"><input type="radio" name="first_contact" value="7"  id="first_contact7" /></td> 
+								<td width="75%"><label for="first_contact7"> Facharzt</label></td>
+						     </tr>
+						     <tr>
+					        	 <td width="20%"></td>
+								<td width="5%"><input type="radio" name="first_contact" value="8"  id="first_contact8" /></td> 
+								<td width="75%"><label for="first_contact8"> ambulanter Hospizdienst</label></td>
+							</tr>
+					        
+					         <tr>
+					        	 <td width="20%"></td>
+								<td width="5%"><input type="radio" name="first_contact" value="9"  id="first_contact9" /></td> 
+								<td width="75%"><label for="first_contact9"> Ambulante Pflege</label></td>
+							</tr>
+					         <tr>
+					        	 <td width="20%"></td>
+								<td width="5%"><input type="radio" name="first_contact" value="10"  id="first_contact10" /></td> 
+								<td width="75%"><label for="first_contact10">  Stationäre Pflege </label></td>
+							</tr>
+					         <tr>
+					        	 <td width="20%"></td>
+								<td width="5%"><input type="radio" name="first_contact" value="11"  id="first_contact11" /></td> 
+								<td width="75%"><label for="first_contact11">Sonstige</label></td>
+						     </tr>
+						</table>
+					</div>
+				</div>
+				<?php } ?>
+			<?php //endif; ?>
+			<!-- End first contact -->
+
+
+			<!--  Nationales Hospiz- und Palliativregister-->
+			<!--  
+			<?php if($this->show_dgp_block == "1"): ?>
+				<div style="position: relative; opacity: 1; left: 0px; top: 0px;" class="dragboxpatient" id="dgp_block">
+					<h2 class=""><?php echo $this->translate('dgp_admission_block_adm') ?></h2>
+					
+					<div class="patientdragbox-content dgb_block"  id="grow37" style="height:380px;"  >
+
+						<div class="dgp_ecog">
+							<label>ECOG:</label>
+							<select name="ecog">
+								<option value="">&nbsp;</option>
+								<option value="1">Normale Aktivität</option>
+								<option value="2">Gehfähig, leichte Arbeit möglich</option>
+								<option value="3">nicht arbeitsfähig, kann &gt; 50%  der Wachzeit aufstehen</option>
+								<option value="4">begrenzte Selbstversorgung, &gt; 50% Wachzeit bettlägrig</option>
+								<option value="5">Pflegebedürftig, permanent bettlägerig</option>
+							</select>
+						</div>
+						
+						<div class="dgp_care_serivices">
+						 <label>Beschreibung der aktuellen bzw. unmittelbar geplanten Versorgung:</label>
+						 	<ul>
+						 			<li><label for="sapvteam_as"><input id="sapvteam_as" type="checkbox" name="begleitung[sapvteam_as]" value="1"   <?php if($this->sapvteam_as == 1) {echo 'checked="checked"';}?>  />SAPV-Team</label></li>
+									<li><label for="hausarzt"><input id="hausarzt" type="checkbox" name="begleitung[hausarzt]" value="2"  <?php if($this->hausarzt == 1) {echo 'checked="checked"';}?>  />Hausarzt</label></li>
+									<li><label for="pflege"><input id="pflege" type="checkbox" name="begleitung[pflege]" value="3"   <?php if($this->pflege == 1) {echo 'checked="checked"';}?> />ambulante Pflege</label></li>
+									<li><label for="palliativ"><input id="palliativ" type="checkbox" name="begleitung[palliativ]" value="4"   <?php if($this->palliativ == 1) {echo 'checked="checked"';}?> /> Palliativarzt (QPA)</label></li>
+						 	</ul>
+						 	<ul>
+									<li><label for="palliativpf"><input id="palliativpf" type="checkbox" name="begleitung[palliativpf]" value="5"  <?php if($this->palliativpf == 1) {echo 'checked="checked"';}?> />Palliativpflege (AHPP, APD)</label></li>
+									<li><label for="palliativber"><input id="palliativber" type="checkbox" name="begleitung[palliativber]" value="6"  <?php if($this->palliativber == 1) {echo 'checked="checked"';}?>  />Palliativberatung (AHPB)</label></li>
+									<li><label for="dienst"><input id="dienst" type="checkbox" name="begleitung[dienst]" value="7" <?php if($this->dienst == 1) {echo 'checked="checked"';}?> />Ehrenamtlicher Dienst</label></li>
+									<li><label for="palliative_care_team"><input id="palliative_care_team" type="checkbox" name="begleitung[palliative_care_team]" value="12" <?php if($this->palliative_care_team == 1) {echo 'checked="checked"';}?> />Palliative Care Team</label></li>
+							</ul>
+						</div>
+						
+						<div class="dgp_grund_contacts">
+							<label>Was ist der Grund des Kontaktes,<br/> was das Behandlungsziel?</label>
+							<textarea name="kontaktes" cols="" rows="4"   class="inp_textarea"><?php echo $this->kontaktes?></textarea>
+						</div>
+			
+						<div class="dgp_grund_contacts">
+							<label>besonderer Aufwand mit:</label>
+							<textarea name="aufwand_mit" cols="" rows="4"   class="inp_textarea"><?php echo $this->aufwand_mit?></textarea>
+						</div>
+					</div>
+				</div>
+			<?php endif; ?>
+			-->
+			<!-- End  Nationales Hospiz- und Palliativregister-->
+
+			<!-- Client icons to be added at admission ISPC-2396 Carmen 08.10.2019-->
+			<?php if($this->allowedFormBoxes['80']) { ?>
+			<div style="position: relative; opacity: 1; left: 0px; top: 0px;" class="dragboxpatient" id="item32">
+				<h2 class=""><?php echo $this->translate('client icons to be added at admission') ?></h2>
+				<div style="display: none;" id="grow80" class="patientdragbox-content">
+					<div style="float: left; width: 100%; height: 20px; font-weight: bold; font-seize: 12px;">
+						<?php echo $this->translate('Info text - Choose the icons to be assigned to patient at admission'); ?>
+					</div>
+					<div style="float: left; width: 130px; padding-top: 10px; margin-top: 10px; font-weight: bold;">
+						<?php echo $this->translate('clienticon_select').':'; ?>
+					</div>
+					<div style="float: left;">
+						<?php echo $this->grupbutclicons; ?>
+					</div>
+					<div class="clearer"></div>
+				</div>
+			</div>
+			<?php } ?>
+			<!-- End Client icons to be added at admission ISPC-2396 Carmen 08.10.2019-->
+
+			
+			
+			
+				<!--  Nationales Hospiz- und Palliativregister-->
+			<?php //if($this->show_dgp_block == "1"): ?>
+			<?php if($this->allowedFormBoxes['59']) { ?>
+			<?php /* ISPC-1775,ISPC-1678,ISPC-1994, ISPC-1757 */ ?>		
+			<!-- #################################################################################################################### -->	
+		<!-- #################################################################################################################### -->	
+		<!--  ADMISSION BLOCK -->
+		<!-- #################################################################################################################### -->	
+		<!-- #################################################################################################################### -->	
+	
+	
+<?php $dgp = $this->dgp;
+$lang = $this->translate('hospizregister_lang'); 
+?>
+<style>
+
+.special_dgp_block {
+    border: 1px solid #ffdd00;
+    position: relative; opacity: 1; left: 0px; top: 0px;
+    display: block; 
+    width: 98%;
+    float: left;
+}
+.special_dgp_block h2{
+   background: #ffdd00 none repeat scroll 0 0;
+    border-bottom: 1px solid #ffdd00;
+    color: #000000;
+}
+
+.dgb_block{
+    display: block; 
+    width: 98%;
+    float: left;
+    height: 100%;
+}
+.dgp_block_line{
+    display: block; 
+    width: 100%;
+    float: left;
+}
+.dgp_block_line label{
+    display: block; 
+    width: 30%;
+    float: left;
+}
+
+.mandatory{
+	color: red;
+}
+.labels {
+	float: left; 
+	width: 70%;
+}
+
+.labels label {
+	width: 33%;
+}
+.labels label input{
+	 margin: 0 5px 0 0;
+}
+.symptomatic_table{
+width: 100%;
+}
+.symptomatic_table td label{
+float: left;
+width: 25%;
+}
+td.radio_data label{
+float: left;
+width: 25%;
+}
+td.checkbox_data label{
+	float: left;
+	width: 33%;
+	font-size: 100%;
+}
+.inp_textarea{
+	width: 100%;
+	height: 45px;
+}
+.inp_textarea70{
+	width: 69%;
+	height: 45px;
+}
+/* ISPC-2318, elena, 09.09.2020 */
+.valid_contribution{
+	display:inline-block;
+}
+.contribution_radio_group{
+	margin-bottom:1em;
+	margin-top:0.5em;
+}
+</style>
+		<div class="dragboxpatient special_dgp_block">
+			<h2 class=""><?php echo $this->translate('dgp_admission_block_adm') ?></h2>
+			
+			<div class="patientdragbox-content dgb_block"  id="grow37" style="float: left;" >
+				<input type="hidden" name="dgp[kern][admission][dgp_kern_id]" value="<?php echo $dgp['kern']['admission']['dgp_kern_id'];?>">
+				
+				<div class="dgp_block_line">
+					<label>ECOG:<sup class="mandatory"> *</sup></label>
+					<select name="dgp[kern][admission][ecog]">
+						<option value="">&nbsp;</option>
+						<option value="1" <?php if($dgp['kern']['admission']['ecog'] == "1"):?> selected="selected" <?php endif;?>  >Normale Aktivität</option>
+						<option value="2" <?php if($dgp['kern']['admission']['ecog'] == "2"):?> selected="selected" <?php endif;?>>Gehfähig, leichte Arbeit möglich</option>
+						<option value="3" <?php if($dgp['kern']['admission']['ecog'] == "3"):?> selected="selected" <?php endif;?>>nicht arbeitsfähig, kann &gt; 50%  der Wachzeit aufstehen</option>
+						<option value="4" <?php if($dgp['kern']['admission']['ecog'] == "4"):?> selected="selected" <?php endif;?>>begrenzte Selbstversorgung, &gt; 50% Wachzeit bettlägrig</option>
+						<option value="5" <?php if($dgp['kern']['admission']['ecog'] == "5"):?> selected="selected" <?php endif;?>>Pflegebedürftig, permanent bettlägerig</option>
+					</select>
+				</div>
+				
+				<div class="dgp_block_line">	
+				 	<label>Beschreibung der aktuellen bzw. unmittelbar geplanten Versorgung: <sup class="mandatory"> *</sup></label>
+					<div class="labels">
+					<?php echo $this->formMultiCheckbox('dgp[kern][admission][begleitung][]', $dgp['kern']['admission']['begleitung_arr'], array ('onclick' => ''), $dgp['form']['texts']['partners'], ''); ?>
+					</div>	
+				</div>	
+				
+				
+				<div class="dgp_block_line">
+					<label>Was ist der Grund des Kontaktes,<br/> was das Behandlungsziel? <sup class="mandatory"> *</sup></label>
+					<textarea name="dgp[kern][admission][kontaktes]"  cols="" rows="4"   class="inp_textarea70"><?php echo $dgp['kern']['admission']['kontaktes']?></textarea>
+				</div>
+			
+				<div class="dgp_block_line">
+					<label>besonderer Aufwand mit:
+					<br/>
+					<a href="javascript:void(0);" id="aufwand_mit" class="insert_texts" data-id="aufwand_mit"   data-form_name="patientnew/hospizregisterv3" ><img src="<?php echo RES_FILE_PATH;  ?>/images/edit_add.png"  width="20" height="20" alt="" /></a>
+					</label>
+					<textarea name="dgp[kern][admission][aufwand_mit]"  cols="" rows="4" id="aufwand_mit_txt"  class="inp_textarea70 aufwand_mit"><?php echo $dgp['kern']['admission']['aufwand_mit']?></textarea>
+				</div>
+				
+				<div class="dgp_block_line">
+					<label><?php echo $lang['living_will']['living will and others']; ?></label>
+					
+					<div class="labels">
+						<label>
+						<?php echo $this->formCheckbox('dgp[kern][admission][pverfuegung]', $dgp['kern']['admission']['pverfuegung'], null, array ('1')); ?>
+							<?php echo $lang['living_will']['pverfuegung']; ?>
+						</label>
+						<label>
+						<?php echo $this->formCheckbox('dgp[kern][admission][vollmacht]', $dgp['kern']['admission']['vollmacht'], null, array ('1')); ?>
+							<?php echo $lang['living_will']['vollmacht']; ?>
+						</label>
+						<label>
+						<?php echo $this->formCheckbox('dgp[kern][admission][betreuungsurkunde]', $dgp['kern']['admission']['betreuungsurkunde'], null, array ('1')); ?>
+							<?php echo $lang['living_will']['betreuungsurkunde']; ?>
+						</label>
+						<label>
+						<?php echo $this->formCheckbox('dgp[kern][admission][acp]', $dgp['kern']['admission']['acp'], null, array ('1')); ?>
+							<?php echo $lang['living_will']['acp']; ?>
+						</label>
+						
+					</div>
+					
+				</div>
+			</div>
+		</div>
+		
+		<!-- End   ADMISSION BLOCK -->
+		<div id="option-modal">
+			<div class="content"></div>
+		</div>
+	<?php } ?>		
+<?php //endif; ?>			
+			
+
+
+
+
+
+
+       <div class="buttons">
+	<input type="button" name="btnsubmit" id="btnsubmitnew" tabindex="4" class="positive left" style="text-align: left;" value="Aufnahme abschließen" onclick="checkDiagnosisTypeSelected();" >
+	<input type="button" name="btnsubmit-details" id="btnsubmit-details" tabindex="5" class="button right" style="text-align: right;" value="weitere Stammdaten einpflegen" onclick="checkDiagnosisTypeSelected(1);" >
+   </div>
+</fieldset>
+</form>
+
+	<div id="popupContact">
+		<a id="popupContactClose" onclick="closepopup()">x</a>
+		<p id="contactArea">
+		 <iframe id='add_family_doc' frameborder='0' src='' scrolling="no"  style="margin:0 auto;"></iframe>
+		</p>
+	</div>
+	<div id="backgroundPopup"></div>
+
+
+<script type="text/javascript">
+
+$(function(){
+
+	$(':input', $("#frmpatient")).each(function() {
+		if(this.type=='submit'){ return;}
+		$(this).bind('keydown',function(e){
+			if(e.keyCode==13){
+				e.preventDefault();
+			}
+		});
+	});
+});
+</script>
+ <div id="standbypatient">
+ <label for="patient_status" class="patient_status_label"> <?php echo $this->translate('Patient status'); ?></label>
+	<select name="patient_status" id="patient_status" class="patient_status_select">
+		<option value="">bitte wählen</option>
+		<option value="1">Standby / Anfrage</option>
+		<option value="0">regulärer Patient</option>
+	</select>
+	<div class="status_select_error " id="select_error" style="display: none;">
+		<p> <?php echo $this->translate('You must select one option!'); ?></p>
+	</div>
+</div>

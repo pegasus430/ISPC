@@ -1,0 +1,477 @@
+<?php
+//ISPC-2694,elena,16.12.2020
+//print_r($this->blockconfig);
+$blockname = $this->blockconfig['blockname'];
+$pdf = $this->pdf;
+//print_r($this->f_values);
+$f_values = $this->f_values;
+if(!function_exists('create_option_key')){
+function create_option_key($optionkey){
+    $aReplaceFrom = [' ', 'ü', 'ö', 'ä', 'ß', '-', '/'];//TODO-3826,Elena,05.02.2021
+    $aReplaceTo = ['_', 'ue', 'oe', 'ae', 'ss', '_', ''];;//TODO-3826,Elena,05.02.2021
+    return str_replace($aReplaceFrom, $aReplaceTo, strtolower($optionkey));
+}
+
+}
+if(!function_exists('create_element_name')){
+function create_element_name($blockname, $groupname, $option_group, $option_key){
+    return $blockname .'[anamnese][' . $groupname . '][' . $option_group . '][' . create_option_key($option_key) . ']';
+}
+}
+
+if(!function_exists('create_element_name_2')){
+function create_element_name_2($blockname, $groupname, $option_group){
+    return $blockname .'[anamnese][' . $groupname . '][' . create_option_key($option_group) . ']';
+}
+}
+if(!function_exists('create_details_element_name')){
+function create_details_element_name($blockname, $groupname, $option_group, $option_key){
+    return $blockname .'[anamnese][' . $groupname . '][' . $option_group . '][' . create_option_key($option_key) . '_details]';
+}
+}
+if(!function_exists('create_details_element_name_2')){
+function create_details_element_name_2($blockname, $groupname, $option_group){
+    return $blockname .'[anamnese][' . $groupname . '][' . create_option_key($option_group) . '_details]';
+}
+}
+if(!function_exists('ui_checkbox')){
+function ui_checkbox($blockname, $groupname, $option_group, $option_key, $optionval, $is_pdf, $f_values){
+    $optkey = create_option_key($option_key);
+
+    $check_value = ($f_values["anamnese"][$groupname][$option_group][$optkey]);
+    $element_id = $option_group . '_' . create_option_key($option_key);
+    $element_name = create_element_name($blockname, $groupname, $option_group, $option_key);
+
+    if($is_pdf){
+$checked = (isset($check_value)) ?  '<img width="20" height="20" src="' . RES_FILE_PATH . '/images/check02.jpg">' : '<img width="20" height="20" src="' . RES_FILE_PATH . '/images/check01.jpg">';
+
+$ui = '<tr>
+    <td>' . $option_key . '</td>
+    <td>' . $checked . '</td>
+</tr>';
+    }else{
+        $checked = (isset($check_value)) ? ' checked ' : '';
+        $ui = '
+                <tr>
+                    <td>' . $option_key . '</td>
+                    <td><input type="checkbox" id="' . $element_id . '" name="' . $element_name . '" ' . $checked . ' ></td>
+                </tr>
+
+                ';
+
+    }
+    return $ui;
+}
+}
+if(!function_exists('ui_datepicker')){
+function ui_datepicker($blockname, $groupname, $option_group, $option_key, $optionval, $is_pdf, $f_values){
+
+$element_id = $option_group . '_' . create_option_key($option_key);
+$optkey = create_option_key($option_key);
+$element_name = create_element_name($blockname, $groupname, $option_group, $option_key);
+
+$picker_value = ($f_values["anamnese"][$groupname][$option_group][$optkey]);
+if($is_pdf){
+'<table>
+    <tr>
+        <td>' . $option_key . '</td>
+        <td>' . $picker_value. '</td>
+    </tr>
+    </table>';
+}else{
+$ui = '
+    <tr>
+        <td>' . $option_key . '</td>
+        <td><input type="text" class="datepicker" id="' . $element_id . '" name="' . $element_name . '" value="' .  $picker_value . '"></td>
+    </tr>
+
+';
+
+}
+return $ui;
+
+}
+}
+if(!function_exists('ui_checkbox_details')){
+function ui_checkbox_details($blockname, $groupname, $option_group, $option_key, $optionval, $is_pdf, $f_values){
+$element_id = $option_group . '_' . create_option_key($option_key);
+$element_name = create_element_name($blockname, $groupname, $option_group, $option_key);
+$optkey = create_option_key($option_key);
+
+$check_value = ($f_values["anamnese"][$groupname][$option_group][$optkey]);
+$text_value = ($f_values["anamnese"][$groupname][$option_group][$optkey . '_details']);
+if($is_pdf){
+$checked = (isset($check_value)) ?  '<img width="20" height="20" src="' . RES_FILE_PATH . '/images/check02.jpg">' : '<img width="20" height="20" src="' . RES_FILE_PATH . '/images/check01.jpg">';
+
+$ui = '<tr>
+    <td>' . $option_key . '</td>
+    <td>' . $checked. '</td>
+    <td>'. $text_value .'</td>
+</tr>';
+}else{
+
+$checked = (isset($check_value)) ? ' checked ' : '';
+$textarea_opt = (isset($check_value)) ? ' opened ' : ' closed ';
+$ui = '
+    <tr>
+        <td>' . $option_key . '</td>
+        <td><input class="checkbox_details" type="checkbox" id="' . $element_id . '" name="' . $element_name . '" ' . $checked. ' ></td>
+        <td><textarea class="text_details '. $textarea_opt .'" name="' . create_details_element_name($blockname, $groupname, $option_group, $option_key) .'">'. $text_value .'</textarea></td>
+    </tr>
+
+';
+
+}
+return $ui;
+}
+}
+if(!function_exists('ui_textarea_anamnese')){ //ISPC-2694,Elena,04.02.2021 fix function name
+function ui_textarea_anamnese($blockname, $groupname, $option_group, $option_key, $optionval, $is_pdf, $f_values){
+
+$element_id = $option_group . '_' . create_option_key($option_key);
+$element_name = create_element_name($blockname, $groupname, $option_group, $option_key);
+$optkey = create_option_key($option_key);
+if($option_key !== ''){
+$text_value = ($f_values["anamnese"][$groupname][$option_group][$optkey . '_details']);
+}else{
+$text_value = ($f_values["anamnese"][$groupname][$option_group]['_details']);
+}
+if($is_pdf){
+if($option_key !== ''){
+$ui = '
+    <tr>
+        <td>' . $option_key . '</td>
+
+        <td>'. $text_value . '</td>
+    </tr>';
+}else{
+ $ui = $text_value;
+}
+}else{
+if($option_key !== ''){
+$ui = '
+    <tr>
+        <td>' . $option_key . '</td>
+
+        <td><textarea name="' . create_details_element_name($blockname, $groupname, $option_group, $option_key) .'">'. $text_value .'</textarea></td>
+    </tr>';
+}else{
+    $ui = '<textarea name="' . create_details_element_name($blockname, $groupname, $option_group, $option_key) .'">' . $text_value . '</textarea>';
+}
+
+}
+
+return $ui;
+
+}
+}
+
+
+if(!function_exists('create_option_ui')){
+function create_option_ui($blockname, $groupname, $option_group, $option_key, $optionval, $is_pdf, $f_values){
+    $ui = '';
+
+    if(is_string($optionval)){
+        $element_id = $option_group . '_' . create_option_key($option_key);
+        $element_name = create_element_name($blockname, $groupname, $option_group, $option_key);
+        switch($optionval){
+            case 'checkbox':
+                $ui = ui_checkbox($blockname, $groupname, $option_group, $option_key, $optionval, $is_pdf, $f_values);
+                break;
+            case 'datepicker':
+                $ui = ui_datepicker($blockname, $groupname, $option_group, $option_key, $optionval, $is_pdf, $f_values);
+                break;
+            case 'checkbox_details':
+                $ui = ui_checkbox_details($blockname, $groupname, $option_group, $option_key, $optionval, $is_pdf,  $f_values);
+                break;
+            case 'textarea':
+                $ui = ui_textarea_anamnese($blockname, $groupname, $option_group, $option_key, $optionval, $is_pdf,  $f_values);//ISPC-2694,Elena,04.02.2021 fix function name
+
+                break;
+
+        }
+    }
+    return $ui;
+}
+}
+if(!function_exists('ui_field_radio')){
+function ui_field_radio($blockname, $options, $is_pdf, $groupname, $key, $f_values){
+$element_name = create_element_name_2($blockname, $groupname, $key);
+$opt_key = create_option_key($key);
+//echo "[ $groupname ][$opt_key]";
+
+//print_r($f_values["anamnese"][ $groupname ][$opt_key]);
+$radio_value = $f_values["anamnese"][ $groupname ][$opt_key];
+$radio_text = '';
+$radio_text = $f_values["anamnese"][ $groupname ][$opt_key . '_details'];
+if($is_pdf){
+    $ui = '<table>';
+    foreach($options['options'] as $optkey => $opts){
+    $ui .= '<tr>';
+    $text = '';
+        if(isset($opts['action'])){
+      $text = $radio_text;
+        }
+
+    $selected = '<img width="20" height="20" src="' . RES_FILE_PATH . '/images/check01.jpg">';
+
+
+        if($radio_value == $optkey){
+        $selected = '<img width="20" height="20" src="' . RES_FILE_PATH . '/images/check02.jpg">';
+
+        $text = $radio_text;
+    }
+        $ui .= '<td width="30">'. $selected . '</td>';
+        $ui .= '<td>'. $opts['label'] . '</td>';
+        $ui .= '<td>' . $text . '</td>';
+        $ui .= '</tr>';
+    }
+
+
+    $ui .= '</table>';
+}
+else{
+$ui = '<ul>';
+
+
+    //echo 'radio: ' .$radio_value;
+foreach($options['options'] as $optkey => $opts){
+   // print_r($opts);
+    //echo 'radio: ' .$radio_value .  'optkey '  . $optkey;
+    $radio_class= 'class="radio_nodetails"';
+    if(isset($opts['action'])){
+     $radio_class= 'class="radio_details"';
+    }
+    $selected = '';
+
+    if($radio_value != '' && $radio_value == $optkey){
+    $selected = ' checked ';
+    }
+    $ui .= '<li><input type="radio" ' . $radio_class .  ' value="' . $optkey . '" name="' . $element_name  . '" ' . $selected . ' >' . $opts['label'];
+     if(isset($opts['action'])){
+        if($radio_value != '' && $radio_value == $optkey){ //ISPC-2694,elena,03.02.2021, bugfix
+            $addclass = ' opened ';
+        }else{
+            $addclass = ' closed ';
+        }
+
+        $ui .= '<textarea class="text_details ' . $addclass . ' " name="' .  create_details_element_name_2($blockname, $groupname, $key) . '">' . $radio_text. '</textarea>';
+     }
+        $ui .= '</li>';
+}
+
+    $ui .= '</ul>';
+}
+return $ui;
+
+}
+}
+if(!function_exists ( 'ui_field_text' )){
+function ui_field_text($blockname, $options, $is_pdf,  $groupname, $key, $f_values){
+$ui = '';
+$optkey = create_option_key($key);
+
+$text_value = $f_values["anamnese"][ $groupname ][$optkey];
+if($is_pdf){
+    $ui = $key . ': ' . $text_value;
+}else{
+    $ui = '<input type="text" value="' . $text_value . '" name="'.create_element_name_2($blockname, $groupname, $key) . '">';
+}
+
+return $ui;
+
+}
+}
+
+if(!function_exists ( 'ui_field_textarea' )){
+function ui_field_textarea($blockname, $options, $is_pdf,  $groupname, $key, $f_values){
+$ui = '';
+$optkey = create_option_key($key);
+
+$text_value = $f_values["anamnese"][ $groupname ][$optkey];
+
+if($is_pdf){
+$ui = $key . ': ' . $text_value;
+}else{
+$ui = '<textarea name="'.create_element_name_2($blockname, $groupname, $key) . '">' . $text_value . '</textarea>';
+}
+
+return $ui;
+
+}
+}
+
+?>
+<?php if(!$this->stammdaten): ?>
+<style>
+   #group_anamnese div table td{
+       padding:5px;
+       vertical-align:top;
+
+   }
+   <?php if(!$pdf) : ?>
+   .groupkey{
+       font-weight: bold;
+       padding-top: 3px;
+       border-top:1px solid #ccc;
+   }
+   .groupopts{
+       border-top:1px solid #ccc;
+   }
+   <?php endif; ?>
+   .text_details{
+       display:block;
+   }
+   .text_details.closed{
+       visibility:hidden;
+   }
+   .text_details.opened{
+       visibility:visible;
+   }
+</style>
+<?php endif; ?>
+
+<?php if(!$pdf && !$this->stammdaten) : ?>
+<script>
+    $(document).ready(function(){
+        $('.datepicker').datepicker();
+        $('#group_anamnese').tabs();
+
+        $('.radio_details').on('change', function(e){
+            console.log($(this));
+            console.log($(this).next('textarea'));
+            var details_area = $(this).next('textarea');
+            details_area.removeClass('closed').addClass('opened');;
+        })
+        $('.radio_nodetails').on('change', function(e){
+            console.log($(this));
+            var elname = $(this).attr('name');
+            console.log(elname);
+            $('input[type=radio][name="'+ elname + '"]').next('textarea').removeClass('opened').addClass('closed');
+
+            //details_area.hide();
+        })
+
+
+        $('.checkbox_details').on('change', function(e){
+            var area = $(this).parent().siblings('td').find('textarea');
+            //console.log(area);
+            if($(this).is(':checked')){
+                area.removeClass('closed').addClass('opened');
+            }else{
+                area.removeClass('opened').addClass('closed');
+            }
+
+
+        })
+    })
+</script>
+<?php endif; ?>
+<?php
+$datum = '';
+if(isset($f_values['anamnese']['datum'])){
+    $datum = date('d.m.Y', strtotime($f_values['anamnese']['datum']));
+}else{
+    $datum = date('d.m.Y', time());
+}
+?>
+<div id="block_form_anamnese">
+<div id="anamnese_datum_group">
+    Datum: <input type="text" id="anamnese_datum" name="<?php echo $blockname; ?>[anamnese][datum]" value="<?php echo $datum;  ?>" class="datepicker">
+</div>
+<div id="group_anamnese">
+
+    <?php if(!$pdf): ?>
+    <ul>
+        <!--<li><a href="#tabs-1">Kinderkrankheiten</a></li>-->
+        <li><a  href="#tabs-2">Geburtsanamnese</a></li>
+        <li><a  href="#tabs-3">Entwicklungsanamnese</a></li>
+
+    </ul>
+   <?php endif; ?>
+    <div id="tabs-1">
+        <?php if($pdf): ?>
+        <h4>Kinderkrankheiten</h4>
+        <?php
+          $border = ' border="1" cellpadding="5" ';
+        ?>
+        <?php endif; ?>
+        <table <?php echo $border; ?> >
+        <?php foreach($this->setupoptions['childhood_diseases'] as $key => $options): ?>
+        <tr>
+            <td class="groupkey"><?php echo $key; ?></td>
+            <td class="groupopts"><?php if(is_array($options)) : ?>
+                <table>
+                <?php foreach($options as $optkey => $option): ?>
+
+                    <?php echo create_option_ui($blockname, 'childhood_diseases', $key, $optkey, $option, $pdf, $f_values); ?>
+
+
+
+
+                <?php endforeach; ?>
+                </table>
+                <?php elseif(is_string($options) && $options == 'textarea') : ?>
+                <!-- //ISPC-2694,Elena,04.02.2021 fix function name-->
+
+                <?php echo ui_textarea_anamnese($blockname, 'childhood_diseases', $key, '', $optionval, $pdf, $f_values); ?>
+                <?php endif; ?>
+
+            </td>
+
+        </tr>
+        <?php endforeach; ?>
+        </table>
+    </div>
+
+    <div id="tabs-2">
+        <?php if($pdf): ?>
+        <h4>Geburtsanamnese</h4>
+        <?php endif; ?>
+        <table <?php echo $border; ?> >
+            <?php foreach($this->setupoptions['birth_anamnese'] as $key => $options): ?>
+            <tr>
+                <td><?php echo $key; ?> <?php if(is_array($options) && isset($options['measure'])): ?>
+                    (<?php echo $options['measure']; ?>)
+                    <?php endif; ?></td>
+                <td>
+                  <?php  if(is_array($options)): ?>
+                    <?php $func = 'ui_field_' . $options['field']; ?>
+                    <?php //echo $func ?>
+                    <?php echo $func($blockname, $options, $pdf, 'birth_anamnese', $key, $f_values); ?>
+                    <?php //print_r($options); ?>
+
+
+                   <?php endif ; ?>
+                </td>
+            </tr>
+            <?php endforeach; ?>
+        </table>
+
+    </div>
+
+    <div id="tabs-3">
+        <?php if($pdf): ?>
+        <h4>Entwicklungsanamnese</h4>
+        <?php endif; ?>
+        <table  <?php echo $border; ?>>
+            <?php foreach($this->setupoptions['development_anamnese'] as $key => $options): ?>
+            <tr>
+                <td><?php echo $key; ?> <?php if(is_array($options) && isset($options['measure'])): ?>
+                    (<?php echo $options['measure']; ?>)
+                    <?php endif; ?></td>
+                <td>
+                    <?php  if(is_array($options)): ?>
+                    <?php $func = 'ui_field_' . $options['field']; ?>
+                    <?php echo $func($blockname, $options, $pdf, 'development_anamnese', $key, $f_values); ?>
+                    <?php //print_r($options); ?>
+
+                    <?php endif ; ?>
+                </td>
+            </tr>
+            <?php endforeach; ?>
+        </table>
+
+    </div>
+</div>
+</div>

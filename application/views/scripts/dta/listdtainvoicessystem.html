@@ -1,0 +1,134 @@
+<!-- Maria:: Migration ISPC to CISPC 08.08.2020 -->
+<?php if(isset($this->demstep_error) && count($this->demstep_error)){
+    foreach($this->demstep_error as $e):?>
+<div style="border:2px solid red; padding:6px;margin:6px; width:680px;color:red;font-size:+1.2em;">
+    !!! FEHLER: <?php echo $e;?>
+</div>
+<?php endforeach;
+} ?>
+
+
+<script type="text/javascript">
+	var invoice_type="<?php echo $this->invoice_type;?>";
+	$(document).ready(function(){
+		$('#sel_all').live('click', function() {
+			$('.select_visit_chk').prop("checked",$('#sel_all').prop("checked"));
+		});
+
+		console.log(invoice_type);
+        if(invoice_type=="demstepcare_invoice"){
+            $('#sel_all').hide();
+            $(document).on('change', '.select_visit_chk',function(){
+                $('.select_visit_chk').prop('checked', false);
+                $(this).prop('checked',true);
+            });
+        }
+	});
+
+
+	
+	var pl_loading = function () {
+	    var dlist = '<div class="loadingdiv" align="center"><img src="images/pageloading.gif"><br />	Loading... please wait</div>';
+	    document.getElementById('content').innerHTML = dlist;
+	}
+
+	function loadpage(ord, clm)
+	{
+	    if($('#hdnlastpage').val() >= parseInt($('#pageno').val())) {
+			if((parseInt($('#pageno').val())) > 0) {
+				pgno = (parseInt($('#pageno').val() - 1));
+			} else {
+				pgno = 0;
+			}
+			ajaxCallserver({url: appbase + 'dta/fetchdtainvoicessystemlist?invoice_type='+invoice_type+'&clm=' + clm + '&ord=' + ord + '&pgno=' + pgno, callLoading: pl_loading});
+	    } else {
+			jAlert("<?php echo $this->translate('invalidpageno'); ?>");
+	    }
+	}
+
+	function searchData(val)
+	{
+	    ajaxCallserver({url: appbase + 'dta/fetchdtainvoicessystemlist',
+		method: 'POST',
+		data: {invoice_type: invoice_type, clm: 'invdate', ord: 'ASC', pgno: 0, val: val.value}, callLoading: pl_loading});
+	}
+
+	var callBack = function (params)
+	{
+//	    document.getElementById('content').innerHTML = params.templateslist;
+		$('#content').html(params.templateslist);
+		
+	}
+</script>
+<style>
+
+    <?php if ($this->invoice_type=="demstepcare_invoice"):?>
+    #sel_all{
+        display:none;
+    }
+    <?php endif;?>
+
+	.quick_search{
+		margin-top: 15px;
+	}
+	.datatable th.action, .datatable td.action {
+		width:60px;
+	}
+
+	.datatable th.date, .datatable td.date {
+		width:110px;
+	}
+	.datatable th.patient_name, .datatable td.patient_name {
+		width:210px;
+	}
+	.datatable th.invoice_number, .datatable td.invoice_number {
+		width:80px;
+	}
+	.datatable th.invoice_period, .datatable td.invoice_period {
+		width:140px;
+	}
+	.datatable th.invoice_complete_date, .datatable td.invoice_complete_date {
+		width:90px;
+	}
+</style>
+<form action="" method="post" name="frmdoc" id="frmdoc">
+	<?php if(strlen($this->error_message) > '0'): ?>
+		<div id="familydoctorlist_deleteMsg" class="err">
+			<?php echo $this->error_message; ?>
+		</div>
+	<?php endif; ?>
+
+	<?php if(strlen($this->success_message) > '0'): ?>
+		<div id="familydoctorlist_deleteMsg" class="uc">
+			<?php echo $this->success_message; ?>
+		</div>
+	<?php endif; ?>
+
+	<br />
+	<br />
+	<div id="familyDocFetchlist_mainDiv" class="grid">
+		<h1><?php echo $this->translate('list_dta_invoices_'.$this->invoice_type); ?></h1>
+		<div class="quick_search">
+			<label for="search"><?php echo $this->translate('quicksearch_dta_month'); ?></label>&nbsp;&nbsp;
+			<?php echo $this->formSelect('search', $this->selected_month, array('data-invoice_type'=>$this->invoice_type,  'onchange' => 'searchData(this);'), $this->months_array) ?>
+		</div>
+		<div id="content">
+			<?php echo $this->templates_grid; ?>
+		</div>
+	</div>
+
+
+    <?php if ($this->invoice_type=="demstepcare_invoice"):?>
+    <div>
+        <input type="checkbox" name="testdata" value="test"> Testdaten erzeugen
+        <p>Wenn dies aktiv ist, werden Testdaten erzeugt um die Übertragung testen zu können.</p>
+    </div>
+    <?php endif;?>
+
+</form>
+<script type="text/javascript">
+	ajaxCallserver({url: appbase + 'dta/fetchdtainvoicessystemlist?invoice_type='+invoice_type+'&clm=invdate&ord=ASC&pgno=0', callLoading: pl_loading});
+</script>
+
+
+

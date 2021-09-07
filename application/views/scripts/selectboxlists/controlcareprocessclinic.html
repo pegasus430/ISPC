@@ -1,0 +1,625 @@
+<?php
+//Maria:: Migration CISPC to ISPC 22.07.2020
+
+    $this->headLink()->appendStylesheet(RES_FILE_PATH . '/css/page-css/controlcareprocessclinic.css?' . date('Ymd'));
+?>
+
+<script>
+    $(document).ready(function () {
+
+        var del_record_message = '<? echo $this->translate('confirmdeleteonerecord'); ?>';
+        var del_area_message = '<? echo $this->translate('confirmdeleteonarea'); ?>';
+
+        $('.error_new').hide();
+
+       $('.dialog').hide();
+
+        //remove the freetext-field by initialize the view
+        $('.dialog').find('.actionname[value="_FREETEXT"]').closest("tr").remove();
+
+
+        /**
+         * remove the selected row from the list
+         */
+        $('.themerows').on('click', '.remove-theme-button', function (e) {
+
+            var themeblock =  $(this).closest('.themeblock');
+            var dialog = themeblock.next('.dialog');
+            jConfirm(del_record_message, '<? echo $this->translate('confirmdeletetitle'); ?>', function (r) {
+                if (r) {
+                    themeblock.remove();
+                    dialog.remove();
+                }
+            });
+        });
+
+        $('.targetrow').on('click', '.remove-target-button', function (e) {
+
+            var whichtr = $(this).closest("tr");
+            confirm_and_remove(whichtr, del_record_message);
+        });
+
+        $('.actionrow').on('click', '.remove-action-button', function (e) {
+
+            var whichtr = $(this).closest("tr");
+            confirm_and_remove(whichtr, del_record_message);
+        });
+
+        $('.problemrow').on('click', '.remove-problem-button', function (e) {
+
+            var whichtr = $(this).closest("tr");
+            confirm_and_remove(whichtr, del_record_message);
+        });
+
+        $('.resourcerow').on('click', '.remove-resource-button', function (e) {
+
+            var whichtr = $(this).closest("tr");
+            confirm_and_remove(whichtr, del_record_message);
+        });
+
+        $('.themerows').on('click', '.edit-theme-button', function (e) {
+
+            $(this).closest('.themeblock').next('.dialog').toggle();
+            var var_input = $(this).closest('.themerow').find('.themename');
+            var ro   = var_input.prop('readonly');
+            var_input.prop('readonly', !ro);
+        });
+
+        $('.arearows').on('click', '.remove-area-button', function (e) {
+
+            var whichtr = $(this).closest(".arearows");
+            confirm_and_remove(whichtr, del_area_message);
+        });
+
+        $('.arearows').on('click', '.add-theme-button', function (e) {
+
+            var arearows = $(this).closest('.arearows');
+            var themerows =  $(arearows).find('.themerows');
+
+            var lastthemeblock =  $(themerows).find('.themeblock').last();
+            var lastdialog = $(themerows).find('.dialog').last();
+
+            var newthemeblock = lastthemeblock.clone(true);
+            var newdialog = lastdialog.clone(true);
+
+            var count = $(arearows).find('.themerow').length;
+
+            //init the input-value and name-field
+            init_new_input_field($(newthemeblock).find('.themename'), count);
+
+            //init the table rows
+            $(newdialog).find('.problemrow').not(':first').remove();
+            $(newdialog).find('.targetrow').not(':first').remove();
+            $(newdialog).find('.actionrow').not(':first').remove();
+            $(newdialog).find('.resourcerow').not(':first').remove();
+
+            //init the input-value and name-field
+            init_new_input_field($(newdialog).find('.problemrow').find('input'), count);
+            init_new_input_field($(newdialog).find('.targetrow').find('input'), count);
+            init_new_input_field($(newdialog).find('.actionrow').find('input'), count);
+            init_new_input_field($(newdialog).find('.resourcerow').find('input'), count);
+
+            lastdialog.after(newthemeblock);
+            newthemeblock.after(newdialog);
+
+            $(newthemeblock).find('.edit-theme-button').click(); // show the edit mode
+            $(newthemeblock).find('.themename').focus(); //set the focus to new theme-field
+
+        });
+
+        $('.process').on('click', '.add-area-button', function (e) {
+            $('.error_new').hide();
+            var input = $(this).closest('.process').find('input');
+
+            if (validate_area_is_not_empty(input) && validate_area_is_not_already_exist(input)) {
+                //create a new area for careprocess
+                var newblock = $('.arearows').last().clone(true);          //clone the schema-block
+                $(newblock).find('.area_header').find('input').val(input.val());
+                $(newblock).find('.area_header').find('input').attr('name', 'careprocesslist[' + input.val() + ']');
+                $(newblock).find('.themeblock').not(':first').remove();
+                $(newblock).find('.dialog').not(':first').remove();
+
+                $(newblock).find('.themeblock').find('.themename').val('');
+                $(newblock).find('.themeblock').find('.themename').attr('name', 'careprocesslist[' + input.val() + '][0][col_thema][]');
+                $(newblock).find('.dialog').find('.problemrow').not(':first').remove();
+                $(newblock).find('.dialog').find('.problemrow').find('input').val('');
+                $(newblock).find('.dialog').find('.problemrow').find('input').attr('name', 'careprocesslist[' + input.val() + '][0][col_probleme][]');
+                $(newblock).find('.dialog').find('.targetrow').not(':first').remove();
+                $(newblock).find('.dialog').find('.targetrow').find('input').val('');
+                $(newblock).find('.dialog').find('.targetrow').find('input').attr('name', 'careprocesslist[' + input.val() + '][0][col_ziele][]');
+                $(newblock).find('.dialog').find('.actionrow').not(':first').remove();
+                $(newblock).find('.dialog').find('.actionrow').find('input').val('');
+                $(newblock).find('.dialog').find('.actionrow').find('input').attr('name', 'careprocesslist[' + input.val() + '][0][col_massnahmen][]');
+                $(newblock).find('.dialog').find('.resourcerow').not(':first').remove();
+                $(newblock).find('.dialog').find('.resourcerow').find('input').val('');
+                $(newblock).find('.dialog').find('.resourcerow').find('input').attr('name', 'careprocesslist[' + input.val() + '][0][col_ressourcen][]');
+
+                $('.arearows').last().after(newblock);
+            }
+
+            $(this).closest('.process').find('input').val('');
+        });
+
+        $('form').submit(function (event) {
+
+            if(!validate_dialog())
+                return false;
+
+            $('.dialog').each(function () {
+
+                $(this).find('.targetname').last().closest("tr").remove();
+                $(this).find('.problemname').last().closest("tr").remove();
+                $(this).find('.actionname').last().closest("tr").remove();
+                $(this).find('.resourcename').last().closest("tr").remove();
+
+
+                var last = $(this).find('.actionrow').last();
+
+                var newel = last.clone();  //clone the last row
+                $(newel).find('.actionname').val('_FREETEXT'); //set the freetext-value
+
+                last.after(newel);
+            });
+
+            return true;
+
+        });
+
+        //init help area
+
+        $('.display_help_icon').mouseover(function () {
+            $('.display_help').removeAttr('style');
+
+        });
+        $('.display_help_icon').mouseout(function () {
+            $('.display_help').attr('style', 'display:none');
+
+        });
+
+    });
+
+    $(document).on('change', '.actionname', function () {
+        //http://jsfiddle.net/ambiguous/LAECx/
+        var last = $(this).closest('.actionrow');
+        var dialog = $(this).closest('.dialog');
+
+        //only clone the row,if the last input-field is changed
+        if ($(dialog).find('.actionrow').index(last) == $(dialog).find('.actionrow').size() - 1) {
+
+            if ($(last).find('.actionname').val() != "") {
+
+                var newel = last.clone();  //clone the last row
+                $(newel).find('.actionname').val(''); //delete value of new row
+                $(last).find('.remove-action-button').removeAttr('style'); //set the button of last row visible
+
+                last.after(newel);
+                $(newel).find('.actionname').focus(); //set the focus th the new input field
+            }
+        }
+
+    })
+
+    $(document).on('change', '.targetname', function () {
+        var last = $(this).closest('.targetrow');
+        var dialog = $(this).closest('.dialog');
+
+        //only clone the row,if the last input-field is changed
+        if ($(dialog).find('.targetrow').index(last) == $(dialog).find('.targetrow').size() - 1) {
+
+            if ($(last).find('.targetname').val() != "") {
+
+                var newel = last.clone();  //clone the last row
+                $(newel).find('.targetname').val(''); //delete value of new row
+                $(last).find('.remove-target-button').removeAttr('style'); //set the button of last row visible
+
+                last.after(newel);
+                $(newel).find('.targetname').focus(); //set the focus th the new input field
+
+            }
+        }
+
+    })
+
+    $(document).on('change', '.problemname', function () {
+        var last = $(this).closest('.problemrow');
+        var dialog = $(this).closest('.dialog');
+
+        //only clone the row,if the last input-field is changed
+        if ($(dialog).find('.problemrow').index(last) == $(dialog).find('.problemrow').size() - 1) {
+
+            if ($(last).find('.problemname').val() != "") {
+
+                var newel = last.clone();  //clone the last row
+                $(newel).find('.problemname').val(''); //delete value of new row
+                $(last).find('.remove-problem-button').removeAttr('style'); //set the button of last row visible
+
+                last.after(newel);
+                $(newel).find('.problemname').focus(); //set the focus th the new input field
+            }
+        }
+
+    })
+
+    $(document).on('change', '.resourcename', function () {
+        var last = $(this).closest('.resourcerow');
+        var dialog = $(this).closest('.dialog');
+
+        //only clone the row,if the last input-field is changed
+        if ($(dialog).find('.resourcerow').index(last) == $(dialog).find('.resourcerow').size() - 1) {
+
+            if ($(last).find('resourcename').val() != "") {
+
+                var newel = last.clone();  //clone the last row
+                $(newel).find('.resourcename').val(''); //delete value of new row
+                $(last).find('.remove-resource-button').removeAttr('style'); //set the button of last row visible
+
+                last.after(newel);
+                $(newel).find('.resourcename').focus(); //set the focus th the new input field
+            }
+        }
+
+    })
+
+
+    function validate_area_is_not_already_exist(input) {
+
+        var normalized_input = normalize_string(input.val());
+        var isValid=true;
+
+        $('.area_header').each(function () {
+            var existing_input = $(this).find('input');
+            var normalized_existing_input = normalize_string(existing_input.val());
+            if (normalized_existing_input == normalized_input) {
+                $('.area_already_exists').show();
+                isValid = false;
+            }
+
+        });
+
+        return isValid;
+
+    }
+
+    function validate_area_is_not_empty(input) {
+
+        if (input.val() == "") {
+            $('.area_is_empty').show();
+            return false;
+        }
+
+        return true;
+
+    }
+
+    function validate_thema_is_not_empty() {
+
+        var isValid = true;
+
+        $('.themename').each(function () {
+
+            if ($(this).val() == '') {
+                $(this).addClass('error_display_field');
+                isValid = false;
+            }
+        });
+
+        return isValid;
+    }
+
+    function validate_problem_is_not_empty() {
+
+        var isValid = true;
+
+        $('.problemname').not(":last").each(function () {
+
+            if ($(this).val() == '') {
+                $(this).addClass('error_display_field');
+                isValid = false;
+            }
+        });
+
+        return isValid;
+    }
+
+    function validate_target_is_not_empty() {
+
+        var isValid = true;
+
+        $('.dialog').each(function () {
+
+            $(this).find('.targetname').not(":last").each(function () {
+
+                if ($(this).val() == '') {
+                    $(this).addClass('error_display_field');
+                    isValid = false;
+                }
+            });
+        });
+
+        return isValid;
+    }
+
+    function validate_input_is_not_empty(selector) {
+
+        var isValid = true;
+
+        $('.dialog').each(function () {
+
+            $(this).find(selector).not(":last").each(function () {
+
+                if ($(this).val() == '') {
+                    $(this).addClass('error_display_field');
+                    $(this).closest('.dialog').show();
+                    isValid = false;
+                }
+            });
+        });
+
+        return isValid;
+    }
+
+    function validate_action_is_not_empty() {
+
+        var isValid = true;
+
+        $('.actionname').not(":last").each(function () {
+
+            if ($(this).val() == '') {
+                $(this).addClass('error_display_field');
+                isValid = false;
+            }
+        });
+
+        return isValid;
+    }
+
+
+    function confirm_and_remove(whichtr, message) {
+
+        jConfirm(message, '<? echo $this->translate('confirmdeletetitle'); ?>', function (r) {
+            if (r) {
+                whichtr.remove();
+            }
+        });
+    }
+
+    function normalize_string(input) {
+        if (typeof input === 'undefined' || input === null || input === '')
+            return;
+
+        return input.trim().toLowerCase().replace(/ü/g, 'ue').replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ß/g, 'ss');
+    }
+
+    function validate_dialog() {
+        hide_error_fields();
+        //check all areas
+        var a = 0;
+        a += validate_thema_is_not_empty() ? 1 : 0;
+        a += validate_input_is_not_empty('.problemname') ? 1 : 0;
+        a += validate_input_is_not_empty('.targetname') ? 1 : 0;
+        a += validate_input_is_not_empty('.actionname') ? 1 : 0;
+        a += validate_input_is_not_empty('.resourcename') ? 1 : 0;
+
+        if (a < 5) {
+            $('.error_display_area').show();
+            return false;
+        }
+        return true;
+
+    }
+
+    function hide_error_fields() {
+        $('.error_display_area').hide();
+        $('#dialog .error_display_field').removeClass('error_display_field');
+    }
+
+    function init_new_input_field(input, count){
+        //init the input-value
+        input.val('');
+        //init the name-attribute
+        var oldName = input.attr('name');
+        var newName = oldName.replace('[' + (count-1) + ']', '[' + count + ']');
+        input.attr('name', newName);
+    }
+
+</script>
+
+
+</br></br>
+<h1 class="display_help_icon"><?php echo $this->translate('block_care_process_clinic');?></h1>
+<div class="display_help" style="display:none"><?php echo $this->translate(clinic_help_005); ?></div>
+
+<br>
+
+<form method="post">
+    <table class="process datatable">
+        <tr>
+            <td width="20%;">Neuer Bereich</h2></td>
+            <td><input maxlength="100" size="100" type="text" class=add-area-input"" value="">
+                <div class="error_new area_is_empty">
+                    <?php echo $this->translate('area_not_empty'); ?>
+                </div>
+                <div class="error_new area_already_exists">
+                    <?php echo $this->translate('area_already_exists'); ?>
+                </div>
+            </td>
+            <td>
+                <button type="button" value="1" class="add-area-button"
+                        title="Neuen Bereich hinzufügen"><img
+                        src="<? echo RES_FILE_PATH;  ?>/images/action_add_blue.png"></button>
+            </td>
+        </tr>
+    </table>
+    </br>  </br>
+
+
+    <?php  foreach ($this->careprocesslist as $key => $row) :?>
+
+
+    <div class="arearows">
+
+        <div class="area_header">
+            <input maxlength="100" size="100" type="text" name="careprocesslist[<?php echo $key;?>]" class="readonly"
+                   value="<?php echo htmlspecialchars($key);?>" readonly>
+        </div>
+
+        <table class="themerows datatable">
+            <tbody class="themeheader">
+                <tr>
+                    <th width="90%;"><?php echo $this->translate('care_process_clinic_theme'); ?></th>
+                    <th><?php echo $this->translate('actions'); ?></th>
+                </tr>
+            </tbody>
+            <?php foreach ($row as $row_key => $value) :?>
+            <tbody class="themeblock">
+                <tr class="themerow">
+                    <td>
+                        <input style="width: 90%;" type="text" name="careprocesslist[<?php echo $key;?>][<?php echo $row_key;?>][col_thema][0]" class="themename"
+                               value="<?php echo htmlspecialchars($value['col_thema'][0]);?>" readonly>
+                    </td>
+                    <td>
+                        <button type="button" value="1" class="edit-theme-button"
+                                title="<?php echo $this->translate(edit); ?>"><img
+                                src="<? echo RES_FILE_PATH;  ?>/images/edit.png"></button>
+                        <button type="button" value="1" class="remove-theme-button"
+                                title="<?php echo $this->translate(delete); ?>"><img
+                                src="<? echo RES_FILE_PATH;  ?>/images/action_delete.png"></button>
+                    </td>
+                </tr>
+            </tbody><!--end class="themeblock" -->
+
+            <tbody class="dialog">
+                <tr class="problemrows">
+                    <th width="90%" class="problem"><?php echo $this->translate('care_process_clinic_problems'); ?></th>
+                    <th><?php echo $this->translate('actions'); ?></th>
+                </tr>
+                <?php foreach ($value['col_probleme'] as $key_prop => $value_prob) :?>
+                <tr class="problemrow ">
+                    <td><input type="text" name="careprocesslist[<?php echo $key;?>][<?php echo $row_key;?>][col_probleme][]" class="problemname"
+                               value="<?php echo htmlspecialchars($value_prob);?>"></td>
+                    <td>
+                        <button type="button" value="1" class="remove-problem-button"
+                                title="<?php echo $this->translate(delete); ?>"><img
+                                src="<? echo RES_FILE_PATH;  ?>/images/action_delete.png"></button>
+                    </td>
+                </tr>
+                <?php endforeach;?>
+                <!-- add an empty row for new values -->
+                <tr class="problemrow ">
+                    <td><input type="text" name="careprocesslist[<?php echo $key;?>][<?php echo $row_key;?>][col_probleme][]" class="problemname"
+                               value=""></td>
+                    <td>
+                        <button type="button" value="1" style="visibility:hidden;" class="remove-problem-button"
+                                title="<?php echo $this->translate(delete); ?>"><img
+                                src="<? echo RES_FILE_PATH;  ?>/images/action_delete.png"></button>
+                    </td>
+                </tr>
+
+                <tr class="resourcesrows">
+                    <th width=" 90%" class="resource"><?php echo $this->translate('care_process_clinic_resources'); ?></th>
+                    <th><?php echo $this->translate('actions'); ?></th>
+                </tr>
+                <?php foreach ($value['col_ressourcen'] as $key_resource=> $value_resource) :?>
+                <tr class="resourcerow">
+                    <td><input type="text" name="careprocesslist[<?php echo $key;?>][<?php echo $row_key;?>][col_ressourcen][]" class="resourcename"
+                               value="<?php echo htmlspecialchars($value_resource);?>"></td>
+                    <td>
+                        <button type="button" value="1" class="remove-resource-button"
+                                title="<?php echo $this->translate(delete); ?>"><img
+                                src="<? echo RES_FILE_PATH;  ?>/images/action_delete.png"></button>
+                    </td>
+                </tr>
+                <?php endforeach;?>
+                <!-- add an empty row for new values -->
+                <tr class="resourcerow">
+                    <td><input type="text" name="careprocesslist[<?php echo $key;?>][<?php echo $row_key;?>][col_ressourcen][]" class="resourcename"
+                               value=""></td>
+                    <td>
+                        <button type="button" value="1" style="visibility:hidden;" class="remove-resource-button"
+                                title="<?php echo $this->translate(delete); ?>"><img
+                                src="<? echo RES_FILE_PATH;  ?>/images/action_delete.png"></button>
+                    </td>
+                </tr>
+
+                <tr class="targetrows">
+                    <th width=" 90%" class="target"><?php echo $this->translate('care_process_clinic_targets'); ?></th>
+                    <th><?php echo $this->translate('actions'); ?></th>
+                </tr>
+                <?php foreach ($value['col_ziele'] as $key_ziel => $value_ziel) :?>
+                <tr class="targetrow">
+                    <td><input type="text" name="careprocesslist[<?php echo $key;?>][<?php echo $row_key;?>][col_ziele][]" class="targetname"
+                               value="<?php echo htmlspecialchars($value_ziel);?>"></td>
+                    <td>
+                        <button type="button" value="1" class="remove-target-button"
+                                title="<?php echo $this->translate(delete); ?>"><img
+                                src="<? echo RES_FILE_PATH;  ?>/images/action_delete.png"></button>
+                    </td>
+                </tr>
+                <?php endforeach;?>
+                <!-- add an empty row for new values -->
+                <tr class="targetrow">
+                    <td><input type="text" name="careprocesslist[<?php echo $key;?>][<?php echo $row_key;?>][col_ziele][]" class="targetname"
+                               value=""></td>
+                    <td>
+                        <button type="button" value="1" style="visibility:hidden;" class="remove-target-button"
+                                title="<?php echo $this->translate(delete); ?>"><img
+                                src="<? echo RES_FILE_PATH;  ?>/images/action_delete.png"></button>
+                    </td>
+                </tr>
+
+                <tr class="actionrows">
+                    <th width="90%" class="action"><?php echo $this->translate('care_process_clinic_actions'); ?></th>
+                    <th><?php echo $this->translate('actions'); ?></th>
+                </tr>
+                <?php foreach ($value['col_massnahmen'] as $key_mass => $value_mass) :?>
+                <tr class="actionrow">
+                    <td><input type="text" name="careprocesslist[<?php echo $key;?>][<?php echo $row_key;?>][col_massnahmen][]" class="actionname"
+                               value="<?php echo htmlspecialchars($value_mass);?>">
+                    </td>
+                    <td>
+                        <button type="button" value="1" class="remove-action-button"
+                                title="<?php echo $this->translate(delete); ?>"><img
+                                src="<? echo RES_FILE_PATH;  ?>/images/action_delete.png"></button>
+                    </td>
+                </tr>
+                <?php endforeach;?>
+                <!-- add an empty row for new values -->
+                <tr class="actionrow">
+                    <td><input type="text" name="careprocesslist[<?php echo $key;?>][<?php echo $row_key;?>][col_massnahmen][]" class="actionname"
+                               value="">
+                    </td>
+                    <td>
+                        <button type="button" value="1" style="visibility:hidden;" class="remove-action-button"
+                                title="<?php echo $this->translate(delete); ?>"><img
+                                src="<? echo RES_FILE_PATH;  ?>/images/action_delete.png"></button>
+                    </td>
+                </tr>
+
+            </tbody><!--end tbody class="dialog" -->
+            <?php endforeach;?>
+        </table>
+
+
+        <div>
+            <button type="button" value="1" class="add-theme-button"
+                    title="Neues Thema hinzufügen"><img
+                    src="<? echo RES_FILE_PATH;  ?>/images/action_add_blue.png"></button>
+            <button type="button" value="1" class="remove-area-button"
+                    title="Gesamten Bereich löschen"><img
+                    src="<? echo RES_FILE_PATH;  ?>/images/action_delete.png"></button>
+
+        </div>
+        </br>  </br>
+    </div> <!- end class="arearows"-->
+    <?php endforeach;?>
+
+
+    <div class="error_display_area" style="display:none">
+        <?php echo $this->translate('fill_mandatory_fields'); ?>
+    </div>
+
+    <div>
+        <input type="submit" style="text-align:left;padding:8px;" value="Speichern">
+    </div>
+
+</form>
